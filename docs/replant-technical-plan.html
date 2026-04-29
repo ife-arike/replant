@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Technical Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sky: #6BB5E8;
+    --sky-dim: rgba(107,181,232,0.1);
+    --sky-mid: rgba(107,181,232,0.35);
+    --black: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --off-white: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --faint: rgba(240,237,230,0.08);
+    --red: #E05555;
+    --amber: #D4A855;
+    --green: #5BAD7A;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+  body { background: var(--black); color: var(--off-white); font-family: var(--sans); font-weight: 300; line-height: 1.7; padding: 4rem 2rem 6rem; max-width: 860px; margin: 0 auto; }
+
+  .page-header { text-align: center; margin-bottom: 4rem; padding-bottom: 2rem; border-bottom: 0.5px solid var(--faint); }
+  .page-header h1 { font-family: var(--serif); font-size: 2.2rem; font-weight: 300; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+  .page-header p { font-size: 0.68rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); }
+
+  .section { margin-bottom: 3.5rem; }
+  .section-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 0.5px solid var(--faint); }
+  .section-num { font-family: var(--serif); font-size: 0.7rem; color: var(--sky); letter-spacing: 0.15em; }
+  .section-title { font-family: var(--serif); font-size: 1.6rem; font-weight: 300; }
+
+  .intro-text { font-size: 0.88rem; color: var(--muted); line-height: 1.85; margin-bottom: 1.5rem; }
+  .intro-text strong { color: var(--off-white); font-weight: 400; }
+
+  /* STACK CARDS */
+  .stack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--faint); margin-bottom: 1.5rem; }
+  .stack-card { background: var(--surface); padding: 1.2rem 1.4rem; }
+  .stack-layer { font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); margin-bottom: 0.3rem; }
+  .stack-name { font-family: var(--serif); font-size: 1.05rem; font-weight: 400; margin-bottom: 0.3rem; }
+  .stack-why { font-size: 0.75rem; color: var(--muted); line-height: 1.65; }
+  .stack-why em { color: var(--off-white); font-style: normal; }
+  .stack-free { display: inline-block; font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; background: rgba(91,173,122,0.12); color: var(--green); padding: 2px 6px; border-radius: 2px; margin-top: 5px; }
+
+  /* FEATURE TABLE */
+  .feature-list { display: flex; flex-direction: column; gap: 0; }
+  .feature-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0; border-bottom: 0.5px solid var(--faint); padding: 0.85rem 0; align-items: start; }
+  .feature-row.header { padding: 0.5rem 0; }
+  .feature-row.header span { font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sky); }
+  .feature-name { font-size: 0.82rem; color: var(--off-white); font-weight: 400; }
+  .feature-desc { font-size: 0.72rem; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .feature-phase { font-size: 0.62rem; }
+  .phase-mvp { color: var(--green); }
+  .phase-2 { color: var(--amber); }
+  .feature-complexity { font-size: 0.62rem; }
+  .complexity-low { color: var(--green); }
+  .complexity-med { color: var(--amber); }
+  .complexity-high { color: var(--red); }
+
+  /* USER FLOW */
+  .flow-step { display: flex; gap: 1rem; margin-bottom: 0; }
+  .flow-left { display: flex; flex-direction: column; align-items: center; }
+  .flow-num { width: 28px; height: 28px; border-radius: 50%; background: var(--sky-dim); border: 0.5px solid var(--sky-mid); display: flex; align-items: center; justify-content: center; font-size: 0.62rem; color: var(--sky); font-weight: 500; flex-shrink: 0; }
+  .flow-line { width: 1px; flex: 1; background: var(--faint); margin: 4px 0; min-height: 20px; }
+  .flow-body { padding-bottom: 1.2rem; flex: 1; }
+  .flow-title { font-size: 0.85rem; font-weight: 500; color: var(--off-white); margin-bottom: 3px; }
+  .flow-detail { font-size: 0.75rem; color: var(--muted); line-height: 1.7; }
+  .flow-detail em { color: var(--sky); font-style: normal; }
+
+  /* DATABASE */
+  .db-table { margin-bottom: 1.5rem; background: var(--surface); border: 0.5px solid var(--faint); border-radius: 6px; overflow: hidden; }
+  .db-table-header { background: var(--surface2); padding: 0.75rem 1.2rem; display: flex; align-items: center; gap: 0.75rem; border-bottom: 0.5px solid var(--faint); }
+  .db-table-name { font-family: var(--serif); font-size: 1rem; font-weight: 400; }
+  .db-table-desc { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em; }
+  .db-field { display: grid; grid-template-columns: 1.2fr 0.8fr 2fr; gap: 0; padding: 0.6rem 1.2rem; border-bottom: 0.5px solid var(--faint); }
+  .db-field:last-child { border-bottom: none; }
+  .db-field-name { font-size: 0.72rem; color: var(--sky); font-family: 'Courier New', monospace; }
+  .db-field-type { font-size: 0.68rem; color: var(--amber); font-family: 'Courier New', monospace; }
+  .db-field-desc { font-size: 0.68rem; color: var(--muted); }
+
+  /* API CARDS */
+  .api-card { background: var(--surface); border: 0.5px solid var(--faint); border-left: 2px solid var(--sky); border-radius: 0 6px 6px 0; padding: 1rem 1.2rem; margin-bottom: 0.75rem; }
+  .api-name { font-family: var(--serif); font-size: 1rem; font-weight: 400; margin-bottom: 0.2rem; }
+  .api-cost { display: inline-block; font-size: 0.52rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; margin-bottom: 0.5rem; }
+  .api-cost-free { background: rgba(91,173,122,0.12); color: var(--green); }
+  .api-cost-paid { background: rgba(212,168,85,0.12); color: var(--amber); }
+  .api-what { font-size: 0.78rem; color: var(--muted); line-height: 1.75; }
+  .api-what strong { color: var(--off-white); font-weight: 400; }
+  .api-what em { color: var(--sky); font-style: normal; }
+
+  /* COST TABLE */
+  .cost-row { display: grid; grid-template-columns: 2fr 1fr 1fr; padding: 0.75rem 0; border-bottom: 0.5px solid var(--faint); font-size: 0.78rem; }
+  .cost-row.header { font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--sky); }
+  .cost-free { color: var(--green); }
+  .cost-paid { color: var(--amber); }
+
+  /* CALLOUT */
+  .callout { background: var(--sky-dim); border: 0.5px solid var(--sky-mid); border-radius: 6px; padding: 1rem 1.2rem; margin: 1rem 0; font-size: 0.78rem; color: var(--muted); line-height: 1.75; }
+  .callout strong { color: var(--sky); font-weight: 400; display: block; margin-bottom: 0.25rem; font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase; }
+
+  .footer { text-align: center; padding-top: 3rem; border-top: 0.5px solid var(--faint); font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(240,237,230,0.2); }
+
+  @media (max-width: 600px) {
+    .stack-grid { grid-template-columns: 1fr; }
+    .feature-row { grid-template-columns: 1fr; gap: 3px; }
+    .db-field { grid-template-columns: 1fr 1fr; }
+    .db-field-desc { grid-column: 1 / -1; padding-top: 2px; }
+    .cost-row { grid-template-columns: 2fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Replant — Technical Plan</h1>
+  <p>Stack · Features · User Flow · Database · APIs</p>
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 01. RECOMMENDED TECH STACK -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">Recommended Tech Stack</h2>
+  </div>
+
+  <p class="intro-text">Given your goals — both iOS and Android, a real developer, bootstrapped budget — the best approach is a single codebase that runs on both platforms at once. This means writing the app once instead of twice, which cuts build time and cost significantly. Here's the stack I'd recommend:</p>
+
+  <div class="stack-grid">
+    <div class="stack-card">
+      <p class="stack-layer">Frontend / App</p>
+      <p class="stack-name">React Native (Expo)</p>
+      <p class="stack-why">One codebase, runs on both iOS and Android. <em>Expo</em> is the beginner-friendly wrapper that removes a lot of the painful setup. Your developer writes JavaScript/TypeScript — a widely known language, easy to hire for.</p>
+      <span class="stack-free">Free</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">Backend / Database</p>
+      <p class="stack-name">Supabase</p>
+      <p class="stack-why">Think of this as your app's brain and memory. It stores all your data (churches, users, prayer requests, messages), handles login/auth, and has a generous <em>free tier</em> that will easily cover MVP scale. No server to manage.</p>
+      <span class="stack-free">Free tier</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">Authentication</p>
+      <p class="stack-name">Supabase Auth</p>
+      <p class="stack-why">Built into Supabase. Handles email/password login, session management, and account security. <em>No extra service needed.</em> You can add phone/SMS auth later for extra verification.</p>
+      <span class="stack-free">Free</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">Real-time Messaging</p>
+      <p class="stack-name">Supabase Realtime</p>
+      <p class="stack-why">Also built into Supabase. Powers the Connect tab — messages appear instantly without refreshing. <em>No need for a separate messaging service</em> at MVP scale. Scales to a dedicated service (like Stream) later if needed.</p>
+      <span class="stack-free">Free tier</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">File / Image Storage</p>
+      <p class="stack-name">Supabase Storage</p>
+      <p class="stack-why">If users upload profile photos or documents. Also built into Supabase. <em>1GB free</em> on the free tier — more than enough for MVP.</p>
+      <span class="stack-free">Free tier</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">Maps (Globe + Local)</p>
+      <p class="stack-name">Mapbox</p>
+      <p class="stack-why">Powers both the local church map and the globe view. Mapbox has a <em>generous free tier</em> (50,000 map loads/month) and is easier to customize than Google Maps — important for the RAG dot styling on countries.</p>
+      <span class="stack-free">Free tier</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">App Distribution</p>
+      <p class="stack-name">Expo EAS Build</p>
+      <p class="stack-why">Builds and submits your app to the App Store and Google Play. Expo handles the hard parts. <em>Free tier available.</em> You'll need Apple Developer ($99/yr) and Google Play ($25 one-time) accounts to publish.</p>
+      <span class="stack-free">Free tier</span>
+    </div>
+    <div class="stack-card">
+      <p class="stack-layer">Encryption (Persecuted Church)</p>
+      <p class="stack-name">Supabase Row Level Security</p>
+      <p class="stack-why">Supabase has built-in row-level security — meaning you can restrict who sees what data at the database level. The Persecuted Church section's sensitive data is only readable by verified users. <em>No extra service needed for MVP.</em></p>
+      <span class="stack-free">Free</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Why this stack works for Replant</strong>
+    Supabase + React Native (Expo) is one of the most popular beginner-friendly stacks right now. There is massive community support, thousands of free tutorials, and your developer will almost certainly know it. Everything on this list has a free tier that covers MVP scale — meaning you can launch and grow before spending a dollar on infrastructure.
+  </div>
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 02. FEATURES MAP -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Features Map</h2>
+  </div>
+
+  <div class="feature-list">
+    <div class="feature-row header">
+      <span>Feature</span>
+      <span>Phase</span>
+      <span>Complexity</span>
+    </div>
+
+    <div class="feature-row">
+      <div><p class="feature-name">Splash / Welcome screen</p><p class="feature-desc">Brand entry point, Create Account + Sign In</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-low">Low</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Declaration of Faith screen</p><p class="feature-desc">Affirmation gate before account creation — 1 John 4:1</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-low">Low</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Account creation + church registration</p><p class="feature-desc">2-page form, church type dropdown, anonymity selection, contact details</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">30-day verification countdown</p><p class="feature-desc">Account deactivation if church unconfirmed</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Home tab — scripture + network updates</p><p class="feature-desc">Daily verse, new church alerts, urgent notices, Replant announcements</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-low">Low</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Church at My Location tab</p><p class="feature-desc">Local map with RAG dots, nearby churches list, register church button</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Church at Large tab — globe</p><p class="feature-desc">Interactive globe, RAG country dots, live prayer bubbles, region slide-out panel</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-high">High</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Persecuted Church tab</p><p class="feature-desc">Heartcry form, encrypted submissions, anonymous heartcries display, encouragement</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-high">High</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Intercession tab</p><p class="feature-desc">Receive Intercession form, Prayer Wall with filters, Testimonies section</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Connect tab — DMs</p><p class="feature-desc">Ministry + Leader tabs, real-time messaging, community covenant notice</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-high">High</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Hamburger menu</p><p class="feature-desc">The Vision, Outreach & Missions, Language, Settings, FAQ, Logout</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-low">Low</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Admin / Replant team dashboard</p><p class="feature-desc">Web dashboard for reviewing church verifications and flagged chats</p></div>
+      <div><span class="feature-phase phase-mvp">MVP</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Per-post name anonymity toggle</p><p class="feature-desc">Toggle personal name on/off per submission while respecting church visibility</p></div>
+      <div><span class="feature-phase phase-2">MVP 2</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Underground church name encryption</p><p class="feature-desc">Name converts to masked format (e.g. mus****) immediately after signup</p></div>
+      <div><span class="feature-phase phase-2">MVP 2</span></div>
+      <div><span class="feature-complexity complexity-high">High</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Offline messaging</p><p class="feature-desc">Send messages to churches with limited internet access</p></div>
+      <div><span class="feature-phase phase-2">MVP 2</span></div>
+      <div><span class="feature-complexity complexity-high">High</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Push notifications</p><p class="feature-desc">Urgent alerts, new prayer requests (persecuted only at first)</p></div>
+      <div><span class="feature-phase phase-2">MVP 2</span></div>
+      <div><span class="feature-complexity complexity-med">Medium</span></div>
+    </div>
+    <div class="feature-row">
+      <div><p class="feature-name">Multi-language support</p><p class="feature-desc">i18n translation layer across all screens</p></div>
+      <div><span class="feature-phase phase-2">MVP 2</span></div>
+      <div><span class="feature-complexity complexity-high">High</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 03. USER FLOW -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">User Flow</h2>
+  </div>
+
+  <p class="intro-text">This is the journey every new user takes from first opening the app to being active in the network.</p>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Download & Open</p>
+      <p class="flow-detail">User downloads from App Store or Google Play. Splash screen loads with the Replant logo and two options: <em>Create Account</em> or <em>Sign In</em>.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Declaration of Faith</p>
+      <p class="flow-detail">Before any form, the full affirmation is presented. User must tap <em>"I Affirm This"</em> to proceed. This is stored as a confirmed timestamp in the database. No affirmation = no account.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Create Account (Step 1 of 2) — Personal Info</p>
+      <p class="flow-detail">Legal full name, email, password. This is private — never shown publicly. A verification email is sent.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Church Setup (Step 2 of 2)</p>
+      <p class="flow-detail">Ministry/church name (required), church type dropdown, city/country, role, anonymity preference. Underground church selection disables location field and shows safety popup.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">5</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Enter the App — Home Tab</p>
+      <p class="flow-detail">User lands on the Home tab. A banner at the top reminds them their church is <em>pending verification (X days remaining)</em>. They can browse but certain actions (e.g. Persecuted Church submissions) may require verified status.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">6</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Register / Confirm Church</p>
+      <p class="flow-detail">From the Church at My Location tab, user taps <em>✦ Register Your Church</em>. Two-page form: church details + contact info (Page 1), then declaration of state + visibility preferences (Page 2). Replant team is notified via email.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">7</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Verification by Replant Team</p>
+      <p class="flow-detail">A Replant team member contacts the leader via the email or phone they provided. Once confirmed, their account is marked <em>verified</em> in the database. The countdown stops. Full access is granted.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">8</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">Active in the Network</p>
+      <p class="flow-detail">User can now post prayer requests, respond to intercession, connect with leaders, submit heartcries (if persecuted), and appear on the local and global maps per their visibility settings.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 04. DATABASE STRUCTURE -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Database Structure</h2>
+  </div>
+
+  <p class="intro-text">These are the main tables your database needs. Think of each table as a spreadsheet that stores one type of information. Supabase manages all of this for you — your developer just defines the structure.</p>
+
+  <!-- USERS -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <p class="db-table-name">users</p>
+      <p class="db-table-desc">One row per registered account</p>
+    </div>
+    <div class="db-field"><span class="db-field-name">id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Unique identifier for every user</span></div>
+    <div class="db-field"><span class="db-field-name">full_name</span><span class="db-field-type">text</span><span class="db-field-desc">Legal name — private, never shown publicly</span></div>
+    <div class="db-field"><span class="db-field-name">email</span><span class="db-field-type">text</span><span class="db-field-desc">Login email — private</span></div>
+    <div class="db-field"><span class="db-field-name">role</span><span class="db-field-type">text</span><span class="db-field-desc">Pastor, Apostle, Elder, Bishop, etc.</span></div>
+    <div class="db-field"><span class="db-field-name">declaration_affirmed</span><span class="db-field-type">boolean</span><span class="db-field-desc">True if Declaration of Faith was affirmed</span></div>
+    <div class="db-field"><span class="db-field-name">declaration_date</span><span class="db-field-type">timestamp</span><span class="db-field-desc">When they affirmed it</span></div>
+    <div class="db-field"><span class="db-field-name">is_anonymous</span><span class="db-field-type">boolean</span><span class="db-field-desc">Whether their name is hidden from others</span></div>
+    <div class="db-field"><span class="db-field-name">created_at</span><span class="db-field-type">timestamp</span><span class="db-field-desc">Account creation date</span></div>
+  </div>
+
+  <!-- CHURCHES -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <p class="db-table-name">churches</p>
+      <p class="db-table-desc">One row per registered church or ministry</p>
+    </div>
+    <div class="db-field"><span class="db-field-name">id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Unique identifier</span></div>
+    <div class="db-field"><span class="db-field-name">user_id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Links to the user who registered it</span></div>
+    <div class="db-field"><span class="db-field-name">name</span><span class="db-field-type">text</span><span class="db-field-desc">Church/ministry name (one-time, locked after submission)</span></div>
+    <div class="db-field"><span class="db-field-name">type</span><span class="db-field-type">text</span><span class="db-field-desc">Main Campus / Branch / House Church / Ministry / Without Walls / Underground</span></div>
+    <div class="db-field"><span class="db-field-name">city</span><span class="db-field-type">text</span><span class="db-field-desc">City — null for Underground churches</span></div>
+    <div class="db-field"><span class="db-field-name">country</span><span class="db-field-type">text</span><span class="db-field-desc">Country — null for Underground churches</span></div>
+    <div class="db-field"><span class="db-field-name">latitude</span><span class="db-field-type">float</span><span class="db-field-desc">For map placement</span></div>
+    <div class="db-field"><span class="db-field-name">longitude</span><span class="db-field-type">float</span><span class="db-field-desc">For map placement</span></div>
+    <div class="db-field"><span class="db-field-name">visibility</span><span class="db-field-type">text</span><span class="db-field-desc">full / name-only / anonymous</span></div>
+    <div class="db-field"><span class="db-field-name">state_declaration</span><span class="db-field-type">text</span><span class="db-field-desc">freely / with limitations / no</span></div>
+    <div class="db-field"><span class="db-field-name">needs</span><span class="db-field-type">text</span><span class="db-field-desc">Free-text: needs or abundance</span></div>
+    <div class="db-field"><span class="db-field-name">contact_email</span><span class="db-field-type">text</span><span class="db-field-desc">For Replant team verification — private</span></div>
+    <div class="db-field"><span class="db-field-name">contact_phone</span><span class="db-field-type">text</span><span class="db-field-desc">For Replant team verification — private</span></div>
+    <div class="db-field"><span class="db-field-name">verified</span><span class="db-field-type">boolean</span><span class="db-field-desc">True once Replant team confirms</span></div>
+    <div class="db-field"><span class="db-field-name">verification_deadline</span><span class="db-field-type">timestamp</span><span class="db-field-desc">30 days from registration — deactivates if unverified</span></div>
+    <div class="db-field"><span class="db-field-name">rag_status</span><span class="db-field-type">text</span><span class="db-field-desc">green / amber / red — derived from state_declaration</span></div>
+  </div>
+
+  <!-- PRAYER REQUESTS -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <p class="db-table-name">prayer_requests</p>
+      <p class="db-table-desc">Intercession wall posts</p>
+    </div>
+    <div class="db-field"><span class="db-field-name">id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Unique identifier</span></div>
+    <div class="db-field"><span class="db-field-name">church_id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Which church submitted it</span></div>
+    <div class="db-field"><span class="db-field-name">content</span><span class="db-field-type">text</span><span class="db-field-desc">The prayer request text</span></div>
+    <div class="db-field"><span class="db-field-name">category</span><span class="db-field-type">text</span><span class="db-field-desc">Urgent / Ongoing / Healing / Manpower / Praise Report / Testimony</span></div>
+    <div class="db-field"><span class="db-field-name">is_anonymous</span><span class="db-field-type">boolean</span><span class="db-field-desc">Hide poster's personal name for this post</span></div>
+    <div class="db-field"><span class="db-field-name">is_persecuted</span><span class="db-field-type">boolean</span><span class="db-field-desc">True = goes to Persecuted Church tab only</span></div>
+    <div class="db-field"><span class="db-field-name">created_at</span><span class="db-field-type">timestamp</span><span class="db-field-desc">When submitted</span></div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <p class="db-table-name">messages</p>
+      <p class="db-table-desc">Connect tab — direct messages between churches/leaders</p>
+    </div>
+    <div class="db-field"><span class="db-field-name">id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Unique identifier</span></div>
+    <div class="db-field"><span class="db-field-name">sender_id</span><span class="db-field-type">uuid</span><span class="db-field-desc">User who sent the message</span></div>
+    <div class="db-field"><span class="db-field-name">receiver_id</span><span class="db-field-type">uuid</span><span class="db-field-desc">User or church receiving it</span></div>
+    <div class="db-field"><span class="db-field-name">content</span><span class="db-field-type">text</span><span class="db-field-desc">Message body</span></div>
+    <div class="db-field"><span class="db-field-name">flagged</span><span class="db-field-type">boolean</span><span class="db-field-desc">True if keyword triggered a review flag</span></div>
+    <div class="db-field"><span class="db-field-name">created_at</span><span class="db-field-type">timestamp</span><span class="db-field-desc">Timestamp</span></div>
+  </div>
+
+  <!-- HEARTCRIES -->
+  <div class="db-table">
+    <div class="db-table-header">
+      <p class="db-table-name">heartcries</p>
+      <p class="db-table-desc">Persecuted Church tab — encrypted, restricted access</p>
+    </div>
+    <div class="db-field"><span class="db-field-name">id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Unique identifier</span></div>
+    <div class="db-field"><span class="db-field-name">church_id</span><span class="db-field-type">uuid</span><span class="db-field-desc">Submitting church (location required, name may be masked)</span></div>
+    <div class="db-field"><span class="db-field-name">content</span><span class="db-field-type">text</span><span class="db-field-desc">The heartcry text — encrypted at rest</span></div>
+    <div class="db-field"><span class="db-field-name">severity</span><span class="db-field-type">text</span><span class="db-field-desc">Active persecution / Urgent / Ongoing</span></div>
+    <div class="db-field"><span class="db-field-name">responded</span><span class="db-field-type">boolean</span><span class="db-field-desc">Has Replant team responded?</span></div>
+    <div class="db-field"><span class="db-field-name">created_at</span><span class="db-field-type">timestamp</span><span class="db-field-desc">Submission time</span></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 05. APIs -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">APIs You'll Need</h2>
+  </div>
+
+  <p class="intro-text">An API is simply a service your app talks to in order to get something done. Think of it like a phone call your app makes to another service. Here are the ones Replant needs and what they actually do in plain terms.</p>
+
+  <div class="api-card">
+    <p class="api-name">Supabase API</p>
+    <span class="api-cost api-cost-free">Free tier</span>
+    <p class="api-what"><strong>What it does:</strong> This is your entire backend. Every time the app reads or saves data — a new prayer request, a user logging in, a church being registered — it's talking to Supabase. It also handles real-time messaging. <em>Think of it as the engine behind everything.</em> Your developer will use this constantly.</p>
+  </div>
+
+  <div class="api-card">
+    <p class="api-name">Mapbox API</p>
+    <span class="api-cost api-cost-free">Free up to 50k loads/month</span>
+    <p class="api-what"><strong>What it does:</strong> Draws the maps. The local church map (Church at My Location) and the interactive globe (Church at Large) both run on Mapbox. It also lets you place custom colored dots (RAG status) on countries and zoom into regions. <em>Think of it as the map drawing service.</em></p>
+  </div>
+
+  <div class="api-card">
+    <p class="api-name">Google Geocoding API</p>
+    <span class="api-cost api-cost-free">Free tier (then pay-as-you-go)</span>
+    <p class="api-what"><strong>What it does:</strong> Converts a city name that a user types (e.g. "Loganville, Georgia") into exact coordinates (latitude/longitude) so the app knows where to place their church dot on the map. <em>Think of it as the address-to-location translator.</em> Free for MVP scale — you'd need thousands of daily lookups before paying anything.</p>
+  </div>
+
+  <div class="api-card">
+    <p class="api-name">Resend (or SendGrid) Email API</p>
+    <span class="api-cost api-cost-free">Free tier</span>
+    <p class="api-what"><strong>What it does:</strong> Sends emails automatically — verification emails when someone signs up, and notifications to your Replant team email when a new church registers and needs verification. <em>Think of it as your app's post office.</em> Resend has a very generous free tier and is beginner-friendly. 100 emails/day free.</p>
+  </div>
+
+  <div class="api-card">
+    <p class="api-name">Expo Notifications API</p>
+    <span class="api-cost api-cost-free">Free</span>
+    <p class="api-what"><strong>What it does:</strong> Not needed for MVP — but worth setting up early so it's ready. When you do add push notifications (e.g. urgent persecuted church alerts), this is what sends them to iOS and Android devices. <em>Think of it as the tap-on-the-shoulder service.</em> Built into Expo, completely free.</p>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 06. COST ESTIMATE -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Cost to Launch (MVP)</h2>
+  </div>
+
+  <div class="cost-row header">
+    <span>Item</span>
+    <span>Cost</span>
+    <span>Notes</span>
+  </div>
+  <div class="cost-row">
+    <span>Supabase (backend + DB + auth + storage)</span>
+    <span class="cost-free">$0/mo</span>
+    <span style="font-size:0.72rem;color:var(--muted);">Free tier covers MVP</span>
+  </div>
+  <div class="cost-row">
+    <span>Mapbox (maps + globe)</span>
+    <span class="cost-free">$0/mo</span>
+    <span style="font-size:0.72rem;color:var(--muted);">50k loads free/month</span>
+  </div>
+  <div class="cost-row">
+    <span>Resend (email)</span>
+    <span class="cost-free">$0/mo</span>
+    <span style="font-size:0.72rem;color:var(--muted);">100 emails/day free</span>
+  </div>
+  <div class="cost-row">
+    <span>Expo EAS Build (app builds)</span>
+    <span class="cost-free">$0/mo</span>
+    <span style="font-size:0.72rem;color:var(--muted);">Free tier available</span>
+  </div>
+  <div class="cost-row">
+    <span>Apple Developer Account</span>
+    <span class="cost-paid">$99/yr</span>
+    <span style="font-size:0.72rem;color:var(--muted);">Required to publish on App Store</span>
+  </div>
+  <div class="cost-row">
+    <span>Google Play Developer Account</span>
+    <span class="cost-paid">$25 once</span>
+    <span style="font-size:0.72rem;color:var(--muted);">One-time fee to publish on Play Store</span>
+  </div>
+  <div class="cost-row">
+    <span>projectreplant.org domain</span>
+    <span class="cost-paid">~$12/yr</span>
+    <span style="font-size:0.72rem;color:var(--muted);">Via Namecheap or Google Domains</span>
+  </div>
+  <div class="cost-row">
+    <span>Netlify (website hosting)</span>
+    <span class="cost-free">$0/mo</span>
+    <span style="font-size:0.72rem;color:var(--muted);">Free tier more than enough</span>
+  </div>
+
+  <div class="callout" style="margin-top:1.5rem;">
+    <strong>Total to launch</strong>
+    Approximately $136 in year one ($99 Apple + $25 Google + $12 domain). Everything else is free at MVP scale. Your only other cost is your developer's time.
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════ -->
+<!-- 07. WHAT TO HAND YOUR DEVELOPER -->
+<!-- ══════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">What to Hand Your Developer</h2>
+  </div>
+
+  <p class="intro-text">When you sit down with your developer, give them these documents in this order. They'll have everything they need to start building without guessing.</p>
+
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">This document — the technical plan</p>
+      <p class="flow-detail">Stack, features, user flow, database, and APIs. This is the brief.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">The wireframes (replant-wireframes.html)</p>
+      <p class="flow-detail">Every screen, every tab, every state — already designed and labeled.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">The Figma tokens (replant-figma-tokens.json)</p>
+      <p class="flow-detail">Every color, font, spacing, and component style. Import via Token Studio in Figma.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">The brand kit (replant-brandkit.html)</p>
+      <p class="flow-detail">Logo, color palette, typography rules, voice and tone. So the app feels like Replant.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-left"><div class="flow-num">5</div><div class="flow-line"></div></div>
+    <div class="flow-body">
+      <p class="flow-title">The post-MVP notes (replant-postmvp-notes.html)</p>
+      <p class="flow-detail">So they know what's out of scope for now and don't over-build in the wrong direction.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Replant · Technical Plan · projectreplant.org · Confidential</div>
+
+</body>
+</html>

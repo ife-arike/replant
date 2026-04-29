@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Post-MVP Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sky: #6BB5E8;
+    --sky-dim: rgba(107,181,232,0.1);
+    --sky-mid: rgba(107,181,232,0.35);
+    --black: #080808;
+    --surface: #111111;
+    --off-white: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --faint: rgba(240,237,230,0.08);
+    --red: #E05555;
+    --amber: #D4A855;
+    --green: #5BAD7A;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+  body { background: var(--black); color: var(--off-white); font-family: var(--sans); font-weight: 300; line-height: 1.7; padding: 4rem 2rem 6rem; max-width: 800px; margin: 0 auto; }
+
+  .page-header { text-align: center; margin-bottom: 4rem; padding-bottom: 2rem; border-bottom: 0.5px solid var(--faint); }
+  .page-header h1 { font-family: var(--serif); font-size: 2.2rem; font-weight: 300; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+  .page-header p { font-size: 0.68rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); }
+
+  .category { margin-bottom: 3rem; }
+  .category-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 0.5px solid var(--faint); }
+  .category-num { font-family: var(--serif); font-size: 0.7rem; color: var(--sky); letter-spacing: 0.15em; }
+  .category-title { font-family: var(--serif); font-size: 1.4rem; font-weight: 300; }
+
+  .note-item { display: flex; gap: 1rem; padding: 1rem 0; border-bottom: 0.5px solid var(--faint); }
+  .note-item:last-child { border-bottom: none; }
+
+  .note-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sky); margin-top: 8px; flex-shrink: 0; }
+  .note-dot.red { background: var(--red); }
+  .note-dot.amber { background: var(--amber); }
+  .note-dot.green { background: var(--green); }
+
+  .note-body { flex: 1; }
+  .note-title { font-size: 0.88rem; font-weight: 500; color: var(--off-white); margin-bottom: 0.25rem; }
+  .note-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.75; }
+  .note-desc em { color: var(--sky); font-style: normal; }
+
+  .priority-tag { display: inline-block; font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; margin-bottom: 6px; }
+  .pt-mvp2 { background: var(--sky-dim); color: var(--sky); }
+  .pt-design { background: rgba(212,168,85,0.12); color: var(--amber); }
+  .pt-legal { background: rgba(224,85,85,0.12); color: var(--red); }
+  .pt-feature { background: rgba(91,173,122,0.12); color: var(--green); }
+
+  .faq-block { background: var(--surface); border: 0.5px solid var(--faint); border-left: 2px solid var(--sky); border-radius: 0 6px 6px 0; padding: 1rem 1.2rem; margin-bottom: 0.75rem; }
+  .faq-q { font-size: 0.82rem; font-weight: 500; margin-bottom: 0.3rem; }
+  .faq-a { font-size: 0.78rem; color: var(--muted); line-height: 1.7; }
+
+  .footer { text-align: center; padding-top: 3rem; border-top: 0.5px solid var(--faint); font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(240,237,230,0.2); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Replant — Post-MVP Notes</h1>
+  <p>Features, decisions & details for after launch</p>
+</div>
+
+<!-- ── ONBOARDING ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">01</span>
+    <h2 class="category-title">Onboarding & Account</h2>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot amber"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Underground church name encryption</p>
+      <p class="note-desc">When a church selects "Underground Church" as their type, their ministry name should never be shown in full anywhere in the app after signup. It should immediately convert to an encrypted-looking display name (e.g. <em>mus****</em>). This applies everywhere their name surfaces in the app.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Church without walls — location handling</p>
+      <p class="note-desc">Church without walls (online or otherwise) should have location <em>required</em> — they still have a base location. Underground Church is the only type where location is fully disabled, with a popup: <em>"Location not required for your safety."</em></p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Anonymous options popup during registration</p>
+      <p class="note-desc">If a leader clicks "Yes" to persecution or anonymous during registration, a popup should ask: do you want to keep your <em>name anonymous</em>, your <em>ministry anonymous</em>, or <em>both</em>? This selection is stored and respected across the entire app automatically.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-design">Design</span>
+      <p class="note-title">30-day countdown timer on account verification</p>
+      <p class="note-desc">Account shows a live countdown (e.g. "27 days remaining to confirm your church"). If unconfirmed after 30 days, account is deactivated. Timer functionality to be wired in dev phase.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Branch / parish same-name handling</p>
+      <p class="note-desc">If multiple branches of a church share the same name, that's acceptable — the emphasis is on the Body, not the name. Location is always shown alongside the church name (unless underground) to distinguish between same-name churches.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── POSTING & FORMS ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">02</span>
+    <h2 class="category-title">Posting, Forms & Visibility</h2>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Per-post name anonymity toggle</p>
+      <p class="note-desc">On any form or submission (prayer request, intercession, heartcry, connect message), the user should be able to toggle their <em>personal name</em> on or off for that specific post. However, whatever they selected in account settings for church/ministry visibility is always respected and cannot be overridden per-post.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot amber"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-design">Design</span>
+      <p class="note-title">Testimonies section on Prayer Wall</p>
+      <p class="note-desc">Already visualized in wireframes. Needs its own submission form — separate from prayer requests and intercession. Users should be able to reference a previous prayer request when submitting a testimony. Green color treatment throughout.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── CONNECT TAB ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">03</span>
+    <h2 class="category-title">Connect Tab</h2>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">ReplantConnect — possible standalone app</p>
+      <p class="note-desc">The Connect tab may eventually become its own app — <em>ReplantConnect</em> or similar. A dedicated secure communication platform for the network. To be revisited after MVP usage patterns emerge.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Offline messaging</p>
+      <p class="note-desc">Research needed into sending and sharing messages to churches offline. Especially relevant for underground and persecuted churches with limited internet access. Matrix protocol (Element) was considered but rejected as the primary model.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">Last seen / online status</p>
+      <p class="note-desc">Not needed for MVP. Consider showing "last logged in" (not real-time online status) in a later version to help leaders know when someone is reachable.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── PERSECUTED CHURCH ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">04</span>
+    <h2 class="category-title">Persecuted Church</h2>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot red"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-legal">Security</span>
+      <p class="note-title">Verified access tier for sensitive data</p>
+      <p class="note-desc">Certain verified or spiritually trusted leaders should be given private access to pressing information (underground church locations, urgent persecution details). The structure for this tier needs more discussion — how leaders are verified, what access means, and governance. Phased out of MVP intentionally.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot red"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-legal">Security</span>
+      <p class="note-title">Who responds to persecuted church submissions</p>
+      <p class="note-desc">When a church submits a heartcry, someone needs to respond. Who? How fast? What's the protocol? This is a system-level responsibility question, not just a feature. Needs a defined process before this section goes live.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── CHURCH AT LARGE ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">05</span>
+    <h2 class="category-title">Church at Large</h2>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-mvp2">MVP 2</span>
+      <p class="note-title">RAG country data sourcing</p>
+      <p class="note-desc">The red/amber/green country status on the globe should be <em>gathered from the churches' own declarations of state</em>, not from external sources. The data is crowd-sourced from within the network. Logic for aggregating and displaying this needs to be defined in dev.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── HAMBURGER MENU / FAQ ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">06</span>
+    <h2 class="category-title">FAQ — Prepared Answers</h2>
+  </div>
+
+  <p style="font-size:0.78rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.75;">The following Q&amp;As should be written and live in the FAQ section of the hamburger menu. Add more as they come up.</p>
+
+  <div class="faq-block">
+    <p class="faq-q">Is there a limit to how many leaders can register per church?</p>
+    <p class="faq-a">Yes. A maximum of two (2) pastors or leaders may register per church or ministry on the Replant network.</p>
+  </div>
+
+  <div class="faq-block">
+    <p class="faq-q">What if two churches have the same name?</p>
+    <p class="faq-a">That's perfectly fine. The emphasis on Replant is not on church or ministry names but on the Body as a whole. Where church names appear, the location is always shown alongside (unless the church is underground) to distinguish between them.</p>
+  </div>
+
+  <div class="faq-block">
+    <p class="faq-q">Can our church have multiple branches or parishes on Replant?</p>
+    <p class="faq-a">Yes. Each branch or parish should register separately using the full church name plus its specific location or parish name (e.g. "Grace Chapel — Loganville Branch"). Each branch counts toward the two-leader limit for that specific location.</p>
+  </div>
+
+  <div class="faq-block">
+    <p class="faq-q">Are chats on Replant private?</p>
+    <p class="faq-a">Conversations within Replant are protected within the network and are not shared externally. However, within the platform, certain keywords may trigger an internal review to ensure the space remains safe, godly, and purposeful. Users will be notified of this in the community covenant at signup.</p>
+  </div>
+
+  <div class="faq-block">
+    <p class="faq-q">Can we send financial support through Replant?</p>
+    <p class="faq-a">At this time, Replant does not facilitate direct financial transfers between ministries. We are working on a safe and accountable way to enable this in a future update. For now, support may come through prayer, resources, manpower, and advice.</p>
+  </div>
+
+  <div class="faq-block">
+    <p class="faq-q">Is Replant open to house churches and underground churches?</p>
+    <p class="faq-a">Absolutely. House churches, churches without walls, online churches, and underground churches are not only eligible — they are actively encouraged to join. Anonymous registration is available to protect leaders where needed.</p>
+  </div>
+
+</div>
+
+<!-- ── WEBSITE ── -->
+<div class="category">
+  <div class="category-header">
+    <span class="category-num">07</span>
+    <h2 class="category-title">Website (projectreplant.org)</h2>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-design">Design</span>
+      <p class="note-title">Netlify Forms integration</p>
+      <p class="note-desc">Add <em>netlify</em> attribute to the join form so submissions are captured in the Netlify dashboard. One-line HTML change. Do this before sharing the site publicly.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-design">Design</span>
+      <p class="note-title">Copy updates — location language</p>
+      <p class="note-desc">The hero subline, vision section, and "church at" intro currently lean on "location" language. Per the vision conversation: location is the <em>organizing layer</em>, not the limiting factor. A pastor in Atlanta should be able to pray with a leader in Lagos tonight. Copy should reflect this once the Spirit gives the right words.</p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-design">Design</span>
+      <p class="note-title">Mission statement</p>
+      <p class="note-desc">The mission statement on the website and card back will be updated. Ife is praying on the exact wording — it will come from the Spirit. Placeholder currently reads: <em>"A growing network of churches — connected by location, united in prayer, and supporting one another across the globe."</em></p>
+    </div>
+  </div>
+
+  <div class="note-item">
+    <div class="note-dot"></div>
+    <div class="note-body">
+      <span class="priority-tag pt-design">Design</span>
+      <p class="note-title">Instagram & social kit</p>
+      <p class="note-desc">Instagram brand kit and content to be produced. Separate from website. The Grey Podcast also has its own distinct brand identity and needs a separate kit. Covered in a future session.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Replant · Post-MVP Notes · projectreplant.org · For internal reference only</div>
+
+</body>
+</html>
