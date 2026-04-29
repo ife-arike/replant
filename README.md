@@ -1,8 +1,12 @@
 # Replant
 
-Replant is a vision for a secure communication network designed to help churches connect across locations, pray for one another, share needs, and support the persecuted church.
+Replant is the future secure communications platform being explored through Project Replant.
 
-The goal is not to create another ministry platform or promotional space. Replant exists to help local churches function with greater unity, visibility, and shared responsibility.
+Project Replant is the public mission pathway: a place to clarify the vision, begin conversations with church leaders, and test whether churches are willing to connect more intentionally across location, prayer, support, and shared burden.
+
+Replant itself is intended to become the dedicated communication network where verified Christian leaders can correspond directly, pray together, share needs, and extend support across geography.
+
+The goal is not to create a social media platform, ministry promotion space, or public content feed. 
 
 ## The Problem
 
