@@ -1,1 +1,83 @@
+# ─────────────────────────────────────────────
+# Replant — .gitignore
+# Covers: existing website + incoming React Native (Expo) app
+# ─────────────────────────────────────────────
+
+# OS files
 .DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node + package managers
+node_modules/
+.npm/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Environment variables — NEVER commit these
+.env
+.env.*
+!.env.example
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.tsbuildinfo
+
+# React Native — iOS build outputs
+ios/build/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# React Native — Android build outputs
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+
+# Signing / credentials — NEVER commit these
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+ios/GoogleService-Info.plist
+android/app/google-services.json
+
+# EAS / build artifacts
+*.tar.gz
+*.apk
+*.aab
+*.ipa
+
+# Test coverage
+coverage/
+
+# Metro bundler cache
+.metro-health-check*
+
+# macOS
+*.DS_Store
