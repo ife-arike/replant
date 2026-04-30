@@ -1,83 +1,41 @@
-# ─────────────────────────────────────────────
-# Replant — .gitignore
-# Covers: existing website + incoming React Native (Expo) app
-# ─────────────────────────────────────────────
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# OS files
-.DS_Store
-Thumbs.db
-ehthumbs.db
-
-# Editor / IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Node + package managers
+# dependencies
 node_modules/
-.npm/
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-
-# Environment variables — NEVER commit these
-.env
-.env.*
-!.env.example
 
 # Expo
 .expo/
-.expo-shared/
 dist/
 web-build/
-*.tsbuildinfo
+expo-env.d.ts
 
-# React Native — iOS build outputs
-ios/build/
-ios/Pods/
-ios/*.xcworkspace/xcuserdata/
-ios/*.xcodeproj/xcuserdata/
-ios/*.xcodeproj/project.xcworkspace/xcuserdata/
-
-# React Native — Android build outputs
-android/app/build/
-android/build/
-android/.gradle/
-android/local.properties
-android/app/release/
-
-# Signing / credentials — NEVER commit these
-*.keystore
+# Native
+.kotlin/
+*.orig.*
 *.jks
 *.p8
 *.p12
+*.key
 *.mobileprovision
-*.cer
-ios/GoogleService-Info.plist
-android/app/google-services.json
 
-# EAS / build artifacts
-*.tar.gz
-*.apk
-*.aab
-*.ipa
-
-# Test coverage
-coverage/
-
-# Metro bundler cache
+# Metro
 .metro-health-check*
 
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
 # macOS
-*.DS_Store
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
