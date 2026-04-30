@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Project Status</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --faint: rgba(240,237,230,0.08);
+    --sky: #6BB5E8;
+    --sky-dim: rgba(107,181,232,0.08);
+    --sky-mid: rgba(107,181,232,0.2);
+    --off-white: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --green: #5BAD7A;
+    --amber: #D4A855;
+    --red: #E05555;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--black);
+    color: var(--off-white);
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+  }
+
+  .page-header {
+    border-bottom: 0.5px solid var(--faint);
+    padding-bottom: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .page-header h1 {
+    font-family: var(--serif);
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    color: var(--off-white);
+    margin-bottom: 0.4rem;
+  }
+
+  .page-header .meta {
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .page-header .meta span { color: var(--sky); }
+
+  .section {
+    margin-bottom: 3rem;
+    padding-bottom: 3rem;
+    border-bottom: 0.5px solid var(--faint);
+  }
+
+  .section:last-child { border-bottom: none; }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .section-num {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sky);
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: var(--off-white);
+  }
+
+  .intro-text {
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+    line-height: 1.8;
+  }
+
+  /* STATUS BADGE */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+  }
+
+  .status-predevelopment { background: rgba(107,181,232,0.1); color: var(--sky); border: 0.5px solid var(--sky-mid); }
+  .status-live { background: rgba(91,173,122,0.1); color: var(--green); border: 0.5px solid rgba(91,173,122,0.3); }
+  .status-inprogress { background: rgba(212,168,85,0.1); color: var(--amber); border: 0.5px solid rgba(212,168,85,0.3); }
+
+  /* DELIVERABLE BLOCKS */
+  .deliverable {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .deliverable-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .deliverable-title {
+    font-size: 0.78rem;
+    color: var(--off-white);
+    font-weight: 500;
+  }
+
+  .tag {
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+  }
+
+  .tag-done { background: rgba(91,173,122,0.1); color: var(--green); }
+  .tag-progress { background: rgba(212,168,85,0.1); color: var(--amber); }
+  .tag-pending { background: rgba(240,237,230,0.06); color: var(--muted); }
+  .tag-new { background: rgba(107,181,232,0.1); color: var(--sky); }
+
+  .deliverable ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .deliverable ul li {
+    font-size: 0.75rem;
+    color: var(--muted);
+    padding: 2px 0;
+    padding-left: 0.8rem;
+    position: relative;
+    line-height: 1.6;
+  }
+
+  .deliverable ul li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--sky);
+  }
+
+  .deliverable ul li strong {
+    color: var(--off-white);
+    font-weight: 400;
+  }
+
+  /* NOTES */
+  .note-block {
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .note-block strong {
+    color: var(--sky);
+    font-weight: 400;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .note-block code {
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: var(--sky);
+    background: rgba(107,181,232,0.1);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* TECH ROW */
+  .tech-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tech-item {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 4px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.72rem;
+  }
+
+  .tech-item .tech-layer {
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 2px;
+  }
+
+  .tech-item .tech-name {
+    color: var(--off-white);
+  }
+
+  /* VOICE BLOCK */
+  .voice-rule {
+    border-left: 2px solid var(--sky);
+    padding-left: 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .footer {
+    text-align: center;
+    padding-top: 3rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(240,237,230,0.18);
+  }
+
+  /* NEW tag highlight */
+  .new-marker {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sky);
+    background: rgba(107,181,232,0.1);
+    border: 0.5px solid var(--sky-mid);
+    padding: 1px 6px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Replant — Project Status</h1>
+  <p class="meta">Last updated: <span>April 29, 2026 — Session 2</span> &nbsp;·&nbsp; Founder: Ife &nbsp;·&nbsp; Maranatha Ministries, Atlanta GA</p>
+  <p class="meta" style="margin-top:4px;">Web: <span>projectreplant.org</span> &nbsp;·&nbsp; Email: <span>connect@projectreplant.org</span> &nbsp;·&nbsp; Instagram: <span>@projectreplant</span> &nbsp;·&nbsp; GitHub: <span>github.com/ife-arike/replant</span></p>
+</div>
+
+<!-- 01. WHAT REPLANT IS -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">What Replant Is</h2>
+  </div>
+  <p class="intro-text">A secure global network connecting Christian leaders — clergy, elders, and ministry leaders — across churches, cities, and continents for prayer, support, and unity. Not a social media platform. No likes, no followers, no algorithms. Bible as the only source of truth.</p>
+  <div class="status-badge status-predevelopment">Active Development · Database live · Spec Docs 01–02 complete · Build sprint begun</div>
+</div>
+
+<!-- 02. COMPLETED DELIVERABLES -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Completed Deliverables</h2>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Website</span>
+      <span class="tag tag-done">Live</span>
+    </div>
+    <ul>
+      <li>Live at <strong>projectreplant.org</strong> (Netlify)</li>
+      <li>4 pages: <strong>index.html</strong> (Home), <strong>volunteer.html</strong> (Serve), <strong>faq.html</strong> (FAQ), <strong>next-steps.html</strong> (Next Steps)</li>
+      <li>Design: Dark (#080808), sky blue (#6BB5E8), Cormorant Garamond + DM Sans</li>
+      <li>Hero subline: "Connecting leaders across cities, continents, and callings — for prayer, for support, for one another."</li>
+      <li>Forms wired to Netlify: <strong>join-network</strong> and <strong>serve-with-us</strong> — notifications to connect@projectreplant.org</li>
+      <li>Email alias: <strong>connect@projectreplant.org</strong> (Zoho — "support@" blocked, using "connect@" instead)</li>
+      <li>Mobile nav: hamburger at ≤768px via <code>toggleMobileNav()</code></li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">App Wireframes — MVP</span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li>13 screens: Splash, Declaration of Faith, Account Setup (2 pages), Home, Church at My Location, Register Church (2 pages), Church at Large + Region panel, Persecuted Church, Intercession, Prayer Wall, Connect, DM Thread, Hamburger Menu</li>
+      <li>Declaration of Faith: Jesus Christ is Word of God made flesh… Holy Bible only source of truth. 1 John 4:1</li>
+      <li>Church types: Main Campus, Church Branch, House Church, Ministry (No physical), Church Without Walls, Underground Church (location disabled) — DB stores <code>branch</code>, UI displays "Church Branch"</li>
+      <li>Roles (12): Pastor, Apostle, Prophet, Evangelist, Teacher, Elder, Bishop, Reverend, Intercessor, Psalmist, Ministry Leader, Other — five-fold ministry (Eph 4:11) fully represented</li>
+      <li>Rules: 30-day verification countdown, 2 leaders max per church, FAQ in hamburger menu</li>
+      <li>Church at My Location: user's own dot renders in sky blue — larger and distinct from RAG dots</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Brand Kit</span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li>Colors: Primary #080808, Accent #6BB5E8 (sky blue), Text #F0EDE6 (off-white)</li>
+      <li>Fonts: Cormorant Garamond (display), DM Sans (body)</li>
+      <li>Two logos: <strong>rp_vector.svg</strong> (plant/roots mark), <strong>rp_vector2.svg</strong> (rp lettermark)</li>
+      <li>Logo SVG viewBox: <code>"482 201 581 544"</code> (website), <code>"490 200 580 560"</code> (card) — 2 paths required</li>
+      <li>Voice: Spirit-led, Scripture-rooted, direct, dignified — like someone who has been in the prayer room, not the boardroom</li>
+      <li>Canva brand kit ID: <strong>kAHHOMaidgE</strong></li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Technical Plan</span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li>Stack: React Native (Expo) + Supabase + Mapbox + Google Geocoding + Resend email</li>
+      <li>8 DB tables: users, churches, prayer_requests, messages, heartcries, daily_scripture, network_updates, audit_log</li>
+      <li>Launch cost: ~$136/yr</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Business Card</span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li>Created in <strong>Claude Design</strong> — high quality output, fully on-brand</li>
+      <li>Printed and shipped via <strong>Vistaprint</strong> — 50 copies ordered</li>
+      <li>Front: Logo mark, REPLANT wordmark, tagline "The Church, Connected." — added manually in Canva</li>
+      <li>Back: Ezekiel 37:6–7 scripture, contact info, QR code to projectreplant.org</li>
+      <li>Exports: PNG front + back (high resolution), PDF front + back (print-ready)</li>
+      <li>PDF/print note: Use PNG export via wkhtmltoimage at 1050×600 for 300 DPI output — wkhtmltopdf does not support Google Fonts</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">GitHub Repository <span class="new-marker">New</span></span>
+      <span class="tag tag-done">Live</span>
+    </div>
+    <ul>
+      <li>Public repo at <strong>github.com/ife-arike/replant</strong></li>
+      <li>README written — accurate description of project state, vision, brand, tech stack</li>
+      <li>Folder structure: <strong>website/</strong> (4 HTML pages), <strong>docs/</strong> (wireframes, brand kit, technical plan, post-MVP notes), <strong>design/card/</strong> (HTML, PNG exports, PDFs)</li>
+      <li>.gitignore added — excludes .DS_Store</li>
+      <li>Auth: Personal access token configured for push access</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Instagram Kit</span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li>Account: <strong>@projectreplant</strong> (created, not yet active)</li>
+      <li>Bio: Mission statement + Ezekiel 37:6–7 + projectreplant.org</li>
+      <li>4 pillars: Scripture &amp; Word, Vision &amp; Mission, Prayer &amp; Intercession, Behind the Scenes</li>
+      <li>Schedule: 3x/week Mon/Wed/Fri</li>
+      <li>4-week content calendar, caption templates, reel ideas, story sequences, hashtag strategy</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Dev Team Role System <span class="new-marker">New</span></span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li>17 roles defined with shortcodes — COO, SA, SPEC, DBA, SEC, BE, FE, MAP, AUTH, QA, OPS, MCP, REL, ADMIN, CONTENT, MOD + deferred DA, ASP, PN</li>
+      <li>Solutions Architect (SA) added — sits between SPEC and all technical roles</li>
+      <li>Role index with shortcodes published in <strong>docs/replant-dev-roles.html</strong></li>
+      <li>Active chats open: COO, SA, SPEC, DBA, SEC, BE, FE, QA</li>
+      <li>Opening order: COO → SA → SPEC → DBA → SEC → rest as needed</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Specification Docs 01 &amp; 02 <span class="new-marker">New</span></span>
+      <span class="tag tag-done">Complete</span>
+    </div>
+    <ul>
+      <li><strong>Doc 01</strong> — Onboarding flow fully specced: Splash, Declaration of Faith, Account Setup (2 pages), Church Registration (2 pages), Verification &amp; Deactivation</li>
+      <li><strong>Doc 01 Amendment</strong> — All 4 founder escalations closed: soft-delete confirmed, leader slot auto-reopens, single church per leader, PII retained post-verification</li>
+      <li><strong>Doc 02</strong> — Home Screen specced: scripture strip (Option B — pre-loaded), verification countdown banner, network feed, tab bar (6 tabs)</li>
+      <li>Tab bar: Home, Nearby, Global, Persecuted, Intercede, Connect — 6th tab confirmed</li>
+      <li>Open: Doc 03 (Church at My Location) pending SA ruling on Global tab Prayer Wall + tab label decision</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Supabase Database — Live <span class="new-marker">New</span></span>
+      <span class="tag tag-done">Live · Migration v1.6.0</span>
+    </div>
+    <ul>
+      <li>Project: <strong>ife-arike's Org / replant</strong> (Production environment)</li>
+      <li>8 tables live: churches, users, prayer_requests, messages, heartcries, daily_scripture, network_updates, audit_log</li>
+      <li>6 enums: user_role (12 values), verification_status_enum, church_type, rag_status_enum, severity_level, macro_region (9 regions)</li>
+      <li>2 triggers: 2-leader cap enforcement, verification deadline auto-set on church insert</li>
+      <li>21 indexes including 3 partial indexes (urgent prayers, flagged messages, unresponded heartcries)</li>
+      <li>Full RLS on all tables — SEC signed off v1.2.0 through v1.6.0</li>
+      <li><code>churches_public</code> view with <code>security_invoker = true</code> — strips region_admin_only for all app queries</li>
+      <li>Underground church: zero geographic data stored — hard constraint in schema</li>
+      <li>region_admin_only: macro_region enum, super_admin only, 3-layer access control (RLS + REVOKE + trigger)</li>
+      <li>Heartcries: encrypted at rest via pgp_sym_encrypt + base64, admin-only read, immutable</li>
+      <li>audit_log: append-only, triggered_by + accessed_by (nullable) + meta jsonb — SEC signed off</li>
+      <li>pgcrypto v1.3 confirmed live</li>
+      <li>PII scrub function ready for cron scheduling</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Backend Edge Functions <span class="new-marker">New</span></span>
+      <span class="tag tag-progress">Staged · Pending deployment</span>
+    </div>
+    <ul>
+      <li><strong>submit-heartcry</strong> — encrypts via pgp_sym_encrypt (base64), key from Supabase Vault, verified leaders only</li>
+      <li><strong>get-heartcry</strong> — super_admin JWT check, decrypt server-side, audit log insert mandatory before response</li>
+      <li><strong>network-updates-trigger</strong> — webhook-fired on church verification and prayer request submission, inserts to network_updates</li>
+      <li><strong>deactivation-sweep</strong> — nightly edge function at 01:00 UTC, marks expired accounts deactivated, fires Resend emails, writes audit log</li>
+      <li>Webhooks live: churches UPDATE (verified=true) → network-updates-trigger · prayer_requests INSERT → network-updates-trigger</li>
+      <li>Cron scheduled: scrub_church_pii() nightly 02:00 UTC (runs after deactivation sweep)</li>
+      <li>All church queries routed through churches_public view — confirmed across all BE functions</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- 03. IN PROGRESS -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">In Progress</h2>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Instagram Week 1 Posts</span>
+      <span class="tag tag-progress">Active</span>
+    </div>
+    <ul>
+      <li>Three-post arc approved — posting begins <strong>Monday May 4, 2026</strong></li>
+      <li><strong>Post 1 — The Foundation:</strong> "The Church, Sewn Back Together."</li>
+      <li><strong>Post 2 — What This Is NOT:</strong> "No promotions. No noise. No stage."</li>
+      <li><strong>Post 3 — The Invitation:</strong> "The Church, Connected."</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Specification — Doc 03</span>
+      <span class="tag tag-progress">Pending</span>
+    </div>
+    <ul>
+      <li>Next: Church at My Location — Mapbox map, RAG dots, church list, Register Church flow</li>
+      <li>Blocked on: SA ruling on Global tab Prayer Wall pull-up (G-12)</li>
+      <li>Blocked on: Tab label decision — "Persecuted" vs "In Chains" (founder decision needed)</li>
+      <li>Blocked on: FE icon replacements for Persecuted + Intercession tabs (UI/UX)</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Jira Project Board</span>
+      <span class="tag tag-progress">Pending</span>
+    </div>
+    <ul>
+      <li>Atlassian Rovo connector identified — pending connection</li>
+      <li>All open items, decisions, and role flags to be imported once connected</li>
+    </ul>
+  </div>
+
+  <div class="deliverable">
+    <div class="deliverable-header">
+      <span class="deliverable-title">Community Outreach — Pilot Phase</span>
+      <span class="tag tag-progress">Active</span>
+    </div>
+    <ul>
+      <li>In-person church visits — share the vision, leave the card, invite to enroll</li>
+      <li>Web enrollments via projectreplant.org (join-network form)</li>
+      <li>Goal: pilot community of churches testing the network manually before app goes live</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- 04. OPEN ITEMS -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Open Items</h2>
+  </div>
+  <div class="deliverable">
+    <ul>
+      <li><strong>FE</strong> — Confirm no direct churches table queries (use churches_public view only)</li>
+      <li><strong>SEC</strong> — Confirm deactivate_church in audit_log action CHECK (non-blocking)</li>
+      <li><strong>DBA</strong> — Add COMMENT on audit_log.meta column per SEC requirement</li>
+      <li><strong>SA</strong> — Rule on Global tab Prayer Wall pull-up complexity (G-12) — blocking SPEC Doc 03</li>
+      <li><strong>Ife</strong> — Tab label decision: "Persecuted" vs "In Chains"</li>
+      <li><strong>UI/UX</strong> — Icon replacements for Persecuted + Intercession tabs (flame + praying hands rejected)</li>
+      <li><strong>Ife</strong> — Connect Atlassian Rovo (Jira) for project board setup</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 05. POST-MVP NOTES -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Post-MVP (Scoped Out)</h2>
+  </div>
+  <p class="intro-text">The following are logged for MVP 2 and must not be built in the first release.</p>
+  <div class="deliverable">
+    <ul>
+      <li>RAG update confirmation step before change commits</li>
+      <li>Leader 2 notification when RAG status updated by Leader 1</li>
+      <li>Multi-church association for leaders (e.g. Bishop overseeing multiple campuses)</li>
+      <li>In-app "leave church" flow — admin manages manually at MVP</li>
+      <li>Deep-link from network feed to specific prayer request (reference_id)</li>
+      <li>Ocean/invalid pin placement detection on church registration</li>
+      <li>Deactivated church dot cleanup on map</li>
+      <li>Common password rejection on signup</li>
+      <li>Free-text field for "Other" ministry role</li>
+      <li>Underground church name partial masking (e.g. mus****)</li>
+      <li>Per-post name anonymity toggle</li>
+      <li>Offline messaging for churches with limited internet</li>
+      <li>Push notifications — DA, ASP, PN roles deferred to this phase</li>
+      <li>Multi-language support (i18n)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 06. TECHNICAL NOTES -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Important Technical Notes</h2>
+  </div>
+
+  <div class="note-block">
+    <strong>Supabase Project</strong>
+    Live at supabase.com — org: ife-arike's Org, project: replant (Production). Migration v1.6.0 applied 29 Apr 2026. pgcrypto v1.3 confirmed live. API keys saved securely — anon key (client-safe), service_role key (server only, never in GitHub).
+  </div>
+
+  <div class="note-block">
+    <strong>Heartcry Encryption</strong>
+    pgp_sym_encrypt / pgp_sym_decrypt via pgcrypto. Base64 pattern required (SEC ruling). Key stored in Supabase Vault as 'heartcry_encryption_key'. Encryption in edge function before INSERT. Decryption in admin edge function only — decrypt_heartcry_content() EXECUTE restricted to service_role.
+  </div>
+
+  <div class="note-block">
+    <strong>churches_public View</strong>
+    All app-layer church queries must use the <code>churches_public</code> view — not the raw churches table. View has <code>security_invoker = true</code>. Strips region_admin_only column. Filters is_active = true automatically. Raw table access: admin dashboard / service_role only.
+  </div>
+
+  <div class="note-block">
+    <strong>Logo SVG</strong>
+    rp_vector.svg — viewBox="482 201 581 544" (website), viewBox="490 200 580 560" (card). Has 2 paths inside the symbol — both must be included for the full logo to render correctly.
+  </div>
+
+  <div class="note-block">
+    <strong>Netlify Forms</strong>
+    Form names are <code>join-network</code> and <code>serve-with-us</code> — must match exactly. Use URLSearchParams encoding for fetch POST — confirmed working.
+  </div>
+
+  <div class="note-block">
+    <strong>PDF / Print</strong>
+    HTML files cannot be converted to PDF reliably via wkhtmltopdf (no Google Fonts access, no CDN JS). Always use PNG export via wkhtmltoimage at 1050×600 for 300 DPI business card output.
+  </div>
+
+  <div class="note-block">
+    <strong>Email</strong>
+    Zoho alias: "support@" blocked by AS101 error — using <code>connect@projectreplant.org</code> instead. Resend API key stored in Supabase Vault as 'resend_api_key'.
+  </div>
+
+  <div class="note-block">
+    <strong>Canva Connector Limits</strong>
+    Editing operations available: replace_text, find_and_replace_text, format_text, insert_fill, delete_element, position_element, resize_element. No insert_text — new text boxes cannot be added programmatically. Canva may return cached design state when inspecting via get-design-pages.
+  </div>
+
+  <div class="note-block">
+    <strong>GitHub</strong>
+    Repo: <code>github.com/ife-arike/replant</code> (public). Auth via personal access token embedded in remote URL. Push to main branch directly. Dev roles doc at <code>docs/replant-dev-roles.html</code>.
+  </div>
+
+</div>
+
+<!-- 07. BRAND VOICE -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Brand Voice</h2>
+  </div>
+  <div class="voice-rule">"Write like someone who has been in the prayer room, not the boardroom."</div>
+  <div class="deliverable">
+    <ul>
+      <li>Scripture leads. Short sentences carry more weight.</li>
+      <li>Speak to leaders. Name the problem honestly.</li>
+      <li>End with a clear action.</li>
+      <li>Never use Christian buzzwords that have lost their weight.</li>
+      <li>No em dashes. No manifesto energy. Explain what it is first.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer">Replant · Project Status · projectreplant.org · Confidential</div>
+
+</body>
+</html>
