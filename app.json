@@ -28,6 +28,12 @@
     },
     "plugins": [
       "@rnmapbox/maps"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0a452118-41de-4523-8d2a-bdd86914f86a"
+      }
+    },
+    "owner": "replant"
   }
 }
