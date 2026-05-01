@@ -7,8 +7,8 @@
 // Church type: API value → display label
 export function getChurchTypeLabel(apiValue: string): string {
   const map: Record<string, string> = {
-    main_campus: 'Main Campus',
-    branch: 'Church Branch',       // API: branch → Display: Church Branch
+    main_campus: 'Church (Main Campus)',
+    branch: 'Church (Branch)',       // API: branch → Display: Church (Branch) per A-02 revised
     house_church: 'House Church',
     ministry: 'Ministry',
     church_without_walls: 'Church Without Walls',
@@ -56,7 +56,7 @@ export const ROLES = [
 // Church type options for registration dropdown
 export const CHURCH_TYPES = [
   { label: 'Main Campus',          value: 'main_campus' },
-  { label: 'Church Branch',        value: 'branch' },
+  { label: 'Church (Branch)',        value: 'branch' },
   { label: 'House Church',         value: 'house_church' },
   { label: 'Ministry',             value: 'ministry' },
   { label: 'Church Without Walls', value: 'church_without_walls' },
