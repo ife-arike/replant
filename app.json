@@ -32,14 +32,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsDownloadToken": "${MAPBOX_DOWNLOADS_TOKEN}"
-        }
-      ]
-    ],
+    "plugins": ["@rnmapbox/maps"],
     "extra": {
       "eas": {
         "projectId": "0a452118-41de-4523-8d2a-bdd86914f86a"
