@@ -14,7 +14,11 @@
       "backgroundColor": "#080808"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "org.projectreplant.replant",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,10 +26,24 @@
         "backgroundColor": "#080808"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "org.projectreplant.replant"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "${MAPBOX_DOWNLOADS_TOKEN}"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0a452118-41de-4523-8d2a-bdd86914f86a"
+      }
     }
   }
 }
