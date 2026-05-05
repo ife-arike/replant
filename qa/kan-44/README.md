@@ -12,12 +12,24 @@ qa/kan-44/
 ├── run.sh                   orchestrator. --dry-run validates structure only.
 ├── pass1.sh                 formal TC re-run (TC-44.1 → TC-44.7 + TC-44.3a)
 ├── pass2_adversarial.mjs    adversarial Node script (subtests 2.1–2.7)
+├── audit-fixture-data.mjs   fixture-data audit (SEC 10933) — HALT on non-zero
 ├── contract.json            byte-level oracle (derived from types/auth.ts)
 ├── derive-contract.mjs      drift check: re-derives contract from types/auth.ts
 ├── generate-report.mjs      report builder (sample / populated)
 ├── package.json             Node deps (jsonwebtoken)
 └── artifacts/               run output — gitignored except .gitkeep
     └── <UTC-timestamp>/     one dir per run; report.md + per-TC subdirs
+```
+
+Companion script (lives outside qa/ since it needs JWT_SECRET, which only Ife's local seat holds):
+
+```
+supabase/functions/_shared/mint-test-jwt.ts   — Deno CLI to mint test JWTs.
+                                                Drops to ~/.replant/qa-<ticket>.env (mode 0600).
+                                                Required claims per SEC 10933:
+                                                  super_admin: false
+                                                  test_fixture: true
+                                                  test_ticket: "<ticket>"
 ```
 
 ## First-time setup
@@ -28,6 +40,27 @@ npm install        # installs jsonwebtoken
 ```
 
 `npm install` is required for live execution (Pass 2 needs `jsonwebtoken`). Dry-run does NOT need the dep installed.
+
+## Minting test JWTs (Ife's seat only — JWT_SECRET holder)
+
+```
+JWT_SECRET=$(supabase --project-ref jiyetphxxvyiicrnwlnx secrets list ...)  # however you fetch the secret
+deno run --allow-env --allow-write --allow-read \
+  supabase/functions/_shared/mint-test-jwt.ts \
+  --ticket KAN-44 --ttl-minutes 60 \
+  --fixture ACTIVE=<uuid> \
+  --fixture PENDING_FUTURE=<uuid> \
+  --fixture PENDING_PAST=<uuid> \
+  --fixture DEACTIVATED_CRON=<uuid>
+```
+
+Output drops to `~/.replant/qa-kan-44.env` with mode 0600. Source it before running the harness:
+
+```
+set -a && . ~/.replant/qa-kan-44.env && set +a
+```
+
+`~/.replant/` is outside the repo; do not commit. Same script works for `--ticket KAN-82`, `--ticket KAN-59`, etc.
 
 ## Required env (live run)
 

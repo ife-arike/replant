@@ -40,7 +40,7 @@ warn=()
 err=()
 
 # 1) env schema validation
-echo "Step 1/5 — env schema validation"
+echo "Step 1/6 — env schema validation"
 for v in "${REQUIRED_RUNTIME_ENV[@]}"; do
   if [ -z "${!v:-}" ]; then
     if $DRY_RUN; then
@@ -61,13 +61,13 @@ for v in "${OPTIONAL_RUNTIME_ENV[@]}"; do
 done
 
 # 2) script presence + parse-clean
-echo "Step 2/5 — script presence and parse-clean check"
+echo "Step 2/6 — script presence and parse-clean check"
 for f in pass1.sh; do
   if ! [ -f "$SCRIPT_DIR/$f" ]; then err+=("$f missing"); continue; fi
   if ! bash -n "$SCRIPT_DIR/$f" 2>/dev/null; then err+=("$f has bash syntax errors"); continue; fi
   echo "  ✓ $f present and bash-parses"
 done
-for f in pass2_adversarial.mjs derive-contract.mjs generate-report.mjs; do
+for f in pass2_adversarial.mjs derive-contract.mjs generate-report.mjs audit-fixture-data.mjs; do
   if ! [ -f "$SCRIPT_DIR/$f" ]; then err+=("$f missing"); continue; fi
   if ! node --check "$SCRIPT_DIR/$f" 2>/dev/null; then err+=("$f has node syntax errors"); continue; fi
   echo "  ✓ $f present and node-parses"
@@ -78,24 +78,36 @@ for f in contract.json package.json README.md; do
 done
 
 # 3) contract.json derivation drift check
-echo "Step 3/5 — contract.json drift check against types/auth.ts"
+echo "Step 3/6 — contract.json drift check against types/auth.ts"
 if ! node "$SCRIPT_DIR/derive-contract.mjs" --check; then
   err+=("contract.json drift detected — run 'node qa/kan-44/derive-contract.mjs --check' for detail")
 fi
 
-# 4) artifacts directory and timestamped subdir
-echo "Step 4/5 — artifacts directory"
-TS="$(date -u +%Y%m%dT%H%M%SZ)"
+# 4) fixture-data audit (per SEC 10933) — runs when SUPABASE_SERVICE_ROLE_KEY is set;
+#    SKIPPED with note otherwise. Non-zero exit = HOLD for SEC + Ife.
+echo "Step 4/6 — fixture-data audit"
+TS_PRE="$(date -u +%Y%m%dT%H%M%SZ)"
 if $DRY_RUN; then
-  ARTIFACTS_DIR="$SCRIPT_DIR/artifacts/dryrun-$TS"
+  AUDIT_OUT="$SCRIPT_DIR/artifacts/dryrun-$TS_PRE"
 else
-  ARTIFACTS_DIR="$SCRIPT_DIR/artifacts/$TS"
+  AUDIT_OUT="$SCRIPT_DIR/artifacts/$TS_PRE"
 fi
-mkdir -p "$ARTIFACTS_DIR"
-echo "  ✓ created $ARTIFACTS_DIR"
+mkdir -p "$AUDIT_OUT"
+if ! node "$SCRIPT_DIR/audit-fixture-data.mjs" "$AUDIT_OUT"; then
+  if $DRY_RUN; then
+    warn+=("fixture-data audit reported HOLD — see $AUDIT_OUT/audit-fixture-data.json. Live execution must wait for SEC + Ife clearance.")
+  else
+    err+=("fixture-data audit reported HOLD — see $AUDIT_OUT/audit-fixture-data.json. HALT per SEC 10933.")
+  fi
+fi
 
-# 5) sample / live report generation
-echo "Step 5/5 — report generation"
+# 5) artifacts directory and timestamped subdir
+echo "Step 5/6 — artifacts directory"
+ARTIFACTS_DIR="$AUDIT_OUT"
+echo "  ✓ using $ARTIFACTS_DIR"
+
+# 6) sample / live report generation
+echo "Step 6/6 — report generation"
 if $DRY_RUN; then
   if ! node "$SCRIPT_DIR/generate-report.mjs" --sample --out "$ARTIFACTS_DIR/report.md"; then
     err+=("sample report generation failed")
