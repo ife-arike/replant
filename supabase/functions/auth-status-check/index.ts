@@ -1,3 +1,31 @@
+// auth-status-check edge function — SEC-locked invariants
+//
+// 401 PATH SPLIT — load-bearing; do NOT assume a uniform 401 shape.
+//
+// Gateway 401 (Supabase verify_jwt=true rejects before this code runs):
+//   - missing Authorization header, malformed JWT, expired JWT, legacy JWT,
+//     no-sub JWT, future-iat JWT, signature-invalid JWT (incl. forged
+//     super_admin claims signed with the wrong key).
+//   - Response shape: platform default —
+//       { code: "UNAUTHORIZED_INVALID_JWT_FORMAT" | "UNAUTHORIZED_LEGACY_JWT" | …,
+//         message: "Invalid JWT" }
+//     NOT this function's UNAUTHORIZED shape.
+//
+// Function 401 (this code returns):
+//   - JWT is well-formed and signature-valid but auth.role() === "anon"
+//     (anon-key calls). Explicit entry-point rejection per SEC 10302.
+//   - Response shape: { error: "Invalid or expired session", code: "UNAUTHORIZED" }.
+//
+// verify_jwt=true at the platform is load-bearing security: it is the only
+// reason a forged super_admin JWT is rejected before reaching the handler
+// (a forged claim cannot be read until the signature validates). Any change
+// to verify_jwt config OR to the auth-validation pattern below requires a
+// fresh SEC ruling before deploy.
+//
+// Cross-references: KAN-44 comments 10920 (initial SEC review), 10927
+// (re-review post-rework), 10955 (re-concurrence on the deployed
+// gateway-vs-function 401 pattern).
+
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.105.1";
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 import { createHandler, type Deps } from "./handler.ts";
