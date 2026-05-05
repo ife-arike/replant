@@ -25,12 +25,12 @@ if (!artifactsDir) {
 }
 mkdirSync(artifactsDir, { recursive: true });
 
-const URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const FN = `${URL}/functions/v1/auth-status-check`;
+const FN = `${SUPABASE_URL}/functions/v1/auth-status-check`;
 
-if (!URL || !ANON_KEY) {
+if (!SUPABASE_URL || !ANON_KEY) {
   console.error("ERROR: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY required");
   process.exit(2);
 }
