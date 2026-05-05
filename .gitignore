@@ -43,3 +43,7 @@ yarn-error.*
 # Supabase CLI cache
 supabase/.temp/
 supabase/.branches/
+
+# QA harness run artifacts (preserve placeholder .gitkeep + README only)
+qa/*/artifacts/*
+!qa/*/artifacts/.gitkeep
