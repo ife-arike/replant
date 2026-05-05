@@ -256,11 +256,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   sectionHeaderText: {
-    fontFamily: Typography.body,
-    fontSize: 11,
-    letterSpacing: 3,
-    color: Colors.accent,
-    textTransform: 'uppercase',
+    fontFamily: Typography.display,
+    fontSize: 22,
+    fontWeight: '400',
+    color: Colors.text,
+    letterSpacing: 0,
   },
 
   // Section container
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   settingSubLabel: {
-    fontFamily: Typography.body,
+    fontFamily: Typography.display,
     fontSize: 12,
     color: Colors.textMuted,
     lineHeight: 18,
@@ -342,18 +342,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionLabel: {
-    fontFamily: Typography.body,
+    fontFamily: Typography.display,
     fontSize: 14,
     color: Colors.text,
   },
   optionLabelSelected: {
     fontFamily: Typography.bodyMedium,
-    color: Colors.accent,
+    color: Colors.text,
   },
   optionExample: {
-    fontFamily: Typography.body,
+    fontFamily: Typography.display,
     fontSize: 12,
-    color: Colors.textSubtle,
+    color: Colors.textMuted,
     fontStyle: 'italic',
   },
   optionSpinner: {
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(224, 85, 85, 0.2)',
   },
   errorText: {
-    fontFamily: Typography.body,
+    fontFamily: Typography.display,
     fontSize: 12,
     color: Colors.red,
     lineHeight: 18,
@@ -391,15 +391,15 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   comingSoonLabel: {
-    fontFamily: Typography.body,
+    fontFamily: Typography.display,
     fontSize: 14,
-    color: Colors.textSubtle, // de-emphasised — not interactive
+    color: Colors.textMuted, // de-emphasised — not interactive
   },
   comingSoonBadge: {
-    fontFamily: Typography.body,
-    fontSize: 11,
+    fontFamily: Typography.display,
+    fontSize: 22,
     letterSpacing: 1,
-    color: Colors.textSubtle,
+    color: Colors.textMuted,
     backgroundColor: 'rgba(240, 237, 230, 0.06)',
     borderRadius: Radius.full,
     borderWidth: 1,
