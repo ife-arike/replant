@@ -34,7 +34,7 @@ import {
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_FROM = "Replant <noreply@projectreplant.org>";
 const RESEND_SUBJECT = "New heartcry received — Replant";
-const ADMIN_DASHBOARD_URL = "https://app.projectreplant.org/admin/heartcries";
+const ADMIN_DASHBOARD_URL = "https://admin.projectreplant.org/heartcries";
 const TRIAGE_TEMPLATE = "heartcry_triage_notification";
 
 interface BootCache {
