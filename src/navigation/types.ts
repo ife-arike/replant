@@ -23,7 +23,14 @@ export type MainStackParamList = {
 
 // RootStackParamList = the conditional union across all auth branches.
 // Only one branch's screens are registered at a time per RootNavigator.
+//
+// KAN-10 (per SM ruling 11047, Path B) replaces the unauthenticated branch's
+// Login placeholder with the Declaration of Faith screen + AccountSetup1
+// placeholder. The Login route stays in the param list so KAN-38 can re-add
+// it without a type-list churn.
 export type RootStackParamList = MainStackParamList & {
+  DeclarationOfFaith: undefined;
+  AccountSetup1Placeholder: undefined;
   Login: undefined;
   Pending: undefined;
   Deactivated: undefined;
