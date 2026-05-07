@@ -3,6 +3,15 @@
 // Single source of truth. Never hardcode brand values in screens.
 // ─────────────────────────────────────────────
 
+import {
+  CormorantGaramond_600SemiBold,
+  CormorantGaramond_600SemiBold_Italic,
+} from "@expo-google-fonts/cormorant-garamond";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+} from "@expo-google-fonts/dm-sans";
+
 export const Colors = {
   background: '#080808',
   accent: '#6BB5E8',       // sky blue — interactive, user dot
@@ -24,6 +33,21 @@ export const Colors = {
   transparent: 'transparent',
 } as const;
 
+// Font asset bundle — pass to useFonts() in App.tsx.
+// Keys are font-family names; values are the .ttf binary modules from
+// @expo-google-fonts/*. The keys here MUST match the literal strings in
+// Typography below — that's the Android-safety guarantee FE plan 10976 #5
+// asked for. If @expo-google-fonts ever renames an export, this file fails
+// to compile and the Android-asymmetric font fallback bug surfaces at build
+// time rather than as a silent visual fallback at runtime.
+export const fontModules = {
+  CormorantGaramond_600SemiBold,
+  CormorantGaramond_600SemiBold_Italic,
+  DMSans_400Regular,
+  DMSans_500Medium,
+};
+
+// Family-name strings used in StyleSheet `fontFamily` — must match fontModules keys above.
 export const Typography = {
   display: 'CormorantGaramond_600SemiBold',
   displayItalic: 'CormorantGaramond_600SemiBold_Italic',
