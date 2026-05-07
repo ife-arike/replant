@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────
 
 import {
+  CormorantGaramond_400Regular,
   CormorantGaramond_500Medium,
   CormorantGaramond_500Medium_Italic,
   CormorantGaramond_600SemiBold,
@@ -43,6 +44,7 @@ export const Colors = {
 // to compile and the Android-asymmetric font fallback bug surfaces at build
 // time rather than as a silent visual fallback at runtime.
 export const fontModules = {
+  CormorantGaramond_400Regular,
   CormorantGaramond_500Medium,
   CormorantGaramond_500Medium_Italic,
   CormorantGaramond_600SemiBold,
@@ -54,11 +56,15 @@ export const fontModules = {
 // Family-name strings used in StyleSheet `fontFamily` — must match fontModules
 // keys above. `display*` = 600 SemiBold (default heading weight). `displayMedium*`
 // = 500 Medium variant added per KAN-10 iteration 3 (lighter heading weight).
+// `displayRegular` = 400 Regular variant — non-italic serif used for the inline
+// scripture-citation token so it visually separates from the surrounding italic
+// verse via weight + size while flowing on the same line.
 export const Typography = {
   display: 'CormorantGaramond_600SemiBold',
   displayItalic: 'CormorantGaramond_600SemiBold_Italic',
   displayMedium: 'CormorantGaramond_500Medium',
   displayMediumItalic: 'CormorantGaramond_500Medium_Italic',
+  displayRegular: 'CormorantGaramond_400Regular',
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
 } as const;
