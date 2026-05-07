@@ -8,18 +8,20 @@
 //     happens via encrypt_heartcry_content(plaintext, key) RPC; the ciphertext
 //     is what writes.
 //   - Encryption key, Resend API key, and triage_lead resolution are loaded
-//     from Vault at first-request boot and cached in Deno isolate scope. SEC
-//     concurs the cache pattern post-deploy (KAN-66 RESUME ruling); a Vault
-//     accessor failure invalidates the cache so the next call re-loads.
+//     from Vault at first-request boot and cached in this Deno isolate's memory
+//     only — see BOOT_CACHE_TTL_MS / cachedEntry doc-block below.
 //   - Triage-lead resolution: vault.decrypted_secrets[heartcry_triage_lead_email]
 //     joined to public.users.email at boot. If the JOIN returns 0 rows the
 //     function 5xx's startup — refusing to insert orphan heartcries with null
 //     triage_lead_id, per HALT-comment 11096 reasoning.
 //   - audit_log NO-WRITE on submission per v2.2 (admin reads in KAN-67 are the
-//     audit surface).
+//     audit surface). Per SEC item-4 ruling, every safe log line nonetheless
+//     carries an operation_id (random per-request UUID) so future audit-writing
+//     handlers can correlate without leaking user_id into the log surface.
 //
 // References: KAN-66 description AC; KAN-44 auth-status-check pattern for JWT
-// validation, env wiring, and 401 path split (comments 10920, 10927, 10955).
+// validation, env wiring, and 401 path split (comments 10920, 10927, 10955);
+// KAN-66 ITERATION 2 SEC ruling (items 2 + 4) for the cache + log changes.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.105.1";
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
@@ -27,7 +29,9 @@ import {
   createHandler,
   type Deps,
   type EmailLogRow,
+  type EmailLogResult,
   type InsertHeartcryRow,
+  type LogFields,
   type ResendSendResult,
 } from "./handler.ts";
 
@@ -44,9 +48,42 @@ interface BootCache {
   triageLeadId: string;
 }
 
-let bootCachePromise: Promise<BootCache> | null = null;
+// ─── Boot cache — TTL coexists with reset-on-failure ────────────────────────
+//
+// The cache lives in THIS Deno isolate's memory only. No disk persistence, no
+// cross-instance sharing — Supabase Edge Functions spin up isolates per region
+// / warm pool, and each gets its own boot cycle.
+//
+// Per SEC item-2 ruling: TTL and failure-reset BOTH fire. Neither swallows the
+// other.
+//
+//   (1) Fresh hit (within TTL):     return cachedEntry.value (no I/O)
+//   (2) Stale (TTL expired):        cachedEntry treated as miss → loadBootCache()
+//                                   re-runs; on success cachedEntry is replaced.
+//                                   Bounds the key-rotation window to ≤1h.
+//   (3) Load failure:               BOTH cachedEntry AND inflight are nulled
+//                                   so the next request retries cleanly. Catches
+//                                   mid-window rotations (e.g. OPS rotates the
+//                                   Resend key 30 minutes in; the next request
+//                                   sees the failure and re-loads), independent
+//                                   of TTL state.
+//
+// inflight gates concurrent loads: a stampede of first-requests share one Vault
+// round-trip rather than each issuing its own.
+const BOOT_CACHE_TTL_MS = 60 * 60 * 1000; // 1h soft TTL — bounds rotation window
 
-async function loadBootCache(adminClient: SupabaseClient, dbUrl: string): Promise<BootCache> {
+interface CachedEntry {
+  value: BootCache;
+  fetchedAt: number; // ms epoch (Date.now())
+}
+
+let cachedEntry: CachedEntry | null = null;
+let inflight: Promise<BootCache> | null = null;
+
+async function loadBootCache(
+  adminClient: SupabaseClient,
+  dbUrl: string,
+): Promise<BootCache> {
   // Open a short-lived postgres-js connection only for the cross-schema
   // vault.decrypted_secrets read. supabase-js handles the SECURITY DEFINER
   // RPC calls without needing a direct DB connection.
@@ -64,6 +101,7 @@ async function loadBootCache(adminClient: SupabaseClient, dbUrl: string): Promis
       `,
     ]);
     if (encRes.error || typeof encRes.data !== "string" || encRes.data.length === 0) {
+      // Error message is a constant string — does NOT echo the cached key value.
       throw new Error("get_heartcry_encryption_key returned no key");
     }
     if (resendRes.error || typeof resendRes.data !== "string" || resendRes.data.length === 0) {
@@ -85,6 +123,36 @@ async function loadBootCache(adminClient: SupabaseClient, dbUrl: string): Promis
   }
 }
 
+async function ensureCache(
+  adminClient: SupabaseClient,
+  dbUrl: string,
+): Promise<BootCache> {
+  // (1) TTL-hit path — fresh entry, no I/O.
+  if (cachedEntry && Date.now() - cachedEntry.fetchedAt < BOOT_CACHE_TTL_MS) {
+    return cachedEntry.value;
+  }
+  // (2) Cache-miss path: cold boot OR TTL expired. inflight gates concurrent loads
+  // so a stampede shares one Vault round-trip.
+  if (!inflight) {
+    inflight = loadBootCache(adminClient, dbUrl)
+      .then((value) => {
+        cachedEntry = { value, fetchedAt: Date.now() };
+        inflight = null;
+        return value;
+      })
+      .catch((err) => {
+        // (3) Failure-reset path — clears BOTH cachedEntry and inflight so the
+        // next request re-attempts from scratch. Independent of (1): even if
+        // a prior fresh entry exists, a load triggered for any reason that
+        // fails poisons nothing — we just discard the in-progress promise.
+        cachedEntry = null;
+        inflight = null;
+        throw err;
+      });
+  }
+  return inflight;
+}
+
 function makeDeps(): Deps {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -99,17 +167,6 @@ function makeDeps(): Deps {
     createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-
-  const ensureCache = (): Promise<BootCache> => {
-    if (!bootCachePromise) {
-      bootCachePromise = loadBootCache(adminClient, dbUrl).catch((err) => {
-        // Reset so the next request re-tries — better than poisoning the worker.
-        bootCachePromise = null;
-        throw err;
-      });
-    }
-    return bootCachePromise;
-  };
 
   return {
     async validateJwt(authHeader) {
@@ -139,12 +196,13 @@ function makeDeps(): Deps {
     },
 
     async encryptContent(plaintext) {
-      const cache = await ensureCache();
+      const cache = await ensureCache(adminClient, dbUrl);
       const { data, error } = await adminClient.rpc("encrypt_heartcry_content", {
         plaintext,
         key: cache.encryptionKey,
       });
       if (error || typeof data !== "string" || data.length === 0) {
+        // Constant-string error — does NOT include the cache value.
         throw new Error("encrypt_heartcry_content failed");
       }
       return data;
@@ -161,19 +219,24 @@ function makeDeps(): Deps {
         request_type: row.request_type,
         triage_lead_id: row.triage_lead_id,
       });
-      if (error) throw new Error(`heartcries insert failed: ${error.code ?? error.message}`);
+      if (error) {
+        // Error.code is a Postgres SQLSTATE (e.g. "23505") or a supabase-js
+        // string code; error.message is the DB error message. Neither contains
+        // any cached secret material.
+        throw new Error(`heartcries insert failed: ${error.code ?? error.message}`);
+      }
     },
 
     async resolveTriageLeadId() {
-      return (await ensureCache()).triageLeadId;
+      return (await ensureCache(adminClient, dbUrl)).triageLeadId;
     },
 
     async resolveTriageLeadEmail() {
-      return (await ensureCache()).triageLeadEmail;
+      return (await ensureCache(adminClient, dbUrl)).triageLeadEmail;
     },
 
     async sendTriageEmail(to): Promise<ResendSendResult> {
-      const cache = await ensureCache();
+      const cache = await ensureCache(adminClient, dbUrl);
       try {
         const res = await fetch(RESEND_API_URL, {
           method: "POST",
@@ -195,6 +258,7 @@ Review in the admin dashboard: ${ADMIN_DASHBOARD_URL}`,
           }),
         });
         if (!res.ok) {
+          // Status code only — no header echo, no key.
           return { ok: false, resend_id: null, error: `Resend HTTP ${res.status}` };
         }
         const body = (await res.json().catch(() => ({}))) as { id?: string };
@@ -204,7 +268,11 @@ Review in the admin dashboard: ${ADMIN_DASHBOARD_URL}`,
       }
     },
 
-    async logEmail(row: EmailLogRow) {
+    async logEmail(row: EmailLogRow): Promise<EmailLogResult> {
+      // Per SEC item-4(b) ruling: logEmail no longer logs inline (no
+      // console.warn). It returns a structured result; the handler routes
+      // failure through the centralized deps.log path so every safe-log
+      // line carries operation_id.
       const nowISO = new Date().toISOString();
       const { error } = await adminClient.from("email_log").insert({
         user_id: row.user_id,
@@ -214,25 +282,35 @@ Review in the admin dashboard: ${ADMIN_DASHBOARD_URL}`,
         resend_id: row.resend_id,
       });
       if (error) {
-        // Best-effort observability; do NOT throw — submission is committed.
-        console.warn(`[submit-heartcry] email_log insert failed: ${error.message}`);
+        return { ok: false, error: error.message };
       }
+      return { ok: true };
     },
 
-    log(level, event, fields) {
-      // Structured single-line JSON for log aggregation. Caller is responsible
-      // for ensuring `fields` contains no plaintext content / severity /
-      // request_type / church_id per AC.
+    log(level, event, fields: LogFields) {
+      // Centralized SAFE-LOG helper. EVERY safe-log line in the request flow
+      // routes through here. Callers MUST include operation_id in `fields`
+      // and MUST NOT include content / severity / request_type / church_id /
+      // user_id (drift-guarded by handler.test.ts).
+      //
+      // The runtime emission is deliberately the only place that calls
+      // console.{error,warn,log}; nothing else in the function bypasses this
+      // surface (per SEC item-4(b) verification grep evidence in ITERATION 2
+      // SUMMARY).
       const line = JSON.stringify({ level, event, ...fields, ts: new Date().toISOString() });
       if (level === "error") console.error(line);
       else if (level === "warn") console.warn(line);
       else console.log(line);
     },
+
+    newOperationId() {
+      return crypto.randomUUID();
+    },
   };
 }
 
-// Surface TRIAGE_TEMPLATE / TRIAGE constants so a future refactor can pull them
-// into config. Currently used only by handler via deps.logEmail.
+// Surface TRIAGE_TEMPLATE so a future refactor can pull it into shared config.
+// Currently used only by handler via the literal `'heartcry_triage_notification'`.
 void TRIAGE_TEMPLATE;
 
 const handler = createHandler(makeDeps());
