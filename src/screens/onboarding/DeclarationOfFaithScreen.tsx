@@ -143,6 +143,18 @@ export default function DeclarationOfFaithScreen() {
               The Holy Bible is our only source of truth.
             </Text>
 
+            {/* Scripture (John 14:6-7 KJV) — supporting/citing voice. Italic
+                serif, muted, slightly smaller than declaration body. The
+                marginTop on bodyScripture creates the "section break" feel
+                separating it from the declaration block above. */}
+            <Text style={styles.bodyScripture}>
+              Jesus saith unto him, I am the way, the truth, and the life: no
+              man cometh unto the Father, but by me. If ye had known me, ye
+              should have known my Father also: and from henceforth ye know
+              him, and have seen him.
+            </Text>
+            <Text style={styles.bodyScriptureCitation}>John 14:6-7 KJV</Text>
+
             <View style={styles.hdivider} />
 
             <Text style={styles.attribution}>
@@ -293,6 +305,28 @@ const styles = StyleSheet.create({
   },
   bodyParagraphSpaced: {
     marginBottom: 14, // approximates the wireframe's <br><br> paragraph break
+  },
+
+  // Iteration-5: John 14:6-7 KJV scripture between the declaration body and
+  // attribution. Italic serif, same family as body, lighter color (--muted)
+  // and slightly smaller — supporting/citing voice, not the primary affirmation.
+  // marginTop creates a clear section break above (paragraph-break + ~6pt extra
+  // so it reads as its own section, not a fourth declaration paragraph).
+  bodyScripture: {
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 17,
+    color: Colors.textMuted, // --muted — supporting voice, not the bright affirmation
+    lineHeight: 17 * 1.6,
+    marginTop: 20,
+  },
+  // Citation label — non-italic 400 Regular, smaller, sits immediately below
+  // the scripture as a label.
+  bodyScriptureCitation: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 13,
+    color: Colors.textMuted,
+    lineHeight: 13 * 1.4,
+    marginTop: 4,
   },
 
   // .hdivider — 0.5px faint line, margin 10px vertical (overrides default 4px)
