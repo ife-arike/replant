@@ -146,20 +146,16 @@ export default function DeclarationOfFaithScreen() {
             {/* Scripture (John 14:6-7 KJV) — supporting/citing voice. Italic
                 serif, muted, slightly smaller than declaration body. The
                 marginTop on bodyScripture creates the "section break" feel
-                separating it from the declaration block above. Iteration-7:
-                citation is a nested <Text> at the end of the same paragraph —
-                non-italic 400 Regular, smaller fontSize, color inherited from
-                the parent Text. The nested span overrides the parent's italic
-                + fontSize but inherits everything else, so the citation flows
-                inline (same line where width permits) yet reads visually
-                distinct from the verse. marginBottom on the parent restores
-                the breathing space between the block and the hdivider. */}
+                separating it from the declaration block above; the marginBottom
+                holds the breathing space above the hdivider. Iteration-8:
+                citation matches the verse styling (italic, same size, same
+                muted color) and flows inline at the verse end after an em-dash
+                separator — reads as one continuous quote ending in its source. */}
             <Text style={styles.bodyScripture}>
               Jesus saith unto him, I am the way, the truth, and the life: no
               man cometh unto the Father, but by me. If ye had known me, ye
               should have known my Father also: and from henceforth ye know
-              him, and have seen him.{' '}
-              <Text style={styles.bodyScriptureCitation}>John 14:6-7 KJV</Text>
+              him, and have seen him. — John 14:6-7 KJV
             </Text>
 
             <View style={styles.hdivider} />
@@ -326,13 +322,6 @@ const styles = StyleSheet.create({
     lineHeight: 17 * 1.6,
     marginTop: 20,
     marginBottom: 12, // iteration-7: breathing space above the hdivider
-  },
-  // Inline citation token — nested inside bodyScripture. Overrides the parent's
-  // italic + size so the citation reads as a distinct label flowing at the end
-  // of the verse. Color is inherited from bodyScripture (Colors.textMuted).
-  bodyScriptureCitation: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 13,
   },
 
   // .hdivider — 0.5px faint line, margin 10px vertical (overrides default 4px)
