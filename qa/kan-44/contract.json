@@ -1,0 +1,79 @@
+{
+  "$contract": "KAN-44 auth-status-check response shape — byte-level oracle",
+  "$source_of_truth": "types/auth.ts (FE-signed canonical contract per KAN-44 comment 10292 + SM 10854/10887)",
+  "$drift_check": "derive-contract.mjs --check parses types/auth.ts and re-derives this file; diff against committed contract.json indicates drift",
+  "verification_status_enum": ["active", "pending", "deactivated"],
+  "error_code_enum": ["UNAUTHORIZED", "INTERNAL_ERROR"],
+  "responses": {
+    "200_active": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "verification_status": "active",
+        "verification_deadline": null,
+        "days_remaining": null
+      }
+    },
+    "200_pending_template": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body_keys_sorted": ["days_remaining", "verification_deadline", "verification_status"],
+      "body_constraints": {
+        "verification_status": "pending",
+        "verification_deadline": "ISO-8601 UTC string (non-null)",
+        "days_remaining": "integer >= 0 (server-computed)"
+      }
+    },
+    "200_deactivated": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "verification_status": "deactivated",
+        "verification_deadline": null,
+        "days_remaining": null
+      }
+    },
+    "401_unauthorized": {
+      "status": 401,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "error": "Invalid or expired session",
+        "code": "UNAUTHORIZED"
+      }
+    },
+    "500_internal_error": {
+      "status": 500,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "error": "Status check failed",
+        "code": "INTERNAL_ERROR"
+      }
+    }
+  },
+  "audit_log_canonical_row": {
+    "$source": "SM 10854 + DBA 10921 — login-time deactivation",
+    "shape": {
+      "accessed_by": null,
+      "triggered_by": "system",
+      "action": "deactivate_user",
+      "church_id": "<uuid|null>",
+      "accessed_at": "<ISO-8601 UTC>",
+      "meta": {
+        "trigger": "login_check",
+        "user_id": "<deactivated row UUID>"
+      }
+    },
+    "key_count": 6,
+    "meta_key_count": 2
+  },
+  "non_leak_invariants": {
+    "$source": "SEC 10302 + SEC 10920 #4",
+    "rules": [
+      "Response body MUST NOT include 'deactivation_reason'",
+      "Response body MUST NOT include 'triggered_by'",
+      "Option-B (login_check) and cron-set deactivated responses MUST be byte-identical",
+      "super_admin downgrade response MUST be byte-identical to cron-set deactivated response",
+      "5xx body MUST be exactly { error: 'Status check failed', code: 'INTERNAL_ERROR' } — no internal detail"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "kan-44-qa-harness",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "description": "QA harness for KAN-44 auth-status-check edge function. Pass 1 (formal TCs) + Pass 2 (adversarial). Dry-run validates structure without live execution.",
+  "scripts": {
+    "dry-run": "bash run.sh --dry-run",
+    "run": "bash run.sh",
+    "derive": "node derive-contract.mjs --check"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  }
+}
