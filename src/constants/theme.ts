@@ -4,6 +4,8 @@
 // ─────────────────────────────────────────────
 
 import {
+  CormorantGaramond_500Medium,
+  CormorantGaramond_500Medium_Italic,
   CormorantGaramond_600SemiBold,
   CormorantGaramond_600SemiBold_Italic,
 } from "@expo-google-fonts/cormorant-garamond";
@@ -41,16 +43,24 @@ export const Colors = {
 // to compile and the Android-asymmetric font fallback bug surfaces at build
 // time rather than as a silent visual fallback at runtime.
 export const fontModules = {
+  CormorantGaramond_500Medium,
+  CormorantGaramond_500Medium_Italic,
   CormorantGaramond_600SemiBold,
   CormorantGaramond_600SemiBold_Italic,
   DMSans_400Regular,
   DMSans_500Medium,
 };
 
-// Family-name strings used in StyleSheet `fontFamily` — must match fontModules keys above.
+// Family-name strings used in StyleSheet `fontFamily` — must match fontModules
+// keys above. `display*` = 600 SemiBold (default heading weight). `displayMedium*`
+// = 500 Medium variant added per KAN-10 iteration 3 — used where 600 SemiBold
+// reads too heavy at the iteration's larger sizes (body confession copy in DoF,
+// title heading on DoF) and the founder asked for a lighter visual weight.
 export const Typography = {
   display: 'CormorantGaramond_600SemiBold',
   displayItalic: 'CormorantGaramond_600SemiBold_Italic',
+  displayMedium: 'CormorantGaramond_500Medium',
+  displayMediumItalic: 'CormorantGaramond_500Medium_Italic',
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
 } as const;

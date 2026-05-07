@@ -111,10 +111,18 @@ export default function DeclarationOfFaithScreen() {
           </Text>
         </View>
 
-        {/* Body card — sky top border, scrollable interior */}
+        {/* Body card — sky top border. ScrollView wraps ONLY the body
+            paragraphs (flex: 1 to fill upper portion of card); the hdivider +
+            attribution sit as siblings BELOW the ScrollView so they always
+            render at the bottom of the card per founder iteration-3 layout
+            ("the line + attribution should be about 2/3 of the way down in
+            the card"). AC scroll-gate formula stays bound to the inner
+            ScrollView; gate fires when the body paragraphs (not the
+            attribution below) are scrolled to the bottom. */}
         <View style={styles.bodyCard}>
           <ScrollView
-            contentContainerStyle={styles.bodyCardContent}
+            style={styles.bodyScroll}
+            contentContainerStyle={styles.bodyScrollContent}
             onLayout={handleScrollViewLayout}
             onContentSizeChange={handleContentSizeChange}
             onScroll={handleScroll}
@@ -134,13 +142,13 @@ export default function DeclarationOfFaithScreen() {
             <Text style={styles.bodyParagraph}>
               The Holy Bible is our only source of truth.
             </Text>
-
-            <View style={styles.hdivider} />
-
-            <Text style={styles.attribution}>
-              By continuing, I personally affirm this testament as my own.
-            </Text>
           </ScrollView>
+
+          <View style={styles.hdivider} />
+
+          <Text style={styles.attribution}>
+            By continuing, I personally affirm this testament as my own.
+          </Text>
         </View>
 
         {/* Affirm button — sky bg, black text, 2pt above per wireframe margin-top:2 */}
@@ -198,9 +206,12 @@ const styles = StyleSheet.create({
   },
 
   // ── Top section ────────────────────────────────
+  // Iteration-3: paddingTop bumped to 28 (was 8) so the cross sits clear
+  // of the status-bar / notch. SafeAreaView already adds the platform inset;
+  // 28pt above that gives the wireframe's "air at top" breathing room.
   topSection: {
     alignItems: "center",
-    paddingTop: 8,
+    paddingTop: 28,
     paddingBottom: 4,
   },
 
@@ -230,11 +241,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
 
+  // Iteration-3: title weight shifted to 500 Medium and size bumped 22 → 24.
+  // The previous 600 SemiBold at 22 was reading visually thin against the
+  // wireframe's intended hierarchy. fontWeight prop is a no-op when fontFamily
+  // is a specific weight variant (RN convention); kept off for clarity.
   title: {
-    fontFamily: Typography.display,
-    fontSize: 22,
-    fontWeight: "400",
-    letterSpacing: 0.05 * 22, // 0.05em → 1.1pt
+    fontFamily: Typography.displayMedium,
+    fontSize: 24,
+    letterSpacing: 0.05 * 24, // 0.05em → 1.2pt
     color: Colors.text,
     textAlign: "center",
   },
@@ -248,6 +262,11 @@ const styles = StyleSheet.create({
   },
 
   // ── Body card ──────────────────────────────────
+  // Iteration-3: the card itself owns the 12pt padding (was on the ScrollView's
+  // contentContainerStyle pre-restructure). The ScrollView now sits inside
+  // with flex: 1 so the body paragraphs fill the upper portion of the card;
+  // the hdivider + attribution are siblings rendered below the ScrollView so
+  // they anchor at the card's bottom regardless of how short the body is.
   bodyCard: {
     flex: 1,
     backgroundColor: Colors.surface,
@@ -256,17 +275,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1.5,
     borderTopColor: Colors.accent, // distinctive sky top border
     borderRadius: 6,
+    padding: 12,
     overflow: "hidden",
   },
-  bodyCardContent: {
-    padding: 12,
+  bodyScroll: {
+    flex: 1,
   },
+  bodyScrollContent: {
+    // ScrollView's content has no extra padding; bodyCard's padding handles edges.
+    paddingBottom: 4,
+  },
+  // Iteration-3: body confession copy bumped 14 → 19pt (this is the screen's
+  // centerpiece — the actual confession the user is affirming, should be the
+  // most prominent text-block). Weight shifted from 600 SemiBold-Italic to
+  // 500 Medium-Italic per founder brief: "not too bold but legible".
   bodyParagraph: {
-    fontFamily: Typography.displayItalic,
-    fontSize: 14,
-    fontWeight: "300",
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 19,
     color: Colors.text, // --off-white
-    lineHeight: 14 * 1.75,
+    lineHeight: 19 * 1.65, // proportional ~1.65 ratio per spec
   },
   bodyParagraphSpaced: {
     marginBottom: 14, // approximates the wireframe's <br><br> paragraph break
