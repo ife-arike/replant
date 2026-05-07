@@ -146,14 +146,15 @@ export default function DeclarationOfFaithScreen() {
             {/* Scripture (John 14:6-7 KJV) — supporting/citing voice. Italic
                 serif, muted, slightly smaller than declaration body. The
                 marginTop on bodyScripture creates the "section break" feel
-                separating it from the declaration block above. */}
+                separating it from the declaration block above. Iteration-6:
+                citation flows inline at the verse end with em-dash separator,
+                all italic — reads as one continuous quote. */}
             <Text style={styles.bodyScripture}>
               Jesus saith unto him, I am the way, the truth, and the life: no
               man cometh unto the Father, but by me. If ye had known me, ye
               should have known my Father also: and from henceforth ye know
-              him, and have seen him.
+              him, and have seen him. — John 14:6-7 KJV
             </Text>
-            <Text style={styles.bodyScriptureCitation}>John 14:6-7 KJV</Text>
 
             <View style={styles.hdivider} />
 
@@ -318,15 +319,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted, // --muted — supporting voice, not the bright affirmation
     lineHeight: 17 * 1.6,
     marginTop: 20,
-  },
-  // Citation label — non-italic 400 Regular, smaller, sits immediately below
-  // the scripture as a label.
-  bodyScriptureCitation: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 13 * 1.4,
-    marginTop: 4,
   },
 
   // .hdivider — 0.5px faint line, margin 10px vertical (overrides default 4px)
