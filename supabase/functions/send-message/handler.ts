@@ -24,12 +24,13 @@ import {
   isSenderVerified,
   isUuid,
   type RecipientRow,
-  scanKeywordBlocklist,
   type SenderRow,
   sortParticipants,
   type ValidatedBody,
   validateBody,
 } from "./logic.ts";
+import { collectMatches, composeFlagReason } from "./matcher.ts";
+import { type Taxonomy } from "./taxonomy.ts";
 
 export interface SendMessageResult {
   id: string;
@@ -66,7 +67,10 @@ export interface Deps {
     flagged: boolean;
     flag_reason: string | null;
   }): Promise<SendMessageResult>;
-  readKeywordBlocklist(): string | undefined;
+  // KAN-124 — returns the parsed FLAG_TAXONOMY at cold-start, or null if
+  // the secret is missing / malformed. Matcher folds null to no-matches;
+  // DELIVER-ALWAYS preserved even on taxonomy unavailability.
+  getTaxonomy(): Taxonomy | null;
   log(
     level: "info" | "warn" | "error",
     event: string,
@@ -168,12 +172,43 @@ export function createHandler(deps: Deps) {
         receiverId = recipientId;
       }
 
-      // KEYWORD STUB — KAN-124 replaces with full taxonomy. DELIVER-ALWAYS:
-      // result feeds messages row only; it never gates INSERT or response.
-      const { flagged, flag_reason } = scanKeywordBlocklist(
-        body.content,
-        deps.readKeywordBlocklist(),
-      );
+      // DELIVER-ALWAYS — D-45 clause 3 (locked decision, 2026-05-09).
+      // Keyword match writes flagged/flag_reason but NEVER gates delivery.
+      // TIER routes admin-queue prioritization only. Never introduce HOLD-on-keyword.
+      // AC-18 forward-track (KAN-125): per-axis state-transition independence.
+      // Admin clearing flag_status MUST NOT remove row from pastoral queue.
+      // Pastoral-axis clearing MUST NOT remove from admin queue.
+      // State-transition independence is owned by KAN-125 surface design.
+      const matchResult = collectMatches(body.content, deps.getTaxonomy());
+      const { flag_reason, dropped_codes } = composeFlagReason(matchResult.matches);
+      const flagged = matchResult.matches.length > 0;
+
+      // AC-3 overflow observability — log dropped codes (names only,
+      // never content). dropped_codes is empty in the no-overflow path.
+      if (dropped_codes.length > 0) {
+        deps.log("warn", "send-message.flag-reason-overflow", {
+          sender_id: sender.id,
+          conversation_id: conversationIdForLog,
+          dropped_codes: dropped_codes.join(","),
+        });
+      }
+      // AC-17 cross-axis observability — single message hit both admin
+      // and pastoral routing axes. Both queues will surface this row via
+      // their routing-axis filter on read. SOC visibility on the high-
+      // stakes collision (e.g., urgent_safety_request + self_harm_indicator).
+      if (matchResult.observability.cross_axis) {
+        deps.log("warn", "send-message.cross-axis-match", {
+          sender_id: sender.id,
+          conversation_id: conversationIdForLog,
+        });
+      }
+      // Bribery + currency co-occurrence — observability counter only.
+      if (matchResult.observability.bribery_currency_co_occurrence) {
+        deps.log("info", "send-message.bribery-currency-co-occurrence", {
+          sender_id: sender.id,
+          conversation_id: conversationIdForLog,
+        });
+      }
 
       const result = await deps.sendInTransaction({
         senderId: sender.id,

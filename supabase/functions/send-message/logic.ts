@@ -42,10 +42,12 @@ export type ValidationResult =
 // leader-to-leader correspondence, not document transfer.
 export const MAX_CONTENT_LENGTH = 5_000;
 
-// flag_reason carries a single auto-flag token at MVP. KAN-124 replaces
-// this with full taxonomy (collect-all matched codes per AC-2 + AC-3).
-// 18 chars; well under the 500-char column ceiling.
-export const KEYWORD_FLAG_REASON = "auto:keyword_match";
+// KAN-124 — the KAN-71 KEYWORD_BLOCKLIST stub matcher
+// (scanKeywordBlocklist + KEYWORD_FLAG_REASON + escapeRegex) was
+// removed in this commit. The full taxonomy matcher lives at
+// ./matcher.ts; the FLAG_TAXONOMY secret loader lives at ./taxonomy.ts.
+// Pattern strings are NEVER inlined here (or in any committed file)
+// per AC-12.
 
 // RFC 4122 UUID, any version. Used only for basic shape validation
 // before DB calls — full validation happens at the DB FK layer.
@@ -54,14 +56,6 @@ const UUID_RE =
 
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_RE.test(value);
-}
-
-// Escape user-controlled / env-controlled string for safe regex
-// embedding. Mandatory — a malformed keyword (e.g., "(broken")
-// silently breaks the entire scan without this, masking detection
-// failure as "no match". Per SEC keyword-scan discipline.
-export function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Canonical UUID-string sort for conversation participants. Both the
@@ -168,35 +162,3 @@ export function isRecipientAcceptable(
   return { ok: true };
 }
 
-// MVP keyword stub. KAN-124 replaces this with the full taxonomy + the
-// collect-all-codes iteration + the source-prefix convention. Until
-// then: comma-separated KEYWORD_BLOCKLIST env var → word-boundary
-// regex per keyword → on any match, flagged=true with the single
-// stub reason.
-//
-// Per spec: empty or absent KEYWORD_BLOCKLIST returns { flagged: false,
-// flag_reason: null } unconditionally. Whitespace-only entries inside
-// the comma-split are skipped (an env value of "a,,b" or ",,," does
-// not produce a regex with empty keyword — which would silently match
-// every message).
-export function scanKeywordBlocklist(
-  content: string,
-  blocklistEnv: string | undefined | null,
-): { flagged: boolean; flag_reason: string | null } {
-  if (!blocklistEnv) return { flagged: false, flag_reason: null };
-
-  const keywords = blocklistEnv
-    .split(",")
-    .map((k) => k.trim())
-    .filter((k) => k.length > 0);
-
-  if (keywords.length === 0) return { flagged: false, flag_reason: null };
-
-  for (const keyword of keywords) {
-    const pattern = new RegExp("\\b" + escapeRegex(keyword) + "\\b", "i");
-    if (pattern.test(content)) {
-      return { flagged: true, flag_reason: KEYWORD_FLAG_REASON };
-    }
-  }
-  return { flagged: false, flag_reason: null };
-}

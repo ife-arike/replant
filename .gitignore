@@ -47,3 +47,8 @@ supabase/.branches/
 # QA harness run artifacts (preserve placeholder .gitkeep + README only)
 qa/*/artifacts/*
 !qa/*/artifacts/.gitkeep
+
+# KAN-124 AC-12 pattern secrecy — taxonomy patterns are SEC-stamped content
+# and never touch the public repo. The FLAG_TAXONOMY Supabase Edge Function
+# secret holds them; this local file is the operator's dashboard input only.
+flag_taxonomy_secret.json

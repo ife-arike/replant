@@ -36,6 +36,11 @@ import {
 } from "https://esm.sh/@supabase/supabase-js@2.105.1";
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 import { createHandler, type Deps } from "./handler.ts";
+import {
+  classifyLoadFailure,
+  loadTaxonomy,
+  type Taxonomy,
+} from "./taxonomy.ts";
 
 function makeDeps(): Deps {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -64,6 +69,37 @@ function makeDeps(): Deps {
     max: 2,
     idle_timeout: 5,
   });
+
+  // KAN-124 — eager-load FLAG_TAXONOMY at cold-start. Cached in module
+  // scope for the lifetime of this isolate. On missing / malformed,
+  // log loud and degrade fail-open: matcher sees null → returns no
+  // matches → flagged=false on every message. DELIVER-ALWAYS preserved
+  // even when the taxonomy is unavailable; SOC sees the alarm.
+  const taxonomyRaw = Deno.env.get("FLAG_TAXONOMY");
+  const taxonomy: Taxonomy | null = loadTaxonomy(taxonomyRaw);
+  if (!taxonomy) {
+    const reason = classifyLoadFailure(taxonomyRaw);
+    console.warn(JSON.stringify({
+      level: "warn",
+      event: "send-message.taxonomy-unavailable",
+      reason,
+      ts: new Date().toISOString(),
+    }));
+  } else {
+    // Confirmation log at boot — visible in deploy logs so OPS can
+    // verify the secret rolled out. Code count + taxonomy_version only;
+    // no patterns.
+    console.log(JSON.stringify({
+      level: "info",
+      event: "send-message.taxonomy-loaded",
+      taxonomy_version: taxonomy.taxonomy_version,
+      code_count: taxonomy.codes.length,
+      auto_active_count: taxonomy.codes.filter(
+        (c) => c.source_prefix === "auto" && c.patterns.length > 0,
+      ).length,
+      ts: new Date().toISOString(),
+    }));
+  }
 
   return {
     async validateJwt(authHeader) {
@@ -213,12 +249,8 @@ function makeDeps(): Deps {
       });
     },
 
-    readKeywordBlocklist() {
-      // Deno.env.get is the canonical way to read Supabase Edge
-      // Function secrets — supabase secrets set KEYWORD_BLOCKLIST=...
-      // surfaces here. Same accessor pattern as SUPABASE_URL above;
-      // confirmed working in the existing submit-heartcry edge function.
-      return Deno.env.get("KEYWORD_BLOCKLIST");
+    getTaxonomy() {
+      return taxonomy;
     },
 
     log(level, event, fields) {
