@@ -70,6 +70,48 @@ The current focus is:
 - `ROADMAP.md` tracks planned phases
 - `docs/` contains supporting product and technical notes
 
+## First-time local dev setup
+
+The leader app is React Native via Expo. First-run setup (skeleton):
+
+1.  **Clone the repo:**
+
+    ```bash
+    git clone https://github.com/ife-arike/replant.git
+    cd replant
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    npm install
+    ```
+
+3.  **Install Expo Go** on a physical device (iOS App Store or Google Play): https://expo.dev/client
+
+4.  **Start the dev server:**
+
+    ```bash
+    npm start
+    ```
+
+    (or `npx expo start`)
+
+5.  Scan the QR code displayed in the terminal with Expo Go on Android, or with the iOS Camera app on iOS.
+
+<!-- TODO: expand when first dev'd locally -->
+
+Sections still to document on first hands-on local dev session:
+
+- `.env.local` setup and which env vars are required for what (Supabase auth, Mapbox, anon-vs-service-role boundary on the BE-via-edge-functions path)
+- EAS dev build flow vs Expo Go differences (per SM `reference_replant_systems.md`: iOS dev build `fd4659a7-1e79-4fcf-bb05-1a68dcadc262`, Android dev build `aa03b6ff-cc26-4188-8dd7-ee406a3667c6`)
+- Hot reload behavior + common gotchas (Metro bundler restarts, env-var hot-reload limitations)
+- Login flow against `jiyetphxxvyiicrnwlnx` Supabase Auth
+- Pairing with `~/replant-admin` for admin actions during smoke
+- How to test against a specific branch vs main
+
+Anchor: Expo scheme `replant`, currently on commit `5089830` on main per SM memory.
+
 ## Website
 
 Project website coming soon at:
