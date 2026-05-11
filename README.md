@@ -72,12 +72,70 @@ The current focus is:
 
 ## First-time local dev setup
 
+### Authentication
+
+This repo uses **SSH key authentication**. The remote URL is `git@github.com:ife-arike/<repo>.git`.
+
+**First-time setup on a new MacBook:**
+
+1. Generate an SSH key (if you don't have one):
+
+    ```bash
+    ssh-keygen -t ed25519 -C "your-email@example.com"
+    ```
+
+    Save with a passphrase; store the passphrase in 1Password.
+
+2. Add to macOS Keychain for transparent reuse:
+
+    ```bash
+    ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+    ```
+
+3. Add the public key to GitHub: https://github.com/settings/keys
+
+4. Verify the connection:
+
+    ```bash
+    ssh -T git@github.com
+    ```
+
+    Should respond `Hi <username>!`.
+
+5. Clone via SSH:
+
+    ```bash
+    git clone git@github.com:ife-arike/<repo>.git
+    ```
+
+**Why SSH and not PAT-in-URL:** never embed a GitHub Personal Access Token in the remote URL (e.g., `https://TOKEN@github.com/...`). Embedded tokens become plaintext-on-disk credentials in `.git/config`, visible to any process with home-directory read access — backups, cloud sync, anti-virus scans all index it. SSH-based remotes are structurally immune: the URL contains an identifier, not a credential.
+
+If your `.git/config` ever contains `ghp_*` in the URL (e.g., from an old HTTPS+PAT clone), scrub it and switch to SSH:
+
+```bash
+git remote set-url origin git@github.com:ife-arike/<repo>.git
+grep -c "ghp_" .git/config   # should output: 0
+```
+
+**Pre-commit defense:** this dev environment runs gitleaks as a global pre-commit hook (`~/.git-hooks/pre-commit` via `core.hooksPath`), blocking commits that include `ghp_*` / `gho_` / `ghu_` / `ghs_` / `github_pat_` patterns. On a fresh MacBook, install gitleaks and wire the global hook:
+
+```bash
+brew install gitleaks
+mkdir -p ~/.git-hooks
+# Add a pre-commit hook that runs: gitleaks protect --staged --redact --verbose
+git config --global core.hooksPath ~/.git-hooks
+```
+
+Note: `git commit --no-verify` bypasses the hook by design — it's a safety net, not a security boundary. Server-side gitleaks via GitHub Actions on push to main is a forward-track hardening item (KAN-136 F.1) to close the second-contributor-without-hooks gap.
+
+Anchored by KAN-135 — SEC audit-trail for the 2026-05-11 PAT-leak remediation (leaked PAT in `~/replant/.git/config`, revoked + remediated + SSH switch + gitleaks deployment). Watched-invariants register row #12 (SM memory) tracks the drift threat for future repo clones.
+
 The leader app is React Native via Expo. First-run setup (skeleton):
 
 1.  **Clone the repo:**
 
     ```bash
-    git clone https://github.com/ife-arike/replant.git
+    git clone git@github.com:ife-arike/replant.git
     cd replant
     ```
 
