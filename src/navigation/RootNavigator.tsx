@@ -29,7 +29,7 @@ import AccountSetup1PlaceholderScreen from "../screens/auth/AccountSetup1Placeho
 import DeactivatedPlaceholderScreen from "../screens/auth/DeactivatedPlaceholderScreen";
 import PendingPlaceholderScreen from "../screens/auth/PendingPlaceholderScreen";
 import DeclarationOfFaithScreen from "../screens/onboarding/DeclarationOfFaithScreen";
-import SettingsPlaceholderScreen from "../screens/main/SettingsPlaceholderScreen";
+import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
 
@@ -43,7 +43,7 @@ export default function RootNavigator() {
       {branch === "active" && (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
-          <Stack.Screen name="Settings" component={SettingsPlaceholderScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreenContainer} />
         </>
       )}
       {branch === "pending" && (
