@@ -57,3 +57,20 @@ export function ConnectIcon({ color, size = 24 }: IconProps) {
     </Svg>
   );
 }
+
+// GearIcon — KAN-72 temporary Settings entry-point on the Home tab header
+// right. Superseded by the KAN-76 hamburger menu when that ships.
+export function GearIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={3} stroke={color} strokeWidth={STROKE}/>
+      <Path
+        d="M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M4.9 19.1 L7 17 M17 7 L19.1 4.9"
+        stroke={color}
+        strokeWidth={STROKE}
+        strokeLinecap={CAPS}
+        strokeLinejoin={JOINS}
+      />
+    </Svg>
+  );
+}
