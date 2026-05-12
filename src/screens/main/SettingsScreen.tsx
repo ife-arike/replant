@@ -17,7 +17,6 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
-  ActivityIndicator,
   AccessibilityInfo,
 } from 'react-native';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
@@ -47,14 +46,12 @@ function DisplayNameOption({
   label,
   example,
   selected,
-  disabled,
   onSelect,
 }: {
   value: DisplayNamePreference;
   label: string;
   example: string;
   selected: boolean;
-  disabled: boolean;
   onSelect: (value: DisplayNamePreference) => void;
 }) {
   return (
@@ -63,11 +60,10 @@ function DisplayNameOption({
         styles.optionRow,
         selected && styles.optionRowSelected,
       ]}
-      onPress={() => !disabled && onSelect(value)}
-      disabled={disabled}
+      onPress={() => onSelect(value)}
       activeOpacity={0.7}
       accessibilityRole="radio"
-      accessibilityState={{ selected, disabled }}
+      accessibilityState={{ selected }}
       accessibilityLabel={`${label}. Example: ${example}. ${selected ? 'Selected.' : 'Not selected.'}`}
     >
       <View style={styles.optionLeft}>
@@ -83,10 +79,6 @@ function DisplayNameOption({
           <Text style={styles.optionExample}>{example}</Text>
         </View>
       </View>
-
-      {disabled && (
-        <ActivityIndicator size="small" color={Colors.accent} style={styles.optionSpinner} />
-      )}
     </TouchableOpacity>
   );
 }
@@ -102,9 +94,11 @@ export default function SettingsScreen({
     initialDisplayNamePreference ?? 'first_name_only'
   );
   const [writeError, setWriteError] = useState<string | null>(null);
-  const [isWriting, setIsWriting] = useState(false);
 
-  // Gate rapid taps — only one write in flight at a time
+  // Gate rapid taps — only one write in flight at a time. Per Founder QA
+  // (KAN-72 c.11767 follow-up): no spinner — the optimistic radio fill
+  // switching is the success affordance. writeInFlight.current alone is
+  // sufficient to dedupe rapid taps; no isWriting state needed.
   const writeInFlight = useRef(false);
 
   const handleDisplayNameChange = async (newValue: DisplayNamePreference) => {
@@ -116,7 +110,6 @@ export default function SettingsScreen({
     // Optimistic UI — update immediately
     setDisplayNamePref(newValue);
     setWriteError(null);
-    setIsWriting(true);
     writeInFlight.current = true;
 
     try {
@@ -138,7 +131,6 @@ export default function SettingsScreen({
         "Couldn't save your display name preference. Check your connection."
       );
     } finally {
-      setIsWriting(false);
       writeInFlight.current = false;
     }
   };
@@ -178,7 +170,6 @@ export default function SettingsScreen({
               label="First name + role only"
               example='e.g. "Pastor James"'
               selected={displayNamePref === 'first_name_only'}
-              disabled={isWriting}
               onSelect={handleDisplayNameChange}
             />
 
@@ -189,7 +180,6 @@ export default function SettingsScreen({
               label="Full name"
               example='e.g. "Pastor James Adeoye"'
               selected={displayNamePref === 'full_name'}
-              disabled={isWriting}
               onSelect={handleDisplayNameChange}
             />
           </View>
@@ -343,7 +333,7 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontFamily: Typography.display,
-    fontSize: 14,
+    fontSize: 17,
     color: Colors.text,
   },
   optionLabelSelected: {
@@ -352,12 +342,9 @@ const styles = StyleSheet.create({
   },
   optionExample: {
     fontFamily: Typography.display,
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.textMuted,
     fontStyle: 'italic',
-  },
-  optionSpinner: {
-    marginLeft: Spacing.sm,
   },
 
   optionDivider: {
@@ -397,15 +384,15 @@ const styles = StyleSheet.create({
   },
   comingSoonBadge: {
     fontFamily: Typography.display,
-    fontSize: 22,
-    letterSpacing: 1,
+    fontSize: 11,
+    letterSpacing: 0.5,
     color: Colors.textMuted,
     backgroundColor: 'rgba(240, 237, 230, 0.06)',
     borderRadius: Radius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
     overflow: 'hidden',
   },
 
