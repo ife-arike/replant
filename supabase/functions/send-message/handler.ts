@@ -31,6 +31,7 @@ import {
 } from "./logic.ts";
 import { collectMatches, composeFlagReason } from "./matcher.ts";
 import { type Taxonomy } from "./taxonomy.ts";
+import { classifyMatches, type FlagEffectsPlan } from "./post-flag-effects.ts";
 
 export interface SendMessageResult {
   id: string;
@@ -71,6 +72,15 @@ export interface Deps {
   // the secret is missing / malformed. Matcher folds null to no-matches;
   // DELIVER-ALWAYS preserved even on taxonomy unavailability.
   getTaxonomy(): Taxonomy | null;
+  // KAN-137 AC-6 — post-commit flag effects: moderation_state INSERTs
+  // per routing axis + T1 pastoral alert dispatch when fire flag is
+  // true. Called AFTER the message has committed; throws caught by
+  // handler and logged (never propagated). DELIVER-ALWAYS preserved.
+  postCommitFlagEffects(input: {
+    messageId: string;
+    senderId: string;
+    plan: FlagEffectsPlan;
+  }): Promise<void>;
   log(
     level: "info" | "warn" | "error",
     event: string,
@@ -221,6 +231,35 @@ export function createHandler(deps: Deps) {
         flag_reason,
       });
       conversationIdForLog = result.conversation_id;
+
+      // KAN-137 AC-6 — post-commit flag effects: moderation_state INSERTs
+      // (per routing axis) + T1 pastoral alert dispatch when AC-1 trigger
+      // condition fires. Runs AFTER the message has committed; the
+      // dispatcher catches all I/O errors internally and returns void.
+      // DELIVER-ALWAYS — D-45 clause 3: this path NEVER throws upstream.
+      // The 200 response is guaranteed regardless of moderation_state /
+      // Resend / email_log outcomes. Best-effort observability via the
+      // dep's internal logging.
+      if (flagged) {
+        const plan = classifyMatches(matchResult.matches);
+        try {
+          await deps.postCommitFlagEffects({
+            messageId: result.id,
+            senderId: sender.id,
+            plan,
+          });
+        } catch (err) {
+          // Belt-and-suspenders. postCommitFlagEffects is internally
+          // try/catch'd, so this should be unreachable in practice.
+          // If a programmer error bubbles a throw through, we still
+          // honor DELIVER-ALWAYS by swallowing here.
+          deps.log("error", "send-message.post-commit-effects-failed", {
+            sender_id: sender.id,
+            conversation_id: result.conversation_id,
+            error_class: (err as Error)?.name ?? "Error",
+          });
+        }
+      }
 
       // SAFE-LOG: caller user_id + conversation_id + flagged + ts. No
       // message content. No recipient_id (the conversation_id is the

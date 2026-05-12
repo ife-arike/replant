@@ -101,6 +101,244 @@ function makeDeps(): Deps {
     }));
   }
 
+  // ────────────────────────────────────────────────────────────────
+  // KAN-137 — T1 emit boot-cache + helper.
+  // ────────────────────────────────────────────────────────────────
+  // Lazy-loaded once per isolate. Resend API key + pastoral lead user
+  // id are needed ONLY on T1-fire paths; most messages won't trigger
+  // emit, so deferring the Vault RPC + users lookup keeps cold-start
+  // fast. On first T1 emit per isolate, both load together.
+  //
+  // SM ruling: pastoral lead = ruth@projectreplant.org (D-26 single
+  // lead at MVP). The Resend payload TO is the shared inbox address
+  // info@projectreplant.org (OPS c.11752 deviation); the email_log
+  // user_id is the lead's internal id for forensic attribution.
+  interface T1BootCache {
+    resendApiKey: string;
+    pastoralLeadUserId: string;
+  }
+  let t1BootCachePromise: Promise<T1BootCache> | null = null;
+  async function ensureT1BootCache(): Promise<T1BootCache> {
+    if (!t1BootCachePromise) {
+      t1BootCachePromise = (async (): Promise<T1BootCache> => {
+        const [keyRes, userRes] = await Promise.all([
+          adminClient.rpc("get_resend_api_key"),
+          adminClient
+            .from("users")
+            .select("id")
+            .eq("email", "ruth@projectreplant.org")
+            .maybeSingle(),
+        ]);
+        if (keyRes.error || typeof keyRes.data !== "string" || keyRes.data.length === 0) {
+          throw new Error("get_resend_api_key returned no key");
+        }
+        if (userRes.error || !userRes.data) {
+          throw new Error("pastoral lead user lookup failed (ruth@projectreplant.org)");
+        }
+        return {
+          resendApiKey: keyRes.data,
+          pastoralLeadUserId: userRes.data.id as string,
+        };
+      })().catch((err) => {
+        // Reset the cache on failure so the next T1 fire retries the
+        // bootstrap rather than persistently failing on a transient.
+        t1BootCachePromise = null;
+        throw err;
+      });
+    }
+    return t1BootCachePromise;
+  }
+
+  // ─── Upstash REST helpers (per-leader hourly rate limit) ───
+  // AC-3 key: pastoral-t1-email-emit:{leader_id} (SM ruling; distinct
+  // from KAN-125 AC-7 pastoral-t1-context-expand:{leader_id}). Flow:
+  // GET first; if key exists, suppress with outcome='suppressed_rate_
+  // limit'. On Resend success, SET NX EX 3600 (failed emits do NOT
+  // consume the cap — operator-friendly retry posture). Env-absent →
+  // log warning + skip rate limit (fail-open per DELIVER-ALWAYS; SOC
+  // visibility via the warn log).
+  const upstashUrl   = Deno.env.get("UPSTASH_REDIS_REST_URL");
+  const upstashToken = Deno.env.get("UPSTASH_REDIS_REST_TOKEN");
+  async function upstashGet(key: string): Promise<string | null> {
+    if (!upstashUrl || !upstashToken) return null;
+    const res = await fetch(`${upstashUrl}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${upstashToken}` },
+    });
+    if (!res.ok) throw new Error(`Upstash GET ${res.status}`);
+    const body = await res.json() as { result: string | null };
+    return body.result ?? null;
+  }
+  async function upstashSetNxEx(key: string, ttlSeconds: number): Promise<boolean> {
+    if (!upstashUrl || !upstashToken) return false;
+    // Upstash REST: SET key value EX seconds NX. Returns "OK" on set, null on key-exists.
+    const res = await fetch(`${upstashUrl}/set/${encodeURIComponent(key)}/1?EX=${ttlSeconds}&NX=true`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${upstashToken}` },
+    });
+    if (!res.ok) throw new Error(`Upstash SET ${res.status}`);
+    const body = await res.json() as { result: string | null };
+    return body.result === "OK";
+  }
+
+  // emitPastoralT1Alert — Resend Template 9 fire with per-leader hourly
+  // cap + email_log + audit_log writes. Never throws. SEC c.11750
+  // condition #1 + #6: no leader_id / message_id / content / flag_reason
+  // in Resend body, log lines, email_log.template, or audit_log.meta.
+  // The leader_id appears ONLY as the Upstash key suffix (necessary
+  // for per-leader rate-limiting; never persisted in DB tables here).
+  async function emitPastoralT1Alert(leaderId: string): Promise<void> {
+    let cache: T1BootCache;
+    try {
+      cache = await ensureT1BootCache();
+    } catch (e) {
+      // Bootstrap failure (Vault unavailable or pastoral lead user
+      // missing). Log + skip. Message has already committed.
+      console.error(JSON.stringify({
+        level: "error",
+        event: "send-message.t1-boot-cache-failed",
+        error_class: (e as Error)?.name ?? "Error",
+        ts: new Date().toISOString(),
+      }));
+      return;
+    }
+
+    const upstashKey = `pastoral-t1-email-emit:${leaderId}`;
+
+    // ─── Rate-limit check (GET) ───
+    let rateLimited = false;
+    try {
+      const existing = await upstashGet(upstashKey);
+      rateLimited = existing !== null;
+    } catch (e) {
+      // Upstash unavailable — log + fail-open. The alert proceeds
+      // (DELIVER-ALWAYS posture: prefer over-alerting to under-alerting
+      // for life-safety). SOC sees the warn.
+      console.warn(JSON.stringify({
+        level: "warn",
+        event: "send-message.t1-upstash-get-failed",
+        error_class: (e as Error)?.name ?? "Error",
+        ts: new Date().toISOString(),
+      }));
+    }
+
+    if (rateLimited) {
+      // Suppress: write email_log row with outcome='suppressed_rate_limit'.
+      // No audit_log row — suppression is not an emit event.
+      const { error: logErr } = await adminClient.from("email_log").insert({
+        user_id:   cache.pastoralLeadUserId,
+        template:  "pastoral_signal_alert_t1",
+        sent_date: new Date().toISOString().slice(0, 10),
+        sent_at:   new Date().toISOString(),
+        resend_id: null,
+        outcome:   "suppressed_rate_limit",
+      });
+      if (logErr) {
+        console.warn(JSON.stringify({
+          level: "warn",
+          event: "send-message.t1-email-log-suppress-failed",
+          error_class: logErr.message ?? "error",
+          ts: new Date().toISOString(),
+        }));
+      }
+      return;
+    }
+
+    // ─── Resend Template 9 fire ───
+    // Body carries ONLY the opaque deep_link template_data. No leader_id,
+    // no message_id, no content, no flag_reason. Subject is literal.
+    let resendId: string | null = null;
+    let emitOutcome: "sent" | "failed_resend_emit" = "sent";
+    try {
+      const resendRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${cache.resendApiKey}`,
+          "Content-Type":  "application/json",
+        },
+        body: JSON.stringify({
+          from:    "info@projectreplant.org",
+          to:      ["info@projectreplant.org"],
+          subject: "Pastoral signal — Tier 1 (immediate review)",
+          template_id:   "6e417a13-cd5d-4d2f-8534-d16406b0e429",
+          template_data: { deep_link: "https://admin.projectreplant.org/pastoral" },
+        }),
+      });
+      if (!resendRes.ok) {
+        emitOutcome = "failed_resend_emit";
+        console.error(JSON.stringify({
+          level: "error",
+          event: "send-message.t1-resend-failed",
+          status: resendRes.status,
+          ts: new Date().toISOString(),
+        }));
+      } else {
+        const body = await resendRes.json().catch(() => ({})) as { id?: string };
+        resendId = typeof body.id === "string" ? body.id : null;
+        // ─── Mark the leader rate-limited for the next hour ───
+        // Failed emits do NOT consume the cap (skipped above on error).
+        try {
+          await upstashSetNxEx(upstashKey, 3600);
+        } catch (e) {
+          console.warn(JSON.stringify({
+            level: "warn",
+            event: "send-message.t1-upstash-set-failed",
+            error_class: (e as Error)?.name ?? "Error",
+            ts: new Date().toISOString(),
+          }));
+        }
+      }
+    } catch (e) {
+      emitOutcome = "failed_resend_emit";
+      console.error(JSON.stringify({
+        level: "error",
+        event: "send-message.t1-resend-threw",
+        error_class: (e as Error)?.name ?? "Error",
+        ts: new Date().toISOString(),
+      }));
+    }
+
+    // ─── email_log + audit_log writes ───
+    const nowIso = new Date().toISOString();
+    const { error: emailLogErr } = await adminClient.from("email_log").insert({
+      user_id:   cache.pastoralLeadUserId,
+      template:  "pastoral_signal_alert_t1",
+      sent_date: nowIso.slice(0, 10),
+      sent_at:   nowIso,
+      resend_id: resendId,
+      outcome:   emitOutcome,
+    });
+    if (emailLogErr) {
+      console.warn(JSON.stringify({
+        level: "warn",
+        event: "send-message.t1-email-log-failed",
+        error_class: emailLogErr.message ?? "error",
+        ts: new Date().toISOString(),
+      }));
+    }
+
+    // audit_log row: NO leader_id, NO message_id (SEC #1 + #6). Surface
+    // + template_id + outcome only. Per-leader forensic linkage lives
+    // in moderation_state (RLS-bounded per axis).
+    const { error: auditErr } = await adminClient.from("audit_log").insert({
+      action:       "pastoral_digest_emitted",
+      accessed_by:  null,
+      triggered_by: "system",
+      meta: {
+        surface:     "t1_emit",
+        template_id: "6e417a13-cd5d-4d2f-8534-d16406b0e429",
+        outcome:     emitOutcome,
+      },
+    });
+    if (auditErr) {
+      console.warn(JSON.stringify({
+        level: "warn",
+        event: "send-message.t1-audit-log-failed",
+        error_class: auditErr.message ?? "error",
+        ts: new Date().toISOString(),
+      }));
+    }
+  }
+
   return {
     async validateJwt(authHeader) {
       const client = userClientFor(authHeader);
@@ -251,6 +489,86 @@ function makeDeps(): Deps {
 
     getTaxonomy() {
       return taxonomy;
+    },
+
+    // ────────────────────────────────────────────────────────────────
+    // KAN-137 AC-6 — postCommitFlagEffects: moderation_state INSERTs
+    // per routing axis + T1 pastoral alert dispatch.
+    //
+    // Cross-definer chain (SEC c.11750 #6 audit for the BE path):
+    //   send-message.handler → THIS DEP → [moderation_state INSERTs +
+    //   conditional emitT1Alert → Upstash GET / SET + Resend fetch].
+    //
+    // DELIVER-ALWAYS: every I/O failure is caught here and logged;
+    // never propagated to the handler. The message has already
+    // committed by the time this runs; nothing here can un-deliver
+    // it. The function returns void on every path.
+    //
+    // No leader_id in: any log line, the Resend payload body, the
+    // email_log row text columns, or the audit_log meta. The
+    // leader_id ONLY appears as the Upstash key suffix (necessary
+    // for per-leader rate-limiting) and inside moderation_state
+    // (via message_id FK — bounded by axis-aware RLS per KAN-125
+    // watched-invariant #15).
+    // ────────────────────────────────────────────────────────────────
+    async postCommitFlagEffects({ messageId, senderId, plan }) {
+      // ─── 1. moderation_state INSERTs per axis ───
+      for (const axisPayload of plan.axes) {
+        try {
+          const { error: msErr } = await adminClient
+            .from("moderation_state")
+            .insert({
+              message_id: messageId,
+              axis: axisPayload.axis,
+              status: "pending",
+              actor: null, // system-flagged; no admin actor
+              meta: {
+                routing: axisPayload.axis,
+                tier: axisPayload.tier,
+                matched_codes: axisPayload.matched_codes,
+              },
+            });
+          if (msErr) {
+            // PK collision (message_id, axis) on retry path — graceful:
+            // 23505 means a prior invocation already wrote the row.
+            // Any other error → log + continue (do not throw).
+            if ((msErr as { code?: string }).code !== "23505") {
+              console.warn(JSON.stringify({
+                level: "warn",
+                event: "send-message.moderation-state-insert-failed",
+                axis: axisPayload.axis,
+                conversation_id: null,
+                error_class: msErr.message ?? "error",
+                ts: new Date().toISOString(),
+              }));
+            }
+          }
+        } catch (e) {
+          console.warn(JSON.stringify({
+            level: "warn",
+            event: "send-message.moderation-state-insert-threw",
+            axis: axisPayload.axis,
+            error_class: (e as Error)?.name ?? "Error",
+            ts: new Date().toISOString(),
+          }));
+        }
+      }
+
+      // ─── 2. T1 pastoral alert (AC-1 trigger) ───
+      if (plan.fire_pastoral_t1_alert) {
+        try {
+          await emitPastoralT1Alert(senderId);
+        } catch (e) {
+          // emitPastoralT1Alert is internally try/catch'd; this is
+          // defense-in-depth. Never throw upward.
+          console.error(JSON.stringify({
+            level: "error",
+            event: "send-message.t1-emit-threw",
+            error_class: (e as Error)?.name ?? "Error",
+            ts: new Date().toISOString(),
+          }));
+        }
+      }
     },
 
     log(level, event, fields) {
