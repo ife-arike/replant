@@ -275,14 +275,14 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 17,
     color: Colors.text,
   },
   settingSubLabel: {
     fontFamily: Typography.display,
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.textMuted,
-    lineHeight: 18,
+    lineHeight: 20,
   },
 
   // Option group
