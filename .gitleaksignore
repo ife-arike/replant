@@ -1,0 +1,14 @@
+# Gitleaks suppression list
+# Each entry is a fingerprint (file:rule:line) of a finding that has
+# been reviewed and confirmed as a false positive. Document the reason
+# above each entry so a future reviewer can re-verify.
+
+# KAN-162 (OPS-03 break-glass procedure) — generic-api-key rule
+# matches on the high-entropy founder public.users.id UUID inside
+# the verification SELECT template. The UUID is a stable user
+# identifier, not a secret: it is also present in CLAUDE.md (per
+# SM Gate 0.4 ruling, same commit) and published in the KAN-162
+# ticket description. The procedure cannot omit the value — the
+# whole point of the SELECT is to confirm the audit row was written
+# against the correct accessed_by.
+docs/ops/OPS-03-totp-breakglass.md:generic-api-key:129
