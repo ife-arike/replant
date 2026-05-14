@@ -1,0 +1,7 @@
+# KAN-92 — admin-open-heartcry Edge Function config
+#
+# verify_jwt = true is LOAD-BEARING SECURITY: forged super_admin JWTs
+# are rejected by the platform gateway before this function's handler
+# ever runs. Any change requires a fresh SEC ruling before deploy.
+# See index.ts header for the 401 / 403 / 400 branching contract.
+verify_jwt = true
