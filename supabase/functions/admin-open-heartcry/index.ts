@@ -66,6 +66,13 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// KAN-97: D-52 TIER 0 freshness window — SEC review required before changing.
+// 5-minute window between a successful TOTP verify (amr.totp.timestamp) and
+// the decrypt request that consumes it. Longer windows expand the
+// session-hijack blast radius; shorter windows hurt admin ergonomics
+// without meaningfully shrinking the window.
+const TOTP_FRESHNESS_WINDOW_MS = 300_000;
+
 // CORS — admin browser is cross-origin to the Supabase project. With
 // verify_jwt=true at the platform, OPTIONS preflights can't go through
 // the default gateway path (gateway 401s OPTIONS that lack auth, which
@@ -161,6 +168,50 @@ Deno.serve(async (req: Request): Promise<Response> => {
         code: "FORBIDDEN_NOT_SUPER_ADMIN",
       });
     }
+
+    // KAN-97: AAL2 / TOTP freshness gate (D-52 TIER 0). Verifies the
+    // session is at AAL2 (TOTP verified) AND the TOTP timestamp is within
+    // TOTP_FRESHNESS_WINDOW_MS. SAFE-LOG: aal/amr/totpEntry never logged;
+    // only the gate event + operation_id correlator.
+    console.log(JSON.stringify({
+      event: "admin_open_heartcry.aal2_gate_check",
+      operation_id: operationId,
+    }));
+    const aal = claims.aal as string | undefined;
+    const amr = claims.amr as Array<{ method: string; timestamp: number }> | undefined;
+    const totpEntry = amr?.find((m) => m.method === "totp");
+
+    if (aal !== "aal2" || !totpEntry) {
+      console.log(JSON.stringify({
+        event: "admin_open_heartcry.aal2_required",
+        operation_id: operationId,
+        branch: "missing",
+      }));
+      return json(401, {
+        error: "aal2_required",
+        code: "AAL2_REQUIRED",
+        operation_id: operationId,
+      });
+    }
+
+    const totpAgeMs = Date.now() - totpEntry.timestamp * 1000;
+    if (totpAgeMs > TOTP_FRESHNESS_WINDOW_MS) {
+      console.log(JSON.stringify({
+        event: "admin_open_heartcry.aal2_required",
+        operation_id: operationId,
+        branch: "expired",
+      }));
+      return json(401, {
+        error: "aal2_required",
+        code: "AAL2_EXPIRED",
+        operation_id: operationId,
+      });
+    }
+
+    console.log(JSON.stringify({
+      event: "admin_open_heartcry.aal2_gate_pass",
+      operation_id: operationId,
+    }));
 
     // Body parsing — schema { heartcry_id: uuid }. UUID is shape-
     // validated here so the RPC doesn't have to worry about
