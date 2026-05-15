@@ -66,10 +66,24 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// CORS — admin browser is cross-origin to the Supabase project. With
+// verify_jwt=true at the platform, OPTIONS preflights can't go through
+// the default gateway path (gateway 401s OPTIONS that lack auth, which
+// browsers don't send on preflight). The function must explicitly
+// answer the preflight with CORS headers covering the four headers the
+// supabase-js client attaches: authorization, apikey, content-type,
+// x-client-info.
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Max-Age": "86400",
+};
+
 const json = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
 
 // Decode JWT payload — verify_jwt=true at the platform has already
@@ -99,7 +113,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   try {
     if (req.method === "OPTIONS") {
-      return new Response(null, { status: 204 });
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
     if (req.method !== "POST") {
       return json(405, { error: "method_not_allowed", code: "METHOD_NOT_ALLOWED" });
