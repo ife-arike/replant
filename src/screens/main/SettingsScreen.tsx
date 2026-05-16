@@ -200,7 +200,7 @@ export default function SettingsScreen({
         </View>
 
         {/* ── Church section — KAN-144 AC-7 (2026-05-16) ──
-            Read-only "Church ID" (RPL-XXXXX). Label confirmed by
+            Read-only "Network ID" (RPL-XXXXX). Label confirmed by
             CONTENT as placeholder pending DoD review; safe to revise
             without schema impact. Underground leaders see their own
             code intentionally — the RPL-XXXXX format is region- and
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // KAN-144 AC-7 — Church ID row. Same layout shape as comingSoonRow
+  // KAN-144 AC-7 — Network ID row. Same layout shape as comingSoonRow
   // but the value is real data (not a placeholder) — distinct styles
   // so the value renders at normal emphasis with a tabular-friendly
   // mono treatment, while the label matches other settingLabel rows.
