@@ -33,14 +33,28 @@ export default function SettingsScreenContainer() {
   const [initialPref, setInitialPref] = useState<DisplayNamePreference | null>(
     null,
   );
+  // KAN-144 AC-7 (2026-05-16) — leader's own church_code (RPL-XXXXX).
+  // Read via the leader's existing "my church" data path (users.church_id
+  // FK → churches.church_code) — NOT via the `churches_public` view,
+  // which excludes underground churches and would render this field
+  // blank for an underground leader. Underground leaders see their own
+  // code; this is intentional per Founder ratification 2026-05-12. RLS
+  // policy `churches_select_active` lets any authenticated user SELECT
+  // active churches (no type filter), so the leader's own row resolves
+  // regardless of type.
+  const [churchCode, setChurchCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authId) return;
     let cancelled = false;
     (async () => {
+      // PostgREST embedded resource via the users_church_id_fkey FK
+      // (verified live: `FOREIGN KEY (church_id) REFERENCES
+      // churches(id)`). Single round-trip carries both the display
+      // name preference and the church code.
       const { data, error } = await supabase
         .from("users")
-        .select("display_name_preference")
+        .select("display_name_preference, church:church_id(church_code)")
         .eq("auth_id", authId)
         .maybeSingle();
       if (cancelled) return;
@@ -53,6 +67,15 @@ export default function SettingsScreenContainer() {
         return;
       }
       setInitialPref(data.display_name_preference as DisplayNamePreference);
+      // `church` is the embedded resource; it can be null if the
+      // leader has no church_id, or shaped { church_code: string } |
+      // { church_code: string }[] depending on relationship cardinality.
+      // users.church_id is a single FK so PostgREST returns the object
+      // form. Defensive: read code only if present.
+      const c = (data as { church?: { church_code?: string | null } | null })
+        .church;
+      const code = c?.church_code ?? null;
+      setChurchCode(code);
     })();
     return () => {
       cancelled = true;
@@ -71,6 +94,7 @@ export default function SettingsScreenContainer() {
     <SettingsScreen
       userId={authId}
       initialDisplayNamePreference={initialPref}
+      churchCode={churchCode}
     />
   );
 }

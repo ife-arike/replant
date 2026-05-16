@@ -29,6 +29,12 @@ type DisplayNamePreference = 'first_name_only' | 'full_name';
 interface SettingsScreenProps {
   userId: string;
   initialDisplayNamePreference?: DisplayNamePreference;
+  // KAN-144 AC-7 (2026-05-16) — leader's own RPL-XXXXX code. Read by
+  // the container via users.church_id → churches.church_code (NOT via
+  // the churches_public view). May be null if the leader is not yet
+  // attached to a church OR the read failed; in either case the field
+  // renders an em-dash.
+  churchCode?: string | null;
 }
 
 // ─── Section components ───────────────────────
@@ -88,6 +94,7 @@ function DisplayNameOption({
 export default function SettingsScreen({
   userId,
   initialDisplayNamePreference = 'first_name_only',
+  churchCode = null,
 }: SettingsScreenProps) {
   // Null at read time defaults to 'first_name_only' per D-15
   const [displayNamePref, setDisplayNamePref] = useState<DisplayNamePreference>(
@@ -190,6 +197,28 @@ export default function SettingsScreen({
               <Text style={styles.errorText}>{writeError}</Text>
             </View>
           )}
+        </View>
+
+        {/* ── Church section — KAN-144 AC-7 (2026-05-16) ──
+            Read-only "Church ID" (RPL-XXXXX). Label confirmed by
+            CONTENT as placeholder pending DoD review; safe to revise
+            without schema impact. Underground leaders see their own
+            code intentionally — the RPL-XXXXX format is region- and
+            type-agnostic and does not leak underground status (Founder
+            ratification 2026-05-12). Field renders an em-dash if the
+            leader is not attached to a church or the read failed. */}
+        <SectionHeader title="Church" />
+
+        <View style={styles.section}>
+          <View
+            style={styles.churchIdRow}
+            accessibilityLabel={`Church ID: ${churchCode || 'not set'}`}
+          >
+            <Text style={styles.churchIdLabel}>Church ID</Text>
+            <Text style={styles.churchIdValue} selectable>
+              {churchCode || '—'}
+            </Text>
+          </View>
         </View>
 
         {/* ── Language section — placeholder, no interaction ── */}
@@ -394,6 +423,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 2,
     overflow: 'hidden',
+  },
+
+  // KAN-144 AC-7 — Church ID row. Same layout shape as comingSoonRow
+  // but the value is real data (not a placeholder) — distinct styles
+  // so the value renders at normal emphasis with a tabular-friendly
+  // mono treatment, while the label matches other settingLabel rows.
+  churchIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    minHeight: 44,
+  },
+  churchIdLabel: {
+    fontFamily: Typography.display,
+    fontSize: 14,
+    color: Colors.text,
+  },
+  churchIdValue: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    letterSpacing: 0.5,
+    color: Colors.text,
   },
 
   bottomSpacer: { height: Spacing.xxxl },
