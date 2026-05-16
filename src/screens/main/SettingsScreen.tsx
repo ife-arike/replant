@@ -212,9 +212,9 @@ export default function SettingsScreen({
         <View style={styles.section}>
           <View
             style={styles.churchIdRow}
-            accessibilityLabel={`Church ID: ${churchCode || 'not set'}`}
+            accessibilityLabel={`Network ID: ${churchCode || 'not set'}`}
           >
-            <Text style={styles.churchIdLabel}>Church ID</Text>
+            <Text style={styles.churchIdLabel}>Network ID</Text>
             <Text style={styles.churchIdValue} selectable>
               {churchCode || '—'}
             </Text>
