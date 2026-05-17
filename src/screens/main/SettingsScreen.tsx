@@ -200,26 +200,33 @@ export default function SettingsScreen({
         </View>
 
         {/* ── Church section — KAN-144 AC-7 (2026-05-16) ──
-            Read-only "Network ID" (RPL-XXXXX). Label confirmed by
-            CONTENT as placeholder pending DoD review; safe to revise
-            without schema impact. Underground leaders see their own
-            code intentionally — the RPL-XXXXX format is region- and
-            type-agnostic and does not leak underground status (Founder
-            ratification 2026-05-12). Field renders an em-dash if the
-            leader is not attached to a church or the read failed. */}
+            Read-only "Network ID" (RPL-XXXXX) — CONTENT-confirmed label.
+            Section header always renders so future church-related
+            settings have a home (SM lean 2026-05-16). The Network ID
+            row itself is conditional: only renders when the leader's
+            church carries an assigned code. Per the assign-on-verify
+            trigger (kan144_church_code_assign_on_verify_v1), a church
+            holds NULL on church_code until its verification_status
+            transitions to 'verified' — so leaders of pending /
+            rejected / deactivated churches simply won't see the row.
+            Underground leaders whose church IS verified see their own
+            code intentionally; the RPL-XXXXX format is region- and
+            type-agnostic and does not leak underground status. */}
         <SectionHeader title="Church" />
 
-        <View style={styles.section}>
-          <View
-            style={styles.churchIdRow}
-            accessibilityLabel={`Network ID: ${churchCode || 'not set'}`}
-          >
-            <Text style={styles.churchIdLabel}>Network ID</Text>
-            <Text style={styles.churchIdValue} selectable>
-              {churchCode || '—'}
-            </Text>
+        {churchCode ? (
+          <View style={styles.section}>
+            <View
+              style={styles.churchIdRow}
+              accessibilityLabel={`Network ID: ${churchCode}`}
+            >
+              <Text style={styles.churchIdLabel}>Network ID</Text>
+              <Text style={styles.churchIdValue} selectable>
+                {churchCode}
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* ── Language section — placeholder, no interaction ── */}
         <SectionHeader title="Language" />
