@@ -1,0 +1,84 @@
+name: Update Changelog
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    # Skip if this push was made by the Actions bot (prevents infinite loop)
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get new commits since last changelog update
+        id: commits
+        run: |
+          # Find the commit that last touched CHANGELOG.md
+          LAST_CHANGELOG_COMMIT=$(git log --follow --format="%H" -- CHANGELOG.md | head -1)
+          if [ -z "$LAST_CHANGELOG_COMMIT" ]; then
+            # No prior changelog commit — take just the triggering commit
+            RANGE="HEAD~1..HEAD"
+          else
+            RANGE="${LAST_CHANGELOG_COMMIT}..HEAD"
+          fi
+
+          # Get commits in that range (skip changelog-bot commits)
+          COMMITS=$(git log "$RANGE" --oneline --no-merges \
+            --grep="skip ci" --invert-grep \
+            --format="- %s")
+
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits to add. Skipping."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TODAY=$(date -u +%Y-%m-%d)
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "date=$TODAY" >> "$GITHUB_OUTPUT"
+
+          # Write the new entry to a temp file
+          {
+            echo "## [$TODAY]"
+            echo ""
+            echo "$COMMITS"
+            echo ""
+          } > /tmp/new_entry.txt
+
+      - name: Prepend entry to CHANGELOG.md
+        if: steps.commits.outputs.has_changes == 'true'
+        run: |
+          # Insert new entry after the header block (first blank line after the # header)
+          python3 - <<'EOF'
+          with open('CHANGELOG.md', 'r') as f:
+              content = f.read()
+          with open('/tmp/new_entry.txt', 'r') as f:
+              new_entry = f.read()
+          # Find the end of the header (first occurrence of \n## or end of header block)
+          import re
+          # Insert after the first blank line following the # Changelog header
+          header_end = re.search(r'\n\n', content)
+          if header_end:
+              insert_at = header_end.end()
+              updated = content[:insert_at] + new_entry + content[insert_at:]
+          else:
+              updated = content + '\n' + new_entry
+          with open('CHANGELOG.md', 'w') as f:
+              f.write(updated)
+          EOF
+
+      - name: Commit and push
+        if: steps.commits.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog [skip ci]"
+          git push
