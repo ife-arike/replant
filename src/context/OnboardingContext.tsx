@@ -13,6 +13,7 @@ interface PersonalDetails {
   password: string;
   role: string;
   country: string;
+  anonymous?: boolean; // KAN-83 — D-37 field; held in context until create-account on KAN-12
 }
 
 interface ChurchDetails {
