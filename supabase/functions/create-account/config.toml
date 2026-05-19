@@ -1,0 +1,47 @@
+# KAN-12 — create-account Edge Function config
+#
+# verify_jwt = false is LOAD-BEARING — this is the function that CREATES
+# the leader's auth.users row. There is no JWT at call time, by
+# definition. Any JWT requirement here makes the entire account-creation
+# flow impossible.
+#
+# Defense-in-depth at the function layer (SEC-flagged surface):
+#   - POST + JSON only.
+#   - Strict payload validator (logic.ts): firstName, lastName, email,
+#     password, role, churchId all required + length-bounded; role must
+#     be one of the 12 canonical user_role enum values; anonymous defaults
+#     to false; isNewChurch defaults to false.
+#   - STRICTER rate limit than reads: 3 requests per hour per IP+email
+#     combination via Upstash REST. Write surface; SEC bar (c.13321
+#     forward-compat — capacity-check race window already acknowledged
+#     in out-of-scope, no need to amplify it via probe volume).
+#   - THREE-LAYER duplicate detection (SPEC c.10175 ratification of
+#     BE c.10165):
+#       Layer 1 — FE pre-check via check-email-available
+#       Layer 2 — FE post-error retry guard, re-checks email-available
+#       Layer 3 — this function: auth.users lookup before createUser.
+#         If auth user exists AND public.users row exists → reject as
+#         user_already_exists. If auth user exists but public.users
+#         row does not → COMPLETE the INSERT (resume mid-transaction).
+#   - Atomic boundary covers Steps 1-5 (Auth createUser + public.users
+#     INSERT). Steps 6-7 (Resend welcome + new-church-registered emails)
+#     are fire-and-forget per COO ruling c.10131.
+#   - Capacity guard server-side: SELECT COUNT(*) FROM users WHERE
+#     church_id = $1 AND is_active = true. If count >= 2 → reject as
+#     LEADER_CAP_EXCEEDED. Race window with concurrent submits is
+#     acknowledged in dispatch out-of-scope (DBA-side trigger out of
+#     scope for this ticket).
+#   - On Step 4 (INSERT) failure after Step 1 (createUser) succeeded
+#     in THIS request: compensating DELETE of the new auth.users row.
+#     We never leave a stranded auth user with no public.users row, EXCEPT
+#     when the request is a retry of an earlier partial run — Layer 3
+#     handles that path.
+#   - users.country MUST NOT be written — column does not exist
+#     (DBA c.13321 Q2). Any reference to it in stale tech-notes is struck.
+#   - users.church_id is written as part of the INSERT (single-statement
+#     atomic), not via a separate association table (DBA c.13321 Bonus).
+#
+# Any change to verify_jwt OR the SEC-relevant invariants above
+# (rate-limit, duplicate detection layers, compensating DELETE, capacity
+# guard) requires a fresh SEC ruling.
+verify_jwt = false

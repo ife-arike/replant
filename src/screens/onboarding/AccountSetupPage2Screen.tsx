@@ -1,20 +1,24 @@
 // ─────────────────────────────────────────────
-// Screen 04 — Account Setup Page 2
+// Screen 04 — Account Setup Page 2 (KAN-12)
 // Church association — join existing or register new.
-// 2-leader cap enforced. Cannot submit without church.
-// Account created + countdown begins on final submit.
-// → BE: wire church search to get-nearby-churches RPC
-// → BE: wire submit to account creation edge function
+// 2-leader cap enforced server-side; FE blocks selection on at_capacity.
+// On "Complete Registration": atomic Steps 1-5 via create-account edge
+// function + Steps 6-7 fire-and-forget Resend. Three-layer idempotency
+// per SPEC c.10175: FE pre-check (Layer 1), FE post-error retry guard
+// (Layer 2), server-side duplicate detection (Layer 3).
+//
+// On success: signInWithPassword with OnboardingContext creds — the
+// AuthProvider's onAuthStateChange listener flips RootNavigator to the
+// authenticated branch. No manual nav.reset needed.
 // ─────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ScrollView,
-  FlatList,
   StyleSheet,
   StatusBar,
   ActivityIndicator,
@@ -25,20 +29,50 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { getChurchTypeLabel, getRagLabel } from '../../utils/displayHelpers';
+import { getChurchTypeLabel } from '../../utils/displayHelpers';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSetupPage2'>;
 
-interface ChurchResult {
+// Mirrors the BE `search-churches` row shape — at_capacity is computed
+// server-side (active leader count ≥ 2). FE never sees the raw count;
+// the server-side capacity guard in create-account re-applies the same
+// threshold at write time.
+export interface ChurchResult {
   id: string;
-  name: string;   // may be absent for unverified — handled below
+  name: string;
   type: string;
   city: string;
   country: string;
   rag_status: string;
   verification_status: string;
-  leader_count: number;
+  at_capacity: boolean;
 }
+
+const SEARCH_CHURCHES_URL = `${SUPABASE_URL}/functions/v1/search-churches`;
+const CREATE_ACCOUNT_URL = `${SUPABASE_URL}/functions/v1/create-account`;
+const CHECK_EMAIL_URL = `${SUPABASE_URL}/functions/v1/check-email-available`;
+
+// Debounce window for the live search useEffect — matches KAN-12 dispatch.
+const SEARCH_DEBOUNCE_MS = 300;
+const MIN_QUERY_LENGTH = 3;
+
+// Result of the FE-side check-email-available helper. Discriminates the
+// three Layer-1/Layer-2 outcomes the submit flow needs to react to.
+type EmailCheckOutcome =
+  | { kind: 'available' }
+  | { kind: 'registered' }
+  | { kind: 'rate_limited' }
+  | { kind: 'network' };
+
+// Mapped FE error messages (sourced from the KAN-12 AC inline-copy items).
+const COPY_USER_EXISTS =
+  'An account with this email already exists. Try signing in instead.';
+const COPY_GENERIC_FAIL = 'Account creation failed. Please try again.';
+const COPY_NETWORK_FAIL =
+  'Something went wrong. Please check your connection and try again.';
+const COPY_RATE_LIMITED =
+  'Too many attempts. Please try again in a little while.';
 
 const RAG_COLORS: Record<string, string> = {
   green: Colors.green,
@@ -46,8 +80,9 @@ const RAG_COLORS: Record<string, string> = {
   red: Colors.red,
 };
 
-export default function AccountSetupPage2Screen({ navigation }: Props) {
+export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   const { state, setChurchDetails } = useOnboarding();
+  const personalDetails = state.personalDetails;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<ChurchResult[]>([]);
@@ -56,50 +91,276 @@ export default function AccountSetupPage2Screen({ navigation }: Props) {
   const [selectedChurch, setSelectedChurch] = useState<ChurchResult | null>(null);
   const [capError, setCapError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // True only when the current selection came from the KAN-13 loopback —
+  // controls the create-account `isNewChurch` payload flag (Step 7 email).
+  const [isNewChurchFromLoopback, setIsNewChurchFromLoopback] = useState(false);
+
+  // Bumped on every new keystroke; in-flight responses check this against
+  // their captured value before applying. Belt-and-suspenders alongside
+  // AbortController — covers the case where a response lands after a
+  // newer query has been kicked off but the abort hasn't propagated.
+  const searchVersionRef = useRef(0);
 
   const canSubmit = !!selectedChurch && !capError;
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    setSearched(false);
-    setSelectedChurch(null);
-    setCapError(false);
+  // ── Live (debounced) search ────────────────────────────────────────
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < MIN_QUERY_LENGTH) {
+      // Clear results when the query falls below the minimum — avoids
+      // showing stale data from a previous longer query.
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    const myVersion = ++searchVersionRef.current;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void doSearch(trimmed, myVersion, controller.signal);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
+  // ── Loopback receive from KAN-13 (RegisterChurchPage1) ─────────────
+  //
+  // When the leader returns from registering a new church, KAN-13
+  // navigates back here with the newly-created church as route.params.
+  // We pre-select it and mark isNewChurch so Step 7 fires.
+  useEffect(() => {
+    const incoming = route.params?.newChurch;
+    if (incoming) {
+      setSelectedChurch(incoming);
+      setIsNewChurchFromLoopback(true);
+      setCapError(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.newChurchId]);
+
+  const doSearch = async (q: string, version: number, signal: AbortSignal) => {
+    setSearching(true);
+    setSelectedChurch(null);
+    setIsNewChurchFromLoopback(false);
+    setCapError(false);
     try {
-      // TODO → BE: wire to Supabase RPC get-nearby-churches or church search function
-      // Stub response for now
-      await new Promise(r => setTimeout(r, 600));
-      const stub: ChurchResult[] = []; // real response replaces this
-      setResults(stub);
+      const response = await fetch(SEARCH_CHURCHES_URL, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: q }),
+        signal,
+      });
+      if (signal.aborted || version !== searchVersionRef.current) return;
+      if (!response.ok) {
+        setResults([]);
+        return;
+      }
+      const body = (await response.json()) as { results?: ChurchResult[] };
+      if (signal.aborted || version !== searchVersionRef.current) return;
+      setResults(Array.isArray(body.results) ? body.results : []);
+    } catch (err) {
+      // AbortError on debounce-cancel is expected; swallow silently.
+      if ((err as { name?: string })?.name === 'AbortError') return;
+      setResults([]);
     } finally {
-      setSearching(false);
-      setSearched(true);
+      if (version === searchVersionRef.current) {
+        setSearching(false);
+        setSearched(true);
+      }
     }
   };
 
+  // Manual Search button — immediate trigger, bypasses the debounce.
+  // Belt-and-suspenders: a leader who taps Search before the debounce
+  // fires gets an instant result.
+  const handleSearch = () => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < MIN_QUERY_LENGTH) return;
+    const myVersion = ++searchVersionRef.current;
+    const controller = new AbortController();
+    void doSearch(trimmed, myVersion, controller.signal);
+  };
+
   const handleSelect = (church: ChurchResult) => {
-    if (church.leader_count >= 2) {
+    if (church.at_capacity) {
       setSelectedChurch(null);
       setCapError(true);
       return;
     }
     setCapError(false);
     setSelectedChurch(church);
+    // A selection from the search list is NOT a new-church flow.
+    setIsNewChurchFromLoopback(false);
   };
 
   const handleRegisterNew = () => {
     navigation.navigate('RegisterChurchPage1');
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
+  /**
+   * Layer 1 / Layer 2 helper — checks the same check-email-available
+   * endpoint AccountSetupPage1 uses. Returns a discriminated outcome.
+   * Network errors on this read map to `network` (treated as "let the
+   * subsequent create-account call be the arbiter").
+   */
+  const checkEmailAvailable = async (email: string): Promise<EmailCheckOutcome> => {
     try {
-      setChurchDetails({ churchId: selectedChurch!.id });
-      // TODO → BE: call account creation edge function
-      // On success: navigate to main app (Home)
-      // Countdown begins server-side at this exact timestamp
+      const response = await fetch(CHECK_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      if (response.status === 429) return { kind: 'rate_limited' };
+      if (!response.ok) return { kind: 'network' };
+      const body = (await response.json()) as { available?: boolean };
+      if (body.available === false) return { kind: 'registered' };
+      if (body.available === true) return { kind: 'available' };
+      return { kind: 'network' };
+    } catch {
+      return { kind: 'network' };
+    }
+  };
+
+  /**
+   * Drive Supabase Auth into the signed-in state using the leader's
+   * just-set credentials. The AuthProvider listens on
+   * onAuthStateChange and the RootNavigator swaps to the authenticated
+   * branch when the session lands. No manual nav.reset needed.
+   */
+  const tryAutoSignIn = async () => {
+    const email = personalDetails.email ?? '';
+    const password = personalDetails.password ?? '';
+    if (!email || !password) {
+      setSubmitError(
+        'Account created — sign in failed. Please open the app to continue.',
+      );
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setSubmitError(
+        'Account created — sign in failed. Please open the app to continue.',
+      );
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit || submitting) return;
+    if (!selectedChurch) return;
+    if (
+      !personalDetails.firstName ||
+      !personalDetails.lastName ||
+      !personalDetails.email ||
+      !personalDetails.password ||
+      !personalDetails.role
+    ) {
+      setSubmitError(COPY_GENERIC_FAIL);
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitting(true);
+    setChurchDetails({ churchId: selectedChurch.id });
+
+    try {
+      // ── Layer 1 — pre-check email-available ──────────────────────
+      const pre = await checkEmailAvailable(personalDetails.email);
+      if (pre.kind === 'registered') {
+        setSubmitError(COPY_USER_EXISTS);
+        return;
+      }
+      if (pre.kind === 'rate_limited') {
+        setSubmitError(COPY_RATE_LIMITED);
+        return;
+      }
+      // pre.kind === 'available' | 'network' → proceed; create-account is
+      // the arbiter on the 'network' branch.
+
+      // ── create-account call ──────────────────────────────────────
+      const response = await fetch(CREATE_ACCOUNT_URL, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: personalDetails.firstName,
+          lastName: personalDetails.lastName,
+          email: personalDetails.email,
+          password: personalDetails.password,
+          role: personalDetails.role,
+          anonymous: personalDetails.anonymous ?? false,
+          churchId: selectedChurch.id,
+          isNewChurch: isNewChurchFromLoopback,
+        }),
+      });
+
+      if (response.status === 429) {
+        setSubmitError(COPY_RATE_LIMITED);
+        return;
+      }
+
+      if (response.ok) {
+        // 200 — account created. Sign in; AuthProvider routes to main app.
+        await tryAutoSignIn();
+        return;
+      }
+
+      // ── Server-side error code mapping ───────────────────────────
+      let errCode: string | null = null;
+      try {
+        const body = (await response.json()) as { error?: string };
+        errCode = typeof body.error === 'string' ? body.error : null;
+      } catch {
+        // 5xx-no-body — fall through to Layer 2 retry guard.
+      }
+
+      if (errCode === 'user_already_exists') {
+        setSubmitError(COPY_USER_EXISTS);
+        return;
+      }
+      if (errCode === 'LEADER_CAP_EXCEEDED') {
+        // Capacity changed between selection and submit — show the
+        // canonical cap error, drop the selection.
+        setSelectedChurch(null);
+        setCapError(true);
+        return;
+      }
+      if (errCode === 'validation_error') {
+        setSubmitError(COPY_GENERIC_FAIL);
+        return;
+      }
+
+      // ── Layer 2 — post-error retry guard ─────────────────────────
+      //
+      // 5xx or internal_error: re-check email-available. If the email
+      // is now registered, the account WAS created on the prior attempt;
+      // sign in instead of showing an error.
+      if (response.status >= 500 || errCode === 'internal_error') {
+        const recheck = await checkEmailAvailable(personalDetails.email);
+        if (recheck.kind === 'registered') {
+          await tryAutoSignIn();
+          return;
+        }
+      }
+      setSubmitError(COPY_GENERIC_FAIL);
+    } catch {
+      // Network error from create-account itself — Layer 2 retry guard.
+      const recheck = await checkEmailAvailable(personalDetails.email);
+      if (recheck.kind === 'registered') {
+        await tryAutoSignIn();
+        return;
+      }
+      setSubmitError(COPY_NETWORK_FAIL);
     } finally {
       setSubmitting(false);
     }
@@ -159,8 +420,7 @@ export default function AccountSetupPage2Screen({ navigation }: Props) {
         {capError && (
           <View style={styles.capError}>
             <Text style={styles.capErrorText}>
-              This church already has its maximum of 2 registered leaders. Please contact Replant
-              if you believe this is an error.
+              This church already has 2 leaders. Contact them directly or register a new entry.
             </Text>
             <Text style={styles.capErrorContact}>connect@projectreplant.org</Text>
           </View>
@@ -185,13 +445,22 @@ export default function AccountSetupPage2Screen({ navigation }: Props) {
           </View>
         )}
 
-        {/* Search results */}
+        {/* Empty state B — no search yet, initial screen load */}
+        {!searched && !searching && !selectedChurch && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateSubtext}>
+              Search by church name or city to find your church.
+            </Text>
+          </View>
+        )}
+
+        {/* Empty state A — searched, no results */}
         {searched && results.length === 0 && !selectedChurch && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No churches found.</Text>
-            <Text style={styles.emptyStateSubtext}>
-              Is your church not in the network yet? Register it below.
-            </Text>
+            <Text style={styles.emptyStateText}>No churches found. Want to register yours?</Text>
+            <TouchableOpacity onPress={handleRegisterNew} activeOpacity={0.7}>
+              <Text style={styles.emptyStateCta}>Register a new church</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -202,7 +471,7 @@ export default function AccountSetupPage2Screen({ navigation }: Props) {
                 key={church.id}
                 style={[
                   styles.resultItem,
-                  church.leader_count >= 2 && styles.resultItemCapped,
+                  church.at_capacity && styles.resultItemCapped,
                 ]}
                 onPress={() => handleSelect(church)}
                 activeOpacity={0.7}
@@ -216,7 +485,7 @@ export default function AccountSetupPage2Screen({ navigation }: Props) {
                     <Text style={styles.churchMetaText}>
                       {getChurchTypeLabel(church.type)} · {church.city}, {church.country}
                     </Text>
-                    {church.leader_count >= 2 && (
+                    {church.at_capacity && (
                       <Text style={styles.cappedLabel}>Leader slots full</Text>
                     )}
                   </View>
@@ -263,7 +532,10 @@ export default function AccountSetupPage2Screen({ navigation }: Props) {
             </Text>
           )}
         </TouchableOpacity>
-        {!canSubmit && !capError && (
+        {submitError && (
+          <Text style={styles.submitErrorText}>{submitError}</Text>
+        )}
+        {!canSubmit && !capError && !submitError && (
           <Text style={styles.footerHint}>Select or register a church to continue</Text>
         )}
       </View>
@@ -451,6 +723,12 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
+  emptyStateCta: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 14,
+    color: Colors.accent,
+    marginTop: Spacing.sm,
+  },
 
   registerSection: {
     gap: Spacing.lg,
@@ -538,6 +816,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 12,
     color: Colors.textSubtle,
+    textAlign: 'center',
+  },
+  submitErrorText: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.red,
     textAlign: 'center',
   },
 });
