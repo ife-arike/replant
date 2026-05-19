@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // Screen 05 — Register Church, Page 1
 // Church details. Underground type hides location fields immediately on selection.
-// "Church Branch" displays in UI — stored as `branch` per SPEC.
+// "Church (Branch)" displays in UI — stored as `branch` per SPEC.
 // RAG defaults to Red for Underground, any value permitted.
 // Screen 10 (map pin) is next for non-Underground types — gated on MAP wiring.
 // ─────────────────────────────────────────────
@@ -19,16 +19,49 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { CHURCH_TYPES, RAG_OPTIONS } from '../../utils/displayHelpers';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'RegisterChurchPage1'>;
 
 const IS_UNDERGROUND = (type: string) => type === 'underground';
+
+// KAN-13 — canonical declaration text passed to register-church as
+// state_declaration. Matches the affirmation copy shown to the user on
+// the Declaration of Faith screen (Screen 02). The DB column is text
+// NOT NULL; this string is the user's record of what they affirmed.
+const STATE_DECLARATION_AFFIRMATION =
+  'I affirm the Replant Declaration of Faith — Jesus Christ as Lord and Saviour, the Holy Bible as our only source of truth.';
+
+// KAN-13 — register-church BE endpoint URL.
+const REGISTER_CHURCH_URL = `${SUPABASE_URL}/functions/v1/register-church`;
+
+// KAN-13 — Underground submission shape sent to register-church.
+// city / lat / lng are intentionally absent — the BE force-strips them on
+// type='underground' anyway, but FE not sending them keeps the wire clean.
+interface RegisterChurchUndergroundPayload {
+  name: string;
+  type: 'underground';
+  country: string;
+  contact_email: string;
+  contact_phone?: string;
+  rag_status: string;
+  state_declaration: string;
+}
+
+interface RegisterChurchSuccessResponse {
+  success: true;
+  church_id: string;
+  verification_status: 'pending';
+  verification_deadline: string;
+  message: string;
+}
 
 export default function RegisterChurchPage1Screen({ navigation }: Props) {
   const { setChurchDetails } = useOnboarding();
@@ -45,6 +78,12 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
   const [typePickerVisible, setTypePickerVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
+
+  // KAN-13 — Underground submission state. submitting blocks the Next button
+  // + spinner; submitError surfaces inline above the button (matches the
+  // styles.errorText pattern from AccountSetupPage1/2 — no new error style).
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const isUnderground = IS_UNDERGROUND(churchType);
 
@@ -70,7 +109,53 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
     contactEmail.trim() &&
     ragStatus;
 
-  const handleNext = () => {
+  // KAN-13 — submit the Underground registration to register-church.
+  // Throws on any non-200 response; caller surfaces error to the user.
+  const submitUnderground = async (): Promise<RegisterChurchSuccessResponse> => {
+    const payload: RegisterChurchUndergroundPayload = {
+      name: churchName.trim(),
+      type: 'underground',
+      country,
+      contact_email: contactEmail.trim(),
+      rag_status: ragStatus,
+      state_declaration: STATE_DECLARATION_AFFIRMATION,
+    };
+    if (contactPhone.trim()) payload.contact_phone = contactPhone.trim();
+
+    const response = await fetch(REGISTER_CHURCH_URL, {
+      method: 'POST',
+      headers: {
+        // No Authorization header — verify_jwt=false on register-church
+        // (user has no auth.users row yet at this point in onboarding).
+        // apikey is still required for the Supabase gateway to route the call.
+        apikey: SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      // Try to surface the BE's `error` string when present; fall back to
+      // a generic message so a 5xx with no body doesn't crash the screen.
+      let beError: string | null = null;
+      try {
+        const body = (await response.json()) as { error?: unknown };
+        if (typeof body?.error === 'string') beError = body.error;
+      } catch {
+        // ignore body-parse errors — fall through to generic
+      }
+      throw new Error(
+        beError ?? 'Church registration failed. Please try again.',
+      );
+    }
+
+    return (await response.json()) as RegisterChurchSuccessResponse;
+  };
+
+  const handleNext = async () => {
+    // setChurchDetails stays at the top of the handler so context is
+    // populated even on submission failure (the next attempt picks up
+    // the latest field values; back-nav doesn't lose them).
     setChurchDetails({
       churchName,
       churchType,
@@ -83,13 +168,28 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
     });
 
     if (isUnderground) {
-      // Underground → skip map screen, go directly to submission
-      // TODO: navigate to confirmation/submission screen when built
-      navigation.goBack(); // temporary — replace with submission nav
+      // KAN-13 — Underground path: submit to register-church directly,
+      // then return to AccountSetupPage2 which will read churchId from
+      // context. No map-pin step (Screen 10 doesn't apply to Underground).
+      if (submitting) return;
+      setSubmitError(null);
+      setSubmitting(true);
+      try {
+        const result = await submitUnderground();
+        setChurchDetails({ churchId: result.church_id });
+        navigation.goBack();
+      } catch (err) {
+        setSubmitError(
+          err instanceof Error
+            ? err.message
+            : 'Church registration failed. Please try again.',
+        );
+      } finally {
+        setSubmitting(false);
+      }
     } else {
-      // Non-underground → Screen 10 (MapPinSelector) — gated on MAP wiring
-      // TODO: navigation.navigate('RegisterChurchPage2') when Screen 10 is ready
-      navigation.goBack(); // temporary — replace with Screen 10 nav
+      // TODO → KAN-14: navigation.navigate('RegisterChurchPage2') when map pin screen ships
+      navigation.goBack(); // placeholder until KAN-14 is built
     }
   };
 
@@ -303,15 +403,35 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
       </ScrollView>
 
       <View style={styles.footer}>
+        {/* KAN-13 — submission error surfaces inline above the Next button.
+            Matches the styles.errorText pattern used by AccountSetupPage1/2
+            field-level validation messages — no new error style introduced. */}
+        {submitError && (
+          <Text style={[styles.errorText, styles.submitErrorText]}>
+            {submitError}
+          </Text>
+        )}
         <TouchableOpacity
-          style={[styles.nextButton, !isFormValid && styles.nextButtonDisabled]}
+          style={[
+            styles.nextButton,
+            (!isFormValid || submitting) && styles.nextButtonDisabled,
+          ]}
           onPress={handleNext}
-          disabled={!isFormValid}
+          disabled={!isFormValid || submitting}
           activeOpacity={0.8}
         >
-          <Text style={[styles.nextButtonText, !isFormValid && styles.nextButtonTextDisabled]}>
-            {isUnderground ? 'Submit Church' : 'Next — Confirm Location'}
-          </Text>
+          {submitting ? (
+            <ActivityIndicator color={Colors.background} />
+          ) : (
+            <Text
+              style={[
+                styles.nextButtonText,
+                !isFormValid && styles.nextButtonTextDisabled,
+              ]}
+            >
+              {isUnderground ? 'Submit Church' : 'Next — Confirm Location'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -590,6 +710,20 @@ const styles = StyleSheet.create({
   },
   nextButtonTextDisabled: {
     color: 'rgba(107, 181, 232, 0.4)',
+  },
+
+  // KAN-13 — matches the AccountSetupPage1/2 errorText pattern so inline
+  // validation/submission errors on this screen feel identical to the
+  // surrounding onboarding flow. submitErrorText adds margin-bottom so
+  // the message has breathing room above the Next button.
+  errorText: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.red,
+    marginTop: 2,
+  },
+  submitErrorText: {
+    marginBottom: Spacing.sm,
   },
 
   // Pickers

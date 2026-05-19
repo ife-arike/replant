@@ -1,0 +1,24 @@
+# KAN-13 — register-church Edge Function config
+#
+# verify_jwt = false is LOAD-BEARING — this function is the entry point
+# for new church registration during onboarding (Screen 05). The submitter
+# does NOT yet have a Supabase Auth user; their auth.users row is created
+# later, on AccountSetupPage2, AFTER the church is registered. A JWT
+# requirement here would block the entire onboarding flow.
+#
+# Defense-in-depth at the function layer:
+#   - POST + JSON only — every other method/body returns 400 / 405.
+#   - Strict payload validator (logic.ts) rejects every malformed field
+#     before any DB write.
+#   - Server-defined enums for type + rag_status; payload values are
+#     pattern-matched against the canonical 6/3 sets — no pass-through.
+#   - Underground type force-strips city / lat / lng on insert even if
+#     the FE accidentally sent them (per c.10167: "absent for underground
+#     — not sent, not written").
+#   - No SECURITY DEFINER RPC calls, no audit_log writes, no Vault
+#     accessor — the function is a thin validate-and-INSERT.
+#
+# Any change to verify_jwt here requires a fresh SEC ruling — adding JWT
+# enforcement would break onboarding; removing it from any other function
+# would lose the gateway-level forgery rejection.
+verify_jwt = false
