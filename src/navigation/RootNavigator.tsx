@@ -1,5 +1,6 @@
 // Root native-stack navigator — KAN-87 foundation (AC-4, AC-5),
-// patched per KAN-10 SM ruling 11047 (Path B) and UAT wiring fix for KAN-11/83/12.
+// patched per KAN-10 SM ruling 11047 (Path B), UAT wiring fix for
+// KAN-11/83/12, and the nav-loop fix that follows.
 //
 // Conditionally registers Screens based on useAuth().branch. React Navigation
 // re-renders the navigator when the registered Screens change, which means an
@@ -10,25 +11,28 @@
 //   active                   → Tabs + Settings push
 //   pending                  → Pending placeholder (KAN-35 takes over)
 //   deactivated              → Deactivated placeholder (KAN-36 takes over)
-//   unauthenticated / loading → DeclarationOfFaith → Onboarding (nested
-//                                OnboardingNavigator: KAN-11/83/12 screens)
+//   unauthenticated / loading → Onboarding (nested OnboardingNavigator
+//                                — Splash → DoF → AccountSetupPage1 →
+//                                AnonymousMode → AccountSetupPage2 →
+//                                RegisterChurchPage1)
 //
-// Per SM ruling 11047, KAN-10 (Path B) replaces the unauthenticated-branch's
-// Login placeholder with the Declaration of Faith flow as the cold-launch
-// landing. KAN-9 (Splash) and KAN-38 (Login) re-introduce the splash + login
-// surfaces in their respective tickets; LoginPlaceholderScreen.tsx remains in
-// the repo as orphan source for KAN-38 to repurpose.
+// Root no longer registers a top-level DeclarationOfFaith screen — that
+// responsibility now lives entirely inside OnboardingNavigator. The
+// previous Root-level DoF + Onboarding pair caused an infinite loop on
+// affirm (DoF.replace("Onboarding") → Onboarding.Splash.replace("DoF")
+// → back to a fresh DoF, ad nauseam). DeclarationOfFaith remains in
+// RootStackParamList per the Login-route precedent — kept as a type-list
+// entry so a future ticket can re-mount it at Root level without churn.
 //
-// gestureEnabled: false on both unauthenticated routes — KAN-10 AC requires no
-// back gesture from DoF, and after navigation.replace to Onboarding there is
-// no DoF in the stack to back-into anyway.
+// gestureEnabled: false on the unauthenticated branch — KAN-10 AC requires
+// no back gesture from DoF, and DoF is the first reachable screen inside
+// the nested OnboardingNavigator stack.
 
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthProvider";
 import DeactivatedPlaceholderScreen from "../screens/auth/DeactivatedPlaceholderScreen";
 import PendingPlaceholderScreen from "../screens/auth/PendingPlaceholderScreen";
-import DeclarationOfFaithScreen from "../screens/onboarding/DeclarationOfFaithScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
@@ -54,18 +58,11 @@ export default function RootNavigator() {
         <Stack.Screen name="Deactivated" component={DeactivatedPlaceholderScreen} />
       )}
       {(branch === "unauthenticated" || branch === "loading") && (
-        <>
-          <Stack.Screen
-            name="DeclarationOfFaith"
-            component={DeclarationOfFaithScreen}
-            options={{ gestureEnabled: false }}
-          />
-          <Stack.Screen
-            name="Onboarding"
-            component={OnboardingNavigator}
-            options={{ gestureEnabled: false }}
-          />
-        </>
+        <Stack.Screen
+          name="Onboarding"
+          component={OnboardingNavigator}
+          options={{ gestureEnabled: false }}
+        />
       )}
     </Stack.Navigator>
   );

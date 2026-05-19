@@ -14,9 +14,9 @@
 //   - Scroll-gate: AC formula `contentOffset.y + layoutHeight >=
 //     contentHeight - 20`, sticky once true. Bound to the ScrollView INSIDE
 //     the body card (was on the outer screen pre-polish).
-//   - "I Affirm This" replaces this screen with the Onboarding nested
-//     navigator (KAN-11/83/12 screens). navigation.replace (not push) —
-//     agreement must stand.
+//   - "I Affirm This" replaces this screen with AccountSetupPage1
+//     (the next sibling route inside OnboardingNavigator).
+//     navigation.replace (not push) — agreement must stand.
 //   - declaration_affirmed DB write is NOT performed here; KAN-12 owns it.
 //   - No back gesture (gestureEnabled: false on the route in RootNavigator).
 //   - Portrait orientation + Android predictive-back locked at app.json level
@@ -42,11 +42,15 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, Typography } from "../../constants/theme";
-import type { RootStackParamList } from "../../navigation/types";
+import type { OnboardingStackParamList } from "../../navigation/OnboardingNavigator";
 
 const SCROLL_BOTTOM_OFFSET_PX = 20;
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+// DoF lives inside the OnboardingNavigator stack — sibling-route nav is
+// scoped to OnboardingStackParamList, not RootStackParamList. The Root
+// stack's DeclarationOfFaith entry is retained in types.ts as a forward-
+// compat reservation (Login-route precedent) but is no longer mounted.
+type Nav = NativeStackNavigationProp<OnboardingStackParamList>;
 
 export default function DeclarationOfFaithScreen() {
   const navigation = useNavigation<Nav>();
@@ -92,7 +96,7 @@ export default function DeclarationOfFaithScreen() {
 
   const handleAffirm = () => {
     if (!affirmEnabled) return;
-    navigation.replace("Onboarding");
+    navigation.replace("AccountSetupPage1");
   };
 
   return (
