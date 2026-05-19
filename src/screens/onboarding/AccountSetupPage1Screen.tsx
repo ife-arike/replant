@@ -1,9 +1,18 @@
 // ─────────────────────────────────────────────
 // Screen 03 — Account Setup Page 1
 // Personal details. All validation inline, not on submit.
-// Duplicate email check fires on Next tap (before Page 2).
+// Duplicate email check fires on Next tap (before AnonymousMode).
 // 12 roles — scrollable picker. No free text for "Other".
 // Data held in OnboardingContext — nothing hits server until Page 2 submit.
+//
+// KAN-11 contract:
+//   - Password policy: min 8, max 64, ≥1 number, ≥1 uppercase. Common-
+//     password rejection is intentionally NOT enforced at MVP (AC #4).
+//   - Email uniqueness via check-email-available edge function (10 req/hr
+//     per IP). 200 + {available:false} = taken; 429 = rate-limited;
+//     anything else = network/5xx + Next re-enabled for retry (AC #10-12).
+//   - On success, navigate to AnonymousMode (stub — handles Underground vs
+//     identified branching downstream).
 // ─────────────────────────────────────────────
 
 import React, { useState } from 'react';
@@ -26,15 +35,35 @@ import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { ROLES } from '../../utils/displayHelpers';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSetupPage1'>;
 
-// Password: min 8 chars, must include at least one number
+const CHECK_EMAIL_URL = `${SUPABASE_URL}/functions/v1/check-email-available`;
+const PASSWORD_MAX = 64;
+
+// Password policy (KAN-11 AC #3):
+//   - Min 8 chars
+//   - At least 1 digit
+//   - At least 1 uppercase ASCII letter
+//   - Max 64 chars (hard cap; matches the maxLength prop on the input)
+// AC #4 explicitly excludes common-password rejection at MVP.
 function validatePassword(pw: string): string | null {
   if (pw.length < 8) return 'Password must be at least 8 characters';
+  if (pw.length > PASSWORD_MAX) return `Password must be ${PASSWORD_MAX} characters or fewer`;
   if (!/\d/.test(pw)) return 'Password must include at least one number';
+  if (!/[A-Z]/.test(pw)) return 'Password must include at least one uppercase letter';
   return null;
 }
+
+// Discriminated union — separates the three checkEmailAvailable failure
+// modes so the Next button can stay disabled (taken / rate_limit) or
+// re-enable for retry (network), per AC #10-12.
+type EmailCheckError =
+  | { kind: 'taken'; message: string }
+  | { kind: 'rate_limit'; message: string }
+  | { kind: 'network'; message: string }
+  | null;
 
 // Country list — abbreviated for MVP, full list to be injected from a data file
 const COUNTRIES = [
@@ -68,7 +97,7 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
 
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailCheckError, setEmailCheckError] = useState<EmailCheckError>(null);
   const [checkingEmail, setCheckingEmail] = useState(false);
 
   const [rolePickerVisible, setRolePickerVisible] = useState(false);
@@ -79,16 +108,23 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
     c.toLowerCase().includes(countrySearch.toLowerCase())
   );
 
+  // Network errors keep Next enabled (AC #12 retry). Taken + rate_limit
+  // block Next (AC #10, #11).
+  const blockingEmailError =
+    emailCheckError !== null && emailCheckError.kind !== 'network';
+
   const isFormValid =
     firstName.trim() &&
     lastName.trim() &&
     email.trim() &&
     password.length >= 8 &&
+    password.length <= PASSWORD_MAX &&
     /\d/.test(password) &&
+    /[A-Z]/.test(password) &&
     password === confirmPassword &&
     role &&
     country &&
-    !emailError;
+    !blockingEmailError;
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
@@ -104,22 +140,80 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
   };
 
   const handleNext = async () => {
-    // Duplicate email check fires here — before advancing to Page 2
-    // → BE: calls Supabase to check email uniqueness
-    // Stubbed at MVP — wire to BE edge function when ready
+    if (checkingEmail) return;
     setCheckingEmail(true);
-    try {
-      // TODO → BE: replace stub with real uniqueness check
-      await new Promise(r => setTimeout(r, 500));
-      const emailTaken = false; // stub
+    setEmailCheckError(null);
 
-      if (emailTaken) {
-        setEmailError('An account with this email already exists.');
+    const trimmedEmail = email.trim();
+
+    try {
+      const response = await fetch(CHECK_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          // No Authorization header — verify_jwt=false on check-email-available
+          // (user has no auth.users row yet). apikey is required for the
+          // Supabase gateway to route the call.
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+
+      // AC #11 — 10 req/hr per IP rate limit returns 429.
+      if (response.status === 429) {
+        setEmailCheckError({
+          kind: 'rate_limit',
+          message:
+            'Too many attempts from this network. Please try again in a little while.',
+        });
         return;
       }
 
-      setPersonalDetails({ firstName, lastName, email, password, role, country });
-      navigation.navigate('AccountSetupPage2');
+      // AC #12 — anything else non-2xx is treated as network/5xx; Next
+      // re-enables so the user can retry.
+      if (!response.ok) {
+        setEmailCheckError({
+          kind: 'network',
+          message: 'Something went wrong. Please check your connection and try again.',
+        });
+        return;
+      }
+
+      const body = (await response.json()) as { available?: boolean };
+
+      if (body.available === false) {
+        // AC #10 — inline error; Next disabled until the user changes email.
+        setEmailCheckError({
+          kind: 'taken',
+          message: 'An account with this email already exists.',
+        });
+        return;
+      }
+
+      if (body.available !== true) {
+        // Defensive: server returned 2xx but a shape we don't recognise.
+        setEmailCheckError({
+          kind: 'network',
+          message: 'Something went wrong. Please try again.',
+        });
+        return;
+      }
+
+      // Email is available — persist and advance to AnonymousMode.
+      setPersonalDetails({
+        firstName,
+        lastName,
+        email: trimmedEmail,
+        password,
+        role,
+        country,
+      });
+      navigation.navigate('AnonymousMode');
+    } catch {
+      setEmailCheckError({
+        kind: 'network',
+        message: 'Something went wrong. Please check your connection and try again.',
+      });
     } finally {
       setCheckingEmail(false);
     }
@@ -174,16 +268,22 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Email Address</Text>
           <TextInput
-            style={[styles.input, emailError ? styles.inputError : null]}
+            style={[styles.input, emailCheckError ? styles.inputError : null]}
             value={email}
-            onChangeText={t => { setEmail(t); setEmailError(null); }}
+            onChangeText={t => {
+              setEmail(t);
+              // Only auto-clear the "taken" error on edit — rate-limit and
+              // network errors should persist until the next Next-tap so
+              // the user sees what blocked their last attempt.
+              if (emailCheckError?.kind === 'taken') setEmailCheckError(null);
+            }}
             placeholder="you@example.com"
             placeholderTextColor={Colors.textSubtle}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {emailError && <Text style={styles.errorText}>{emailError}</Text>}
+          {emailCheckError && <Text style={styles.errorText}>{emailCheckError.message}</Text>}
         </View>
 
         {/* Password */}
@@ -193,9 +293,10 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
             style={[styles.input, passwordError ? styles.inputError : null]}
             value={password}
             onChangeText={handlePasswordChange}
-            placeholder="Min 8 characters, include a number"
+            placeholder="Min 8 chars · 1 uppercase · 1 number"
             placeholderTextColor={Colors.textSubtle}
             secureTextEntry
+            maxLength={PASSWORD_MAX}
           />
           {passwordError && <Text style={styles.errorText}>{passwordError}</Text>}
         </View>
