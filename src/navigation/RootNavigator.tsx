@@ -1,5 +1,5 @@
 // Root native-stack navigator — KAN-87 foundation (AC-4, AC-5),
-// patched per KAN-10 SM ruling 11047 (Path B).
+// patched per KAN-10 SM ruling 11047 (Path B) and UAT wiring fix for KAN-11/83/12.
 //
 // Conditionally registers Screens based on useAuth().branch. React Navigation
 // re-renders the navigator when the registered Screens change, which means an
@@ -10,7 +10,8 @@
 //   active                   → Tabs + Settings push
 //   pending                  → Pending placeholder (KAN-35 takes over)
 //   deactivated              → Deactivated placeholder (KAN-36 takes over)
-//   unauthenticated / loading → DeclarationOfFaith → AccountSetup1Placeholder
+//   unauthenticated / loading → DeclarationOfFaith → Onboarding (nested
+//                                OnboardingNavigator: KAN-11/83/12 screens)
 //
 // Per SM ruling 11047, KAN-10 (Path B) replaces the unauthenticated-branch's
 // Login placeholder with the Declaration of Faith flow as the cold-launch
@@ -19,17 +20,17 @@
 // the repo as orphan source for KAN-38 to repurpose.
 //
 // gestureEnabled: false on both unauthenticated routes — KAN-10 AC requires no
-// back gesture from DoF, and after navigation.replace to AccountSetup1
-// there is no DoF in the stack to back-into anyway.
+// back gesture from DoF, and after navigation.replace to Onboarding there is
+// no DoF in the stack to back-into anyway.
 
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthProvider";
-import AccountSetup1PlaceholderScreen from "../screens/auth/AccountSetup1PlaceholderScreen";
 import DeactivatedPlaceholderScreen from "../screens/auth/DeactivatedPlaceholderScreen";
 import PendingPlaceholderScreen from "../screens/auth/PendingPlaceholderScreen";
 import DeclarationOfFaithScreen from "../screens/onboarding/DeclarationOfFaithScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
+import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
 
@@ -60,8 +61,8 @@ export default function RootNavigator() {
             options={{ gestureEnabled: false }}
           />
           <Stack.Screen
-            name="AccountSetup1Placeholder"
-            component={AccountSetup1PlaceholderScreen}
+            name="Onboarding"
+            component={OnboardingNavigator}
             options={{ gestureEnabled: false }}
           />
         </>

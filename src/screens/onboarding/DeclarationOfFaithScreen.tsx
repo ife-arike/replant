@@ -14,8 +14,9 @@
 //   - Scroll-gate: AC formula `contentOffset.y + layoutHeight >=
 //     contentHeight - 20`, sticky once true. Bound to the ScrollView INSIDE
 //     the body card (was on the outer screen pre-polish).
-//   - "I Affirm This" replaces this screen with AccountSetup1Placeholder.
-//     navigation.replace (not push) — agreement must stand.
+//   - "I Affirm This" replaces this screen with the Onboarding nested
+//     navigator (KAN-11/83/12 screens). navigation.replace (not push) —
+//     agreement must stand.
 //   - declaration_affirmed DB write is NOT performed here; KAN-12 owns it.
 //   - No back gesture (gestureEnabled: false on the route in RootNavigator).
 //   - Portrait orientation + Android predictive-back locked at app.json level
@@ -91,7 +92,7 @@ export default function DeclarationOfFaithScreen() {
 
   const handleAffirm = () => {
     if (!affirmEnabled) return;
-    navigation.replace("AccountSetup1Placeholder");
+    navigation.replace("Onboarding");
   };
 
   return (
