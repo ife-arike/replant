@@ -3,7 +3,8 @@
 // Back navigation rules:
 //   Splash → DoF: no back (headerLeft removed)
 //   DoF → Page1: no back (agreement must stand)
-//   Page1 → Page2: back allowed
+//   Page1 → AnonymousMode: back allowed (first reversible step post-DoF)
+//   AnonymousMode → Page2: back allowed
 //   Page2 → ChurchReg: back allowed (cancel returns here)
 //   ChurchReg pages: back allowed within registration flow
 // ─────────────────────────────────────────────
@@ -15,6 +16,7 @@ import { OnboardingProvider } from '../context/OnboardingContext';
 import SplashScreen from '../screens/onboarding/SplashScreen';
 import DeclarationOfFaithScreen from '../screens/onboarding/DeclarationOfFaithScreen';
 import AccountSetupPage1Screen from '../screens/onboarding/AccountSetupPage1Screen';
+import AnonymousModeScreen from '../screens/onboarding/AnonymousModeScreen';
 import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Screen';
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
 
@@ -22,6 +24,7 @@ export type OnboardingStackParamList = {
   Splash: undefined;
   DeclarationOfFaith: undefined;
   AccountSetupPage1: undefined;
+  AnonymousMode: undefined;
   AccountSetupPage2: undefined;
   RegisterChurchPage1: undefined;
   // Screen 10 (RegisterChurchPage2 / MapPin) — gated on MAP wiring confirmation
@@ -61,6 +64,13 @@ export default function OnboardingNavigator() {
         />
 
         {/* Back allowed — returns to Page 1 */}
+        <Stack.Screen
+          name="AnonymousMode"
+          component={AnonymousModeScreen}
+          options={{ gestureEnabled: true }}
+        />
+
+        {/* Back allowed — returns to AnonymousMode */}
         <Stack.Screen
           name="AccountSetupPage2"
           component={AccountSetupPage2Screen}

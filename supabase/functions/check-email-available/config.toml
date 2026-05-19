@@ -1,0 +1,26 @@
+# KAN-11 — check-email-available Edge Function config
+#
+# verify_jwt = false is LOAD-BEARING — this function fires on the Next tap
+# of AccountSetupPage1 (Screen 03), BEFORE the user has a Supabase Auth row.
+# The whole point of the function is to tell the user "is this email already
+# registered" so they can fix the typo before being asked to set a password.
+# A JWT requirement would block the entire onboarding flow.
+#
+# Defense-in-depth at the function layer:
+#   - POST + JSON only — every other method/body returns 400 / 405.
+#   - Strict payload validator (logic.ts): email is required, must match
+#     the basic regex (single @, non-empty local + domain.tld), and is
+#     length-capped (320 chars, RFC 5321 practical max).
+#   - Rate limit: 10 requests per hour PER IP via Upstash (KEY:
+#     check-email-available:ratelimit:{ip}, TTL 3600s, INCR-and-EX-NX).
+#     11th request in the window returns 429 with `retry_after_seconds`.
+#   - Existence check uses auth.admin.listUsers via service-role client and
+#     filters in-memory — never queries by email pattern directly (the
+#     Supabase Auth admin API does not expose a "lookup by email" endpoint).
+#   - Response shape is intentionally minimal — `{ available: boolean }` — to
+#     avoid leaking signal beyond yes/no. No timing-equalisation here at
+#     MVP (per SEC c.????); revisit if email enumeration becomes a vector.
+#
+# Any change to verify_jwt here requires a fresh SEC ruling — enforcing JWT
+# would break the onboarding email-collision check entirely.
+verify_jwt = false
