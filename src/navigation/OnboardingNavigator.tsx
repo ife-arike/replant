@@ -20,12 +20,32 @@ import AnonymousModeScreen from '../screens/onboarding/AnonymousModeScreen';
 import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Screen';
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
 
+// AccountSetupPage2 accepts an optional KAN-13 loopback payload — when the
+// leader returns from registering a brand-new church, KAN-13 navigates back
+// with the freshly-created church so Page 2 can pre-select it (and tag the
+// create-account submit with isNewChurch: true → Step 7 team email fires).
+export interface AccountSetupPage2LoopbackChurch {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  country: string;
+  rag_status: string;
+  verification_status: string;
+  at_capacity: boolean;
+}
+
 export type OnboardingStackParamList = {
   Splash: undefined;
   DeclarationOfFaith: undefined;
   AccountSetupPage1: undefined;
   AnonymousMode: undefined;
-  AccountSetupPage2: undefined;
+  AccountSetupPage2:
+    | {
+        newChurchId?: string;
+        newChurch?: AccountSetupPage2LoopbackChurch;
+      }
+    | undefined;
   RegisterChurchPage1: undefined;
   // Screen 10 (RegisterChurchPage2 / MapPin) — gated on MAP wiring confirmation
 };

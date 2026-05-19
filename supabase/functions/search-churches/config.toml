@@ -1,0 +1,24 @@
+# KAN-12 — search-churches Edge Function config
+#
+# verify_jwt = false is LOAD-BEARING — this function is called from
+# AccountSetupPage2 (Screen 04) during onboarding, BEFORE the leader's
+# auth.users row exists. A JWT requirement would block the entire
+# church-search step of the flow.
+#
+# Defense-in-depth at the function layer:
+#   - POST + JSON only.
+#   - Strict payload validator: `query` must be a non-empty string ≥3 chars
+#     (server-side reinforces the FE-side debounce min). Shorter queries
+#     are rejected at parse time with 400.
+#   - Rate limit: 10 req/hr per IP via Upstash REST. Same pattern as
+#     `check-email-available` — read-only surface, modest cap.
+#   - Source: `churches_public` view (live def: `WHERE is_active = true
+#     AND type <> 'underground'::church_type`). Underground churches are
+#     therefore invisible to the search by design — admin-only access.
+#   - Capacity flag: `at_capacity` is server-computed from the count of
+#     active `public.users` rows joined on `church_id`. The FE never sees
+#     the raw count, only the boolean.
+#   - No write operations of any kind on this function.
+#
+# Any change to verify_jwt requires a fresh SEC ruling.
+verify_jwt = false
