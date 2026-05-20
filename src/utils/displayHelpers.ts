@@ -5,13 +5,18 @@
 // ─────────────────────────────────────────────
 
 // Church type: API value → display label
+// Values mirror the canonical `church_type` enum in public.churches —
+// `without_walls` (not `church_without_walls`) and `para_ministry` are
+// the live values per migrations kan146_* and the register-church c.10167
+// contract. Unknown values fall through to apiValue verbatim.
 export function getChurchTypeLabel(apiValue: string): string {
   const map: Record<string, string> = {
     main_campus: 'Church (Main Campus)',
     branch: 'Church (Branch)',       // API: branch → Display: Church (Branch) per A-02 revised
     house_church: 'House Church',
     ministry: 'Ministry',
-    church_without_walls: 'Church Without Walls',
+    without_walls: 'Church Without Walls',
+    para_ministry: 'Para Ministry',
     underground: 'Underground',
   };
   return map[apiValue] ?? apiValue;
@@ -59,7 +64,7 @@ export const CHURCH_TYPES = [
   { label: 'Church (Branch)',        value: 'branch' },
   { label: 'House Church',         value: 'house_church' },
   { label: 'Ministry',             value: 'ministry' },
-  { label: 'Church Without Walls', value: 'church_without_walls' },
+  { label: 'Church Without Walls', value: 'without_walls' },
   { label: 'Underground',          value: 'underground' },
 ] as const;
 

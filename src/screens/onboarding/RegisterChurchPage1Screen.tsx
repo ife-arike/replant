@@ -275,8 +275,9 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
           {isUnderground && (
             <View style={styles.undergroundNotice}>
               <Text style={styles.undergroundNoticeText}>
-                Location fields are disabled for underground churches. Your church will not appear
-                on the map. Your name will display as "Underground Church" to protect your identity.
+                City/Region and Address are hidden to protect your identity. Your church displays
+                as "Underground Church" to other users. Country is kept for internal categorisation
+                only and is never shown publicly.
               </Text>
             </View>
           )}
@@ -369,34 +370,52 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
             Self-declaration. You can update this at any time from Settings.
           </Text>
           <View style={styles.ragOptions}>
-            {RAG_OPTIONS.map(option => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.ragOption,
-                  ragStatus === option.value && {
-                    borderColor: option.color,
-                    backgroundColor: `${option.color}12`,
-                  },
-                ]}
-                onPress={() => setRagStatus(option.value)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.ragDot, { backgroundColor: option.color }]} />
-                <Text style={[
-                  styles.ragOptionText,
-                  ragStatus === option.value && { color: option.color },
-                ]}>
-                  {option.label}
-                </Text>
-                {ragStatus === option.value && (
-                  <View style={styles.ragCheck}>
-                    <Text style={[styles.ragCheckText, { color: option.color }]}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+            {RAG_OPTIONS.map(option => {
+              // Underground status lock per SPEC: only Red is selectable;
+              // Green and Amber are visually muted and non-interactive.
+              // Red itself is not deselectable while underground (no toggle
+              // off → the form always has a valid ragStatus).
+              const lockedOut = isUnderground && option.value !== 'red';
+              const isSelected = ragStatus === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.ragOption,
+                    isSelected && !lockedOut && {
+                      borderColor: option.color,
+                      backgroundColor: `${option.color}12`,
+                    },
+                    lockedOut && styles.ragOptionLocked,
+                  ]}
+                  onPress={() => {
+                    if (isUnderground) return;
+                    setRagStatus(option.value);
+                  }}
+                  disabled={lockedOut}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.ragDot, { backgroundColor: option.color }]} />
+                  <Text style={[
+                    styles.ragOptionText,
+                    isSelected && !lockedOut && { color: option.color },
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {isSelected && !lockedOut && (
+                    <View style={styles.ragCheck}>
+                      <Text style={[styles.ragCheckText, { color: option.color }]}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
+          {isUnderground && (
+            <Text style={styles.fieldNote}>
+              Status locked — underground churches are designated Not Operating Freely.
+            </Text>
+          )}
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -682,6 +701,12 @@ const styles = StyleSheet.create({
   ragCheckText: {
     fontFamily: Typography.bodyMedium,
     fontSize: 16,
+  },
+  // Visual muted state for RAG options non-interactive under underground lock.
+  // No active border / no accent tint — even if (somehow) flipped to selected,
+  // the visual stays dimmed so the lock is unambiguous to the user.
+  ragOptionLocked: {
+    opacity: 0.35,
   },
 
   bottomSpacer: { height: Spacing.xxxl },
