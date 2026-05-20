@@ -54,7 +54,7 @@ export const ROLES = [
   { label: 'Reverend',        value: 'reverend' },
   { label: 'Intercessor',     value: 'intercessor' },
   { label: 'Psalmist',        value: 'psalmist' },
-  { label: 'Ministry Leader', value: 'ministry_leader' },
+  { label: 'Minister',        value: 'ministry_leader' },
   { label: 'Other',           value: 'other' },   // label only — no free text at MVP
 ] as const;
 

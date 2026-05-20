@@ -36,6 +36,7 @@ import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { ROLES } from '../../utils/displayHelpers';
 import RpMark from '../../components/icons/RpMark';
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -180,13 +181,13 @@ export default function SettingsScreen({
   };
 
   // ─── Derived specimens — first name + role from public.users ───
-  // Per dispatch: simple charAt-capitalisation of the snake_case role
-  // value. `ministry_leader` would render as "Ministry_leader" — flagging
-  // for follow-up; the other 11 user_role values render cleanly. Falls
-  // back to 'Leader' when role is null (newly-created users mid-onboarding).
-  const roleLabel = userRole
-    ? userRole.charAt(0).toUpperCase() + userRole.slice(1)
-    : 'Leader';
+  // ROLES is the canonical source of truth for role display labels
+  // (displayHelpers.ts). All 12 user_role enum values map cleanly,
+  // including ministry_leader → "Minister" per Founder ruling 2026-05-20.
+  // Falls back to 'Minister' when role is null (newly-created users
+  // mid-onboarding) or somehow not in the canonical 12.
+  const roleLabel =
+    ROLES.find((r) => r.value === userRole)?.label ?? 'Minister';
   // First name = first whitespace-split token of full_name. Falls back to
   // a neutral 'You' when full_name is null.
   const firstName = fullName?.split(' ')[0] ?? 'You';
