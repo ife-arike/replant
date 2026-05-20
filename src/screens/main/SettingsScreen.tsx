@@ -1,33 +1,22 @@
 // ─────────────────────────────────────────────
-// Screen 20 — Settings (KAN-138 v2.2 CD-exact rebuild)
+// Screen 20 — Settings (KAN-138 v2.3 — fonts · toggle · RAG · anon · names · Saved flash)
 //
-// Flat-row pattern — sections have NO card background and NO container
-// border. Each row has only a thin bottom hairline (the last row in a
-// section drops the hairline). The previous build's card wrappers were
-// the primary visual divergence from the CD; this rebuild removes them.
+// v2.3 follow-ups on top of the v2.2 flat-row CD-exact rebuild:
+//   - Global font bump across rows + labels (per UAT readability pass)
+//   - Custom 38×21px ToggleSwitch replacing the wide native Switch
+//   - RAG word color removed (only the radio glyph carries the RAG color)
+//   - Display Name preference row hidden when anonymous mode is ON
+//   - Real specimens — first/full name + role pulled from public.users
+//     (container reads full_name + role and threads them in)
+//   - "Saved" flash (1.5s) after each successful optimistic write
+//   - Double-hairline fix: destructive footer no longer has borderTop
+//     (Connect block's borderBottom is the single divider)
 //
-// Layout order (top → bottom):
+// Layout order (unchanged from v2.2):
 //   Header (fixed) → Epigraph + rule → 01 Account → 02 Privacy →
-//   03 Church → 04 Language → 05 About → Connect block (mission
-//   treatment, top/bottom hairlines) → Inline writeError (if any) →
-//   Destructive footer (Sign out + Deactivate, ABOVE the foundation
-//   per Founder ruling) → Foundation block (scripture + ref + version
-//   stamp, NO rp-mark)
-//
-// Writes (optimistic, single-flight gate via writeInFlight ref —
-// preserved from v2.1):
-//   - users.display_name_preference  (radio)
-//   - users.anonymous                (Switch)
-//   - churches.rag_status            (radio, only when churchId present)
-//
-// Reads handled by SettingsScreenContainer. Email comes from auth.users
-// via session (NOT public.users.email).
-//
-// Routes that don't exist yet (ChangePassword, TermsOfUse, PrivacyPolicy,
-// DeactivateAccount) fall back to Alert.alert with TODO comments.
-//
-// Clipboard via expo-clipboard. Linking via react-native core.
-// Version stamp via expo-constants.
+//   03 Church → 04 Language → 05 About → Connect block →
+//   inline writeError (if any) → Destructive footer →
+//   Foundation block (scripture + ref + version stamp, NO rp-mark)
 // ─────────────────────────────────────────────
 
 import React, { useRef, useState } from 'react';
@@ -38,7 +27,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -54,17 +42,71 @@ import RpMark from '../../components/icons/RpMark';
 
 type DisplayNamePreference = 'first_name_only' | 'full_name';
 type RagStatus = 'green' | 'amber' | 'red';
+type SavedSection = 'account' | 'privacy' | 'church' | null;
 
 interface SettingsScreenProps {
   userId: string;
   email?: string | null;
   initialDisplayNamePreference?: DisplayNamePreference;
   anonymousMode?: boolean;
+  fullName?: string | null;
+  userRole?: string | null;
   churchCode?: string | null;
   churchName?: string | null;
   churchId?: string | null;
   ragStatus?: RagStatus | null;
 }
+
+// ─── Custom narrow toggle (38×21) — replaces the wider native iOS Switch ─
+
+function ToggleSwitch({
+  value,
+  onValueChange,
+}: {
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={() => onValueChange(!value)}
+      activeOpacity={0.8}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      style={[toggleStyles.track, value && toggleStyles.trackOn]}
+    >
+      <View style={[toggleStyles.thumb, value && toggleStyles.thumbOn]} />
+    </TouchableOpacity>
+  );
+}
+
+const toggleStyles = StyleSheet.create({
+  track: {
+    width: 38,
+    height: 21,
+    borderRadius: 11,
+    borderWidth: 0.5,
+    borderColor: 'rgba(240, 237, 230, 0.08)',
+    backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  trackOn: {
+    backgroundColor: 'rgba(107, 181, 232, 0.15)',
+    borderColor: Colors.accent,
+  },
+  thumb: {
+    position: 'absolute',
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: Colors.textMuted,
+    top: 2,
+    left: 3,
+  },
+  thumbOn: {
+    backgroundColor: Colors.accent,
+    left: 20,
+  },
+});
 
 // ─── Sub-components ────────────────────────────────────────────────────
 
@@ -80,8 +122,7 @@ function SectionHeader({ number, title }: { number: string; title: string }) {
   );
 }
 
-// RAG_COLORS — italic-serif color-word treatment per CD (the word IS
-// the swatch, not a dot indicator).
+// ─── RAG metadata — only the glyph carries the status color now. ───
 const RAG_COLORS: Record<RagStatus, string> = {
   green: Colors.green,
   amber: Colors.amber,
@@ -105,6 +146,8 @@ export default function SettingsScreen({
   email,
   initialDisplayNamePreference = 'first_name_only',
   anonymousMode = false,
+  fullName = null,
+  userRole = null,
   churchCode = null,
   churchName = null,
   churchId = null,
@@ -120,11 +163,37 @@ export default function SettingsScreen({
   const [writeError, setWriteError] = useState<string | null>(null);
   const [churchIdCopied, setChurchIdCopied] = useState<boolean>(false);
 
-  // Single-flight gate — ref so concurrent taps across the three write
-  // paths don't race against the network response. Preserved from v2.1.
+  // "Saved" flash — sets the section name for 1.5s after a successful write,
+  // then clears. Sequential writes replace each other (clearTimeout below).
+  const [savedSection, setSavedSection] = useState<SavedSection>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Single-flight gate across all three write paths (preserved from v2.1).
   const writeInFlight = useRef(false);
 
-  // ─── Write handlers — all share the same optimistic + revert pattern ───
+  // Show a brief "Saved" badge under the section that just wrote. Repeated
+  // writes restart the timer — only the latest section flashes at any time.
+  const flashSaved = (section: Exclude<SavedSection, null>) => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    setSavedSection(section);
+    savedTimer.current = setTimeout(() => setSavedSection(null), 1500);
+  };
+
+  // ─── Derived specimens — first name + role from public.users ───
+  // Per dispatch: simple charAt-capitalisation of the snake_case role
+  // value. `ministry_leader` would render as "Ministry_leader" — flagging
+  // for follow-up; the other 11 user_role values render cleanly. Falls
+  // back to 'Leader' when role is null (newly-created users mid-onboarding).
+  const roleLabel = userRole
+    ? userRole.charAt(0).toUpperCase() + userRole.slice(1)
+    : 'Leader';
+  // First name = first whitespace-split token of full_name. Falls back to
+  // a neutral 'You' when full_name is null.
+  const firstName = fullName?.split(' ')[0] ?? 'You';
+  const SPECIMEN_FIRST = `${roleLabel} ${firstName}`;
+  const SPECIMEN_FULL = fullName ? `${roleLabel} ${fullName}` : SPECIMEN_FIRST;
+
+  // ─── Write handlers — optimistic, single-flight, flashSaved on success ───
 
   const handleDisplayNameChange = async (newValue: DisplayNamePreference) => {
     if (newValue === displayNamePref) return;
@@ -139,6 +208,7 @@ export default function SettingsScreen({
         .update({ display_name_preference: newValue })
         .eq('auth_id', userId);
       if (error) throw error;
+      flashSaved('account');
     } catch {
       setDisplayNamePref(previousValue);
       setWriteError("Couldn't save. Check your connection and try again.");
@@ -162,6 +232,7 @@ export default function SettingsScreen({
         .update({ anonymous: newValue })
         .eq('auth_id', userId);
       if (error) throw error;
+      flashSaved('privacy');
     } catch {
       setAnonymousModeState(previousValue);
       setWriteError("Couldn't save. Check your connection and try again.");
@@ -187,6 +258,7 @@ export default function SettingsScreen({
         .update({ rag_status: newValue })
         .eq('id', churchId);
       if (error) throw error;
+      flashSaved('church');
     } catch {
       setRagStatusState(previousValue);
       setWriteError("Couldn't save. Check your connection and try again.");
@@ -219,7 +291,6 @@ export default function SettingsScreen({
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    // AuthProvider's onAuthStateChange flips the branch — no manual nav.
   };
 
   // ─── Routes that don't exist yet — alert + TODO marker ───
@@ -258,12 +329,6 @@ export default function SettingsScreen({
     (Constants as unknown as { manifest?: { version?: string } }).manifest?.version ??
     '0.1.0';
   const versionStamp = `VERSION ${version}`;
-
-  // Display name specimens — only the SELECTED option renders its
-  // specimen below itself (per v2.2 dispatch, overriding the CD which
-  // showed both — selected in sky, unselected dimmed).
-  const SPECIMEN_FIRST = 'Pastor James';
-  const SPECIMEN_FULL = 'Pastor James Adeoye';
 
   // RAG group goes opacity:0.4 + pointerEvents:'none' when no church
   // is assigned yet (the radio still renders so the section structure
@@ -304,7 +369,8 @@ export default function SettingsScreen({
         {/* ── 01 ACCOUNT ── */}
         <SectionHeader number="01" title="Account" />
 
-        {/* Email — read-only */}
+        {/* Email — read-only. Bottom hairline carries through whether the
+            Display Name row below is shown or hidden. */}
         <View style={styles.row} accessibilityLabel={`Email: ${email ?? 'not set'}`}>
           <Text style={styles.rowLabel}>Email</Text>
           <View style={styles.rowValueRow}>
@@ -312,75 +378,79 @@ export default function SettingsScreen({
           </View>
         </View>
 
-        {/* Display name — radio with italic-serif specimen below selected */}
-        <View
-          style={styles.row}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Display name preference"
-        >
-          <Text style={styles.rowLabel}>Display name shown to others</Text>
-          <View style={styles.radioGroup}>
-            <TouchableOpacity
-              style={styles.radioOption}
-              onPress={() => handleDisplayNameChange('first_name_only')}
-              activeOpacity={0.7}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: displayNamePref === 'first_name_only' }}
-              accessibilityLabel="First name plus role"
-            >
-              <Text
-                style={[
-                  styles.radioGlyph,
-                  displayNamePref === 'first_name_only' && styles.radioGlyphSelected,
-                ]}
+        {/* Display name preference — HIDDEN when anonymous mode is on.
+            The leader's name is hidden from others when anon, so this
+            preference has no surface to control. */}
+        {!anonymousModeState && (
+          <View
+            style={styles.row}
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Display name preference"
+          >
+            <Text style={styles.rowLabel}>Display name shown to others</Text>
+            <View style={styles.radioGroup}>
+              <TouchableOpacity
+                style={styles.radioOption}
+                onPress={() => handleDisplayNameChange('first_name_only')}
+                activeOpacity={0.7}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: displayNamePref === 'first_name_only' }}
+                accessibilityLabel="First name plus role"
               >
-                {displayNamePref === 'first_name_only' ? '◉' : '○'}
-              </Text>
-              <Text
-                style={[
-                  styles.radioLabel,
-                  displayNamePref !== 'first_name_only' && styles.radioLabelOff,
-                ]}
-              >
-                First name + role
-              </Text>
-            </TouchableOpacity>
-            {displayNamePref === 'first_name_only' && (
-              <Text style={styles.radioSpecimen}>{SPECIMEN_FIRST}</Text>
-            )}
+                <Text
+                  style={[
+                    styles.radioGlyph,
+                    displayNamePref === 'first_name_only' && styles.radioGlyphSelected,
+                  ]}
+                >
+                  {displayNamePref === 'first_name_only' ? '◉' : '○'}
+                </Text>
+                <Text
+                  style={[
+                    styles.radioLabel,
+                    displayNamePref !== 'first_name_only' && styles.radioLabelOff,
+                  ]}
+                >
+                  First name + role
+                </Text>
+              </TouchableOpacity>
+              {displayNamePref === 'first_name_only' && (
+                <Text style={styles.radioSpecimen}>{SPECIMEN_FIRST}</Text>
+              )}
 
-            <TouchableOpacity
-              style={styles.radioOption}
-              onPress={() => handleDisplayNameChange('full_name')}
-              activeOpacity={0.7}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: displayNamePref === 'full_name' }}
-              accessibilityLabel="Full name plus role"
-            >
-              <Text
-                style={[
-                  styles.radioGlyph,
-                  displayNamePref === 'full_name' && styles.radioGlyphSelected,
-                ]}
+              <TouchableOpacity
+                style={styles.radioOption}
+                onPress={() => handleDisplayNameChange('full_name')}
+                activeOpacity={0.7}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: displayNamePref === 'full_name' }}
+                accessibilityLabel="Full name plus role"
               >
-                {displayNamePref === 'full_name' ? '◉' : '○'}
-              </Text>
-              <Text
-                style={[
-                  styles.radioLabel,
-                  displayNamePref !== 'full_name' && styles.radioLabelOff,
-                ]}
-              >
-                Full name + role
-              </Text>
-            </TouchableOpacity>
-            {displayNamePref === 'full_name' && (
-              <Text style={styles.radioSpecimen}>{SPECIMEN_FULL}</Text>
-            )}
+                <Text
+                  style={[
+                    styles.radioGlyph,
+                    displayNamePref === 'full_name' && styles.radioGlyphSelected,
+                  ]}
+                >
+                  {displayNamePref === 'full_name' ? '◉' : '○'}
+                </Text>
+                <Text
+                  style={[
+                    styles.radioLabel,
+                    displayNamePref !== 'full_name' && styles.radioLabelOff,
+                  ]}
+                >
+                  Full name + role
+                </Text>
+              </TouchableOpacity>
+              {displayNamePref === 'full_name' && (
+                <Text style={styles.radioSpecimen}>{SPECIMEN_FULL}</Text>
+              )}
+            </View>
           </View>
-        </View>
+        )}
 
-        {/* Password — tappable row → ChangePassword stub */}
+        {/* Password — last row of Account; drops the bottom hairline. */}
         <TouchableOpacity
           style={styles.rowLast}
           onPress={handleChangePassword}
@@ -395,6 +465,10 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
+        {savedSection === 'account' && (
+          <Text style={styles.savedFlash}>Saved</Text>
+        )}
+
         {/* ── 02 PRIVACY ── */}
         <SectionHeader number="02" title="Privacy" />
 
@@ -403,17 +477,17 @@ export default function SettingsScreen({
           <Text style={styles.rowLabel}>Anonymous mode</Text>
           <View style={styles.toggleRow}>
             <Text style={styles.rowValue}>{anonymousModeState ? 'On' : 'Off'}</Text>
-            <Switch
+            <ToggleSwitch
               value={anonymousModeState}
               onValueChange={handleAnonymousToggle}
-              trackColor={{ false: Colors.border, true: Colors.accent }}
-              thumbColor={Colors.text}
-              ios_backgroundColor={Colors.border}
-              accessibilityLabel="Anonymous mode toggle"
             />
           </View>
           <Text style={styles.rowHelper}>{ANONYMOUS_HELPER}</Text>
         </View>
+
+        {savedSection === 'privacy' && (
+          <Text style={styles.savedFlash}>Saved</Text>
+        )}
 
         {/* ── 03 CHURCH ── */}
         <SectionHeader number="03" title="Church" />
@@ -431,9 +505,10 @@ export default function SettingsScreen({
           </View>
         </View>
 
-        {/* Network ID — tap to copy. Label kept as "Network ID" per
-            existing CONTENT confirmation; CD draft says "Church ID" but
-            we ship Network ID until SPEC re-confirms. */}
+        {/* Network ID — tap to copy. Label kept as "Network ID" per the
+            existing CONTENT confirmation (KAN-144 AC-7); CD draft says
+            "Church ID" but Network ID is the shipped term until SPEC
+            re-confirms. */}
         <TouchableOpacity
           style={styles.row}
           onPress={handleChurchIdCopy}
@@ -459,8 +534,9 @@ export default function SettingsScreen({
           )}
         </TouchableOpacity>
 
-        {/* RAG status — italic-serif color-word with description.
-            Disabled with opacity:0.4 + pointerEvents:none when no churchId. */}
+        {/* RAG status — simplified per v2.3: the WORD is no longer colored.
+            Only the radio glyph (◉) carries the RAG color when selected.
+            Description text is body / muted, same family as the label. */}
         <View
           style={[styles.rowLast, ragDisabled && styles.ragGroupDisabled]}
           accessibilityRole="radiogroup"
@@ -482,20 +558,32 @@ export default function SettingsScreen({
                   accessibilityState={{ selected, disabled: ragDisabled }}
                   accessibilityLabel={`${RAG_WORDS[val]}${RAG_DESCRIPTIONS[val]}`}
                 >
-                  <Text style={[styles.radioGlyph, selected && styles.radioGlyphSelected]}>
+                  <Text
+                    style={[
+                      styles.radioGlyph,
+                      selected && { color: RAG_COLORS[val] },
+                    ]}
+                  >
                     {selected ? '◉' : '○'}
                   </Text>
-                  <Text style={[styles.ragLine, !selected && styles.radioLabelOff]}>
-                    <Text style={[styles.ragWord, { color: RAG_COLORS[val] }]}>
-                      {RAG_WORDS[val]}
-                    </Text>
-                    <Text style={styles.ragDesc}>{RAG_DESCRIPTIONS[val]}</Text>
+                  <Text
+                    style={[
+                      styles.ragLine,
+                      !selected && styles.radioLabelOff,
+                    ]}
+                  >
+                    {RAG_WORDS[val]}
+                    {RAG_DESCRIPTIONS[val]}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
+
+        {savedSection === 'church' && (
+          <Text style={styles.savedFlash}>Saved</Text>
+        )}
 
         {/* ── 04 LANGUAGE ── */}
         <SectionHeader number="04" title="Language" />
@@ -574,7 +662,9 @@ export default function SettingsScreen({
           </Text>
         )}
 
-        {/* ── DESTRUCTIVE FOOTER — ABOVE foundation (Founder ruling) ── */}
+        {/* ── DESTRUCTIVE FOOTER — ABOVE foundation (Founder ruling).
+            No borderTop — Connect block's borderBottom is the single
+            divider between Connect and the destructive footer. */}
         <View style={styles.destructive}>
           <TouchableOpacity
             onPress={handleSignOut}
@@ -663,14 +753,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: SCROLL_HORIZONTAL_PADDING,
-    // No top padding — the epigraph + section headers provide their own.
     paddingTop: 0,
   },
 
   // ─── Epigraph + rule ───
   epigraph: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 13,
+    fontSize: 15,
     color: Colors.accent,
     textAlign: 'center',
     paddingTop: 16,
@@ -706,7 +795,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: Typography.display,
-    fontSize: 19,
+    fontSize: 21,
     color: Colors.text,
     letterSpacing: 0.5,
   },
@@ -729,7 +818,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontFamily: Typography.mono,
-    fontSize: 9,
+    fontSize: 11,
     letterSpacing: 1.8,
     textTransform: 'uppercase',
     color: Colors.textMuted,
@@ -743,7 +832,7 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     fontFamily: Typography.body,
-    fontSize: 13,
+    fontSize: 15,
     color: Colors.text,
     letterSpacing: 0.1,
     flexShrink: 1,
@@ -753,14 +842,14 @@ const styles = StyleSheet.create({
   },
   rowChev: {
     fontFamily: Typography.body,
-    fontSize: 13,
+    fontSize: 15,
     color: Colors.textMuted,
   },
   rowHelper: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.textMuted,
-    lineHeight: 14 * 1.55,
+    lineHeight: 16 * 1.55,
     marginTop: 10,
     letterSpacing: 0.1,
   },
@@ -799,7 +888,7 @@ const styles = StyleSheet.create({
   },
   radioLabel: {
     fontFamily: Typography.body,
-    fontSize: 12.5,
+    fontSize: 14,
     color: Colors.text,
     flexShrink: 1,
   },
@@ -809,31 +898,21 @@ const styles = StyleSheet.create({
   // Italic-serif specimen rendered below the selected display-name option.
   radioSpecimen: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 13.5,
+    fontSize: 15,
     color: Colors.accent,
     marginLeft: 20,
     paddingBottom: 8,
-    lineHeight: 13.5 * 1.3,
+    lineHeight: 15 * 1.3,
     letterSpacing: 0.1,
   },
 
-  // ─── RAG line — italic-serif color-word + DM Sans description ───
+  // ─── RAG line — plain body (no colored word). The radio glyph is the
+  //     only color carrier. ───
   ragLine: {
     fontFamily: Typography.body,
-    fontSize: 12.5,
+    fontSize: 14,
     color: Colors.text,
     flexShrink: 1,
-  },
-  ragWord: {
-    fontFamily: Typography.displayMediumItalic,
-    fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
-  ragDesc: {
-    fontFamily: Typography.body,
-    fontSize: 12.5,
-    color: Colors.text,
   },
   ragGroupDisabled: {
     opacity: 0.4,
@@ -842,7 +921,7 @@ const styles = StyleSheet.create({
   // ─── Network ID row — value in DM Mono with tap-to-copy hint ───
   churchIdValue: {
     fontFamily: Typography.mono,
-    fontSize: 13,
+    fontSize: 15,
     letterSpacing: 1.0,
     color: Colors.text,
     marginTop: 2,
@@ -859,7 +938,7 @@ const styles = StyleSheet.create({
   // ─── Language coming-soon row ───
   languageComingSoon: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 13,
+    fontSize: 15,
     color: Colors.textMuted,
   },
 
@@ -889,7 +968,7 @@ const styles = StyleSheet.create({
   },
   connectEyebrow: {
     fontFamily: Typography.mono,
-    fontSize: 9,
+    fontSize: 11,
     letterSpacing: 2.4,
     color: Colors.accent,
     textTransform: 'uppercase',
@@ -922,13 +1001,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
 
-  // ─── Destructive footer — ABOVE foundation, gap 18 between actions ───
+  // ─── "Saved" flash — 1.5s post-write affordance per section ───
+  savedFlash: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    textAlign: 'right',
+    paddingRight: 4,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+
+  // ─── Destructive footer — ABOVE foundation. No borderTop (Connect's
+  //     borderBottom IS the divider). ───
   destructive: {
     marginTop: 22,
     paddingTop: 22,
     paddingBottom: 4,
-    borderTopWidth: 0.5,
-    borderTopColor: HAIRLINE,
     flexDirection: 'column',
     alignItems: 'center',
     gap: 18,
