@@ -1,17 +1,27 @@
 // ─────────────────────────────────────────────
-// Screen 20 — Settings (KAN-138 on-brand v2.1)
+// Screen 20 — Settings (KAN-138 v2.2 CD-exact rebuild)
 //
-// Numbered section headers (01 Account · 02 Privacy · 03 Church · 04
-// Language · 05 About) + mission-treatment Connect block + John 17:21
-// foundation + destructive footer (serif Sign out, mono Deactivate).
+// Flat-row pattern — sections have NO card background and NO container
+// border. Each row has only a thin bottom hairline (the last row in a
+// section drops the hairline). The previous build's card wrappers were
+// the primary visual divergence from the CD; this rebuild removes them.
 //
-// Writes (all optimistic, single-flight gate via writeInFlight ref):
+// Layout order (top → bottom):
+//   Header (fixed) → Epigraph + rule → 01 Account → 02 Privacy →
+//   03 Church → 04 Language → 05 About → Connect block (mission
+//   treatment, top/bottom hairlines) → Inline writeError (if any) →
+//   Destructive footer (Sign out + Deactivate, ABOVE the foundation
+//   per Founder ruling) → Foundation block (scripture + ref + version
+//   stamp, NO rp-mark)
+//
+// Writes (optimistic, single-flight gate via writeInFlight ref —
+// preserved from v2.1):
 //   - users.display_name_preference  (radio)
-//   - users.anonymous                (switch)
+//   - users.anonymous                (Switch)
 //   - churches.rag_status            (radio, only when churchId present)
 //
-// Reads handled by SettingsScreenContainer. Email comes from
-// auth.users via session, NOT public.users.email.
+// Reads handled by SettingsScreenContainer. Email comes from auth.users
+// via session (NOT public.users.email).
 //
 // Routes that don't exist yet (ChangePassword, TermsOfUse, PrivacyPolicy,
 // DeactivateAccount) fall back to Alert.alert with TODO comments.
@@ -36,7 +46,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
-import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import RpMark from '../../components/icons/RpMark';
 
@@ -58,95 +68,35 @@ interface SettingsScreenProps {
 
 // ─── Sub-components ────────────────────────────────────────────────────
 
-function NumberedSectionHeader({ number, title }: { number: string; title: string }) {
+function SectionHeader({ number, title }: { number: string; title: string }) {
   return (
-    <View style={styles.numberedSectionHeader}>
-      <Text style={styles.sectionEyebrow}>{number}</Text>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeadRow}>
+        <Text style={styles.sectionNum}>{number}</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <View style={styles.sectionRule} />
     </View>
   );
 }
 
-function DisplayNameOption({
-  value,
-  label,
-  specimen,
-  selected,
-  onSelect,
-}: {
-  value: DisplayNamePreference;
-  label: string;
-  specimen: string;
-  selected: boolean;
-  onSelect: (value: DisplayNamePreference) => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.optionRow, selected && styles.optionRowSelected]}
-      onPress={() => onSelect(value)}
-      activeOpacity={0.7}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`${label}. Specimen: ${specimen}. ${selected ? 'Selected.' : 'Not selected.'}`}
-    >
-      <View style={styles.optionLeft}>
-        <View style={[styles.radio, selected && styles.radioSelected]}>
-          {selected && <View style={styles.radioDot} />}
-        </View>
-        <View style={styles.optionText}>
-          <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>
-            {label}
-          </Text>
-          <Text style={styles.optionSpecimen}>{specimen}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// RAG_DOT_COLORS maps each RAG status to its dot color. Same RAG triad
-// the church-map surface uses (Colors.green / amber / red).
-const RAG_DOT_COLORS: Record<RagStatus, string> = {
+// RAG_COLORS — italic-serif color-word treatment per CD (the word IS
+// the swatch, not a dot indicator).
+const RAG_COLORS: Record<RagStatus, string> = {
   green: Colors.green,
   amber: Colors.amber,
   red: Colors.red,
 };
-
-function RagOption({
-  value,
-  label,
-  selected,
-  disabled,
-  onSelect,
-}: {
-  value: RagStatus;
-  label: string;
-  selected: boolean;
-  disabled: boolean;
-  onSelect: (value: RagStatus) => void;
-}) {
-  const color = RAG_DOT_COLORS[value];
-  return (
-    <TouchableOpacity
-      style={[styles.optionRow, selected && styles.optionRowSelected]}
-      onPress={() => onSelect(value)}
-      activeOpacity={0.7}
-      disabled={disabled}
-      accessibilityRole="radio"
-      accessibilityState={{ selected, disabled }}
-      accessibilityLabel={`${label}. ${selected ? 'Selected.' : 'Not selected.'}`}
-    >
-      <View style={styles.optionLeft}>
-        <View style={[styles.radio, selected && { borderColor: color }]}>
-          {selected && <View style={[styles.radioDot, { backgroundColor: color }]} />}
-        </View>
-        <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>
-          {label}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
+const RAG_DESCRIPTIONS: Record<RagStatus, string> = {
+  green: ' — yes, with no limitations',
+  amber: ' — with some limitations or needs',
+  red: ' — severely limited or facing active persecution',
+};
+const RAG_WORDS: Record<RagStatus, string> = {
+  green: 'Green',
+  amber: 'Amber',
+  red: 'Red',
+};
 
 // ─── Main Screen ──────────────────────────────────────────────────────
 
@@ -170,10 +120,8 @@ export default function SettingsScreen({
   const [writeError, setWriteError] = useState<string | null>(null);
   const [churchIdCopied, setChurchIdCopied] = useState<boolean>(false);
 
-  // Single-flight gate across all three write paths. Per Founder QA on
-  // the original KAN-72 build: the optimistic UI flip IS the success
-  // affordance — no spinner — and the ref alone is enough to dedupe
-  // rapid taps that would otherwise race against the network response.
+  // Single-flight gate — ref so concurrent taps across the three write
+  // paths don't race against the network response. Preserved from v2.1.
   const writeInFlight = useRef(false);
 
   // ─── Write handlers — all share the same optimistic + revert pattern ───
@@ -250,7 +198,7 @@ export default function SettingsScreen({
     }
   };
 
-  // ─── Tap-to-copy church ID — brief inline "Copied!" flash for 1.5s ───
+  // ─── Tap-to-copy church ID — brief inline "COPIED!" flash for 1.5s ───
 
   const handleChurchIdCopy = async () => {
     if (!churchCode) return;
@@ -271,7 +219,7 @@ export default function SettingsScreen({
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    // No navigation.navigate(...) — onAuthStateChange flips the branch.
+    // AuthProvider's onAuthStateChange flips the branch — no manual nav.
   };
 
   // ─── Routes that don't exist yet — alert + TODO marker ───
@@ -296,24 +244,37 @@ export default function SettingsScreen({
     );
   };
 
-  // ─── Static copy — verbatim from KAN-138 dispatch ───
+  // ─── Static copy (preserved from KAN-138 dispatch) ───
 
   const SCRIPTURE =
-    'That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me.';
+    '"That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me."';
   const REFERENCE = 'JOHN 17 · 21 · KJV';
   const ANONYMOUS_HELPER =
     'When on, others see your role and church only — never your name.';
   const EPIGRAPH = 'your account, your church.';
   const TEAM_EMAIL = 'connect@projectreplant.org';
   const version =
-    Constants.expoConfig?.version ?? (Constants as unknown as { manifest?: { version?: string } }).manifest?.version ?? '0.1.0';
+    Constants.expoConfig?.version ??
+    (Constants as unknown as { manifest?: { version?: string } }).manifest?.version ??
+    '0.1.0';
   const versionStamp = `VERSION ${version}`;
+
+  // Display name specimens — only the SELECTED option renders its
+  // specimen below itself (per v2.2 dispatch, overriding the CD which
+  // showed both — selected in sky, unselected dimmed).
+  const SPECIMEN_FIRST = 'Pastor James';
+  const SPECIMEN_FULL = 'Pastor James Adeoye';
+
+  // RAG group goes opacity:0.4 + pointerEvents:'none' when no church
+  // is assigned yet (the radio still renders so the section structure
+  // stays consistent).
+  const ragDisabled = !churchId;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-      {/* HEADER — [‹] [Settings] [rp-mark] */}
+      {/* HEADER — fixed, three-column grid: [‹] [Settings] [rp-mark] */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -336,70 +297,112 @@ export default function SettingsScreen({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* EPIGRAPH */}
+        {/* EPIGRAPH + rule */}
         <Text style={styles.epigraph}>{EPIGRAPH}</Text>
+        <View style={styles.epigraphRule} />
 
         {/* ── 01 ACCOUNT ── */}
-        <NumberedSectionHeader number="01" title="Account" />
-        <View style={styles.section}>
-          {/* Email row — read-only */}
-          <View style={styles.readonlyRow} accessibilityLabel={`Email: ${email ?? 'not set'}`}>
-            <Text style={styles.readonlyLabel}>Email</Text>
-            <Text style={styles.readonlyValue}>{email ?? '—'}</Text>
-          </View>
-          <View style={styles.rowDivider} />
+        <SectionHeader number="01" title="Account" />
 
-          {/* Display name preference radio */}
-          <View
-            style={styles.settingBlock}
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Display name preference"
-          >
-            <Text style={styles.settingLabel}>Display name shown to others</Text>
-            <View style={styles.optionGroup}>
-              <DisplayNameOption
-                value="first_name_only"
-                label="First name + role"
-                specimen="Pastor James"
-                selected={displayNamePref === 'first_name_only'}
-                onSelect={handleDisplayNameChange}
-              />
-              <DisplayNameOption
-                value="full_name"
-                label="Full name + role"
-                specimen="Pastor James Adeoye"
-                selected={displayNamePref === 'full_name'}
-                onSelect={handleDisplayNameChange}
-              />
-            </View>
+        {/* Email — read-only */}
+        <View style={styles.row} accessibilityLabel={`Email: ${email ?? 'not set'}`}>
+          <Text style={styles.rowLabel}>Email</Text>
+          <View style={styles.rowValueRow}>
+            <Text style={[styles.rowValue, styles.rowValueMuted]}>{email ?? '—'}</Text>
           </View>
-          <View style={styles.rowDivider} />
-
-          {/* Password row */}
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={handleChangePassword}
-            activeOpacity={0.6}
-            accessibilityRole="button"
-            accessibilityLabel="Change password"
-          >
-            <Text style={styles.actionLabel}>Password</Text>
-            <Text style={styles.actionValueAccent}>Change ›</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Inline write error — surfaces below whichever section just failed */}
-        {writeError && (
-          <View style={styles.errorRow}>
-            <Text style={styles.errorText}>{writeError}</Text>
+        {/* Display name — radio with italic-serif specimen below selected */}
+        <View
+          style={styles.row}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Display name preference"
+        >
+          <Text style={styles.rowLabel}>Display name shown to others</Text>
+          <View style={styles.radioGroup}>
+            <TouchableOpacity
+              style={styles.radioOption}
+              onPress={() => handleDisplayNameChange('first_name_only')}
+              activeOpacity={0.7}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: displayNamePref === 'first_name_only' }}
+              accessibilityLabel="First name plus role"
+            >
+              <Text
+                style={[
+                  styles.radioGlyph,
+                  displayNamePref === 'first_name_only' && styles.radioGlyphSelected,
+                ]}
+              >
+                {displayNamePref === 'first_name_only' ? '◉' : '○'}
+              </Text>
+              <Text
+                style={[
+                  styles.radioLabel,
+                  displayNamePref !== 'first_name_only' && styles.radioLabelOff,
+                ]}
+              >
+                First name + role
+              </Text>
+            </TouchableOpacity>
+            {displayNamePref === 'first_name_only' && (
+              <Text style={styles.radioSpecimen}>{SPECIMEN_FIRST}</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.radioOption}
+              onPress={() => handleDisplayNameChange('full_name')}
+              activeOpacity={0.7}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: displayNamePref === 'full_name' }}
+              accessibilityLabel="Full name plus role"
+            >
+              <Text
+                style={[
+                  styles.radioGlyph,
+                  displayNamePref === 'full_name' && styles.radioGlyphSelected,
+                ]}
+              >
+                {displayNamePref === 'full_name' ? '◉' : '○'}
+              </Text>
+              <Text
+                style={[
+                  styles.radioLabel,
+                  displayNamePref !== 'full_name' && styles.radioLabelOff,
+                ]}
+              >
+                Full name + role
+              </Text>
+            </TouchableOpacity>
+            {displayNamePref === 'full_name' && (
+              <Text style={styles.radioSpecimen}>{SPECIMEN_FULL}</Text>
+            )}
           </View>
-        )}
+        </View>
+
+        {/* Password — tappable row → ChangePassword stub */}
+        <TouchableOpacity
+          style={styles.rowLast}
+          onPress={handleChangePassword}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Change password"
+        >
+          <Text style={styles.rowLabel}>Password</Text>
+          <View style={styles.rowValueRow}>
+            <Text style={styles.rowValue}>Change password</Text>
+            <Text style={styles.rowChev}>›</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* ── 02 PRIVACY ── */}
-        <NumberedSectionHeader number="02" title="Privacy" />
-        <View style={styles.section}>
+        <SectionHeader number="02" title="Privacy" />
+
+        {/* Anonymous mode — toggle + italic-serif helper */}
+        <View style={styles.rowLast}>
+          <Text style={styles.rowLabel}>Anonymous mode</Text>
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Anonymous mode</Text>
+            <Text style={styles.rowValue}>{anonymousModeState ? 'On' : 'Off'}</Text>
             <Switch
               value={anonymousModeState}
               onValueChange={handleAnonymousToggle}
@@ -409,157 +412,169 @@ export default function SettingsScreen({
               accessibilityLabel="Anonymous mode toggle"
             />
           </View>
-          <Text style={styles.helperText}>{ANONYMOUS_HELPER}</Text>
+          <Text style={styles.rowHelper}>{ANONYMOUS_HELPER}</Text>
         </View>
 
         {/* ── 03 CHURCH ── */}
-        <NumberedSectionHeader number="03" title="Church" />
-        <View style={styles.section}>
-          {/* Church name — read-only */}
-          <View style={styles.readonlyRow} accessibilityLabel={`Church: ${churchName ?? 'not set'}`}>
-            <Text style={styles.readonlyLabel}>Church</Text>
-            <Text style={styles.readonlyValue}>{churchName ?? '—'}</Text>
+        <SectionHeader number="03" title="Church" />
+
+        {/* Church name — read-only */}
+        <View
+          style={styles.row}
+          accessibilityLabel={`Church: ${churchName ?? 'not set'}`}
+        >
+          <Text style={styles.rowLabel}>Church</Text>
+          <View style={styles.rowValueRow}>
+            <Text style={[styles.rowValue, styles.rowValueMuted]}>
+              {churchName ?? '—'}
+            </Text>
           </View>
-          <View style={styles.rowDivider} />
+        </View>
 
-          {/* Network ID — tap to copy */}
-          <TouchableOpacity
-            style={styles.churchIdRow}
-            onPress={handleChurchIdCopy}
-            activeOpacity={churchCode ? 0.6 : 1}
-            disabled={!churchCode}
-            accessibilityRole={churchCode ? 'button' : undefined}
-            accessibilityLabel={`Network ID: ${churchCode ?? 'not assigned'}. Tap to copy.`}
-            accessibilityHint="Copies your network ID to clipboard"
+        {/* Network ID — tap to copy. Label kept as "Network ID" per
+            existing CONTENT confirmation; CD draft says "Church ID" but
+            we ship Network ID until SPEC re-confirms. */}
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleChurchIdCopy}
+          activeOpacity={churchCode ? 0.6 : 1}
+          disabled={!churchCode}
+          accessibilityRole={churchCode ? 'button' : undefined}
+          accessibilityLabel={`Network ID: ${churchCode ?? 'not assigned'}. Tap to copy.`}
+          accessibilityHint="Copies your network ID to clipboard"
+        >
+          <Text style={styles.rowLabel}>Network ID</Text>
+          <Text
+            style={[
+              styles.churchIdValue,
+              !churchCode && styles.rowValueMuted,
+            ]}
           >
-            <View style={styles.churchIdContent}>
-              <Text style={styles.churchIdLabel}>Network ID</Text>
-              <Text
-                style={[
-                  styles.churchIdValue,
-                  !churchCode && styles.churchIdValueMuted,
-                ]}
-              >
-                {churchCode ?? '—'}
-              </Text>
-              {churchCode && (
-                <Text style={styles.churchIdHint}>
-                  {churchIdCopied ? 'COPIED!' : 'TAP TO COPY'}
-                </Text>
-              )}
-            </View>
-          </TouchableOpacity>
-          <View style={styles.rowDivider} />
+            {churchCode ?? '—'}
+          </Text>
+          {churchCode && (
+            <Text style={styles.churchIdHint}>
+              {churchIdCopied ? 'COPIED!' : 'TAP TO COPY'}
+            </Text>
+          )}
+        </TouchableOpacity>
 
-          {/* RAG status — locked when no churchId */}
-          <View
-            style={[styles.settingBlock, !churchId && styles.disabledBlock]}
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Church status (Red, Amber, Green)"
-            pointerEvents={churchId ? 'auto' : 'none'}
-          >
-            <Text style={styles.settingLabel}>Status</Text>
-            <View style={styles.optionGroup}>
-              <RagOption
-                value="green"
-                label="Green"
-                selected={ragStatusState === 'green'}
-                disabled={!churchId}
-                onSelect={handleRagChange}
-              />
-              <RagOption
-                value="amber"
-                label="Amber"
-                selected={ragStatusState === 'amber'}
-                disabled={!churchId}
-                onSelect={handleRagChange}
-              />
-              <RagOption
-                value="red"
-                label="Red"
-                selected={ragStatusState === 'red'}
-                disabled={!churchId}
-                onSelect={handleRagChange}
-              />
-            </View>
+        {/* RAG status — italic-serif color-word with description.
+            Disabled with opacity:0.4 + pointerEvents:none when no churchId. */}
+        <View
+          style={[styles.rowLast, ragDisabled && styles.ragGroupDisabled]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Church status (Green, Amber, Red)"
+          pointerEvents={ragDisabled ? 'none' : 'auto'}
+        >
+          <Text style={styles.rowLabel}>Status — can your church worship freely?</Text>
+          <View style={styles.radioGroup}>
+            {(['green', 'amber', 'red'] as const).map((val) => {
+              const selected = ragStatusState === val;
+              return (
+                <TouchableOpacity
+                  key={val}
+                  style={styles.radioOption}
+                  onPress={() => handleRagChange(val)}
+                  activeOpacity={0.7}
+                  disabled={ragDisabled}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected, disabled: ragDisabled }}
+                  accessibilityLabel={`${RAG_WORDS[val]}${RAG_DESCRIPTIONS[val]}`}
+                >
+                  <Text style={[styles.radioGlyph, selected && styles.radioGlyphSelected]}>
+                    {selected ? '◉' : '○'}
+                  </Text>
+                  <Text style={[styles.ragLine, !selected && styles.radioLabelOff]}>
+                    <Text style={[styles.ragWord, { color: RAG_COLORS[val] }]}>
+                      {RAG_WORDS[val]}
+                    </Text>
+                    <Text style={styles.ragDesc}>{RAG_DESCRIPTIONS[val]}</Text>
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         {/* ── 04 LANGUAGE ── */}
-        <NumberedSectionHeader number="04" title="Language" />
-        <View style={styles.section}>
-          <View
-            style={styles.languageRow}
-            accessibilityLabel="Language selector, coming soon"
-          >
-            <Text style={styles.languageComingSoon}>Coming soon</Text>
+        <SectionHeader number="04" title="Language" />
+
+        <View style={styles.rowLast} accessibilityLabel="App language, coming soon">
+          <Text style={styles.rowLabel}>App language</Text>
+          <View style={styles.rowValueRow}>
+            <Text style={[styles.rowValue, styles.languageComingSoon]}>Coming soon</Text>
           </View>
         </View>
 
         {/* ── 05 ABOUT ── */}
-        <NumberedSectionHeader number="05" title="About" />
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.actionRow}
-            // Cast — DeclarationOfFaith is in RootStackParamList (unauthenticated
-            // branch) but Settings sits inside the active branch. The nav root
-            // exposes the union at runtime, but the local Nav type here is the
-            // tabs/settings stack which doesn't include it. Cast at the call site.
-            onPress={() => (navigation as unknown as { navigate: (n: string) => void }).navigate('DeclarationOfFaith')}
-            activeOpacity={0.6}
-            accessibilityRole="button"
-          >
-            <Text style={styles.aboutLabel}>Declaration of Faith</Text>
-            <Text style={styles.chev}>›</Text>
-          </TouchableOpacity>
-          <View style={styles.rowDivider} />
+        <SectionHeader number="05" title="About" />
 
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={handleTermsTap}
-            activeOpacity={0.6}
-            accessibilityRole="button"
-          >
-            <Text style={styles.aboutLabel}>Terms of use</Text>
-            <Text style={styles.chev}>›</Text>
-          </TouchableOpacity>
-          <View style={styles.rowDivider} />
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => (navigation as unknown as { navigate: (n: string) => void }).navigate('DeclarationOfFaith')}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+        >
+          <View style={styles.rowValueRow}>
+            <Text style={styles.rowValue}>Declaration of Faith</Text>
+            <Text style={styles.rowChev}>›</Text>
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={handlePrivacyTap}
-            activeOpacity={0.6}
-            accessibilityRole="button"
-          >
-            <Text style={styles.aboutLabel}>Privacy policy</Text>
-            <Text style={styles.chev}>›</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleTermsTap}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+        >
+          <View style={styles.rowValueRow}>
+            <Text style={styles.rowValue}>Terms of use</Text>
+            <Text style={styles.rowChev}>›</Text>
+          </View>
+        </TouchableOpacity>
 
-        {/* ── CONNECT BLOCK — mission treatment ── */}
+        <TouchableOpacity
+          style={styles.rowLast}
+          onPress={handlePrivacyTap}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+        >
+          <View style={styles.rowValueRow}>
+            <Text style={styles.rowValue}>Privacy policy</Text>
+            <Text style={styles.rowChev}>›</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* ── CONNECT BLOCK — mission treatment, hairline top/bottom ── */}
         <TouchableOpacity
           style={styles.connectBlock}
           onPress={handleConnectTap}
           activeOpacity={0.6}
           accessibilityRole="button"
-          accessibilityLabel="Reach the team. Tap to copy email address and open mail composer."
+          accessibilityLabel="Reach the team. Tap to copy email and open mail composer."
         >
-          <Text style={styles.connectEyebrow}>REACH THE TEAM</Text>
+          <View style={styles.connectEyebrowRow}>
+            <View style={styles.eyebrowHairline} />
+            <Text style={styles.connectEyebrow}>Reach the team</Text>
+            <View style={styles.eyebrowHairline} />
+          </View>
           <Text style={styles.connectEmail}>{TEAM_EMAIL}</Text>
-          <Text style={styles.connectHint}>TAP TO COPY &amp; OPEN MAIL</Text>
+          <Text style={styles.connectHint}>Tap to copy &amp; open mail</Text>
         </TouchableOpacity>
 
-        {/* ── FOUNDATION — John 17:21 anchor ── */}
-        <View style={styles.foundation} accessibilityLabel={`${SCRIPTURE} ${REFERENCE}`}>
-          <RpMark size={28} opacity={0.55} />
-          <Text style={styles.foundationScripture}>{SCRIPTURE}</Text>
-          <Text style={styles.foundationRef}>{REFERENCE}</Text>
-        </View>
+        {/* Inline write error — below Connect, above destructive footer */}
+        {writeError && (
+          <Text
+            style={styles.writeErrorText}
+            accessibilityLiveRegion="polite"
+            accessibilityRole="alert"
+          >
+            {writeError}
+          </Text>
+        )}
 
-        {/* ── VERSION STAMP ── */}
-        <Text style={styles.versionStamp}>{versionStamp}</Text>
-
-        {/* ── DESTRUCTIVE FOOTER ── */}
+        {/* ── DESTRUCTIVE FOOTER — ABOVE foundation (Founder ruling) ── */}
         <View style={styles.destructive}>
           <TouchableOpacity
             onPress={handleSignOut}
@@ -574,10 +589,19 @@ export default function SettingsScreen({
             activeOpacity={0.6}
             accessibilityRole="button"
             accessibilityLabel="Deactivate account"
-            style={styles.deactivateWrap}
           >
             <Text style={styles.deactivate}>DEACTIVATE ACCOUNT</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* ── FOUNDATION — scripture + ref + version stamp, NO rp-mark ── */}
+        <View
+          style={styles.foundation}
+          accessibilityLabel={`${SCRIPTURE} ${REFERENCE}`}
+        >
+          <Text style={styles.foundationScripture}>{SCRIPTURE}</Text>
+          <Text style={styles.foundationRef}>{REFERENCE}</Text>
+          <Text style={styles.versionStamp}>{versionStamp}</Text>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -588,19 +612,23 @@ export default function SettingsScreen({
 
 // ─── Styles ────────────────────────────────────────────────────────────
 
+const SCROLL_HORIZONTAL_PADDING = 26;
+const HAIRLINE = 'rgba(240, 237, 230, 0.08)';
+const HAIRLINE_SKY = 'rgba(107, 181, 232, 0.35)';
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.background,
   },
 
-  // ─── Header — three-part grid: [‹] [Settings] [mark] ───
+  // ─── Header (fixed) — [‹] [Settings] [rp-mark] ───
   header: {
     paddingTop: 52,
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: SCROLL_HORIZONTAL_PADDING,
+    paddingBottom: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -613,9 +641,9 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontFamily: Typography.body,
-    fontSize: 28,
+    fontSize: 22,
     color: Colors.textMuted,
-    lineHeight: 28,
+    lineHeight: 22,
   },
   headerTitle: {
     fontFamily: Typography.display,
@@ -634,354 +662,327 @@ const styles = StyleSheet.create({
   // ─── Scroll ───
   scroll: { flex: 1 },
   scrollContent: {
-    paddingBottom: Spacing.xxl,
+    paddingHorizontal: SCROLL_HORIZONTAL_PADDING,
+    // No top padding — the epigraph + section headers provide their own.
+    paddingTop: 0,
   },
 
-  // ─── Epigraph ───
+  // ─── Epigraph + rule ───
   epigraph: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 16,
+    fontSize: 13,
     color: Colors.accent,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.lg,
     textAlign: 'center',
+    paddingTop: 16,
+    paddingBottom: 4,
+    letterSpacing: 0.2,
+  },
+  epigraphRule: {
+    width: 28,
+    height: 0.5,
+    backgroundColor: HAIRLINE_SKY,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 6,
   },
 
-  // ─── Numbered section header (01 / Account) ───
-  numberedSectionHeader: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.sm,
+  // ─── Section header (01 + Account + thin rule) ───
+  sectionHeader: {
+    paddingTop: 22,
+    paddingBottom: 4,
   },
-  sectionEyebrow: {
+  sectionHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+    marginBottom: 14,
+  },
+  sectionNum: {
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.5,
+    fontSize: 9.5,
+    letterSpacing: 2.2,
     color: Colors.accent,
     textTransform: 'uppercase',
   },
   sectionTitle: {
     fontFamily: Typography.display,
-    fontSize: 22,
+    fontSize: 19,
     color: Colors.text,
-    marginTop: 2,
+    letterSpacing: 0.5,
+  },
+  sectionRule: {
+    height: 0.5,
+    backgroundColor: HAIRLINE,
+    marginBottom: 4,
   },
 
-  // ─── Section card (Account / Privacy / Church / Language / About) ───
-  section: {
-    marginHorizontal: Spacing.xl,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    overflow: 'hidden',
-    marginBottom: Spacing.md,
+  // ─── Row (flat — no card). Bottom hairline; rowLast drops it. ───
+  row: {
+    paddingTop: 13,
+    paddingBottom: 11,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
   },
-  rowDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
+  rowLast: {
+    paddingTop: 13,
+    paddingBottom: 11,
   },
-
-  // ─── Read-only row (Email / Church name) ───
-  readonlyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    minHeight: 44,
-    gap: Spacing.md,
-  },
-  readonlyLabel: {
-    fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.text,
-  },
-  readonlyValue: {
-    fontFamily: Typography.body,
-    fontSize: 14,
+  rowLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
     color: Colors.textMuted,
+    marginBottom: 5,
+  },
+  rowValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  rowValue: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.text,
+    letterSpacing: 0.1,
     flexShrink: 1,
-    textAlign: 'right',
   },
-
-  // ─── Action row (chevron / Change link) ───
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    minHeight: 44,
+  rowValueMuted: {
+    color: Colors.textMuted,
   },
-  actionLabel: {
+  rowChev: {
     fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.text,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
-  actionValueAccent: {
-    fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.accent,
-  },
-  aboutLabel: {
-    fontFamily: Typography.display,
-    fontSize: 16,
-    color: Colors.text,
-  },
-  chev: {
-    fontFamily: Typography.body,
-    fontSize: 20,
-    color: Colors.accent,
-    lineHeight: 20,
-  },
-
-  // ─── Setting block (label + option group) ───
-  settingBlock: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  settingLabel: {
-    fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.text,
-  },
-  disabledBlock: {
-    opacity: 0.4,
-  },
-
-  // ─── Radio option (Display name + RAG) ───
-  optionGroup: {},
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    minHeight: 44,
-  },
-  optionRowSelected: {
-    // intentionally subtle — selection indicator is the radio dot
-  },
-  optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    flex: 1,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  radioSelected: {
-    borderColor: Colors.accent,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.accent,
-  },
-  optionText: {
-    gap: 2,
-    flex: 1,
-  },
-  optionLabel: {
-    fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.text,
-  },
-  optionLabelSelected: {
-    fontFamily: Typography.bodyMedium,
-  },
-  // Italic-serif specimen — "Pastor James", "Pastor James Adeoye"
-  optionSpecimen: {
+  rowHelper: {
     fontFamily: Typography.displayMediumItalic,
     fontSize: 14,
     color: Colors.textMuted,
+    lineHeight: 14 * 1.55,
+    marginTop: 10,
+    letterSpacing: 0.1,
   },
 
-  // ─── Anonymous toggle row ───
+  // ─── Toggle row inside anonymous-mode row ───
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-    minHeight: 44,
-  },
-  toggleLabel: {
-    fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.text,
-  },
-  helperText: {
-    fontFamily: Typography.displayMediumItalic,
-    fontSize: 12,
-    color: Colors.textMuted,
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
-    lineHeight: 18,
+    gap: 12,
+    minHeight: 32,
   },
 
-  // ─── Church ID row — tap to copy ───
-  churchIdRow: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    minHeight: 44,
+  // ─── Radio group (display name + RAG) ───
+  radioGroup: {
+    flexDirection: 'column',
+    gap: 2,
+    marginTop: 6,
   },
-  churchIdContent: {
-    gap: 4,
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+    paddingTop: 6,
+    paddingBottom: 2,
+    minHeight: 28,
   },
-  churchIdLabel: {
+  radioGlyph: {
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    color: Colors.textMuted,
+    lineHeight: 11,
+  },
+  radioGlyphSelected: {
+    color: Colors.accent,
+  },
+  radioLabel: {
     fontFamily: Typography.body,
+    fontSize: 12.5,
+    color: Colors.text,
+    flexShrink: 1,
+  },
+  radioLabelOff: {
+    color: Colors.textMuted,
+  },
+  // Italic-serif specimen rendered below the selected display-name option.
+  radioSpecimen: {
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 13.5,
+    color: Colors.accent,
+    marginLeft: 20,
+    paddingBottom: 8,
+    lineHeight: 13.5 * 1.3,
+    letterSpacing: 0.1,
+  },
+
+  // ─── RAG line — italic-serif color-word + DM Sans description ───
+  ragLine: {
+    fontFamily: Typography.body,
+    fontSize: 12.5,
+    color: Colors.text,
+    flexShrink: 1,
+  },
+  ragWord: {
+    fontFamily: Typography.displayMediumItalic,
     fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  ragDesc: {
+    fontFamily: Typography.body,
+    fontSize: 12.5,
     color: Colors.text,
   },
+  ragGroupDisabled: {
+    opacity: 0.4,
+  },
+
+  // ─── Network ID row — value in DM Mono with tap-to-copy hint ───
   churchIdValue: {
     fontFamily: Typography.mono,
     fontSize: 13,
-    letterSpacing: 1.3,
+    letterSpacing: 1.0,
     color: Colors.text,
     marginTop: 2,
-  },
-  churchIdValueMuted: {
-    color: Colors.textMuted,
   },
   churchIdHint: {
     fontFamily: Typography.mono,
     fontSize: 8.5,
-    letterSpacing: 1.5,
+    letterSpacing: 1.8,
     color: Colors.textMuted,
-    marginTop: 2,
+    marginTop: 5,
+    textTransform: 'uppercase',
   },
 
-  // ─── Language coming soon ───
-  languageRow: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
+  // ─── Language coming-soon row ───
   languageComingSoon: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textMuted,
   },
 
   // ─── Connect block — mission treatment ───
   connectBlock: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.xxl,
+    marginTop: 16,
+    marginBottom: 4,
+    paddingVertical: 22,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    borderTopWidth: 0.5,
+    borderTopColor: HAIRLINE,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
+  },
+  connectEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  eyebrowHairline: {
+    width: 14,
+    height: 0.5,
+    backgroundColor: HAIRLINE_SKY,
   },
   connectEyebrow: {
-    fontFamily: Typography.bodyMedium,
+    fontFamily: Typography.mono,
     fontSize: 9,
-    letterSpacing: 1.5,
-    color: Colors.textMuted,
+    letterSpacing: 2.4,
+    color: Colors.accent,
     textTransform: 'uppercase',
-    textAlign: 'center',
   },
   connectEmail: {
     fontFamily: Typography.displayMediumItalic,
     fontSize: 18,
     color: Colors.accent,
     textAlign: 'center',
-    marginTop: 8,
+    paddingVertical: 4,
+    paddingBottom: 10,
+    letterSpacing: 0.1,
   },
   connectHint: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.5,
+    fontSize: 11,
+    letterSpacing: 1.8,
     color: Colors.textMuted,
     textAlign: 'center',
-    marginTop: 4,
-  },
-
-  // ─── Foundation — mark + scripture + reference ───
-  foundation: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-  },
-  foundationScripture: {
-    fontFamily: Typography.displayMediumItalic,
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: Spacing.md,
-  },
-  foundationRef: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.5,
-    color: Colors.accent,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-
-  // ─── Version stamp ───
-  versionStamp: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    marginTop: Spacing.lg,
-    letterSpacing: 1.5,
-  },
-
-  // ─── Destructive footer (Sign out + Deactivate) ───
-  destructive: {
-    alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxxl,
-    gap: Spacing.md,
-  },
-  signOut: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 14,
-    color: Colors.textMuted,
-  },
-  deactivateWrap: {
-    marginTop: Spacing.md,
-  },
-  deactivate: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    color: Colors.red,
-    opacity: 0.55,
-    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
 
-  // ─── Inline write error ───
-  errorRow: {
-    marginHorizontal: Spacing.xl,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: 'rgba(224, 85, 85, 0.06)',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(224, 85, 85, 0.2)',
-    marginBottom: Spacing.md,
-  },
-  errorText: {
+  // ─── Inline write-error banner — below Connect, above destructive ───
+  writeErrorText: {
     fontFamily: Typography.body,
     fontSize: 12,
     color: Colors.red,
-    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    marginHorizontal: 16,
   },
 
-  bottomSpacer: { height: Spacing.lg },
+  // ─── Destructive footer — ABOVE foundation, gap 18 between actions ───
+  destructive: {
+    marginTop: 22,
+    paddingTop: 22,
+    paddingBottom: 4,
+    borderTopWidth: 0.5,
+    borderTopColor: HAIRLINE,
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 18,
+  },
+  signOut: {
+    fontFamily: Typography.display,
+    fontSize: 16,
+    color: Colors.textMuted,
+    letterSpacing: 16 * 0.04,
+    paddingVertical: 4,
+  },
+  deactivate: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    letterSpacing: 2.2,
+    color: Colors.red,
+    opacity: 0.55,
+    textTransform: 'uppercase',
+    paddingVertical: 4,
+  },
+
+  // ─── Foundation — scripture + ref + version stamp (NO rp-mark) ───
+  foundation: {
+    paddingTop: 26,
+    paddingBottom: 8,
+    alignItems: 'center',
+  },
+  foundationScripture: {
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 15,
+    color: Colors.textMuted,
+    lineHeight: 15 * 1.65,
+    paddingHorizontal: 16,
+    textAlign: 'center',
+    letterSpacing: 0.1,
+  },
+  foundationRef: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    color: Colors.accent,
+    marginTop: 10,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  versionStamp: {
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: Colors.textMuted,
+    marginTop: 18,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+
+  bottomSpacer: { height: Spacing.xxxl },
 });
