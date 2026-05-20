@@ -41,6 +41,10 @@ export interface RegisterChurchPayload {
   state_declaration: string;
   lat?: number | null;
   lng?: number | null;
+  // KAN-14: optional list of needs/offerings free-text strings. FE submits
+  // already-trimmed + empty-filtered. BE re-normalises defensively. Maps to
+  // `public.churches.needs text[] NULL`.
+  needs?: string[] | null;
 }
 
 // Shape passed to deps.insertChurch — has all the columns the BE writes.
@@ -58,6 +62,7 @@ export interface InsertChurchRow {
   state_declaration: string;
   lat: number | null;
   lng: number | null;
+  needs: string[] | null;
 }
 
 export interface RegisterChurchSuccessBody {
@@ -169,6 +174,24 @@ export function parsePayload(body: unknown): ParseResult {
     return { ok: false, error: "lng must be a finite number when provided" };
   }
 
+  // Optional needs[] — KAN-14. Absent / null → null. Present → must be an
+  // array of strings; each entry is trimmed + empty-string-filtered as
+  // defense-in-depth (the FE already does this, but if a bad client posts
+  // ['', '  ', 'manpower'] we want a clean ['manpower'] in the row).
+  let needs: string[] | null = null;
+  if (p.needs !== undefined && p.needs !== null) {
+    if (!Array.isArray(p.needs)) {
+      return { ok: false, error: "needs must be an array of strings when provided" };
+    }
+    for (const n of p.needs) {
+      if (typeof n !== "string") {
+        return { ok: false, error: "needs must be an array of strings when provided" };
+      }
+    }
+    const cleaned = (p.needs as string[]).map((s) => s.trim()).filter((s) => s.length > 0);
+    needs = cleaned.length > 0 ? cleaned : null;
+  }
+
   const type = p.type as ChurchType;
   const isUnderground = type === "underground";
 
@@ -193,6 +216,7 @@ export function parsePayload(body: unknown): ParseResult {
     state_declaration: (p.state_declaration as string).trim(),
     lat: isUnderground ? null : ((p.lat as number | undefined) ?? null),
     lng: isUnderground ? null : ((p.lng as number | undefined) ?? null),
+    needs,
   };
 
   return { ok: true, row };
