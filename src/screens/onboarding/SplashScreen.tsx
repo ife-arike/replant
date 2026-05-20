@@ -376,6 +376,22 @@ const LOGO_SVG = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 
 export default function SplashScreen({ navigation }: Props) {
   const floatAnim = useRef(new Animated.Value(0)).current;
+  // Delayed fade-in for the buttons + footnote: lets the logo cluster hold
+  // the screen alone for 3s before inviting the leader to choose.
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+
+  // Delayed fade-in (3s hold → 400ms fade). Runs once on mount; cleanup
+  // clears the timer if the screen unmounts before the timer fires.
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => {
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, 3000);
+    return () => clearTimeout(fadeTimer);
+  }, [contentOpacity]);
 
   useEffect(() => {
     // Floating logo — gentle vertical bob, loops forever.
@@ -420,29 +436,32 @@ export default function SplashScreen({ navigation }: Props) {
         <Text style={styles.tagline}>The Church, Connected</Text>
       </View>
 
-      {/* CTAs — Create Account (primary) + Sign In (secondary) */}
-      <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.replace('DeclarationOfFaith')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>Create Account</Text>
-        </TouchableOpacity>
+      {/* Buttons + footnote fade in together after a 3s hold on the cluster alone */}
+      <Animated.View style={{ opacity: contentOpacity, width: '100%' }}>
+        {/* CTAs — Create Account (primary) + Sign In (secondary) */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => navigation.replace('DeclarationOfFaith')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryButtonText}>Create Account</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Login')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.secondaryButtonText}>Sign In</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryButtonText}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Footnote — persecuted / house church welcome */}
-      <Text style={styles.footnote}>
-        House churches, churches without walls, and underground churches are welcome.
-      </Text>
+        {/* Footnote — persecuted / house church welcome (two lines per wireframe v4) */}
+        <Text style={styles.footnote}>
+          House churches, churches without walls,{'\n'}and underground churches are welcome.
+        </Text>
+      </Animated.View>
     </View>
   );
 }
