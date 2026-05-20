@@ -199,6 +199,10 @@ export default function LoginScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Main content — flex:1 + justifyContent:'center' so the logo +
+            fields + button + links cluster vertically center in whatever
+            space remains above the footnote zone. */}
+        <View style={styles.mainContent}>
         {/* Logo block — rp-mark + wordmark + tagline */}
         <View style={styles.logoBlock}>
           <RpMark size={56} />
@@ -334,8 +338,9 @@ export default function LoginScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* Spacer pushes footnote to the bottom of the scroll content */}
-        <View style={styles.flexSpacer} />
+        </View>
+        {/* /mainContent — footnote zone below sits at the bottom because
+            mainContent's flex:1 swallows the remaining vertical space. */}
 
         {/* Footnote zone — hairline divider + Declaration affirmation */}
         <View style={styles.footnoteZone}>
@@ -372,19 +377,29 @@ const styles = StyleSheet.create({
   },
 
   scroll: { flex: 1 },
-  // flexGrow:1 + flex column lets the footnote zone push to the bottom
-  // via the flexSpacer below the links row.
+  // flexGrow:1 lets the inner mainContent fill the available height so
+  // its justifyContent:'center' actually centers vertically. paddingTop
+  // is 0 — the centering provides the vertical math itself.
   scrollContent: {
     flexGrow: 1,
-    paddingTop: 32,
+    paddingTop: 0,
     paddingHorizontal: 24,
     paddingBottom: 44,
   },
 
+  // Main content wrapper — fills space above footnote, vertically centers
+  // its children (logo cluster + error banner + fields + button + links).
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+
   // Logo block — auth-base pattern shared with other entry screens.
+  // marginTop:0 because mainContent's justifyContent:'center' provides
+  // the centering — no fixed top offset needed.
   logoBlock: {
     alignItems: 'center',
-    marginTop: 38,
+    marginTop: 0,
     gap: 10,
     marginBottom: Spacing.xl,
   },
@@ -523,12 +538,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 10,
     color: Colors.textMuted,
-  },
-
-  // Spacer pushes the footnote zone to the bottom of the scroll content.
-  flexSpacer: {
-    flexGrow: 1,
-    minHeight: Spacing.xl,
   },
 
   // Footnote zone — divider + affirmation copy.
