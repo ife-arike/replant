@@ -19,6 +19,7 @@ import AccountSetupPage1Screen from '../screens/onboarding/AccountSetupPage1Scre
 import AnonymousModeScreen from '../screens/onboarding/AnonymousModeScreen';
 import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Screen';
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
+import RegisterChurchPage2Screen from '../screens/onboarding/RegisterChurchPage2Screen';
 import LoginPlaceholderScreen from '../screens/onboarding/LoginPlaceholderScreen';
 
 // AccountSetupPage2 accepts an optional KAN-13 loopback payload — when the
@@ -48,8 +49,8 @@ export type OnboardingStackParamList = {
       }
     | undefined;
   RegisterChurchPage1: undefined;
+  RegisterChurchPage2: undefined; // KAN-14 — needs textarea + final non-underground submit
   Login: undefined; // KAN-26 — placeholder destination from Splash "Sign In"
-  // Screen 10 (RegisterChurchPage2 / MapPin) — gated on MAP wiring confirmation
 };
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
@@ -103,6 +104,13 @@ export default function OnboardingNavigator() {
         <Stack.Screen
           name="RegisterChurchPage1"
           component={RegisterChurchPage1Screen}
+          options={{ gestureEnabled: true }}
+        />
+
+        {/* KAN-14 — needs + final non-underground submit; back returns to Page 1 */}
+        <Stack.Screen
+          name="RegisterChurchPage2"
+          component={RegisterChurchPage2Screen}
           options={{ gestureEnabled: true }}
         />
 

@@ -200,8 +200,8 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
         setSubmitting(false);
       }
     } else {
-      // TODO → KAN-14: navigation.navigate('RegisterChurchPage2') when map pin screen ships
-      navigation.goBack(); // placeholder until KAN-14 is built
+      // KAN-14: advance to Page 2 for needs + final submit
+      navigation.navigate('RegisterChurchPage2');
     }
   };
 
@@ -313,7 +313,7 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
         {/* City / Region — hidden for Underground */}
         {!isUnderground && (
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>City / Region</Text>
+            <Text style={styles.label}>City</Text>
             <TextInput
               style={styles.input}
               value={cityRegion}

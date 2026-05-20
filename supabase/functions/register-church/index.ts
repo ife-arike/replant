@@ -48,6 +48,7 @@ function makeDeps(): Deps {
           state_declaration: row.state_declaration,
           lat: row.lat,
           lng: row.lng,
+          needs: row.needs,
           verification_status: "pending",
           verification_deadline: verificationDeadline,
         })

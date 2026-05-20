@@ -117,6 +117,54 @@ Deno.test("parsePayload — optional empty-string fields collapse to null", () =
   assertStrictEquals(r.row.contact_phone, null);
 });
 
+// ── KAN-14 — needs[] handling ──────────────────────────────────────────
+
+Deno.test("parsePayload — needs absent → row.needs is null", () => {
+  const r = parsePayload(basePayload());
+  assertEquals(r.ok, true);
+  if (r.ok) assertStrictEquals(r.row.needs, null);
+});
+
+Deno.test("parsePayload — needs null → row.needs is null", () => {
+  const r = parsePayload(basePayload({ needs: null }));
+  assertEquals(r.ok, true);
+  if (r.ok) assertStrictEquals(r.row.needs, null);
+});
+
+Deno.test("parsePayload — needs valid array of strings → row carries normalised list", () => {
+  const r = parsePayload(basePayload({ needs: ["Manpower", "Prayer", "Resources"] }));
+  assertEquals(r.ok, true);
+  if (r.ok) assertEquals(r.row.needs, ["Manpower", "Prayer", "Resources"]);
+});
+
+Deno.test("parsePayload — needs entries trimmed + empty-filtered defensively", () => {
+  const r = parsePayload(basePayload({ needs: [" manpower ", "", "  ", "prayer"] }));
+  assertEquals(r.ok, true);
+  if (r.ok) assertEquals(r.row.needs, ["manpower", "prayer"]);
+});
+
+Deno.test("parsePayload — needs all-empty after normalisation → row.needs is null", () => {
+  const r = parsePayload(basePayload({ needs: ["", "   ", "\t"] }));
+  assertEquals(r.ok, true);
+  if (r.ok) assertStrictEquals(r.row.needs, null);
+});
+
+Deno.test("parsePayload — needs non-array rejected", () => {
+  for (const bad of ["not-an-array", 42, true, { a: 1 }]) {
+    const r = parsePayload(basePayload({ needs: bad }));
+    assertEquals(r.ok, false, `expected reject for needs=${JSON.stringify(bad)}`);
+    if (!r.ok) {
+      assertEquals(r.error, "needs must be an array of strings when provided");
+    }
+  }
+});
+
+Deno.test("parsePayload — needs with non-string element rejected", () => {
+  const r = parsePayload(basePayload({ needs: ["valid", 42, "also valid"] }));
+  assertEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.error, "needs must be an array of strings when provided");
+});
+
 // ── Rejection paths ────────────────────────────────────────────────────
 
 Deno.test("parsePayload — null / non-object body rejected", () => {
