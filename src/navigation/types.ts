@@ -35,4 +35,5 @@ export type RootStackParamList = MainStackParamList & {
   Login: undefined;
   Pending: undefined;
   Deactivated: undefined;
+  PasswordRecovery: undefined;
 };

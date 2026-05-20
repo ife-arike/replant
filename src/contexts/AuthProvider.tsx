@@ -47,7 +47,8 @@ export type AuthBranch =
   | "unauthenticated"
   | "active"
   | "pending"
-  | "deactivated";
+  | "deactivated"
+  | "password_recovery";
 
 export interface AuthState {
   session: Session | null;
@@ -56,6 +57,10 @@ export interface AuthState {
   daysRemaining: number | null;
   loading: boolean;
   refresh: () => Promise<void>;
+  // KAN-38 — used by SetNewPasswordScreen (Screen 06B) after success /
+  // expired states to drop the recovery session and bounce the leader
+  // back to Login via the unauthenticated branch.
+  clearPasswordRecovery: () => Promise<void>;
 }
 
 interface AuthStatusResponse {
@@ -201,7 +206,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Mount — read existing session + initial check. Subscribe to auth changes.
   useEffect(() => {
     void initialize();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // KAN-38 — PASSWORD_RECOVERY: deep-link token exchange landed.
+      // Park the leader on the password_recovery branch with the
+      // recovery session in scope so SetNewPasswordScreen can call
+      // updateUser. Do NOT run auth-status-check — the leader is
+      // mid-reset and is not "active" yet.
+      if (event === "PASSWORD_RECOVERY") {
+        setSession(newSession);
+        setBranch("password_recovery");
+        setVerificationDeadline(null);
+        setDaysRemaining(null);
+        return;
+      }
+
       setSession(newSession);
       if (!newSession) {
         // SEC 11015 #3c — sign-out path; no session to check against.
@@ -235,9 +253,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return on401(() => { void performClearAndRoute(); });
   }, [performClearAndRoute]);
 
+  // KAN-38 — SetNewPasswordScreen calls this on success / expired to drop
+  // the recovery session and bounce back to Login. Implemented as the
+  // same ordered clear-and-route SEC 11015 #4 uses for 401s.
+  const clearPasswordRecovery = useCallback(async () => {
+    await performClearAndRoute();
+  }, [performClearAndRoute]);
+
   return (
     <AuthContext.Provider
-      value={{ session, branch, verificationDeadline, daysRemaining, loading, refresh: initialize }}
+      value={{
+        session,
+        branch,
+        verificationDeadline,
+        daysRemaining,
+        loading,
+        refresh: initialize,
+        clearPasswordRecovery,
+      }}
     >
       {children}
     </AuthContext.Provider>

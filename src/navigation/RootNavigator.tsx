@@ -34,6 +34,7 @@ import { useAuth } from "../contexts/AuthProvider";
 import DeactivatedPlaceholderScreen from "../screens/auth/DeactivatedPlaceholderScreen";
 import PendingPlaceholderScreen from "../screens/auth/PendingPlaceholderScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
+import SetNewPasswordScreen from "../screens/onboarding/SetNewPasswordScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
@@ -61,6 +62,13 @@ export default function RootNavigator() {
         <Stack.Screen
           name="Onboarding"
           component={OnboardingNavigator}
+          options={{ gestureEnabled: false }}
+        />
+      )}
+      {branch === "password_recovery" && (
+        <Stack.Screen
+          name="PasswordRecovery"
+          component={SetNewPasswordScreen}
           options={{ gestureEnabled: false }}
         />
       )}
