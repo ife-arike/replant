@@ -411,17 +411,14 @@ export default function SplashScreen({ navigation }: Props) {
       <View style={[styles.corner, styles.cornerBL]} />
       <View style={[styles.corner, styles.cornerBR]} />
 
-      {/* Logo + wordmark cluster — bobs together via the parent translateY */}
-      <Animated.View
-        style={[
-          styles.logoContainer,
-          { transform: [{ translateY: floatAnim }] },
-        ]}
-      >
-        <SvgXml xml={LOGO_SVG} width={200} height={180} />
+      {/* Logo + wordmark cluster — only the icon bobs; wordmark + tagline static */}
+      <View style={styles.logoCluster}>
+        <Animated.View style={{ transform: [{ translateY: floatAnim }] }}>
+          <SvgXml xml={LOGO_SVG} width={200} height={180} />
+        </Animated.View>
         <Text style={styles.wordmark}>REPLANT</Text>
-        <Text style={styles.tagline}>The Church, Connected.</Text>
-      </Animated.View>
+        <Text style={styles.tagline}>The Church, Connected</Text>
+      </View>
 
       {/* CTAs — Create Account (primary) + Sign In (secondary) */}
       <View style={styles.buttonRow}>
@@ -490,23 +487,31 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
   },
 
-  logoContainer: {
+  logoCluster: {
     alignItems: 'center',
     gap: Spacing.md,
   },
 
+  // Wireframe v4 Splash spec: serif, font-weight 300, font-size 1.6rem,
+  // letter-spacing 0.15em, uppercase. Bundled Cormorant Garamond has no
+  // 300 face; using the 400 Regular variant as the closest lighter weight.
   wordmark: {
-    fontFamily: Typography.display,
-    fontSize: 36,
-    letterSpacing: 10,
+    fontFamily: Typography.displayRegular,
+    fontSize: 26,
+    letterSpacing: 4,
     color: Colors.text,
   },
 
+  // Wireframe v4 Splash spec: sans, font-size 0.58rem, letter-spacing
+  // 0.18em, color var(--sky), text-transform uppercase, margin-top 4.
+  // No trailing period (wireframe text is "The Church, Connected").
   tagline: {
-    fontFamily: Typography.displayItalic,
-    fontSize: 16,
-    color: Colors.textMuted,
-    letterSpacing: 1,
+    fontFamily: Typography.body,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    marginTop: 4,
   },
 
   buttonRow: {
@@ -544,11 +549,11 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
 
+  // In-flow under the button row (no longer pinned to screen bottom).
+  // marginTop 24 + paddingHorizontal 32 per dispatch.
   footnote: {
-    position: 'absolute',
-    bottom: 40,
-    left: 32,
-    right: 32,
+    marginTop: 24,
+    paddingHorizontal: 32,
     fontFamily: Typography.body,
     color: Colors.textMuted,
     fontSize: 11,
