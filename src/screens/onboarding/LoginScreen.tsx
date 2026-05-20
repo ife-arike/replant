@@ -30,7 +30,6 @@
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -161,9 +160,8 @@ export default function LoginScreen({ navigation }: Props) {
     // needed here (and explicit calls here would read stale closure state).
   };
 
-  // TODO: wire to KAN-26 Forgot Password (Screen 06A) when route exists.
   const handleForgotPassword = () => {
-    Alert.alert('Coming soon', 'Password reset will be available soon.');
+    navigation.navigate('ForgotPassword');
   };
 
   const handleCreateAccount = () => {

@@ -21,6 +21,7 @@ import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Scre
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
 import RegisterChurchPage2Screen from '../screens/onboarding/RegisterChurchPage2Screen';
 import LoginPlaceholderScreen from '../screens/onboarding/LoginPlaceholderScreen';
+import ForgotPasswordScreen from '../screens/onboarding/ForgotPasswordScreen';
 
 // AccountSetupPage2 accepts an optional KAN-13 loopback payload — when the
 // leader returns from registering a brand-new church, KAN-13 navigates back
@@ -51,6 +52,7 @@ export type OnboardingStackParamList = {
   RegisterChurchPage1: undefined;
   RegisterChurchPage2: undefined; // KAN-14 — needs textarea + final non-underground submit
   Login: undefined; // KAN-26 — placeholder destination from Splash "Sign In"
+  ForgotPassword: undefined; // KAN-38 — Screen 06A reset-link request flow
 };
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
@@ -118,6 +120,13 @@ export default function OnboardingNavigator() {
         <Stack.Screen
           name="Login"
           component={LoginPlaceholderScreen}
+          options={{ gestureEnabled: true }}
+        />
+
+        {/* KAN-38 — Forgot Password (Screen 06A); back allowed to Login */}
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
           options={{ gestureEnabled: true }}
         />
       </Stack.Navigator>
