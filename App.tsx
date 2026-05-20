@@ -19,16 +19,48 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 import React, { useEffect } from "react";
-import { StatusBar, View } from "react-native";
+import { Linking, StatusBar, View } from "react-native";
 import { useFonts, isLoaded as fontIsLoaded } from "expo-font";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./src/contexts/AuthProvider";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { supabase } from "./src/lib/supabase";
 import { Colors, fontModules, Typography } from "./src/constants/theme";
+
+// KAN-38 — Extract the PKCE code from an incoming deep link URL.
+// With PKCE flow, Supabase delivers a one-time code in the query string:
+//   replant://reset-password?code=XXXX
+// exchangeCodeForSession exchanges it server-side and fires PASSWORD_RECOVERY
+// in onAuthStateChange → AuthProvider routes to the password_recovery branch.
+async function handleDeepLink(url: string): Promise<void> {
+  const query = url.split('?')[1]?.split('#')[0] ?? '';
+  const code = new URLSearchParams(query).get('code');
+  if (!code) return;
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    console.warn('[DeepLink] exchangeCodeForSession failed:', error.message);
+  }
+  // On success: onAuthStateChange fires PASSWORD_RECOVERY →
+  // AuthProvider sets branch = 'password_recovery' → RootNavigator mounts
+  // SetNewPasswordScreen (Screen 06B). No further action needed here.
+}
 
 function AppGate() {
   const auth = useAuth();
+
+  // KAN-38 — Deep-link listener for password recovery.
+  // Warm start: app is open when leader taps the reset link.
+  // Cold start: app launches fresh from the reset link.
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      void handleDeepLink(url);
+    });
+    void Linking.getInitialURL().then((url) => {
+      if (url) void handleDeepLink(url);
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!auth.loading) {

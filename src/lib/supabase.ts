@@ -70,6 +70,13 @@ export const supabase = createClient(url, anonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // KAN-38 — PKCE flow for React Native. With PKCE, resetPasswordForEmail
+    // stashes a code verifier in SecureStore and the reset email delivers
+    // a one-time `?code=` in the query string. App.tsx's Linking handler
+    // hands the code to exchangeCodeForSession, which fires PASSWORD_RECOVERY
+    // in onAuthStateChange — AuthProvider then flips branch to
+    // password_recovery and RootNavigator mounts SetNewPasswordScreen.
+    flowType: 'pkce',
   },
   global: {
     fetch: interceptingFetch,
