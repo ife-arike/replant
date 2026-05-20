@@ -1,27 +1,19 @@
-// ─────────────────────────────────────────────
-// Screen 01 — Splash Screen
-// Static. Auto-advances to DeclarationOfFaith at 4s.
-// Tap anywhere advances immediately.
-// If still on screen at 6s, "Tap to continue" fades in.
-// Floating logo animation loops indefinitely.
-// No interaction beyond tap, no spinner, no network call.
-// Portrait locked at navigator level (app.json).
-// ─────────────────────────────────────────────
+// Screen 01 — Splash. Buttons model (KAN-9 c.13534). No auto-advance, no tap-to-continue.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableWithoutFeedback,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Splash'>;
 
@@ -383,18 +375,9 @@ const LOGO_SVG = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 </svg>`;
 
 export default function SplashScreen({ navigation }: Props) {
-  const [tapVisible, setTapVisible] = useState(false);
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Auto-advance at 4s — Founder override of original 2s SPEC ruling (2026-05-19).
-    const autoTimer = setTimeout(() => {
-      navigation.replace('DeclarationOfFaith');
-    }, 4000);
-
-    // Tap prompt appears at 6s (safety net — user can always tap through earlier).
-    const tapTimer = setTimeout(() => setTapVisible(true), 6000);
-
     // Floating logo — gentle vertical bob, loops forever.
     Animated.loop(
       Animated.sequence([
@@ -414,46 +397,56 @@ export default function SplashScreen({ navigation }: Props) {
     ).start();
 
     return () => {
-      clearTimeout(autoTimer);
-      clearTimeout(tapTimer);
       floatAnim.stopAnimation();
     };
-  }, [navigation, floatAnim]);
+  }, [floatAnim]);
 
   return (
-    <TouchableWithoutFeedback
-      onPress={() => navigation.replace('DeclarationOfFaith')}
-    >
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-        {/* Corner crosshair marks — brand detail from wireframes */}
-        <View style={[styles.corner, styles.cornerTL]} />
-        <View style={[styles.corner, styles.cornerTR]} />
-        <View style={[styles.corner, styles.cornerBL]} />
-        <View style={[styles.corner, styles.cornerBR]} />
+      {/* Corner crosshair marks — brand detail from wireframes */}
+      <View style={[styles.corner, styles.cornerTL]} />
+      <View style={[styles.corner, styles.cornerTR]} />
+      <View style={[styles.corner, styles.cornerBL]} />
+      <View style={[styles.corner, styles.cornerBR]} />
 
-        {/* Logo + wordmark cluster — bobs together via the parent translateY */}
-        <Animated.View
-          style={[
-            styles.logoContainer,
-            { transform: [{ translateY: floatAnim }] },
-          ]}
+      {/* Logo + wordmark cluster — bobs together via the parent translateY */}
+      <Animated.View
+        style={[
+          styles.logoContainer,
+          { transform: [{ translateY: floatAnim }] },
+        ]}
+      >
+        <SvgXml xml={LOGO_SVG} width={200} height={180} />
+        <Text style={styles.wordmark}>REPLANT</Text>
+        <Text style={styles.tagline}>The Church, Connected.</Text>
+      </Animated.View>
+
+      {/* CTAs — Create Account (primary) + Sign In (secondary) */}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => navigation.replace('DeclarationOfFaith')}
+          activeOpacity={0.8}
         >
-          <SvgXml xml={LOGO_SVG} width={200} height={180} />
-          <Text style={styles.wordmark}>REPLANT</Text>
-          <Text style={styles.tagline}>The Church, Connected.</Text>
-        </Animated.View>
+          <Text style={styles.primaryButtonText}>Create Account</Text>
+        </TouchableOpacity>
 
-        {/* Tap prompt — appears at 6s, only visible if auto-advance hasn't fired */}
-        {tapVisible && <Text style={styles.tapPrompt}>Tap to continue</Text>}
-
-        {/* Footnote — persecuted / house church welcome */}
-        <Text style={styles.footnote}>
-          House churches, churches without walls, and underground churches are welcome.
-        </Text>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => navigation.navigate('Login')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.secondaryButtonText}>Sign In</Text>
+        </TouchableOpacity>
       </View>
-    </TouchableWithoutFeedback>
+
+      {/* Footnote — persecuted / house church welcome */}
+      <Text style={styles.footnote}>
+        House churches, churches without walls, and underground churches are welcome.
+      </Text>
+    </View>
   );
 }
 
@@ -516,16 +509,39 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  tapPrompt: {
-    position: 'absolute',
-    top: '62%',
-    left: 0,
-    right: 0,
-    fontFamily: Typography.body,
-    color: Colors.textMuted,
-    fontSize: 12,
-    letterSpacing: 1.5,
-    textAlign: 'center',
+  buttonRow: {
+    width: '100%',
+    paddingHorizontal: 32,
+    marginTop: 40,
+    gap: 12,
+  },
+  // Geometry + tokens mirror AccountSetupPage1's nextButton CTA so the
+  // visual feel is identical across the onboarding entry path.
+  primaryButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: 16,
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  primaryButtonText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 16,
+    color: Colors.background,
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    paddingVertical: 16,
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  secondaryButtonText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 16,
+    color: Colors.accent,
   },
 
   footnote: {
