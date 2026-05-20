@@ -205,7 +205,7 @@ export default function LoginScreen({ navigation }: Props) {
         <View style={styles.mainContent}>
         {/* Logo block — rp-mark + wordmark + tagline */}
         <View style={styles.logoBlock}>
-          <RpMark size={56} />
+          <RpMark size={90} />
           <Text style={styles.wordmark}>REPLANT</Text>
           <Text style={styles.tagline}>{TAGLINE}</Text>
         </View>
@@ -400,20 +400,20 @@ const styles = StyleSheet.create({
   logoBlock: {
     alignItems: 'center',
     marginTop: 0,
-    gap: 10,
-    marginBottom: Spacing.xl,
+    gap: 12,
+    marginBottom: Spacing.xxl,
   },
   wordmark: {
     fontFamily: Typography.display,
-    fontSize: 22,
+    fontSize: 28,
     color: Colors.text,
-    letterSpacing: 0.18 * 22,
-    marginTop: 4,
+    letterSpacing: 0.18 * 28,
+    marginTop: 6,
   },
   tagline: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.2 * 8.5,
+    fontSize: 12,
+    letterSpacing: 0.2 * 12,
     color: Colors.accent,
     textTransform: 'uppercase',
   },
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: Colors.accent,
     borderRadius: 4,
-    paddingVertical: 12,
+    paddingVertical: 15,
     alignItems: 'center',
     marginTop: Spacing.lg,
     minHeight: 44,
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.background,
   },
   submitButtonTextDisabled: {
@@ -526,17 +526,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: Spacing.md,
-    gap: 14,
+    marginTop: Spacing.lg,
+    gap: 16,
   },
   link: {
     fontFamily: Typography.body,
-    fontSize: 10,
+    fontSize: 13,
     color: Colors.accent,
   },
   linkSeparator: {
     fontFamily: Typography.body,
-    fontSize: 10,
+    fontSize: 13,
     color: Colors.textMuted,
   },
 
@@ -553,10 +553,10 @@ const styles = StyleSheet.create({
   },
   footnote: {
     fontFamily: Typography.mono,
-    fontSize: 8,
+    fontSize: 10,
     color: 'rgba(240, 237, 230, 0.30)',
     textAlign: 'center',
-    letterSpacing: 0.14 * 8,
+    letterSpacing: 0.14 * 10,
     textTransform: 'uppercase',
     lineHeight: 14,
   },
