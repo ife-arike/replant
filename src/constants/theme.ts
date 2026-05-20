@@ -14,6 +14,7 @@ import {
   DMSans_400Regular,
   DMSans_500Medium,
 } from "@expo-google-fonts/dm-sans";
+import { DMMono_400Regular } from "@expo-google-fonts/dm-mono";
 
 export const Colors = {
   background: '#080808',
@@ -51,6 +52,7 @@ export const fontModules = {
   CormorantGaramond_600SemiBold_Italic,
   DMSans_400Regular,
   DMSans_500Medium,
+  DMMono_400Regular,
 };
 
 // Family-name strings used in StyleSheet `fontFamily` — must match fontModules
@@ -67,6 +69,9 @@ export const Typography = {
   displayRegular: 'CormorantGaramond_400Regular',
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
+  // DM Mono — identifier register (RPL-XXXXX codes, numbered eyebrows,
+  // version stamps). Added for KAN-138 Settings on-brand pass.
+  mono: 'DMMono_400Regular',
 } as const;
 
 export const Spacing = {
