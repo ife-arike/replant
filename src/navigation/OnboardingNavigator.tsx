@@ -19,6 +19,7 @@ import AccountSetupPage1Screen from '../screens/onboarding/AccountSetupPage1Scre
 import AnonymousModeScreen from '../screens/onboarding/AnonymousModeScreen';
 import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Screen';
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
+import LoginPlaceholderScreen from '../screens/onboarding/LoginPlaceholderScreen';
 
 // AccountSetupPage2 accepts an optional KAN-13 loopback payload — when the
 // leader returns from registering a brand-new church, KAN-13 navigates back
@@ -47,6 +48,7 @@ export type OnboardingStackParamList = {
       }
     | undefined;
   RegisterChurchPage1: undefined;
+  Login: undefined; // KAN-26 — placeholder destination from Splash "Sign In"
   // Screen 10 (RegisterChurchPage2 / MapPin) — gated on MAP wiring confirmation
 };
 
@@ -101,6 +103,13 @@ export default function OnboardingNavigator() {
         <Stack.Screen
           name="RegisterChurchPage1"
           component={RegisterChurchPage1Screen}
+          options={{ gestureEnabled: true }}
+        />
+
+        {/* Login placeholder — KAN-26 will ship the real screen */}
+        <Stack.Screen
+          name="Login"
+          component={LoginPlaceholderScreen}
           options={{ gestureEnabled: true }}
         />
       </Stack.Navigator>
