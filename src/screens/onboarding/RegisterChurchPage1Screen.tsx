@@ -177,7 +177,19 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
       try {
         const result = await submitUnderground();
         setChurchDetails({ churchId: result.church_id });
-        navigation.goBack();
+        navigation.navigate('AccountSetupPage2', {
+          newChurch: {
+            id: result.church_id,
+            name: churchName.trim(),
+            type: 'underground',
+            city: '',
+            country,
+            rag_status: ragStatus,
+            verification_status: 'pending',
+            at_capacity: false,
+          },
+          newChurchId: result.church_id,
+        });
       } catch (err) {
         setSubmitError(
           err instanceof Error
