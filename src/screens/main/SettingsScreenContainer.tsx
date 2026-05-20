@@ -35,6 +35,8 @@ type RagStatus = "green" | "amber" | "red";
 interface UsersRowShape {
   display_name_preference: DisplayNamePreference | null;
   anonymous: boolean | null;
+  full_name?: string | null;
+  role?: string | null;
   church?: {
     id: string | null;
     name: string | null;
@@ -54,6 +56,8 @@ export default function SettingsScreenContainer() {
     null,
   );
   const [anonymousMode, setAnonymousMode] = useState<boolean>(false);
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [churchName, setChurchName] = useState<string | null>(null);
   const [churchId, setChurchId] = useState<string | null>(null);
   const [churchCode, setChurchCode] = useState<string | null>(null);
@@ -70,6 +74,8 @@ export default function SettingsScreenContainer() {
         .select(`
           display_name_preference,
           anonymous,
+          full_name,
+          role,
           church:church_id(
             id,
             name,
@@ -94,6 +100,8 @@ export default function SettingsScreenContainer() {
       const row = data as unknown as UsersRowShape;
       setInitialPref(row.display_name_preference ?? "first_name_only");
       setAnonymousMode(row.anonymous ?? false);
+      setFullName(row.full_name ?? null);
+      setUserRole(row.role ?? null);
 
       // Defensive: church may come back as object | array | null.
       const churchField = (row as unknown as { church?: unknown }).church;
@@ -125,6 +133,8 @@ export default function SettingsScreenContainer() {
       email={email}
       initialDisplayNamePreference={initialPref}
       anonymousMode={anonymousMode}
+      fullName={fullName}
+      userRole={userRole}
       churchCode={churchCode}
       churchName={churchName}
       churchId={churchId}
