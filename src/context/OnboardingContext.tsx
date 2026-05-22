@@ -31,6 +31,11 @@ interface ChurchDetails {
   ragStatus?: string;
   lat?: number;
   lng?: number;
+  // Finalization — Page 2 needs/has free-text. Persisted to context on
+  // every change so back-nav restores the leader's work (they don't
+  // re-type if they bounce back from a later step).
+  hasText?: string;
+  needsText?: string;
 }
 
 interface OnboardingState {

@@ -51,6 +51,10 @@ export interface RegisterChurchPayload {
   // already-trimmed + empty-filtered. BE re-normalises defensively. Maps to
   // `public.churches.needs text[] NULL`.
   needs?: string[] | null;
+  // Finalization — paired "what we have" array. Same shape + validation
+  // as needs[]; maps to public.churches.resources text[] NULL (migration
+  // 20260522000003_kan_churches_resources_v1).
+  resources?: string[] | null;
   // Finalization fix 7 — emergency preparedness self-report. Both
   // nullable: leaders are not required to answer at registration. Maps
   // to public.churches.has_emergency_plan / open_to_collaboration
@@ -78,6 +82,7 @@ export interface InsertChurchRow {
   lat: number | null;
   lng: number | null;
   needs: string[] | null;
+  resources: string[] | null;
   // Finalization fix 7 — null when leader skipped the question.
   has_emergency_plan: boolean | null;
   open_to_collaboration: boolean | null;
@@ -239,6 +244,22 @@ export function parsePayload(body: unknown): ParseResult {
     needs = cleaned.length > 0 ? cleaned : null;
   }
 
+  // Finalization — resources[] is the paired "what we have" array.
+  // Same shape, same normalization, same posture as needs above.
+  let resources: string[] | null = null;
+  if (p.resources !== undefined && p.resources !== null) {
+    if (!Array.isArray(p.resources)) {
+      return { ok: false, error: "resources must be an array of strings when provided" };
+    }
+    for (const r of p.resources) {
+      if (typeof r !== "string") {
+        return { ok: false, error: "resources must be an array of strings when provided" };
+      }
+    }
+    const cleaned = (p.resources as string[]).map((s) => s.trim()).filter((s) => s.length > 0);
+    resources = cleaned.length > 0 ? cleaned : null;
+  }
+
   const type = p.type as ChurchType;
   const isUnderground = type === "underground";
 
@@ -267,6 +288,7 @@ export function parsePayload(body: unknown): ParseResult {
     lat: isUnderground ? null : ((p.lat as number | undefined) ?? null),
     lng: isUnderground ? null : ((p.lng as number | undefined) ?? null),
     needs,
+    resources,
     has_emergency_plan: typeof p.has_emergency_plan === "boolean" ? p.has_emergency_plan : null,
     open_to_collaboration: typeof p.open_to_collaboration === "boolean" ? p.open_to_collaboration : null,
   };
