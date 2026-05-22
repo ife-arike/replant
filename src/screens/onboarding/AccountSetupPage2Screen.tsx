@@ -95,6 +95,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // True only when the current selection came from the KAN-13 loopback —
   // controls the create-account `isNewChurch` payload flag (Step 7 email).
   const [isNewChurchFromLoopback, setIsNewChurchFromLoopback] = useState(false);
+  // Finalization fix 3 — Skip-for-now path. A leader who cannot yet
+  // name their church still belongs in the network; create-account
+  // accepts churchId: null. The 30-day verification window starts
+  // ticking either way (handled by computeVerificationDeadline).
+  const [skippedChurch, setSkippedChurch] = useState(false);
 
   // Bumped on every new keystroke; in-flight responses check this against
   // their captured value before applying. Belt-and-suspenders alongside
@@ -102,7 +107,28 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // newer query has been kicked off but the abort hasn't propagated.
   const searchVersionRef = useRef(0);
 
-  const canSubmit = !!selectedChurch && !capError;
+  // Finalization fix 3 — submit unlocks on EITHER a selected church OR
+  // the skip path. capError remains a hard block (the selected church
+  // is at capacity and the leader hasn't cleared the selection).
+  const canSubmit = (!!selectedChurch || skippedChurch) && !capError;
+
+  // Finalization fix 3 — handler for the Skip-for-now button. Clears
+  // any prior selection so we don't accidentally send a churchId on a
+  // skip submit. Also clears capError (skip is unrelated to capacity).
+  const handleSkipChurch = () => {
+    setSkippedChurch(true);
+    setSelectedChurch(null);
+    setCapError(false);
+    setIsNewChurchFromLoopback(false);
+  };
+
+  // When a leader picks a church after having skipped, the skip flag
+  // must lift — wired into setSelectedChurch via a small wrapper used
+  // at every selection site below.
+  const selectChurch = (church: ChurchResult | null) => {
+    setSelectedChurch(church);
+    if (church !== null) setSkippedChurch(false);
+  };
 
   // ── Live (debounced) search ────────────────────────────────────────
   useEffect(() => {
@@ -255,7 +281,10 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
-    if (!selectedChurch) return;
+    // Finalization fix 3 — accept either a selected church OR the skip
+    // path. With skip, churchId is null on the wire; create-account
+    // accepts null per the BE change in the same commit.
+    if (!selectedChurch && !skippedChurch) return;
     if (
       !personalDetails.firstName ||
       !personalDetails.lastName ||
@@ -267,9 +296,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       return;
     }
 
+    const churchId: string | null = skippedChurch ? null : selectedChurch!.id;
+
     setSubmitError(null);
     setSubmitting(true);
-    setChurchDetails({ churchId: selectedChurch.id });
+    setChurchDetails({ churchId: churchId ?? undefined });
 
     try {
       // ── Layer 1 — pre-check email-available ──────────────────────
@@ -299,8 +330,10 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           password: personalDetails.password,
           role: personalDetails.role,
           anonymous: personalDetails.anonymous ?? false,
-          churchId: selectedChurch.id,
-          isNewChurch: isNewChurchFromLoopback,
+          churchId,
+          // Finalization fix 3 — isNewChurch can only be true on the
+          // non-skip path. A skip leader hasn't registered anything.
+          isNewChurch: isNewChurchFromLoopback && !skippedChurch,
         }),
       });
 
@@ -446,14 +479,31 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         )}
 
         {/* KAN-12 finalization — pending-church notice. When the leader
-            selects a church that's still awaiting Replant verification,
-            surface the cascade impact: their account will also stay
-            pending until the church verifies. Amber to match the
-            verification countdown banner family. */}
-        {selectedChurch?.verification_status === 'pending' && (
+            selects an EXISTING church that's still awaiting Replant
+            verification, surface the cascade impact: their account will
+            also stay pending until the church verifies.
+
+            Finalization fix 2 — guarded by !isNewChurchFromLoopback so
+            a leader who just registered their own brand-new church
+            doesn't see the cascade copy meant for joining-an-existing-
+            pending-church. Their own registration's verification
+            countdown is the right signal there. */}
+        {selectedChurch?.verification_status === 'pending' && !isNewChurchFromLoopback && (
           <View style={styles.pendingChurchNotice}>
             <Text style={styles.pendingChurchNoticeText}>
               This church is awaiting verification. Your account will also be pending until the church is verified by Replant.
+            </Text>
+          </View>
+        )}
+
+        {/* Finalization fix 3 — Skip-for-now amber card. Shown after
+            the leader has tapped Skip. Sets expectation about the 30-day
+            window without naming verification yet (no church to verify
+            until they join one). */}
+        {skippedChurch && (
+          <View style={styles.skipNotice}>
+            <Text style={styles.skipNoticeText}>
+              You can find and join your church later. You'll have 30 days after account creation to verify your church.
             </Text>
           </View>
         )}
@@ -524,6 +574,19 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           >
             <Text style={styles.registerButtonText}>Register a New Church</Text>
           </TouchableOpacity>
+
+          {/* Finalization fix 3 — Skip-for-now. Text-only button beneath
+              Register a New Church. Leaders who can't yet name their
+              church (joining soon, between churches, awaiting placement)
+              still step into the network rather than being turned away
+              at the door. The 30-day window starts on account creation. */}
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkipChurch}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipButtonText}>Skip for now</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -549,7 +612,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           <Text style={styles.submitErrorText}>{submitError}</Text>
         )}
         {!canSubmit && !capError && !submitError && (
-          <Text style={styles.footerHint}>Select or register a church to continue</Text>
+          <Text style={styles.footerHint}>Select a church, register one, or skip for now</Text>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -734,6 +797,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.amber,
     lineHeight: 18,
+  },
+
+  // Finalization fix 3 — Skip-for-now amber card + text-style button.
+  // skipNotice mirrors the pending-church notice token family
+  // (rgba amber 0.06 / 0.3 border) so the two amber surfaces read as
+  // one visual vocabulary. skipButton is a subtle text-only action
+  // beneath the Register a New Church primary button.
+  skipNotice: {
+    backgroundColor: 'rgba(212, 168, 85, 0.06)',
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+    borderColor: 'rgba(212, 168, 85, 0.3)',
+    padding: Spacing.md,
+  },
+  skipNoticeText: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.amber,
+    lineHeight: 20,
+  },
+  skipButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.textSubtle,
   },
 
   emptyState: {

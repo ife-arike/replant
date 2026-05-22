@@ -69,7 +69,11 @@ export interface CreateAccountPayload {
   password: string;
   role: Role;
   anonymous?: boolean;
-  churchId: string;
+  // Finalization fix 4 — churchId is now optional/nullable. A missing
+  // or non-UUID value is the skip-flow signal (leader didn't pick or
+  // register a church yet). The skip path writes a null church_id on
+  // public.users and starts the 30-day verification window.
+  churchId?: string | null;
   isNewChurch?: boolean;
 }
 
@@ -87,7 +91,9 @@ export interface ValidatedAccountInput {
   fullName: string;    // `${firstName.trim()} ${lastName.trim()}` per DBA c.13321 Q3
   role: Role;
   anonymous: boolean;  // defaulted to false if absent
-  churchId: string;    // uuid
+  // Finalization fix 4 — churchId is nullable. null = skip-flow path;
+  // capacity guard + new-church email both gated downstream on non-null.
+  churchId: string | null;
   // Side-effect controls
   isNewChurch: boolean; // defaulted to false; controls Step 7 email
   // Display-only — kept for Resend templating (KAN-31), not written to DB
@@ -166,10 +172,13 @@ export function parsePayload(body: unknown): ParseResult {
     };
   }
 
-  // Church id — UUID shape only (the FK is validated by Postgres on INSERT)
-  if (typeof p.churchId !== "string" || !UUID_RE.test(p.churchId)) {
-    return { ok: false, error: "churchId is not a valid UUID" };
-  }
+  // Finalization fix 4 — churchId is now optional. A string that doesn't
+  // pass the UUID shape is treated the same as absent (skip path). The
+  // FK is validated by Postgres on INSERT when a value is provided.
+  const churchId: string | null =
+    typeof p.churchId === "string" && UUID_RE.test(p.churchId)
+      ? p.churchId
+      : null;
 
   // Optional booleans — default false on absence / non-boolean.
   // DBA c.13321 forward-compat note: anonymous defaults false if KAN-83
@@ -190,7 +199,7 @@ export function parsePayload(body: unknown): ParseResult {
       fullName: `${firstName} ${lastName}`,
       role: p.role as Role,
       anonymous,
-      churchId: p.churchId,
+      churchId,
       isNewChurch,
       firstName,
       lastName,

@@ -51,6 +51,12 @@ export interface RegisterChurchPayload {
   // already-trimmed + empty-filtered. BE re-normalises defensively. Maps to
   // `public.churches.needs text[] NULL`.
   needs?: string[] | null;
+  // Finalization fix 7 — emergency preparedness self-report. Both
+  // nullable: leaders are not required to answer at registration. Maps
+  // to public.churches.has_emergency_plan / open_to_collaboration
+  // (migration 20260522000002_kan_churches_emergency_plan_v1).
+  has_emergency_plan?: boolean | null;
+  open_to_collaboration?: boolean | null;
 }
 
 // Shape passed to deps.insertChurch — has all the columns the BE writes.
@@ -72,6 +78,9 @@ export interface InsertChurchRow {
   lat: number | null;
   lng: number | null;
   needs: string[] | null;
+  // Finalization fix 7 — null when leader skipped the question.
+  has_emergency_plan: boolean | null;
+  open_to_collaboration: boolean | null;
 }
 
 export interface RegisterChurchSuccessBody {
@@ -110,6 +119,9 @@ function isOptionalString(v: unknown, max: number): v is string | undefined | nu
 function isOptionalFiniteNumber(v: unknown): v is number | undefined | null {
   if (v === undefined || v === null) return true;
   return typeof v === "number" && Number.isFinite(v);
+}
+function isOptionalBoolean(v: unknown): v is boolean | undefined | null {
+  return v === undefined || v === null || typeof v === "boolean";
 }
 
 export type ParseResult =
@@ -199,6 +211,16 @@ export function parsePayload(body: unknown): ParseResult {
     return { ok: false, error: "lng must be a finite number when provided" };
   }
 
+  // Finalization fix 7 — emergency preparedness booleans. Both optional;
+  // accepted values are true / false / null / undefined (absent). Anything
+  // else is a type error.
+  if (!isOptionalBoolean(p.has_emergency_plan)) {
+    return { ok: false, error: "has_emergency_plan must be a boolean when provided" };
+  }
+  if (!isOptionalBoolean(p.open_to_collaboration)) {
+    return { ok: false, error: "open_to_collaboration must be a boolean when provided" };
+  }
+
   // Optional needs[] — KAN-14. Absent / null → null. Present → must be an
   // array of strings; each entry is trimmed + empty-string-filtered as
   // defense-in-depth (the FE already does this, but if a bad client posts
@@ -245,6 +267,8 @@ export function parsePayload(body: unknown): ParseResult {
     lat: isUnderground ? null : ((p.lat as number | undefined) ?? null),
     lng: isUnderground ? null : ((p.lng as number | undefined) ?? null),
     needs,
+    has_emergency_plan: typeof p.has_emergency_plan === "boolean" ? p.has_emergency_plan : null,
+    open_to_collaboration: typeof p.open_to_collaboration === "boolean" ? p.open_to_collaboration : null,
   };
 
   return { ok: true, row };

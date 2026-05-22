@@ -39,7 +39,9 @@ export interface InsertPublicUserRow {
   full_name: string;
   email: string;
   role: Role;
-  church_id: string;
+  // Finalization fix 4 — nullable for the skip-flow path. public.users.
+  // church_id is uuid NULL on the live schema (verified 2026-05-22).
+  church_id: string | null;
   anonymous: boolean;
   declaration_affirmed: true;
   declaration_date: string;
@@ -90,6 +92,14 @@ export interface Deps {
    * (request returns success regardless). KAN-31 owns the template.
    */
   sendWelcomeEmail(opts: { email: string; firstName: string }): Promise<void>;
+  /**
+   * Finalization fix 4 — look up the church's contact_email so the
+   * welcome email routes to the ministry inbox the leader chose
+   * during registration (not the personal auth email). Returns null
+   * if the church has no contact_email or the lookup fails; the
+   * caller falls back to the personal auth email defensively.
+   */
+  getChurchContactEmail(churchId: string): Promise<string | null>;
   /**
    * "New church registered" email to the Replant team, fired ONLY when
    * `isNewChurch === true` (the leader registered a fresh church in this
@@ -216,24 +226,31 @@ export function createHandler(deps: Deps) {
       // dispatch out-of-scope (DBA-side trigger is a follow-up). For
       // MVP, the count-then-INSERT race is bounded by the 3-req/hr
       // rate-limit per IP+email.
-      let activeCount: number;
-      try {
-        activeCount = await deps.countActiveUsersInChurch(input.churchId);
-      } catch (e) {
-        deps.log("error", "create_account_capacity_check_failed", {
-          email_hash: hashEmail(input.email),
-          church_id: input.churchId,
-          message: (e as Error).message,
-        });
-        return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
-      }
-      if (exceedsCapacity(activeCount)) {
-        deps.log("info", "create_account_capacity_exceeded", {
-          email_hash: hashEmail(input.email),
-          church_id: input.churchId,
-          active_count: activeCount,
-        });
-        return errorRes(400, ERROR_CODES.LEADER_CAP_EXCEEDED);
+      //
+      // Finalization fix 4 — skip-flow path: when churchId is null
+      // there's no church to check capacity against. We skip the
+      // guard entirely; a leader who later joins a church goes
+      // through the church-management flow which re-runs the check.
+      if (input.churchId !== null) {
+        let activeCount: number;
+        try {
+          activeCount = await deps.countActiveUsersInChurch(input.churchId);
+        } catch (e) {
+          deps.log("error", "create_account_capacity_check_failed", {
+            email_hash: hashEmail(input.email),
+            church_id: input.churchId,
+            message: (e as Error).message,
+          });
+          return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
+        }
+        if (exceedsCapacity(activeCount)) {
+          deps.log("info", "create_account_capacity_exceeded", {
+            email_hash: hashEmail(input.email),
+            church_id: input.churchId,
+            active_count: activeCount,
+          });
+          return errorRes(400, ERROR_CODES.LEADER_CAP_EXCEEDED);
+        }
       }
 
       // ─── Step 1 — Auth createUser (or resume) ───
@@ -310,7 +327,22 @@ export function createHandler(deps: Deps) {
       //
       // Failure here does not roll back account creation (COO c.10131).
       // OPS monitors Resend delivery failures via the warn logs.
-      void deps.sendWelcomeEmail({ email: input.email, firstName: input.firstName })
+      //
+      // Finalization fix 4 — route the welcome email to the church's
+      // contact_email (the ministry inbox the leader chose during
+      // registration), not the personal auth email. Fault-tolerant:
+      // missing contact_email or lookup failure falls back to the
+      // personal email so a leader is never silently un-emailed.
+      let welcomeEmail = input.email;
+      if (input.churchId !== null) {
+        try {
+          const contactEmail = await deps.getChurchContactEmail(input.churchId);
+          if (contactEmail) welcomeEmail = contactEmail;
+        } catch {
+          // Fault-tolerant: keep personal auth email as the fallback.
+        }
+      }
+      void deps.sendWelcomeEmail({ email: welcomeEmail, firstName: input.firstName })
         .catch((err) => {
           deps.log("warn", "create_account_welcome_email_failed", {
             email_hash: hashEmail(input.email),
@@ -318,7 +350,12 @@ export function createHandler(deps: Deps) {
           });
         });
 
-      if (input.isNewChurch) {
+      // Finalization fix 4 — defensive double-guard. isNewChurch can
+      // only be true on the non-skip path (FE forces it false on skip
+      // already), but a malformed client could send isNewChurch=true
+      // with churchId=null — guard belt-and-suspenders so the new-church
+      // email never fires without a churchId.
+      if (input.isNewChurch && input.churchId !== null) {
         void deps.sendNewChurchEmail({
           churchId: input.churchId,
           leaderEmail: input.email,

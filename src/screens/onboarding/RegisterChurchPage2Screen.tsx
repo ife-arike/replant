@@ -56,6 +56,11 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
   // non-underground churches. Seed from context in case the leader
   // back-navigates from a later step.
   const [ragStatus, setRagStatus] = useState(state.churchDetails.ragStatus ?? '');
+  // Finalization fix 8 — emergency preparedness self-report. Both
+  // optional (tri-state null/true/false); never gate submission.
+  // Tapping the already-selected option deselects (back to null).
+  const [hasEmergencyPlan, setHasEmergencyPlan] = useState<boolean | null>(null);
+  const [openToCollaboration, setOpenToCollaboration] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -114,6 +119,10 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
     if (cd.contactEmail && cd.contactEmail.trim()) payload.contact_email = cd.contactEmail.trim();
     if (cd.contactPhone && cd.contactPhone.trim()) payload.contact_phone = cd.contactPhone.trim();
     if (needsArr.length > 0) payload.needs = needsArr;
+    // Finalization fix 8 — emergency preparedness fields. Only sent
+    // when the leader actually answered (null = unanswered = absent).
+    if (hasEmergencyPlan !== null) payload.has_emergency_plan = hasEmergencyPlan;
+    if (openToCollaboration !== null) payload.open_to_collaboration = openToCollaboration;
 
     try {
       const response = await fetch(REGISTER_CHURCH_URL, {
@@ -251,6 +260,100 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
             numberOfLines={4}
             textAlignVertical="top"
           />
+        </View>
+
+        {/* Finalization fix 8 — emergency preparedness Q1 + Q2. Tri-state
+            Yes / No / unanswered. Tapping the selected option deselects
+            (back to null). Both fields are fully optional and never
+            gate submission — leaders without an answer ship as null. */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>
+            Do you have an emergency action plan in case of a sudden incident?
+          </Text>
+          <Text style={styles.fieldNote}>
+            Optional — you can update this at any time from Settings.
+          </Text>
+          <View style={styles.yesNoRow}>
+            <TouchableOpacity
+              style={[
+                styles.yesNoButton,
+                hasEmergencyPlan === true && styles.yesNoButtonSelected,
+              ]}
+              onPress={() => setHasEmergencyPlan(hasEmergencyPlan === true ? null : true)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.yesNoButtonText,
+                  hasEmergencyPlan === true && styles.yesNoButtonTextSelected,
+                ]}
+              >
+                Yes
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.yesNoButton,
+                hasEmergencyPlan === false && styles.yesNoButtonSelected,
+              ]}
+              onPress={() => setHasEmergencyPlan(hasEmergencyPlan === false ? null : false)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.yesNoButtonText,
+                  hasEmergencyPlan === false && styles.yesNoButtonTextSelected,
+                ]}
+              >
+                No
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>
+            Would you be willing to strategize with nearby churches on emergency preparedness?
+          </Text>
+          <Text style={styles.fieldNote}>
+            Optional — this helps us connect you with the right partners.
+          </Text>
+          <View style={styles.yesNoRow}>
+            <TouchableOpacity
+              style={[
+                styles.yesNoButton,
+                openToCollaboration === true && styles.yesNoButtonSelected,
+              ]}
+              onPress={() => setOpenToCollaboration(openToCollaboration === true ? null : true)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.yesNoButtonText,
+                  openToCollaboration === true && styles.yesNoButtonTextSelected,
+                ]}
+              >
+                Yes
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.yesNoButton,
+                openToCollaboration === false && styles.yesNoButtonSelected,
+              ]}
+              onPress={() => setOpenToCollaboration(openToCollaboration === false ? null : false)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.yesNoButtonText,
+                  openToCollaboration === false && styles.yesNoButtonTextSelected,
+                ]}
+              >
+                No
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -441,6 +544,37 @@ const styles = StyleSheet.create({
   ragCheckText: {
     fontFamily: Typography.bodyMedium,
     fontSize: 16,
+  },
+
+  // Finalization fix 8 — Yes / No button pair for the emergency
+  // preparedness questions. Two equal-width buttons in a row with
+  // standard surface backgrounds; selected state fills with the sky
+  // accent and flips text to background color for contrast.
+  yesNoRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  yesNoButton: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 14,
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  yesNoButtonSelected: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  yesNoButtonText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  yesNoButtonTextSelected: {
+    color: Colors.background,
   },
 
   errorText: {
