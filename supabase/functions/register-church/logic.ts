@@ -35,7 +35,13 @@ export interface RegisterChurchPayload {
   country: string;
   city?: string | null;
   address?: string | null;
-  contact_email: string;
+  // KAN-13 v2 — contact_name is required; admin-only; never surfaced to
+  // non-admin leaders (column-level guard mirrors contact_email).
+  contact_name: string;
+  // KAN-13 v2 — contact_email is now optional at the field level. The
+  // at-least-one rule below enforces that *one of* email or phone is
+  // present. When provided, contact_email must still pass EMAIL_RE.
+  contact_email?: string | null;
   contact_phone?: string | null;
   rag_status: RagStatus;
   state_declaration: string;
@@ -56,7 +62,10 @@ export interface InsertChurchRow {
   country: string;
   city: string | null;
   address: string | null;
-  contact_email: string;
+  contact_name: string;
+  // KAN-13 v2 — both nullable on the row now (one of the two must be
+  // non-null per parsePayload's at-least-one validation upstream).
+  contact_email: string | null;
   contact_phone: string | null;
   rag_status: RagStatus;
   state_declaration: string;
@@ -131,10 +140,21 @@ export function parsePayload(body: unknown): ParseResult {
   if (!isNonEmptyString(p.country, MAX_COUNTRY)) {
     return { ok: false, error: "country is required" };
   }
-  if (!isNonEmptyString(p.contact_email, MAX_EMAIL)) {
-    return { ok: false, error: "contact_email is required" };
+  // KAN-13 v2 — contact_name required (admin-only PII; column-level
+  // guard inherited from contact_email/contact_phone).
+  if (!isNonEmptyString(p.contact_name, MAX_NAME)) {
+    return { ok: false, error: "contact_name is required" };
   }
-  if (!EMAIL_RE.test((p.contact_email as string).trim())) {
+  // KAN-13 v2 — at-least-one rule. At least one of contact_email or
+  // contact_phone must be non-empty. Serves leaders who have a phone
+  // but not an email, and vice versa. When email IS provided, its
+  // format must still pass EMAIL_RE.
+  const hasEmail = isNonEmptyString(p.contact_email, MAX_EMAIL);
+  const hasPhone = isNonEmptyString(p.contact_phone, MAX_PHONE);
+  if (!hasEmail && !hasPhone) {
+    return { ok: false, error: "at least one of contact_email or contact_phone is required" };
+  }
+  if (hasEmail && !EMAIL_RE.test((p.contact_email as string).trim())) {
     return { ok: false, error: "contact_email is not a valid email address" };
   }
   if (!isNonEmptyString(p.state_declaration, MAX_DECLARATION)) {
@@ -161,6 +181,11 @@ export function parsePayload(body: unknown): ParseResult {
   }
   if (!isOptionalString(p.address, MAX_ADDRESS)) {
     return { ok: false, error: "address must be a string when provided" };
+  }
+  // contact_email is now optional at the field level (the at-least-one
+  // rule above is the gating check). Still type-validate when provided.
+  if (!isOptionalString(p.contact_email, MAX_EMAIL)) {
+    return { ok: false, error: "contact_email must be a string when provided" };
   }
   if (!isOptionalString(p.contact_phone, MAX_PHONE)) {
     return { ok: false, error: "contact_phone must be a string when provided" };
@@ -210,7 +235,10 @@ export function parsePayload(body: unknown): ParseResult {
     // UG strip: c.10167 "absent for underground — not sent, not written"
     city: isUnderground ? null : optStr(p.city),
     address: optStr(p.address),
-    contact_email: (p.contact_email as string).trim(),
+    // KAN-13 v2 — contact_name is admin-only PII; NOT stripped on UG
+    // (the verification team needs to reach the underground leader).
+    contact_name: (p.contact_name as string).trim(),
+    contact_email: optStr(p.contact_email),
     contact_phone: optStr(p.contact_phone),
     rag_status: p.rag_status as RagStatus,
     state_declaration: (p.state_declaration as string).trim(),

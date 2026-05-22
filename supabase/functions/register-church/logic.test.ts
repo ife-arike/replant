@@ -18,12 +18,16 @@ import {
 } from "./logic.ts";
 
 // Build a payload from a minimal valid base — tests override specific fields.
+// KAN-13 v2 — contact_name now required; contact_email optional under the
+// at-least-one rule. Base includes both name and email so all happy-path
+// tests still parse cleanly.
 function basePayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     name: "Maranatha Fellowship",
     type: "main_campus",
     country: "Kenya",
     city: "Nairobi",
+    contact_name: "Ife James",
     contact_email: "office@maranatha.test",
     rag_status: "green",
     state_declaration: "I affirm the Replant Declaration of Faith.",
@@ -175,7 +179,10 @@ Deno.test("parsePayload — null / non-object body rejected", () => {
 });
 
 Deno.test("parsePayload — missing required fields rejected", () => {
-  for (const field of ["name", "type", "country", "contact_email", "rag_status", "state_declaration"]) {
+  // KAN-13 v2 — contact_name added; contact_email retained because under
+  // at-least-one, removing it from a base with no phone still rejects
+  // (error mentions "contact_email" via the at-least-one message).
+  for (const field of ["name", "type", "country", "contact_name", "contact_email", "rag_status", "state_declaration"]) {
     const p = basePayload();
     delete p[field];
     const r = parsePayload(p);
@@ -185,9 +192,69 @@ Deno.test("parsePayload — missing required fields rejected", () => {
 });
 
 Deno.test("parsePayload — empty / whitespace-only required strings rejected", () => {
-  for (const field of ["name", "country", "contact_email", "state_declaration"]) {
+  // KAN-13 v2 — contact_name added; contact_email retained (empty email
+  // with no phone fails the at-least-one gate, error still mentions email).
+  for (const field of ["name", "country", "contact_name", "contact_email", "state_declaration"]) {
     assertEquals(parsePayload(basePayload({ [field]: "" })).ok, false, `expected reject when ${field} = ''`);
     assertEquals(parsePayload(basePayload({ [field]: "   " })).ok, false, `expected reject when ${field} = whitespace`);
+  }
+});
+
+// ── KAN-13 v2 — at-least-one of email or phone ──────────────────────────
+
+Deno.test("parsePayload — KAN-13 v2 at-least-one rule: only contact_email accepts", () => {
+  const p = basePayload({ contact_phone: undefined });
+  const r = parsePayload(p);
+  assertEquals(r.ok, true, "expected accept with email only");
+  if (r.ok) {
+    assertEquals(r.row.contact_email, "office@maranatha.test");
+    assertStrictEquals(r.row.contact_phone, null);
+  }
+});
+
+Deno.test("parsePayload — KAN-13 v2 at-least-one rule: only contact_phone accepts", () => {
+  const p = basePayload({ contact_email: undefined, contact_phone: "+1 555 010 1234" });
+  const r = parsePayload(p);
+  assertEquals(r.ok, true, "expected accept with phone only");
+  if (r.ok) {
+    assertStrictEquals(r.row.contact_email, null);
+    assertEquals(r.row.contact_phone, "+1 555 010 1234");
+  }
+});
+
+Deno.test("parsePayload — KAN-13 v2 at-least-one rule: neither rejects", () => {
+  const p = basePayload({ contact_email: undefined, contact_phone: undefined });
+  const r = parsePayload(p);
+  assertEquals(r.ok, false, "expected reject with neither email nor phone");
+  if (!r.ok) {
+    assertEquals(r.error.toLowerCase().includes("at least one"), true);
+  }
+});
+
+Deno.test("parsePayload — KAN-13 v2 at-least-one rule: both accepts", () => {
+  const r = parsePayload(basePayload({ contact_phone: "+1 555 010 1234" }));
+  assertEquals(r.ok, true, "expected accept with both email and phone");
+  if (r.ok) {
+    assertEquals(r.row.contact_email, "office@maranatha.test");
+    assertEquals(r.row.contact_phone, "+1 555 010 1234");
+  }
+});
+
+Deno.test("parsePayload — KAN-13 v2 contact_name preserved on underground (NOT stripped)", () => {
+  const r = parsePayload(basePayload({
+    type: "underground",
+    city: undefined,
+    lat: undefined,
+    lng: undefined,
+    rag_status: "red",
+    contact_name: "Underground Leader",
+  }));
+  assertEquals(r.ok, true);
+  if (r.ok) {
+    assertEquals(r.row.contact_name, "Underground Leader");
+    assertStrictEquals(r.row.city, null); // city is stripped
+    assertStrictEquals(r.row.lat, null);  // lat is stripped
+    assertStrictEquals(r.row.lng, null);  // lng is stripped
   }
 });
 

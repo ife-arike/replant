@@ -45,11 +45,16 @@ const REGISTER_CHURCH_URL = `${SUPABASE_URL}/functions/v1/register-church`;
 // KAN-13 — Underground submission shape sent to register-church.
 // city / lat / lng are intentionally absent — the BE force-strips them on
 // type='underground' anyway, but FE not sending them keeps the wire clean.
+// KAN-13 v2 — contact_name is required; contact_email is optional under
+// the at-least-one-of-email-or-phone rule. contact_name is admin-only PII
+// and is NOT stripped on the underground path (the verification team
+// needs to be able to reach the leader).
 interface RegisterChurchUndergroundPayload {
   name: string;
   type: 'underground';
   country: string;
-  contact_email: string;
+  contact_name: string;
+  contact_email?: string;
   contact_phone?: string;
   rag_status: string;
   state_declaration: string;
@@ -71,6 +76,8 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
   const [country, setCountry] = useState('');
   const [cityRegion, setCityRegion] = useState('');
   const [address, setAddress] = useState('');
+  // KAN-13 v2 — contact_name is required (admin-only PII).
+  const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [ragStatus, setRagStatus] = useState('');
@@ -101,12 +108,14 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
     }
   };
 
+  // KAN-13 v2 — contact_name required; at-least-one of email/phone.
   const isFormValid =
     churchName.trim() &&
     churchType &&
     country &&
     (isUnderground || cityRegion.trim()) &&
-    contactEmail.trim() &&
+    contactName.trim() &&
+    (contactEmail.trim() || contactPhone.trim()) &&
     ragStatus;
 
   // KAN-13 — submit the Underground registration to register-church.
@@ -116,10 +125,11 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
       name: churchName.trim(),
       type: 'underground',
       country,
-      contact_email: contactEmail.trim(),
+      contact_name: contactName.trim(),
       rag_status: ragStatus,
       state_declaration: STATE_DECLARATION_AFFIRMATION,
     };
+    if (contactEmail.trim()) payload.contact_email = contactEmail.trim();
     if (contactPhone.trim()) payload.contact_phone = contactPhone.trim();
 
     const response = await fetch(REGISTER_CHURCH_URL, {
@@ -162,6 +172,7 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
       country,
       cityRegion: isUnderground ? undefined : cityRegion,
       address: isUnderground ? undefined : address,
+      contactName,
       contactEmail,
       contactPhone,
       ragStatus,
@@ -342,11 +353,34 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
           </View>
         )}
 
-        {/* Contact Email */}
+        {/* Contact Details section — KAN-13 v2.
+            Group label introduces the three contact fields together.
+            contact_name is admin-only PII; contact_email is now optional
+            (at-least-one-of-email-or-phone enforced both FE + BE). */}
+        <Text style={styles.sectionLabel}>Contact Details</Text>
+
+        {/* Contact Name — required */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Contact Name</Text>
+          <Text style={styles.fieldNote}>
+            Admin-only. Used by the Replant team during verification.
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={contactName}
+            onChangeText={setContactName}
+            placeholder="Primary contact for this church"
+            placeholderTextColor={Colors.textSubtle}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+        </View>
+
+        {/* Contact Email — no longer required at field level */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Contact Email</Text>
           <Text style={styles.fieldNote}>
-            Used by the Replant team for verification. Retained securely after verification.
+            At least one of email or phone required.
           </Text>
           <TextInput
             style={styles.input}
@@ -602,6 +636,19 @@ const styles = StyleSheet.create({
   },
 
   fieldGroup: { gap: Spacing.xs },
+
+  // KAN-13 v2 — section label for the Contact Details group. Same
+  // typographic register as the top-of-screen stepLabel (mono-ish
+  // uppercase letterspaced sky) but at a slightly smaller size so it
+  // reads as a group divider mid-form, not a peer of the screen title.
+  sectionLabel: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 12,
+    letterSpacing: 2,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    marginTop: Spacing.sm,
+  },
 
   label: {
     fontFamily: Typography.bodyMedium,

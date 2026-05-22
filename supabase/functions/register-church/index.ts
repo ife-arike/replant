@@ -42,6 +42,7 @@ function makeDeps(): Deps {
           country: row.country,
           city: row.city,
           address: row.address,
+          contact_name: row.contact_name,
           contact_email: row.contact_email,
           contact_phone: row.contact_phone,
           rag_status: row.rag_status,

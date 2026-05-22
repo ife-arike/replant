@@ -23,6 +23,9 @@ interface ChurchDetails {
   country?: string;
   cityRegion?: string;
   address?: string;
+  // KAN-13 v2 — admin-only PII. Always carried for both underground and
+  // non-underground churches; never surfaced to non-admin leaders.
+  contactName?: string;
   contactEmail?: string;
   contactPhone?: string;
   ragStatus?: string;
