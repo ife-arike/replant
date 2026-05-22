@@ -1,9 +1,14 @@
 // ─────────────────────────────────────────────
 // Screen 06 — Register Church, Page 2 (KAN-14)
-// Single field: needs (comma-separated free-text → string[]).
-// Reads all Page 1 data from OnboardingContext.churchDetails.
+// Fields: Current Status (RAG) + Needs (comma-separated free-text).
+// Reads Page 1 data from OnboardingContext.churchDetails.
 // On submit: register-church edge function → AccountSetupPage2 loopback.
 // Underground path is unchanged (it submits from Page 1 and never reaches here).
+//
+// KAN-13 finalization 2026-05-22: Current Status moved from Page 1 to
+// Page 2 for non-underground leaders, with descriptive subtitles on
+// each RAG option. Underground still picks status on Page 1 (locked
+// to red). Payload-construction bug fixed: contact_name was missing.
 // ─────────────────────────────────────────────
 
 import React, { useState } from 'react';
@@ -23,6 +28,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { RAG_OPTIONS } from '../../utils/displayHelpers';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'RegisterChurchPage2'>;
@@ -46,8 +52,15 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
   const { state, setChurchDetails } = useOnboarding();
 
   const [needsText, setNeedsText] = useState('');
+  // KAN-13 finalization — Current Status now lives on Page 2 for
+  // non-underground churches. Seed from context in case the leader
+  // back-navigates from a later step.
+  const [ragStatus, setRagStatus] = useState(state.churchDetails.ragStatus ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Submit gate — RAG must be chosen before "Register Church" enables.
+  const canSubmit = !submitting && !!ragStatus;
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -56,15 +69,19 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
     // Guard: Page 1 data must be present. If a leader somehow lands here
     // without it (deep link, state loss), surface the gap and ask them
     // to go back rather than submitting a malformed payload.
+    // KAN-13 finalization: contactName required (was missing from guard);
+    // contactEmail relaxed to at-least-one-of-email-or-phone; ragStatus
+    // now sourced from local state, not context.
     if (
       !cd.churchName ||
       !cd.churchType ||
       !cd.country ||
       !cd.cityRegion ||
-      !cd.contactEmail ||
-      !cd.ragStatus
+      !cd.contactName ||
+      (!cd.contactEmail && !cd.contactPhone) ||
+      !ragStatus
     ) {
-      setSubmitError('Missing church details. Please go back to Page 1 and re-enter.');
+      setSubmitError('Missing church details. Please go back and re-enter.');
       return;
     }
 
@@ -78,19 +95,23 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
+    // KAN-13 finalization — contact_name was missing from the payload
+    // (BE-side rejection bug); contact_email is now conditional to
+    // match the at-least-one rule (logic.ts:130-148).
     const payload: Record<string, unknown> = {
       name: cd.churchName.trim(),
       type: cd.churchType,
       country: cd.country,
       city: cd.cityRegion,
-      contact_email: cd.contactEmail.trim(),
-      rag_status: cd.ragStatus,
+      contact_name: cd.contactName.trim(),
+      rag_status: ragStatus,
       state_declaration: STATE_DECLARATION_AFFIRMATION,
       // KAN-14: no map-pin step yet; lat/lng pass as null. logic.ts accepts.
       lat: null,
       lng: null,
     };
     if (cd.address && cd.address.trim()) payload.address = cd.address.trim();
+    if (cd.contactEmail && cd.contactEmail.trim()) payload.contact_email = cd.contactEmail.trim();
     if (cd.contactPhone && cd.contactPhone.trim()) payload.contact_phone = cd.contactPhone.trim();
     if (needsArr.length > 0) payload.needs = needsArr;
 
@@ -127,7 +148,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
           type: cd.churchType,
           city: cd.cityRegion ?? '',
           country: cd.country,
-          rag_status: cd.ragStatus,
+          rag_status: ragStatus,
           verification_status: 'pending',
           at_capacity: false,
         },
@@ -163,6 +184,54 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Current Status — KAN-13 finalization. Each option shows a
+            descriptive subtitle (from RAG_OPTIONS.description) so the
+            leader reads the concrete meaning before choosing. No
+            underground lock here — underground never reaches Page 2. */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Current Status</Text>
+          <Text style={styles.fieldNote}>
+            How is your ministry operating? You can update this at any time from Settings.
+          </Text>
+          <View style={styles.ragOptions}>
+            {RAG_OPTIONS.map(option => {
+              const isSelected = ragStatus === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.ragOption,
+                    isSelected && {
+                      borderColor: option.color,
+                      backgroundColor: `${option.color}12`,
+                    },
+                  ]}
+                  onPress={() => setRagStatus(option.value)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.ragDot, { backgroundColor: option.color }]} />
+                  <View style={styles.ragOptionTextGroup}>
+                    <Text
+                      style={[
+                        styles.ragOptionLabel,
+                        isSelected && { color: option.color },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    <Text style={styles.ragOptionDesc}>{option.description}</Text>
+                  </View>
+                  {isSelected && (
+                    <View style={styles.ragCheck}>
+                      <Text style={[styles.ragCheckText, { color: option.color }]}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Needs — optional, comma-separated */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>
@@ -192,15 +261,22 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
           <Text style={[styles.errorText, styles.submitErrorText]}>{submitError}</Text>
         )}
         <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
           onPress={handleSubmit}
-          disabled={submitting}
+          disabled={!canSubmit}
           activeOpacity={0.8}
         >
           {submitting ? (
             <ActivityIndicator color={Colors.background} />
           ) : (
-            <Text style={styles.submitButtonText}>Register Church</Text>
+            <Text
+              style={[
+                styles.submitButtonText,
+                !canSubmit && styles.submitButtonTextDisabled,
+              ]}
+            >
+              Register Church
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -315,6 +391,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.background,
   },
+  submitButtonTextDisabled: {
+    color: 'rgba(107, 181, 232, 0.4)',
+  },
+
+  // RAG option styles — mirror Page 1's pattern (ragOption, ragDot,
+  // ragCheck) but with a vertical-stack text group (label + description)
+  // since Page 2 surfaces the per-option description subtitle.
+  ragOptions: {
+    gap: Spacing.sm,
+  },
+  ragOption: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    gap: Spacing.sm,
+    minHeight: 44,
+  },
+  ragDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 6, // baseline-align with first line of label
+  },
+  ragOptionTextGroup: {
+    flex: 1,
+  },
+  ragOptionLabel: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  ragOptionDesc: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  ragCheck: {
+    width: 20,
+    alignItems: 'center',
+  },
+  ragCheckText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 16,
+  },
+
   errorText: {
     fontFamily: Typography.body,
     fontSize: 12,

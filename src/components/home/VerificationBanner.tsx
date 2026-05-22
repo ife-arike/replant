@@ -33,14 +33,15 @@ function computeDays(deadline: string | null): number | null {
   return Math.floor((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-type BannerState = 'neutral' | 'amber' | 'red';
+type BannerState = 'amber' | 'red';
 
-// AC thresholds:
-//   days > 7        → neutral
-//   days <= 7 and > 1 → amber
+// KAN-13 finalization 2026-05-22: the neutral state is gone. Pending
+// verification IS a "needs attention" state regardless of days remaining,
+// so the banner reads amber from day 1 of the window until the last
+// inside-tomorrow stretch, which flips red. Thresholds:
+//   days > 1            → amber
 //   days <= 1 (incl. 0) → red
 function getBannerState(days: number): BannerState {
-  if (days > 7) return 'neutral';
   if (days > 1) return 'amber';
   return 'red';
 }
@@ -62,19 +63,21 @@ export default function VerificationBanner() {
     void Linking.openURL(`mailto:${EMAIL}`);
   };
 
-  // Body composition per AC. Neutral state has no email link; amber and
-  // red embed the email as a tappable <Text> via React Native's nested
-  // text pattern (inherits color from the surrounding state-tinted text,
-  // adds underline + medium weight for affordance).
+  // Body composition. Amber state (days > 1) carries two copy variants
+  // separated by the 7-day mark — the "many days remaining" version
+  // reads informational; the "due soon" version names the urgency and
+  // surfaces the tappable mailto. Red state (days <= 1) is always
+  // urgent with the email link.
   const dayWord = days === 1 ? 'day' : 'days';
 
   return (
     <View style={[styles.banner, stateStyles[state].banner]}>
       <View style={styles.content}>
         <Text style={[styles.body, stateStyles[state].text]}>
-          {state === 'neutral' &&
-            `Verification pending — ${days} ${dayWord} remaining. Your church is visible but limited until verified by Replant.`}
-          {state === 'amber' && (
+          {state === 'amber' && days > 7 && (
+            `Verification pending — ${days} ${dayWord} remaining. Your church is visible but limited until verified by Replant.`
+          )}
+          {state === 'amber' && days <= 7 && (
             <>
               {`Verification due soon — ${days} ${dayWord} remaining. Contact `}
               <Text style={[styles.emailLink, stateStyles[state].text]} onPress={openMailto}>
@@ -111,18 +114,14 @@ export default function VerificationBanner() {
 // State-tinted backgrounds + borders + text colors. The amber/red
 // 8% fills + 25% borders match the project's tag-chip family (see
 // AnnouncementTagChip palette) so the banner reads as part of the
-// same visual vocabulary.
-const NEUTRAL_BG = 'rgba(240, 237, 230, 0.04)';
+// same visual vocabulary. Neutral state dropped per finalization
+// 2026-05-22 — pending verification IS an attention state.
 const AMBER_BG = 'rgba(212, 168, 85, 0.08)';
 const AMBER_BORDER = 'rgba(212, 168, 85, 0.25)';
 const RED_BG = 'rgba(224, 85, 85, 0.08)';
 const RED_BORDER = 'rgba(224, 85, 85, 0.25)';
 
 const stateStyles = {
-  neutral: StyleSheet.create({
-    banner: { backgroundColor: NEUTRAL_BG, borderColor: Colors.border },
-    text: { color: Colors.textMuted },
-  }),
   amber: StyleSheet.create({
     banner: { backgroundColor: AMBER_BG, borderColor: AMBER_BORDER },
     text: { color: Colors.amber },
