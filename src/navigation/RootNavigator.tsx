@@ -7,9 +7,11 @@
 // auth state transition (active → pending, etc.) cleanly unmounts the previous
 // branch's tree and mounts the new one — no stale state, no manual reset.
 //
-// Branch mapping per AC-5 (locked KAN-44 contract, comment 10292):
-//   active                   → Tabs + Settings push
-//   pending                  → Pending placeholder (KAN-35 takes over)
+// Branch mapping per AC-5 (locked KAN-44 contract, comment 10292;
+// KAN-35 routing ruling Founder 2026-05-22 — pending now joins active
+// in the Tabs + Settings tree, with a verification countdown banner
+// on Home as the visible signal):
+//   active | pending          → Tabs + Settings push
 //   deactivated              → Deactivated placeholder (KAN-36 takes over)
 //   unauthenticated / loading → Onboarding (nested OnboardingNavigator
 //                                — Splash → DoF → AccountSetupPage1 →
@@ -32,7 +34,6 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthProvider";
 import DeactivatedPlaceholderScreen from "../screens/auth/DeactivatedPlaceholderScreen";
-import PendingPlaceholderScreen from "../screens/auth/PendingPlaceholderScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
 import SetNewPasswordScreen from "../screens/onboarding/SetNewPasswordScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
@@ -46,14 +47,11 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {branch === "active" && (
+      {(branch === "active" || branch === "pending") && (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="Settings" component={SettingsScreenContainer} />
         </>
-      )}
-      {branch === "pending" && (
-        <Stack.Screen name="Pending" component={PendingPlaceholderScreen} />
       )}
       {branch === "deactivated" && (
         <Stack.Screen name="Deactivated" component={DeactivatedPlaceholderScreen} />
