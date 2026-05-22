@@ -378,20 +378,25 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
           />
         </View>
 
-        {/* KAN-196 addendum — live identity preview. Shows the leader
-            exactly how they'll appear on other leaders' screens, with
-            the anonymous toggle changing the result in real time:
-              OFF → "Name · Role · Your Church"
-              ON  → "Role · Your Church"
+        {/* KAN-196 addendum + finalization fix 1 — live identity preview.
+            Role-first format (space-separated from the name):
+              OFF + firstName     → "Role Name · Your Church"
+              OFF + no firstName  → "Role · Your Church"
+              ON                  → "Role · Your Church" (name suppressed)
             Hidden until at least one of firstName/role has a value so
             a fresh screen doesn't render an empty placeholder block. */}
         {(firstName.trim() || role) && (
           <View style={styles.identityPreview}>
             <Text style={styles.identityPreviewLabel}>HOW YOU'LL APPEAR</Text>
             <Text style={styles.identityPreviewText} numberOfLines={1}>
-              {anonymous
-                ? `${ROLES.find(r => r.value === role)?.label ?? 'Your Role'} · Your Church`
-                : `${firstName.trim() || 'Your Name'} · ${ROLES.find(r => r.value === role)?.label ?? 'Your Role'} · Your Church`}
+              {(() => {
+                const roleLabel = ROLES.find(r => r.value === role)?.label ?? 'Your Role';
+                if (anonymous) return `${roleLabel} · Your Church`;
+                const name = firstName.trim();
+                return name
+                  ? `${roleLabel} ${name} · Your Church`
+                  : `${roleLabel} · Your Church`;
+              })()}
             </Text>
           </View>
         )}

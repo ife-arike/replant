@@ -153,11 +153,24 @@ Deno.test("parsePayload — null / non-object body rejected", () => {
 });
 
 Deno.test("parsePayload — missing required fields rejected", () => {
-  for (const field of ["firstName", "lastName", "email", "password", "role", "churchId"]) {
+  // Finalization fix 4 — churchId removed from required list. It's now
+  // optional/nullable; a missing churchId becomes the skip-flow path
+  // (input.churchId = null), not a validation error.
+  for (const field of ["firstName", "lastName", "email", "password", "role"]) {
     const p = basePayload();
     delete p[field];
     const r = parsePayload(p);
     assertEquals(r.ok, false, `expected reject when ${field} missing`);
+  }
+});
+
+Deno.test("parsePayload — KAN finalization: missing churchId is accepted (skip-flow path)", () => {
+  const p = basePayload();
+  delete p.churchId;
+  const r = parsePayload(p);
+  assertEquals(r.ok, true, "expected accept when churchId missing (skip path)");
+  if (r.ok) {
+    assertEquals(r.input.churchId, null, "skip path → churchId is null");
   }
 });
 
@@ -201,11 +214,22 @@ Deno.test("parsePayload — bad role rejected (must be in canonical set)", () =>
   }
 });
 
-Deno.test("parsePayload — non-UUID churchId rejected", () => {
+Deno.test("parsePayload — KAN finalization: non-UUID churchId coerces to null (skip-flow path)", () => {
+  // churchId is no longer required; a malformed value is treated the
+  // same as absent — null on the input, skip path on the handler.
   for (const bad of ["", "not-a-uuid", "11111111-2222-3333-4444", "Z1111111-2222-3333-4444-555555555555"]) {
     const r = parsePayload(basePayload({ churchId: bad }));
-    assertEquals(r.ok, false, `expected reject for churchId=${bad}`);
+    assertEquals(r.ok, true, `expected accept for churchId=${bad} (coerced to null)`);
+    if (r.ok) {
+      assertEquals(r.input.churchId, null, `churchId=${bad} → null`);
+    }
   }
+});
+
+Deno.test("parsePayload — KAN finalization: explicit null churchId is the skip path", () => {
+  const r = parsePayload(basePayload({ churchId: null }));
+  assertEquals(r.ok, true);
+  if (r.ok) assertEquals(r.input.churchId, null);
 });
 
 // ── exceedsCapacity ─────────────────────────────────────────────────────

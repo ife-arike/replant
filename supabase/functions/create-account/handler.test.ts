@@ -95,6 +95,11 @@ function makeDeps(overrides: Partial<Deps> = {}): { deps: Deps; calls: Calls } {
       calls.sendNewChurchEmail += 1;
       calls.newChurchArgs.push(args);
     }),
+    // Finalization fix 4 — default test impl returns null (no
+    // contact_email set) so existing happy-path tests fall back to
+    // the personal auth email. Tests asserting ministry-email
+    // routing override this with a stub that returns a string.
+    getChurchContactEmail: overrides.getChurchContactEmail ?? (async () => null),
     rateLimit: overrides.rateLimit ?? (async () => {
       calls.rateLimit += 1;
       return { allowed: true as const, count: 1 };
@@ -161,7 +166,9 @@ Deno.test("handler — non-JSON body returns 400 validation_error", async () => 
 Deno.test("handler — missing required fields → 400 validation_error", async () => {
   const { deps, calls } = makeDeps();
   const h = createHandler(deps);
-  for (const field of ["firstName", "lastName", "email", "password", "role", "churchId"]) {
+  // Finalization fix 4 — churchId removed from required list. Missing
+  // churchId is the skip-flow path (handled below by a separate test).
+  for (const field of ["firstName", "lastName", "email", "password", "role"]) {
     const p: Record<string, unknown> = { ...validPayload };
     delete p[field];
     const res = await h(jsonReq(p));
@@ -171,6 +178,64 @@ Deno.test("handler — missing required fields → 400 validation_error", async 
   }
   assertEquals(calls.createAuthUser, 0);
   assertEquals(calls.insertPublicUser, 0);
+});
+
+// ── KAN finalization (skip flow + welcome email routing) ───────────────
+
+Deno.test("handler — KAN finalization: skip-flow accepts missing churchId, inserts with church_id null, skips capacity check", async () => {
+  const { deps, calls } = makeDeps();
+  const h = createHandler(deps);
+  const p: Record<string, unknown> = { ...validPayload };
+  delete p.churchId;
+  const res = await h(jsonReq(p));
+  assertEquals(res.status, 200);
+  assertEquals(calls.countActiveUsersInChurch, 0, "skip path → no capacity check");
+  assertEquals(calls.insertPublicUser, 1);
+  assertEquals(calls.insertedRows[0].church_id, null, "row.church_id is null on skip");
+});
+
+Deno.test("handler — KAN finalization: welcome email routes to church contact_email when present", async () => {
+  const { deps, calls } = makeDeps({
+    getChurchContactEmail: async () => "office@maranatha.test",
+  });
+  const h = createHandler(deps);
+  const res = await h(jsonReq({
+    ...validPayload,
+    email: "personal.leader@example.test",
+  }));
+  assertEquals(res.status, 200);
+  // Fire-and-forget — yield a microtask so the welcome email .catch wrapper
+  // settles before assertion.
+  await Promise.resolve();
+  assertEquals(calls.welcomeArgs[0]?.email, "office@maranatha.test", "ministry email used");
+});
+
+Deno.test("handler — KAN finalization: welcome email falls back to personal email when contact_email is null", async () => {
+  const { deps, calls } = makeDeps({
+    getChurchContactEmail: async () => null,
+  });
+  const h = createHandler(deps);
+  const res = await h(jsonReq({
+    ...validPayload,
+    email: "personal.leader@example.test",
+  }));
+  assertEquals(res.status, 200);
+  await Promise.resolve();
+  assertEquals(calls.welcomeArgs[0]?.email, "personal.leader@example.test", "fallback to personal");
+});
+
+Deno.test("handler — KAN finalization: skip-flow welcome email uses personal email (no church to look up)", async () => {
+  const { deps, calls } = makeDeps({
+    // Should not be called on the skip path — return a fake to verify it isn't.
+    getChurchContactEmail: async () => "should-not-be-used@example.test",
+  });
+  const h = createHandler(deps);
+  const p: Record<string, unknown> = { ...validPayload, email: "personal@example.test" };
+  delete p.churchId;
+  const res = await h(jsonReq(p));
+  assertEquals(res.status, 200);
+  await Promise.resolve();
+  assertEquals(calls.welcomeArgs[0]?.email, "personal@example.test", "skip path → personal email");
 });
 
 // ── Rate-limit gating ──────────────────────────────────────────────────

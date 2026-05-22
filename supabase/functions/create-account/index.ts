@@ -214,6 +214,22 @@ function makeDeps(): Deps {
       return count ?? 0;
     },
 
+    // Finalization fix 4 — route welcome email to the church's
+    // contact_email so the ministry inbox the leader chose during
+    // registration receives correspondence, not their personal auth
+    // email. Returns null when the church row has no contact_email
+    // or the lookup fails; handler.ts catches null and falls back
+    // to the personal auth email defensively.
+    async getChurchContactEmail(churchId): Promise<string | null> {
+      const { data, error } = await adminClient
+        .from("churches")
+        .select("contact_email")
+        .eq("id", churchId)
+        .single();
+      if (error || !data) return null;
+      return (data as { contact_email: string | null }).contact_email ?? null;
+    },
+
     async insertPublicUser(row: InsertPublicUserRow) {
       const { data, error } = await adminClient
         .from("users")

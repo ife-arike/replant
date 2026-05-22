@@ -52,13 +52,16 @@ export default function VerificationBanner() {
 
   const days = computeDays(verificationDeadline);
 
-  // Not rendered: no deadline known, deadline has already passed, or
-  // dismissed this session. days < 0 hand-off: the Deactivation Popup
-  // story owns the past-deadline UX; we silently disappear so a stale
-  // red banner can't linger after the deactivation cron flips status.
-  if (days === null || days < 0 || dismissed) return null;
+  // Not rendered: dismissed this session, or deadline has already passed
+  // (the Deactivation Popup story owns the past-deadline UX; a stale red
+  // banner shouldn't linger after the deactivation cron flips status).
+  // Finalization fix 5 — null deadline is the skip-flow signal: leader
+  // has no church linked yet. Render a red "no church linked" banner so
+  // the leader knows the 30-day window is ticking from account creation.
+  if (dismissed) return null;
+  if (days !== null && days < 0) return null;
 
-  const state = getBannerState(days);
+  const state: BannerState = days === null ? 'red' : getBannerState(days);
   const openMailto = () => {
     void Linking.openURL(`mailto:${EMAIL}`);
   };
@@ -66,18 +69,19 @@ export default function VerificationBanner() {
   // Body composition. Amber state (days > 1) carries two copy variants
   // separated by the 7-day mark — the "many days remaining" version
   // reads informational; the "due soon" version names the urgency and
-  // surfaces the tappable mailto. Red state (days <= 1) is always
-  // urgent with the email link.
+  // surfaces the tappable mailto. Red state covers two cases:
+  //   - days <= 1 (deadline at the threshold) → tomorrow + email
+  //   - days === null (skipped church, no church linked) → 30-day notice
   const dayWord = days === 1 ? 'day' : 'days';
 
   return (
     <View style={[styles.banner, stateStyles[state].banner]}>
       <View style={styles.content}>
         <Text style={[styles.body, stateStyles[state].text]}>
-          {state === 'amber' && days > 7 && (
+          {state === 'amber' && days !== null && days > 7 && (
             `Verification pending — ${days} ${dayWord} remaining. Your church is visible but limited until verified by Replant.`
           )}
-          {state === 'amber' && days <= 7 && (
+          {state === 'amber' && days !== null && days <= 7 && (
             <>
               {`Verification due soon — ${days} ${dayWord} remaining. Contact `}
               <Text style={[styles.emailLink, stateStyles[state].text]} onPress={openMailto}>
@@ -86,7 +90,10 @@ export default function VerificationBanner() {
               {" if you've submitted."}
             </>
           )}
-          {state === 'red' && (
+          {state === 'red' && days === null && (
+            'No church linked. You have 30 days from account creation to join a church.'
+          )}
+          {state === 'red' && days !== null && (
             <>
               {'Verification expires tomorrow. Contact '}
               <Text style={[styles.emailLink, stateStyles[state].text]} onPress={openMailto}>

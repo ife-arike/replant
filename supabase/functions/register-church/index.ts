@@ -50,6 +50,9 @@ function makeDeps(): Deps {
           lat: row.lat,
           lng: row.lng,
           needs: row.needs,
+          // Finalization fix 7 — emergency preparedness columns.
+          has_emergency_plan: row.has_emergency_plan,
+          open_to_collaboration: row.open_to_collaboration,
           verification_status: "pending",
           verification_deadline: verificationDeadline,
         })
