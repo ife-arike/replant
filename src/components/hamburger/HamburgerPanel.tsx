@@ -69,7 +69,7 @@ const { width: WIN_W } = Dimensions.get('window');
 const PANEL_W = WIN_W >= 1280 ? 360 : WIN_W >= 768 ? WIN_W * 0.5 : WIN_W * 0.75;
 
 const LOGOUT_COLOR = 'rgba(240, 237, 230, 0.3)';
-const ICON_SIZE = 18;
+const ICON_SIZE = 22;
 const ICON_STROKE = 1.5;
 const CLOSE_DURATION_MS = 200;
 const OPEN_DURATION_MS = 250;
@@ -225,6 +225,24 @@ export default function HamburgerPanel() {
     return () => sub.remove();
   }, [modalVisible, close]);
 
+  // KAN-76 v2 — auto-dismiss on signOut. When session transitions to
+  // null (KAN-42 signOut() flips the auth branch to "unauthenticated"),
+  // the Modal must be gone before RootNavigator unmounts the active
+  // tree — otherwise the panel briefly hovers over Login as the
+  // underlying screen is already animating away. Instant snap (no
+  // Animated.timing) so the dismiss completes within the same frame as
+  // the branch flip.
+  useEffect(() => {
+    if (session === null && modalVisible) {
+      translateX.setValue(PANEL_W);
+      setModalVisible(false);
+      close();
+    }
+    // translateX intentionally not in deps — it's a stable Animated.Value
+    // ref; including it would not change anything but adds noise.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, modalVisible, close]);
+
   // Swipe-left gesture to dismiss. Threshold dx < -50; horizontal-
   // dominant guard so vertical scroll inside the panel doesn't get
   // captured.
@@ -357,7 +375,7 @@ export default function HamburgerPanel() {
         {...panResponder.panHandlers}
       >
         <View style={styles.header}>
-          <RpLogo size={32} />
+          <RpLogo size={40} />
           <Text style={styles.headerWordmark}>Replant</Text>
         </View>
 
@@ -442,24 +460,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderLeftWidth: 0.5,
     borderLeftColor: Colors.borderAccent,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     paddingBottom: 20,
     flexDirection: 'column',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingBottom: 16,
+    gap: 10,
+    paddingBottom: 24,
     marginBottom: 20,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.border,
   },
   headerWordmark: {
     fontFamily: Typography.displayRegular,
-    fontSize: 18,
-    letterSpacing: 1.8,
+    fontSize: 30,
+    letterSpacing: 2.4,
     color: Colors.text,
   },
   menuList: {
@@ -469,8 +487,8 @@ const styles = StyleSheet.create({
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
+    gap: 18,
+    paddingVertical: 18,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.border,
   },
@@ -479,13 +497,13 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontFamily: Typography.displayRegular,
-    fontSize: 15,
+    fontSize: 24,
     color: Colors.text,
   },
   footer: {
     borderTopWidth: 0.5,
     borderTopColor: Colors.border,
-    paddingTop: 14,
+    paddingTop: 20,
     gap: 10,
   },
   identityCard: {
@@ -494,16 +512,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 13,
+    fontSize: 18,
     color: Colors.accent,
   },
   identityText: {
@@ -512,23 +530,24 @@ const styles = StyleSheet.create({
   },
   identityName: {
     fontFamily: Typography.body,
-    fontSize: 13,
+    fontSize: 17,
+    fontWeight: '500',
     color: Colors.text,
   },
   identityLocation: {
     fontFamily: Typography.body,
-    fontSize: 11,
+    fontSize: 14,
     color: Colors.textMuted,
   },
   logoutRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 6,
+    paddingVertical: 12,
   },
   logoutLabel: {
     fontFamily: Typography.body,
-    fontSize: 13,
+    fontSize: 17,
     color: LOGOUT_COLOR,
   },
 });
