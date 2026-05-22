@@ -222,11 +222,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   separator: {
-    // KAN-201 v4 — back to 12 px between cards. With v4 card padding +
-    // larger titles + paragraph-aware body spacing internal to each
-    // card, the 16 px from v3 read too loose; 12 brings card-to-card
-    // proximity back without crowding.
-    height: 12,
+    // KAN-201 v5 — 16 px between cards (was 12 in v4). With the larger
+    // section gaps now governing the outer rhythm, 16 within the feed
+    // keeps cards comfortably separated without competing with the
+    // 32 px section break above.
+    height: 16,
   },
   stateContainer: {
     flex: 1,

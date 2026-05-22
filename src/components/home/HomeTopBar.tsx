@@ -24,7 +24,7 @@ export default function HomeTopBar() {
   return (
     <View style={styles.bar}>
       <View style={styles.logoCluster}>
-        <RpLogo size={32} />
+        <RpLogo size={44} />
         <Text style={styles.wordmark}>Replant</Text>
       </View>
 
