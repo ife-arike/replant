@@ -21,19 +21,25 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Colors } from "../../constants/theme";
+import { useAuth } from "../../contexts/AuthProvider";
 import DailyScriptureStrip from "../../components/home/DailyScriptureStrip";
 import NetworkFeed from "../../components/home/NetworkFeed";
 import HomeTopBar from "../../components/home/HomeTopBar";
 import HomeSectionLabel from "../../components/home/HomeSectionLabel";
+import VerificationBanner from "../../components/home/VerificationBanner";
 
 export default function HomeScreen() {
+  const { branch } = useAuth();
   return (
     <View style={styles.root}>
       <HomeTopBar />
 
       <View style={styles.scrollArea}>
-        {/* KAN-35 verification banner slot — when shown (pending leaders),
-            the banner sits ABOVE the "Today" label per KAN-16 AC #1. */}
+        {/* KAN-35 — verification countdown banner. Shown only when
+            branch === 'pending' (Founder ruling 2026-05-22: pending
+            leaders see Home with this banner instead of being routed
+            to a separate placeholder screen). */}
+        {branch === 'pending' && <VerificationBanner />}
 
         <HomeSectionLabel>Today</HomeSectionLabel>
         {/* Wrapping View carries the marginBottom — DailyScriptureStrip

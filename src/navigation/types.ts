@@ -33,7 +33,11 @@ export type RootStackParamList = MainStackParamList & {
   DeclarationOfFaith: undefined;
   Onboarding: undefined;
   Login: undefined;
-  Pending: undefined;
+  // KAN-35 (Founder ruling 2026-05-22): pending leaders now route into
+  // the Tabs + Settings tree alongside active. PendingPlaceholderScreen
+  // is deregistered from RootNavigator; the verification countdown banner
+  // on Home replaces its functional purpose. Type entry removed too
+  // since no other production code references it.
   Deactivated: undefined;
   PasswordRecovery: undefined;
 };
