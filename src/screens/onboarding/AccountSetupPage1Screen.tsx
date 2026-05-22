@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // Screen 03 — Account Setup Page 1
 // Personal details. All validation inline, not on submit.
-// Duplicate email check fires on Next tap (before AnonymousMode).
+// Duplicate email check fires on Next tap (before navigating to Page 2).
 // 12 roles — scrollable picker. No free text for "Other".
 // Data held in OnboardingContext — nothing hits server until Page 2 submit.
 //
@@ -11,8 +11,13 @@
 //   - Email uniqueness via check-email-available edge function (10 req/hr
 //     per IP). 200 + {available:false} = taken; 429 = rate-limited;
 //     anything else = network/5xx + Next re-enabled for retry (AC #10-12).
-//   - On success, navigate to AnonymousMode (stub — handles Underground vs
-//     identified branching downstream).
+//   - On success, navigate to AccountSetupPage2.
+//
+// KAN-196 (D-63, 2026-05-22): anonymous mode is now an inline toggle on
+// this page, below the Country picker. Default false. The standalone
+// AnonymousModeScreen is removed; the value flows through
+// OnboardingContext.personalDetails.anonymous and lands in the
+// create-account payload at the Page 2 submit.
 // ─────────────────────────────────────────────
 
 import React, { useState } from 'react';
@@ -29,6 +34,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
@@ -94,6 +100,11 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('');
   const [country, setCountry] = useState('');
+  // KAN-196 (D-63) — anonymous mode is now an inline toggle on this page.
+  // Default false; flows through OnboardingContext.personalDetails into
+  // the create-account payload at Page 2 submit. The standalone
+  // AnonymousModeScreen has been retired by this ticket.
+  const [anonymous, setAnonymous] = useState<boolean>(false);
 
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -199,7 +210,8 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
         return;
       }
 
-      // Email is available — persist and advance to AnonymousMode.
+      // Email is available — persist and advance to Page 2.
+      // KAN-196 — anonymous is carried inline (no longer a separate screen).
       setPersonalDetails({
         firstName,
         lastName,
@@ -207,8 +219,9 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
         password,
         role,
         country,
+        anonymous,
       });
-      navigation.navigate('AnonymousMode');
+      navigation.navigate('AccountSetupPage2');
     } catch {
       setEmailCheckError({
         kind: 'network',
@@ -343,6 +356,26 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
             </Text>
             <Text style={styles.pickerChevron}>›</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* KAN-196 (D-63) — Anonymous Mode inline toggle. Default OFF.
+            Wires into OnboardingContext.personalDetails.anonymous; lands
+            in create-account payload at Page 2 submit. Replaces the
+            standalone AnonymousModeScreen (removed by this ticket). */}
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleTextGroup}>
+            <Text style={styles.label}>Anonymous Mode</Text>
+            <Text style={styles.fieldNote}>
+              Hide your name from the network. Other leaders will see your role and church, but not your name. You can change this in Settings.
+            </Text>
+          </View>
+          <Switch
+            value={anonymous}
+            onValueChange={setAnonymous}
+            trackColor={{ false: Colors.border, true: Colors.accent }}
+            thumbColor={Colors.text}
+            ios_backgroundColor={Colors.surface}
+          />
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -500,6 +533,27 @@ const styles = StyleSheet.create({
 
   fieldGroup: {
     gap: Spacing.xs,
+  },
+
+  // KAN-196 — Anonymous Mode toggle row. Two-column layout: explanatory
+  // text takes the available space, Switch sits at the right edge,
+  // vertically top-aligned so the toggle anchors to the label line
+  // even when the note wraps to two lines.
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  toggleTextGroup: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  fieldNote: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    lineHeight: 18,
   },
 
   label: {
