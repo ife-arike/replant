@@ -57,6 +57,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useHamburger } from '../../contexts/HamburgerContext';
@@ -183,6 +184,12 @@ function MenuItem({ icon, label, onPress, last }: MenuItemProps) {
 export default function HamburgerPanel() {
   const { isOpen, close } = useHamburger();
   const { session, signOut } = useAuth();
+  // KAN-76 v3 — status-bar safe-area inset for the panel's top padding.
+  // Without this, iOS status bar overlaps the header wordmark on devices
+  // with non-zero top insets. Combined with the design's 28 px below the
+  // status bar so the wordmark always reads with the same gap regardless
+  // of device.
+  const insets = useSafeAreaInsets();
 
   // Animated.Value tracks the panel's X translation. Starts off-screen
   // right (PANEL_W). On open → 0; on close → PANEL_W (then unmount).
@@ -371,7 +378,7 @@ export default function HamburgerPanel() {
       />
 
       <Animated.View
-        style={[styles.panel, { transform: [{ translateX }] }]}
+        style={[styles.panel, { paddingTop: insets.top + 28, transform: [{ translateX }] }]}
         {...panResponder.panHandlers}
       >
         <View style={styles.header}>
@@ -461,7 +468,8 @@ const styles = StyleSheet.create({
     borderLeftWidth: 0.5,
     borderLeftColor: Colors.borderAccent,
     paddingHorizontal: 24,
-    paddingTop: 28,
+    // KAN-76 v3 — paddingTop now applied inline via useSafeAreaInsets()
+    // so the status-bar height is added on top of the 28 design gap.
     paddingBottom: 20,
     flexDirection: 'column',
   },
