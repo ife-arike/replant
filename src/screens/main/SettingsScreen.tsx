@@ -36,6 +36,7 @@ import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthProvider';
 import { ROLES } from '../../utils/displayHelpers';
 import RpMark from '../../components/icons/RpMark';
 
@@ -155,6 +156,7 @@ export default function SettingsScreen({
   ragStatus = null,
 }: SettingsScreenProps) {
   const navigation = useNavigation();
+  const { signOut } = useAuth();
 
   const [displayNamePref, setDisplayNamePref] = useState<DisplayNamePreference>(
     initialDisplayNamePreference ?? 'first_name_only',
@@ -288,10 +290,26 @@ export default function SettingsScreen({
     await Linking.openURL('mailto:connect@projectreplant.org');
   };
 
-  // ─── Sign out — RootNavigator's auth listener handles the branch flip ───
+  // ─── Sign out — KAN-42 confirmation dialog → AuthProvider.signOut ───
+  // signOut routes through signOutAndClear (writes deferred-revocation
+  // flag, calls supabase.auth.signOut, clears flag on success) plus the
+  // SEC 11015 #4 ordered abort + in-memory clear + branch flip. The
+  // branch flip drives RootNavigator back to Login.
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: () => { void signOut(); },
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   // ─── Routes that don't exist yet — alert + TODO marker ───

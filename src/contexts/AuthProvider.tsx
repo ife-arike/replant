@@ -39,8 +39,10 @@ import React, {
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import type { Session } from "@supabase/supabase-js";
+import * as SecureStore from "expo-secure-store";
 import { on401 } from "../lib/auth-events";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from "../lib/supabase";
+import { signOutAndClear, PENDING_SIGNOUT_KEY } from "../utils/signOutAndClear";
 
 export type AuthBranch =
   | "loading"
@@ -61,6 +63,11 @@ export interface AuthState {
   // expired states to drop the recovery session and bounce the leader
   // back to Login via the unauthenticated branch.
   clearPasswordRecovery: () => Promise<void>;
+  // KAN-42 — leader-invoked sign-out from SettingsScreen (and future
+  // hamburger / deactivation popup call sites). Calls signOutAndClear
+  // (which manages the pending_signout_revocation deferred-retry flag)
+  // then runs the same ordered clear-and-route SEC 11015 #4 uses for 401s.
+  signOut: () => Promise<void>;
 }
 
 interface AuthStatusResponse {
@@ -189,6 +196,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const initialize = useCallback(async () => {
     setLoading(true);
+    // KAN-42 — deferred revocation retry. If a previous sign-out failed
+    // server-side (offline), the flag persists across launches. Retry
+    // now; ONLY delete the flag on a confirmed success so a still-offline
+    // retry leaves the flag in place for the next foreground (AC #3-4).
+    const pendingRevocation = await SecureStore.getItemAsync(PENDING_SIGNOUT_KEY).catch(() => null);
+    if (pendingRevocation) {
+      try {
+        await supabase.auth.signOut();
+        // Success — server-side revocation confirmed, flag can go.
+        await SecureStore.deleteItemAsync(PENDING_SIGNOUT_KEY).catch(() => {});
+      } catch {
+        // Still offline — flag stays for next foreground retry.
+      }
+    }
     const { data } = await supabase.auth.getSession();
     setSession(data.session);
     if (!data.session) {
@@ -260,6 +281,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await performClearAndRoute();
   }, [performClearAndRoute]);
 
+  // KAN-42 — leader-invoked sign-out. signOutAndClear writes the
+  // pending_signout_revocation flag, calls supabase.auth.signOut()
+  // (local-first SDK; clears local session regardless of network
+  // outcome), and clears the flag on success. performClearAndRoute
+  // then runs the SEC 11015 #4 ordered abort + in-memory clear +
+  // branch flip — its inner signOut() is a no-op here (already signed
+  // out), but the abort + state-clear ordering matters.
+  const signOut = useCallback(async () => {
+    await signOutAndClear();
+    await performClearAndRoute();
+  }, [performClearAndRoute]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -270,6 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         refresh: initialize,
         clearPasswordRecovery,
+        signOut,
       }}
     >
       {children}
