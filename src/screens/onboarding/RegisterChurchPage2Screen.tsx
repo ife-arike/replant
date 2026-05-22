@@ -51,7 +51,10 @@ interface RegisterChurchSuccessResponse {
 export default function RegisterChurchPage2Screen({ navigation }: Props) {
   const { state, setChurchDetails } = useOnboarding();
 
-  const [needsText, setNeedsText] = useState('');
+  // Finalization — needs split into two required free-text fields with
+  // context persistence on every change so back-nav restores state.
+  const [hasText, setHasText] = useState(state.churchDetails.hasText ?? '');
+  const [needsText, setNeedsText] = useState(state.churchDetails.needsText ?? '');
   // KAN-13 finalization — Current Status now lives on Page 2 for
   // non-underground churches. Seed from context in case the leader
   // back-navigates from a later step.
@@ -64,8 +67,11 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Submit gate — RAG must be chosen before "Register Church" enables.
-  const canSubmit = !submitting && !!ragStatus;
+  // Submit gate — RAG selected AND both have/need fields non-empty.
+  // Leaders without a concrete answer are guided to type "N/A" via the
+  // info note below the fields (rather than leaving them blank).
+  const canSubmit =
+    !submitting && !!ragStatus && !!hasText.trim() && !!needsText.trim();
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -90,12 +96,27 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
       return;
     }
 
+    // Finalization — both have/need fields are required at submit.
+    // Empty fields surface a gentle prompt rather than a hard reject.
+    if (!hasText.trim() || !needsText.trim()) {
+      setSubmitError('Please fill in both fields, or type N/A if you cannot answer now.');
+      return;
+    }
+
     setSubmitError(null);
     setSubmitting(true);
 
     // Comma-split → trim per entry → drop empties. BE re-normalises
-    // defensively but the FE delivers a clean array.
+    // defensively but the FE delivers a clean array. Same shape applied
+    // to both the "what we have" (resources) and "what we need" (needs)
+    // textareas. Leaders who type "N/A" send ['N/A'] — a meaningful
+    // signal at the data layer ("explicitly didn't answer") rather than
+    // a blank that's ambiguous between unanswered and missing.
     const needsArr = needsText
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const resourcesArr = hasText
       .split(',')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
@@ -119,6 +140,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
     if (cd.contactEmail && cd.contactEmail.trim()) payload.contact_email = cd.contactEmail.trim();
     if (cd.contactPhone && cd.contactPhone.trim()) payload.contact_phone = cd.contactPhone.trim();
     if (needsArr.length > 0) payload.needs = needsArr;
+    if (resourcesArr.length > 0) payload.resources = resourcesArr;
     // Finalization fix 8 — emergency preparedness fields. Only sent
     // when the leader actually answered (null = unanswered = absent).
     if (hasEmergencyPlan !== null) payload.has_emergency_plan = hasEmergencyPlan;
@@ -241,25 +263,45 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Needs — optional, comma-separated */}
+        {/* Finalization — needs split into a paired "what we have" /
+            "what we need" set of required fields. Both persist to
+            context on every change so back-nav restores the leader's
+            work without forcing a re-type. */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            Share needs, or what your church has in abundance{' '}
-            <Text style={styles.optionalTag}>(Optional)</Text>
-          </Text>
-          <Text style={styles.fieldNote}>
-            Separate entries with commas. e.g. "Manpower, resources, prayer, talents".
-          </Text>
+          <Text style={styles.label}>What we have</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
-            value={needsText}
-            onChangeText={setNeedsText}
-            placeholder="Manpower, resources, prayer, talents…"
+            value={hasText}
+            onChangeText={(v) => {
+              setHasText(v);
+              setChurchDetails({ hasText: v });
+            }}
+            placeholder="Skills, space, manpower, resources…"
             placeholderTextColor={Colors.textSubtle}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
           />
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>What we need</Text>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            value={needsText}
+            onChangeText={(v) => {
+              setNeedsText(v);
+              setChurchDetails({ needsText: v });
+            }}
+            placeholder="Prayer, funding, training, connections…"
+            placeholderTextColor={Colors.textSubtle}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <Text style={styles.fieldNote}>
+            If you cannot answer now, type N/A. This can always be updated later in your Church Profile and helps us better connect you.
+          </Text>
         </View>
 
         {/* Finalization fix 8 — emergency preparedness Q1 + Q2. Tri-state

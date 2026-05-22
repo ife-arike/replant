@@ -24,6 +24,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
@@ -95,11 +96,16 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // True only when the current selection came from the KAN-13 loopback —
   // controls the create-account `isNewChurch` payload flag (Step 7 email).
   const [isNewChurchFromLoopback, setIsNewChurchFromLoopback] = useState(false);
-  // Finalization fix 3 — Skip-for-now path. A leader who cannot yet
-  // name their church still belongs in the network; create-account
-  // accepts churchId: null. The 30-day verification window starts
-  // ticking either way (handled by computeVerificationDeadline).
+  // Finalization — Skip-for-now path. A leader who cannot yet name
+  // their church still belongs in the network; create-account accepts
+  // churchId: null. The 30-day verification window starts ticking
+  // either way (handled by computeVerificationDeadline).
+  //
+  // skippedChurch is set ONLY at the end of the modal-confirm flow
+  // (handleSkipSubmit), not by the Skip-for-now button itself. The
+  // button opens the modal; the modal's primary action confirms.
   const [skippedChurch, setSkippedChurch] = useState(false);
+  const [showSkipModal, setShowSkipModal] = useState(false);
 
   // Bumped on every new keystroke; in-flight responses check this against
   // their captured value before applying. Belt-and-suspenders alongside
@@ -107,28 +113,12 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // newer query has been kicked off but the abort hasn't propagated.
   const searchVersionRef = useRef(0);
 
-  // Finalization fix 3 — submit unlocks on EITHER a selected church OR
-  // the skip path. capError remains a hard block (the selected church
-  // is at capacity and the leader hasn't cleared the selection).
-  const canSubmit = (!!selectedChurch || skippedChurch) && !capError;
-
-  // Finalization fix 3 — handler for the Skip-for-now button. Clears
-  // any prior selection so we don't accidentally send a churchId on a
-  // skip submit. Also clears capError (skip is unrelated to capacity).
-  const handleSkipChurch = () => {
-    setSkippedChurch(true);
-    setSelectedChurch(null);
-    setCapError(false);
-    setIsNewChurchFromLoopback(false);
-  };
-
-  // When a leader picks a church after having skipped, the skip flag
-  // must lift — wired into setSelectedChurch via a small wrapper used
-  // at every selection site below.
-  const selectChurch = (church: ChurchResult | null) => {
-    setSelectedChurch(church);
-    if (church !== null) setSkippedChurch(false);
-  };
+  // Finalization — footer "Enter Replant" CTA gates on selected-church
+  // submission only. The skip path doesn't go through the footer at all;
+  // it lives behind the modal's confirm action (handleSkipSubmit). This
+  // makes the two paths visually distinct and removes the prior pattern
+  // where a leader tapped Skip then had to tap Complete a second time.
+  const canSubmit = !!selectedChurch && !capError;
 
   // ── Live (debounced) search ────────────────────────────────────────
   useEffect(() => {
@@ -220,6 +210,10 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       return;
     }
     setCapError(false);
+    // Finalization fix 3 — picking a church clears any prior skip
+    // intent, so a leader who tapped Skip → backed out of the modal →
+    // then picked a church doesn't silently submit churchId: null.
+    setSkippedChurch(false);
     setSelectedChurch(church);
     // A selection from the search list is NOT a new-church flow.
     setIsNewChurchFromLoopback(false);
@@ -279,12 +273,26 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit || submitting) return;
-    // Finalization fix 3 — accept either a selected church OR the skip
-    // path. With skip, churchId is null on the wire; create-account
-    // accepts null per the BE change in the same commit.
-    if (!selectedChurch && !skippedChurch) return;
+  // Finalization — skip-submit confirm-action handler. Closes the
+  // modal, marks skippedChurch (for surfaces that read it post-submit,
+  // e.g. the VerificationBanner null-deadline branch), and invokes
+  // handleSubmit with the explicit skip flag so the closure isn't
+  // racing setState.
+  const handleSkipSubmit = () => {
+    setShowSkipModal(false);
+    setSkippedChurch(true);
+    void handleSubmit({ skip: true });
+  };
+
+  const handleSubmit = async (opts?: { skip?: boolean }) => {
+    // The skip path bypasses `canSubmit` since the footer CTA is locked
+    // to selected-church submits. `isSkip` is passed explicitly via
+    // handleSkipSubmit → setState-then-call isn't reliable because React
+    // batches state updates; we'd read stale skippedChurch inside the
+    // same tick. The explicit parameter avoids that closure trap.
+    const isSkip = opts?.skip === true;
+    if ((!canSubmit && !isSkip) || submitting) return;
+    if (!selectedChurch && !isSkip) return;
     if (
       !personalDetails.firstName ||
       !personalDetails.lastName ||
@@ -296,7 +304,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       return;
     }
 
-    const churchId: string | null = skippedChurch ? null : selectedChurch!.id;
+    const churchId: string | null = isSkip ? null : selectedChurch!.id;
 
     setSubmitError(null);
     setSubmitting(true);
@@ -331,9 +339,9 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           role: personalDetails.role,
           anonymous: personalDetails.anonymous ?? false,
           churchId,
-          // Finalization fix 3 — isNewChurch can only be true on the
-          // non-skip path. A skip leader hasn't registered anything.
-          isNewChurch: isNewChurchFromLoopback && !skippedChurch,
+          // isNewChurch can only be true on the non-skip path. A skip
+          // leader hasn't registered anything.
+          isNewChurch: isNewChurchFromLoopback && !isSkip,
         }),
       });
 
@@ -496,17 +504,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           </View>
         )}
 
-        {/* Finalization fix 3 — Skip-for-now amber card. Shown after
-            the leader has tapped Skip. Sets expectation about the 30-day
-            window without naming verification yet (no church to verify
-            until they join one). */}
-        {skippedChurch && (
-          <View style={styles.skipNotice}>
-            <Text style={styles.skipNoticeText}>
-              You can find and join your church later. You'll have 30 days after account creation to verify your church.
-            </Text>
-          </View>
-        )}
+        {/* Inline skip notice removed — finalization moves the skip
+            confirmation into a Modal opened by the Skip-for-now button.
+            The modal's primary action ("Enter Replant") fires the
+            submit directly so there's no two-tap drift between the
+            decision and the action. */}
 
         {/* Empty state B — no search yet, initial screen load */}
         {!searched && !searching && !selectedChurch && (
@@ -575,14 +577,12 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
             <Text style={styles.registerButtonText}>Register a New Church</Text>
           </TouchableOpacity>
 
-          {/* Finalization fix 3 — Skip-for-now. Text-only button beneath
-              Register a New Church. Leaders who can't yet name their
-              church (joining soon, between churches, awaiting placement)
-              still step into the network rather than being turned away
-              at the door. The 30-day window starts on account creation. */}
+          {/* Skip-for-now. Text-only button beneath Register a New
+              Church. Tapping opens a confirmation modal — the leader
+              must affirm the skip explicitly before submit fires. */}
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={handleSkipChurch}
+            onPress={() => setShowSkipModal(true)}
             activeOpacity={0.7}
           >
             <Text style={styles.skipButtonText}>Skip for now</Text>
@@ -592,11 +592,14 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Complete Registration */}
+      {/* Footer "Enter Replant" CTA — selected-church path only. The
+          skip path lives behind the modal opened by the Skip-for-now
+          button above; that path invokes handleSubmit({ skip: true })
+          directly without touching this footer CTA. */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
+          onPress={() => { void handleSubmit(); }}
           disabled={!canSubmit || submitting}
           activeOpacity={0.8}
         >
@@ -604,7 +607,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
             <ActivityIndicator color={Colors.background} />
           ) : (
             <Text style={[styles.submitButtonText, !canSubmit && styles.submitButtonTextDisabled]}>
-              Complete Registration
+              Enter Replant
             </Text>
           )}
         </TouchableOpacity>
@@ -612,9 +615,45 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           <Text style={styles.submitErrorText}>{submitError}</Text>
         )}
         {!canSubmit && !capError && !submitError && (
-          <Text style={styles.footerHint}>Select a church, register one, or skip for now</Text>
+          <Text style={styles.footerHint}>Select a church or register one to continue</Text>
         )}
       </View>
+
+      {/* Finalization — Skip-for-now confirmation modal. Replaces the
+          prior inline amber card + double-tap pattern with a single
+          intentional confirm: "I acknowledge — Enter Replant" fires
+          the submit immediately; "Go Back" only closes the modal and
+          returns the leader to normal church-selection. */}
+      <Modal
+        visible={showSkipModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSkipModal(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.skipModalBackdrop}>
+          <View style={styles.skipModalCard}>
+            <Text style={styles.skipModalTitle}>Skip for now?</Text>
+            <Text style={styles.skipModalBody}>
+              You can find or register your church later. You'll have 30 days after account creation to verify your church.
+            </Text>
+            <TouchableOpacity
+              style={[styles.submitButton, styles.skipModalPrimary]}
+              onPress={handleSkipSubmit}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.submitButtonText}>I acknowledge — Enter Replant</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skipModalSecondary}
+              onPress={() => setShowSkipModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipModalSecondaryText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -799,24 +838,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Finalization fix 3 — Skip-for-now amber card + text-style button.
-  // skipNotice mirrors the pending-church notice token family
-  // (rgba amber 0.06 / 0.3 border) so the two amber surfaces read as
-  // one visual vocabulary. skipButton is a subtle text-only action
-  // beneath the Register a New Church primary button.
-  skipNotice: {
-    backgroundColor: 'rgba(212, 168, 85, 0.06)',
-    borderRadius: Radius.md,
-    borderWidth: 0.5,
-    borderColor: 'rgba(212, 168, 85, 0.3)',
-    padding: Spacing.md,
-  },
-  skipNoticeText: {
-    fontFamily: Typography.body,
-    fontSize: 13,
-    color: Colors.amber,
-    lineHeight: 20,
-  },
+  // Finalization — Skip-for-now is a text-only action beneath the
+  // Register a New Church primary button. Tapping opens a confirmation
+  // Modal (styles below) rather than rendering an inline notice.
   skipButton: {
     paddingVertical: 14,
     alignItems: 'center',
@@ -825,6 +849,50 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 14,
     color: Colors.textSubtle,
+  },
+
+  // Skip-for-now confirmation modal — centered card over a dimmed
+  // backdrop. The card holds the title, body, primary (sky-filled)
+  // confirm action, and a secondary text-only Go Back affordance.
+  skipModalBackdrop: {
+    flex: 1,
+    backgroundColor: Colors.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  skipModalCard: {
+    width: '100%',
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    gap: Spacing.md,
+  },
+  skipModalTitle: {
+    fontFamily: Typography.display,
+    fontSize: 22,
+    color: Colors.text,
+  },
+  skipModalBody: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textMuted,
+  },
+  skipModalPrimary: {
+    marginTop: Spacing.sm,
+  },
+  skipModalSecondary: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  skipModalSecondaryText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 15,
+    color: Colors.textMuted,
   },
 
   emptyState: {

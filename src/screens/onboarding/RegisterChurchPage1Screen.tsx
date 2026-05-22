@@ -354,11 +354,14 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
         {!isUnderground && (
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>City</Text>
+            <Text style={styles.fieldNote}>
+              Online ministries and churches without walls can enter their HQ or broadcast city.
+            </Text>
             <TextInput
               style={styles.input}
               value={cityRegion}
               onChangeText={setCityRegion}
-              placeholder="General area (not exact address)"
+              placeholder="City where church is based"
               placeholderTextColor={Colors.textSubtle}
               autoCapitalize="words"
             />
@@ -545,7 +548,7 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
                 !isFormValid && styles.nextButtonTextDisabled,
               ]}
             >
-              {isUnderground ? 'Submit Church' : 'Next — Confirm Location'}
+              {isUnderground ? 'Submit Church' : 'Next — Confirm Status'}
             </Text>
           )}
         </TouchableOpacity>
