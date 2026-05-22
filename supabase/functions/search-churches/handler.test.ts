@@ -75,6 +75,7 @@ function makeRow(overrides: Partial<ChurchResult> = {}): ChurchResult {
     rag_status: "green",
     verification_status: "verified",
     at_capacity: false,
+    leader_count: 0,
     ...overrides,
   };
 }

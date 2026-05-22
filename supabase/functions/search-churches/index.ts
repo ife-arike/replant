@@ -121,16 +121,20 @@ function makeDeps(): Deps {
         countByChurch.set(cid, (countByChurch.get(cid) ?? 0) + 1);
       }
 
-      return rows.map((r) => ({
-        id: r.id as string,
-        name: r.name as string,
-        type: r.type as string,
-        city: r.city as string,
-        country: r.country as string,
-        rag_status: r.rag_status as string,
-        verification_status: r.verification_status as string,
-        at_capacity: isAtCapacity(countByChurch.get(r.id as string) ?? 0),
-      }));
+      return rows.map((r) => {
+        const leaderCount = countByChurch.get(r.id as string) ?? 0;
+        return {
+          id: r.id as string,
+          name: r.name as string,
+          type: r.type as string,
+          city: r.city as string,
+          country: r.country as string,
+          rag_status: r.rag_status as string,
+          verification_status: r.verification_status as string,
+          at_capacity: isAtCapacity(leaderCount),
+          leader_count: leaderCount,
+        };
+      });
     },
 
     async rateLimit(ip) {

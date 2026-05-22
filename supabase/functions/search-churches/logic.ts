@@ -30,6 +30,11 @@ export interface ChurchResult {
   rag_status: string;
   verification_status: string;
   at_capacity: boolean;
+  // Count of active users with church_id === this row's id. The FE uses
+  // this to suppress the "awaiting verification" cascade notice when the
+  // selected church has zero leaders — there's no upstream leader whose
+  // verification is in progress, so the cascade copy doesn't apply.
+  leader_count: number;
 }
 
 export type ParseResult =
