@@ -197,11 +197,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initialize = useCallback(async () => {
     setLoading(true);
     // KAN-42 — deferred revocation retry. If a previous sign-out failed
-    // server-side (offline), the flag persists across launches. Retry now.
+    // server-side (offline), the flag persists across launches. Retry
+    // now; ONLY delete the flag on a confirmed success so a still-offline
+    // retry leaves the flag in place for the next foreground (AC #3-4).
     const pendingRevocation = await SecureStore.getItemAsync(PENDING_SIGNOUT_KEY).catch(() => null);
     if (pendingRevocation) {
-      await supabase.auth.signOut().catch(() => {});
-      await SecureStore.deleteItemAsync(PENDING_SIGNOUT_KEY).catch(() => {});
+      try {
+        await supabase.auth.signOut();
+        // Success — server-side revocation confirmed, flag can go.
+        await SecureStore.deleteItemAsync(PENDING_SIGNOUT_KEY).catch(() => {});
+      } catch {
+        // Still offline — flag stays for next foreground retry.
+      }
     }
     const { data } = await supabase.auth.getSession();
     setSession(data.session);
