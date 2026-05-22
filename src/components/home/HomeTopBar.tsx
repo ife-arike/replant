@@ -24,7 +24,7 @@ export default function HomeTopBar() {
   return (
     <View style={styles.bar}>
       <View style={styles.logoCluster}>
-        <RpLogo size={22} />
+        <RpLogo size={32} />
         <Text style={styles.wordmark}>Replant</Text>
       </View>
 
@@ -50,36 +50,39 @@ function noopMenu(): void {
 }
 
 const styles = StyleSheet.create({
+  // KAN-201 v3 — full scale-up. The v2 top bar used wireframe-frame
+  // values (the HTML is a 280-px scaled preview); v3 lifts every value
+  // to production-device scale per Founder direction 2026-05-22.
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.border, // matches wireframe var(--faint)
   },
   logoCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6, // wireframe .top-bar-logo gap
+    gap: 10,
   },
-  // Wireframe `.top-bar-logo span`: serif, 0.9rem, letter-spacing 0.08em.
-  // Mobile scaling: 14px with letterSpacing 1.2 (~0.085em equivalent) —
-  // matches the existing Login/Splash wordmark treatment at smaller scale.
+  // Wordmark — Cormorant 400 at 22 px with 1.8 px letter-spacing
+  // (= 0.08em × 22 = 1.76, rounded to 1.8 per dispatch literal). Wireframe
+  // tracking ratio preserved while the absolute size lifts to production.
   wordmark: {
     fontFamily: Typography.displayRegular,
-    fontSize: 14,
-    letterSpacing: 1.2,
+    fontSize: 22,
+    letterSpacing: 1.8,
     color: Colors.text,
   },
   hamburger: {
-    gap: 3,
+    gap: 4,
     alignItems: 'flex-end',
   },
   hamburgerBar: {
-    width: 16,
-    height: 1.5,
+    width: 22,
+    height: 2,
     backgroundColor: Colors.text, // matches wireframe var(--off-white)
     borderRadius: 1,
   },
