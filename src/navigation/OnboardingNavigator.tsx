@@ -3,10 +3,13 @@
 // Back navigation rules:
 //   Splash → DoF: no back (headerLeft removed)
 //   DoF → Page1: no back (agreement must stand)
-//   Page1 → AnonymousMode: back allowed (first reversible step post-DoF)
-//   AnonymousMode → Page2: back allowed
+//   Page1 → Page2: back allowed (first reversible step post-DoF)
 //   Page2 → ChurchReg: back allowed (cancel returns here)
 //   ChurchReg pages: back allowed within registration flow
+//
+// KAN-196 (D-63, 2026-05-22): the standalone AnonymousModeScreen was
+// removed; the anonymous toggle now lives inline on AccountSetupPage1.
+// Flow is Page1 → Page2 directly.
 // ─────────────────────────────────────────────
 
 import React from 'react';
@@ -16,7 +19,6 @@ import { OnboardingProvider } from '../context/OnboardingContext';
 import SplashScreen from '../screens/onboarding/SplashScreen';
 import DeclarationOfFaithScreen from '../screens/onboarding/DeclarationOfFaithScreen';
 import AccountSetupPage1Screen from '../screens/onboarding/AccountSetupPage1Screen';
-import AnonymousModeScreen from '../screens/onboarding/AnonymousModeScreen';
 import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Screen';
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
 import RegisterChurchPage2Screen from '../screens/onboarding/RegisterChurchPage2Screen';
@@ -42,7 +44,6 @@ export type OnboardingStackParamList = {
   Splash: undefined;
   DeclarationOfFaith: undefined;
   AccountSetupPage1: undefined;
-  AnonymousMode: undefined;
   AccountSetupPage2:
     | {
         newChurchId?: string;
@@ -88,14 +89,9 @@ export default function OnboardingNavigator() {
           options={{ gestureEnabled: false }}
         />
 
-        {/* Back allowed — returns to Page 1 */}
-        <Stack.Screen
-          name="AnonymousMode"
-          component={AnonymousModeScreen}
-          options={{ gestureEnabled: true }}
-        />
-
-        {/* Back allowed — returns to AnonymousMode */}
+        {/* Back allowed — returns to AccountSetupPage1 (KAN-196 D-63:
+            standalone AnonymousModeScreen removed; anonymous toggle is
+            now inline on Page 1). */}
         <Stack.Screen
           name="AccountSetupPage2"
           component={AccountSetupPage2Screen}
