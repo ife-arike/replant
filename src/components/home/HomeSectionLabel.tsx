@@ -20,14 +20,14 @@ export default function HomeSectionLabel({ children }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // KAN-201 v3 — Founder scale-up. v2's 11 px / 2.2 tracking still read
-  // small once the surrounding strip + cards landed at production size;
-  // 13 px / 2.6 tracking (= 0.20em × 13) keeps the same 0.20em proportion
-  // and brings the eyebrow into balance with the larger Home blocks.
+  // KAN-201 v4 — switch to DM Sans 500 (Typography.bodyMedium). Mono
+  // read too utilitarian at the section-label scale; bodyMedium sans
+  // gives the eyebrow a softer typographic register that matches the
+  // CD direction. 12 px / 2.4 letter-spacing (= 0.20em × 12).
   label: {
-    fontFamily: Typography.mono,
-    fontSize: 13,
-    letterSpacing: 2.6,
+    fontFamily: Typography.bodyMedium,
+    fontSize: 12,
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
     color: Colors.accent,
   },

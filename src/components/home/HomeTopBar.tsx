@@ -67,13 +67,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  // Wordmark — Cormorant 400 at 22 px with 1.8 px letter-spacing
-  // (= 0.08em × 22 = 1.76, rounded to 1.8 per dispatch literal). Wireframe
-  // tracking ratio preserved while the absolute size lifts to production.
+  // KAN-201 v4 — wordmark size lifted to 24 (was 22) with letterSpacing
+  // 1.9 (= 0.08em × 24 = 1.92, rounded per dispatch literal). Brings
+  // the wordmark into balance with the 32 px logo + larger CD-set type
+  // throughout the rest of Home.
   wordmark: {
     fontFamily: Typography.displayRegular,
-    fontSize: 22,
-    letterSpacing: 1.8,
+    fontSize: 24,
+    letterSpacing: 1.9,
     color: Colors.text,
   },
   hamburger: {

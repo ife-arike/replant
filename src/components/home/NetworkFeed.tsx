@@ -222,10 +222,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   separator: {
-    // KAN-201 v3 — Founder scale-up: 16 px between cards. With cards
-    // now at 16/16 internal padding + 18 px serif titles, 12 px gap
-    // packed visually too tight. 16 keeps the rhythm at one Spacing.md.
-    height: 16,
+    // KAN-201 v4 — back to 12 px between cards. With v4 card padding +
+    // larger titles + paragraph-aware body spacing internal to each
+    // card, the 16 px from v3 read too loose; 12 brings card-to-card
+    // proximity back without crowding.
+    height: 12,
   },
   stateContainer: {
     flex: 1,
