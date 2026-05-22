@@ -430,6 +430,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {/* Search */}
@@ -472,9 +473,34 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           <View style={styles.selectedCard}>
             <View style={styles.selectedHeader}>
               <Text style={styles.selectedLabel}>SELECTED</Text>
-              <TouchableOpacity onPress={() => setSelectedChurch(null)}>
-                <Text style={styles.clearText}>Clear</Text>
-              </TouchableOpacity>
+              <View style={styles.selectedActions}>
+                {/* Edit button — same-session new-church only. A leader who
+                    just registered their own church via the loopback can
+                    bounce back into RegisterChurchPage1 to fix a typo
+                    without re-registering. Setting isNewChurchFromLoopback
+                    to false first ensures the next selection (or the
+                    re-registered church) is treated as a fresh pick, not
+                    a stale loopback. */}
+                {isNewChurchFromLoopback && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsNewChurchFromLoopback(false);
+                      navigation.navigate('RegisterChurchPage1');
+                    }}
+                    style={styles.editButton}
+                  >
+                    <Text style={styles.editText}>Edit</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedChurch(null);
+                    setIsNewChurchFromLoopback(false);
+                  }}
+                >
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <Text style={styles.churchName}>{selectedChurch.name}</Text>
             <View style={styles.churchMeta}>
@@ -635,7 +661,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           <View style={styles.skipModalCard}>
             <Text style={styles.skipModalTitle}>Skip for now?</Text>
             <Text style={styles.skipModalBody}>
-              You can find or register your church later. You'll have 30 days after account creation to verify your church.
+              You can find or register your church later. If you need to register your church, you have 7 days before your account loses full access — otherwise, check the verification status of your existing church and confirm your leadership role in it within 30 days.
             </Text>
             <TouchableOpacity
               style={[styles.submitButton, styles.skipModalPrimary]}
@@ -836,6 +862,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.amber,
     lineHeight: 18,
+  },
+
+  // Edit / Clear action pair on the SELECTED card. Edit is only shown
+  // for the same-session loopback'd new-church (isNewChurchFromLoopback)
+  // so a leader who finds an existing church in search can't accidentally
+  // edit it.
+  selectedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  editButton: {
+    paddingHorizontal: 4,
+  },
+  editText: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.accent,
   },
 
   // Finalization — Skip-for-now is a text-only action beneath the

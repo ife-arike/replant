@@ -287,6 +287,7 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {/* Church Name */}
