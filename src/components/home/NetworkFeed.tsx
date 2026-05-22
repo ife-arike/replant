@@ -26,6 +26,10 @@
 //   #15 Scroll position preserved — FlatList stays mounted across
 //        Home-tab re-focus events (React Navigation keeps the Home stack
 //        screen mounted on stack push to Settings).
+//   #[age] Feed age limit — only entries published within
+//           FEED_MAX_AGE_DAYS (7) days are shown. See amendment
+//           c.13861 on KAN-17. Cutoff is a floor independent of
+//           the pagination cursor.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -53,6 +57,11 @@ import {
 // wire would be both wasted bytes and a forensic leak vector.
 const SELECT_COLS = 'id, title, body, published_at, is_active, source_label, tag_type';
 
+// KAN-17 amendment 2026-05-22 — Founder ruling: feed shows only
+// announcements published within the last FEED_MAX_AGE_DAYS days.
+// Named constant so future tightening (e.g., 3 days) is one-line.
+const FEED_MAX_AGE_DAYS = 7;
+
 type LoadState = 'initial' | 'refreshing' | 'paging' | 'idle' | 'error';
 
 export default function NetworkFeed() {
@@ -70,11 +79,14 @@ export default function NetworkFeed() {
     // Posted-only predicate on the query — RLS enforces it too, but the
     // explicit WHERE keeps the response payload minimal AND ensures the
     // same predicate is visible at the call site for AC review.
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - FEED_MAX_AGE_DAYS);
     let q = supabase
       .from('announcements')
       .select(SELECT_COLS)
       .not('published_at', 'is', null)
       .lte('published_at', new Date().toISOString())
+      .gte('published_at', cutoff.toISOString())
       .eq('is_active', true)
       .order('published_at', { ascending: false })
       .limit(PAGE_SIZE);
