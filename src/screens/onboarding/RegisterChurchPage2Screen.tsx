@@ -25,6 +25,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { CommonActions } from '@react-navigation/native';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
@@ -172,19 +173,36 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
       const result = (await response.json()) as RegisterChurchSuccessResponse;
       setChurchDetails({ churchId: result.church_id });
 
-      navigation.navigate('AccountSetupPage2', {
-        newChurch: {
-          id: result.church_id,
-          name: cd.churchName.trim(),
-          type: cd.churchType,
-          city: cd.cityRegion ?? '',
-          country: cd.country,
-          rag_status: ragStatus,
-          verification_status: 'pending',
-          at_capacity: false,
-        },
-        newChurchId: result.church_id,
-      });
+      // Nav stack reset on success. navigation.navigate('AccountSetupPage2')
+      // leaves the stack as [ASP1, ASP2, RegCP1, RegCP2, ASP2] — pressing
+      // Back from the loopback'd ASP2 would re-enter RegisterChurchPage2
+      // and let a leader register the same church twice. CommonActions.reset
+      // collapses the stack to [ASP1, ASP2] so Back from ASP2 returns to
+      // ASP1 (personal details), not the church-registration flow.
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 1,
+          routes: [
+            { name: 'AccountSetupPage1' },
+            {
+              name: 'AccountSetupPage2',
+              params: {
+                newChurch: {
+                  id: result.church_id,
+                  name: cd.churchName.trim(),
+                  type: cd.churchType,
+                  city: cd.cityRegion ?? '',
+                  country: cd.country,
+                  rag_status: ragStatus,
+                  verification_status: 'pending',
+                  at_capacity: false,
+                },
+                newChurchId: result.church_id,
+              },
+            },
+          ],
+        }),
+      );
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : 'Church registration failed. Please try again.',
@@ -213,6 +231,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {/* Current Status — KAN-13 finalization. Each option shows a
@@ -279,7 +298,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
             placeholder="Skills, space, manpower, resources…"
             placeholderTextColor={Colors.textSubtle}
             multiline
-            numberOfLines={4}
+            numberOfLines={3}
             textAlignVertical="top"
           />
         </View>
@@ -296,7 +315,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
             placeholder="Prayer, funding, training, connections…"
             placeholderTextColor={Colors.textSubtle}
             multiline
-            numberOfLines={4}
+            numberOfLines={3}
             textAlignVertical="top"
           />
           <Text style={styles.fieldNote}>
@@ -310,7 +329,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
             gate submission — leaders without an answer ship as null. */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>
-            Do you have an emergency action plan in case of a sudden incident?
+            Does your church have an emergency action plan in case of a sudden incident?
           </Text>
           <Text style={styles.fieldNote}>
             Optional — you can update this at any time from Settings.
@@ -507,7 +526,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   textarea: {
-    minHeight: 120,
+    minHeight: 80,
     paddingTop: 14,
   },
 
