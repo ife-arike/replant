@@ -41,6 +41,11 @@ interface Props {
 
 export default function AnnouncementCard({ row, now }: Props) {
   const [expanded, setExpanded] = useState(false);
+  // KAN-201 v2 — `isTruncated` flips true on the first layout pass when
+  // RN reports 3+ rendered lines. Replaces the v1 always-on gate that
+  // showed "Read more" on every card with body text regardless of
+  // whether the 3-line clamp actually clipped anything.
+  const [isTruncated, setIsTruncated] = useState(false);
   const timestamp = row.published_at ? formatRelativeTime(row.published_at, now) : '';
 
   // Footer composes "Replant Team · 2h ago · Operations" — separators
@@ -55,18 +60,28 @@ export default function AnnouncementCard({ row, now }: Props) {
         <AnnouncementTagChip tagType={row.tag_type} />
       </View>
 
-      <Text style={styles.body} numberOfLines={expanded ? undefined : 3}>
+      <Text
+        style={styles.body}
+        numberOfLines={expanded ? undefined : 3}
+        onTextLayout={(e) => {
+          // onTextLayout fires after layout with the actual rendered
+          // line array. >= 3 indicates the 3-line clamp engaged; the
+          // chevron affordance becomes visible only then.
+          if (!expanded) setIsTruncated(e.nativeEvent.lines.length >= 3);
+        }}
+      >
         {row.body}
       </Text>
 
-      {!expanded && row.body.length > 0 && (
+      {!expanded && isTruncated && (
         <Pressable
           onPress={() => setExpanded(true)}
           accessibilityRole="button"
-          accessibilityLabel="Read more"
-          hitSlop={6}
+          accessibilityLabel="Expand"
+          hitSlop={8}
+          style={styles.expandRow}
         >
-          <Text style={styles.readMore}>Read more</Text>
+          <Text style={styles.expandChevron}>›</Text>
         </Pressable>
       )}
 
@@ -76,18 +91,20 @@ export default function AnnouncementCard({ row, now }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Wireframe card: surface bg, hairline border, 8px radius, 10/12 padding.
-  // gap: Spacing.sm separates the three rows (title, body, footer) for
-  // breathing room — wireframe relied on margin-bottom on each child;
-  // RN's `gap` is the cleaner equivalent.
+  // Wireframe card: surface bg, hairline border, 8 px radius.
+  // KAN-201 v2 — README L91 ("Card internal padding: 12-16 px") sets the
+  // production pad; v1 shipped at the low end (12/10) which read cramped
+  // on device. 14/14 puts the title row and footer at the README-targeted
+  // breathing room. gap: 10 between rows mirrors the wireframe's per-
+  // child margin-bottom rhythm at the production scale.
   card: {
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 10,
   },
   // Card-row from wireframe: title + chip on one row, chip aligned right.
   titleRow: {
@@ -96,12 +113,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Spacing.sm,
   },
-  // Cormorant 400 (displayRegular) per wireframe `card-title font-weight:
-  // 400`. flex: 1 so the title can wrap while the chip stays right-aligned
-  // and doesn't get crushed.
+  // KAN-201 v2 — Cormorant 500 Medium (displayMedium). README L74 specs
+  // weight 400 nominally; on device the 400 thin reads close to the
+  // muted DM Sans body and the serif-title hierarchy disappears.
+  // 500 Medium restores the wireframe's intended title-vs-body visual
+  // contrast without crossing into the bolder 600 used for hero text.
+  // flex: 1 lets the title wrap while the chip stays right-aligned.
   title: {
     flex: 1,
-    fontFamily: Typography.displayRegular,
+    fontFamily: Typography.displayMedium,
     fontSize: 16,
     lineHeight: 22,
     color: Colors.text,
@@ -113,13 +133,19 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: Colors.textMuted,
   },
-  // "Read more" affordance — small, sky accent, monospace eyebrow weight.
-  readMore: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: Colors.accent,
+  // KAN-201 v2 — Expand chevron affordance. Pulled up −4 so it nests
+  // against the truncated body baseline rather than floating in extra
+  // whitespace. The chevron itself is a typographic guillemet ("›")
+  // sized at 18 so the tap target reads clearly on the dark surface.
+  expandRow: {
+    alignItems: 'flex-start',
+    marginTop: -4,
+  },
+  expandChevron: {
+    fontFamily: Typography.body,
+    fontSize: 18,
+    lineHeight: 18,
+    color: Colors.textMuted,
   },
   // Footer — mono uppercase letterspaced, subtle (textSubtle for the
   // attribution-row hierarchy below body).
