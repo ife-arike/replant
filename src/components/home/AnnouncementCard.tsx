@@ -5,9 +5,12 @@
 // v4 lines 1086-1106 (the "Network Updates" card cluster):
 //
 //   ┌──────────────────────────────────────────────────────────┐
-//   │ Title (Cormorant 500 Medium)            [Tag chip if any]│
-//   │ Body text — rendered in full, no truncation. URLs render │
-//   │ as plain text per AC #12.                                │
+//   │ Title (Cormorant 400, 22 px)            [Tag chip if any]│
+//   │ ─ 8 px ─                                                 │
+//   │ Paragraph 1                                              │
+//   │ ─ 6 px ─                                                 │
+//   │ Paragraph 2 (when body contains "\n\n")                  │
+//   │ ─ 10 px ─                                                │
 //   │ Replant Team · 2h ago · Operations                       │
 //   └──────────────────────────────────────────────────────────┘
 //
@@ -16,12 +19,17 @@
 // The footer line composes: attribution · relative-timestamp · source-
 // label (when set). No like / comment / share / bookmark (AC #10).
 //
-// KAN-201 v3 (2026-05-22): truncation + expand affordance removed.
-// Cards always render the body in full. v1 had an always-on "Read more"
-// (broken gate), v2 added onTextLayout-detected truncation with a
-// chevron — v3 removes the entire feature. A very-long-body
-// affordance is deferred to a future ticket; the network feed presents
-// each announcement whole, in line with a small ministry-network volume.
+// KAN-201 v3 (2026-05-22): truncation + expand affordance removed —
+// cards always render the body in full.
+//
+// KAN-201 v4 (2026-05-22): paragraph-aware body. `row.body` is split on
+// blank-line separators (`\n\n`) and each paragraph renders as its own
+// <Text>. Spacing is now per-child via marginBottom on titleRow + body
+// container; the card no longer carries a single `gap` — paragraph gap
+// (6 px) is distinct from row gap (titleRow→body 8 px, body→footer
+// 10 px). Title font reverts to Cormorant 400 (Typography.displayRegular)
+// — at 22 px the 400-weight serif reads correctly without needing the
+// 500 Medium boost.
 // ─────────────────────────────────────────────
 
 import React from 'react';
@@ -48,6 +56,10 @@ export default function AnnouncementCard({ row, now }: Props) {
   const footerSegments = [AUTHOR_ATTRIBUTION, timestamp, row.source_label]
     .filter((seg): seg is string => Boolean(seg && seg.length));
 
+  // KAN-201 v4 — split body into paragraphs on blank-line separators.
+  // Filter empties so a trailing "\n\n" doesn't render a phantom row.
+  const paragraphs = row.body.split('\n\n').filter((s) => s.trim().length > 0);
+
   return (
     <View style={styles.card}>
       <View style={styles.titleRow}>
@@ -55,7 +67,11 @@ export default function AnnouncementCard({ row, now }: Props) {
         <AnnouncementTagChip tagType={row.tag_type} />
       </View>
 
-      <Text style={styles.body}>{row.body}</Text>
+      <View style={styles.bodyContainer}>
+        {paragraphs.map((para, i) => (
+          <Text key={i} style={styles.body}>{para.trim()}</Text>
+        ))}
+      </View>
 
       <Text style={styles.footer}>{footerSegments.join('  ·  ')}</Text>
     </View>
@@ -63,9 +79,9 @@ export default function AnnouncementCard({ row, now }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // KAN-201 v3 — Founder scale-up to 16/16 internal padding (was 14/14
-  // in v2; README L91 allows 12-16). Lifts the card to the production
-  // breathing room now that title + body sit at 18 / 14.
+  // KAN-201 v4 — internal padding stays at 16/16; the single `gap` was
+  // removed in favor of per-child marginBottom so the title→body and
+  // body→footer rhythms can differ from the inter-paragraph rhythm.
   card: {
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
@@ -73,39 +89,51 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    gap: 10,
   },
   // Card-row: title + chip on one row, chip aligned right.
+  // KAN-201 v4 — marginBottom 8 anchors the gap from title to first
+  // paragraph; no longer relies on the parent's removed `gap`.
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 8,
+    marginBottom: 8,
   },
-  // KAN-201 v3 — Title at 18 / 26. Cormorant 500 Medium for on-device
-  // serif weight visible against muted body. flex: 1 so the title can
-  // wrap while the chip stays right-aligned.
+  // KAN-201 v4 — title reverts to Cormorant 400 (displayRegular). At
+  // 22 px / 26 lineHeight the letterforms are large enough that the
+  // 400 weight reads with the right hierarchy against the body; the
+  // 500 Medium that v2/v3 used was an on-device correction for the
+  // smaller v1/v2 sizes and is no longer needed at the v4 scale.
   title: {
     flex: 1,
-    fontFamily: Typography.displayMedium,
-    fontSize: 18,
+    fontFamily: Typography.displayRegular,
+    fontSize: 22,
     lineHeight: 26,
     color: Colors.text,
   },
-  // Body — DM Sans regular, muted color, 1.5 line-height. Always rendered
-  // in full per v3; the v2 numberOfLines={3} + chevron was removed.
+  // KAN-201 v4 — paragraph container. `gap: 6` separates paragraphs
+  // within the body; `marginBottom: 10` separates the body block from
+  // the footer meta line.
+  bodyContainer: {
+    gap: 6,
+    marginBottom: 10,
+  },
+  // Body — DM Sans regular, muted color. v4 lifts to 15/23 from v3's
+  // 14/21 for comfortable multi-paragraph reading at production scale.
   body: {
     fontFamily: Typography.body,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 23,
     color: Colors.textMuted,
   },
-  // Footer — mono uppercase letterspaced, subtle (textSubtle for the
-  // attribution-row hierarchy below body).
+  // KAN-201 v4 — footer meta line at 11 px / 0.55 letter-spacing
+  // (= 0.05em × 11). Mono uppercase + textSubtle keep the eyebrow
+  // present but subordinate to the body it follows.
   footer: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    letterSpacing: 0.55,
     textTransform: 'uppercase',
     color: Colors.textSubtle,
   },

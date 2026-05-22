@@ -53,15 +53,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     paddingTop: 60, // matches the existing safe-area + status-bar offset
   },
-  // KAN-201 v2 — README L90: section gap is 12 px (matches the
-  // between-cards gap, so Home's rhythm stays consistent: 12 between
-  // every visual block from label to strip to label to first feed card).
-  // 16 horizontal inset aligns with the top-bar so section labels +
-  // cards sit directly beneath the wordmark.
+  // KAN-201 v4 — horizontal inset 16 → 20 (more screen breathing room
+  // at the production scale); paddingTop 12 → 16 (gap from the top-bar
+  // hairline border down to the "TODAY" label). scrollArea.gap stays
+  // 12, matching the between-cards gap for a consistent rhythm from
+  // top-bar → label → strip → label → first card → next card.
   scrollArea: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     gap: 12,
   },
   // Feed takes remaining vertical space so the FlatList can scroll

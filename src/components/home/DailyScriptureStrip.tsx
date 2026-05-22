@@ -135,33 +135,32 @@ export default function DailyScriptureStrip() {
 }
 
 const styles = StyleSheet.create({
-  // Wireframe v4 scripture-strip block: sky-dim fill, sky-mid hairline,
-  // 6 px radius. KAN-201 v3 lifts padding + type to production scale
-  // (was 10/12 + 15/10 — mockup-frame values).
+  // KAN-201 v4 — sky-dim fill, sky-mid hairline, 6 px radius; padding
+  // 16/14 (was 14/12) brings the strip up to CD baseline.
   strip: {
     backgroundColor: 'rgba(107, 181, 232, 0.06)',
     borderWidth: 0.5,
     borderColor: 'rgba(107, 181, 232, 0.35)',
     borderRadius: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  // Verse — Cormorant 500 Medium Italic. fontSize 17 with 1.6 line-height
-  // ratio (= 27.2, rounded to 27 per dispatch literal) — looser leading
-  // than v2 to keep multi-line verses comfortable at the new size.
+  // KAN-201 v4 — verse at 18 / 27 (1.5 line-height ratio). Cormorant 500
+  // Medium Italic for the right serif weight at this size.
   verse: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 17,
+    fontSize: 18,
     color: Colors.text,
     lineHeight: 27,
     marginBottom: 4,
   },
-  // Reference + translation — DM Mono uppercase. 11 px / 1.65 tracking
-  // (= 0.15em × 11). Keeps the eyebrow distinct from the larger verse.
+  // KAN-201 v4 — reference at 12 / 1.8 letter-spacing (= 0.15em × 12).
+  // DM Mono uppercase preserves the eyebrow weight against the larger
+  // serif verse above it.
   reference: {
     fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.65,
+    fontSize: 12,
+    letterSpacing: 1.8,
     color: Colors.accent,
     textTransform: 'uppercase',
   },

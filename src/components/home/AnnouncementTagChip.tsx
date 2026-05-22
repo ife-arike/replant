@@ -48,16 +48,22 @@ function paletteColors(palette: TagChipMeta['palette']): { bg: string; fg: strin
 }
 
 const styles = StyleSheet.create({
+  // KAN-201 v4 — chip padding 6/2 → 8/4 brings the tag pill into
+  // balance with the larger card title + meta line. Keeps 2 px radius
+  // and palette colors unchanged.
   chip: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 2,
     alignSelf: 'flex-start',
   },
+  // KAN-201 v4 — label switches from mono to DM Sans 500 (bodyMedium)
+  // at 11 / 1.32 letter-spacing (= 0.12em × 11). Same typographic
+  // register as the CD-aligned section label + footer eyebrow.
   label: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 1.32,
     textTransform: 'uppercase',
   },
 });
