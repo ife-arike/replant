@@ -30,6 +30,12 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'RegisterChurchPage1'>;
 
+// City tooltip copy — surfaces the underground-church privacy guarantee
+// inline next to the City label rather than as an always-visible note,
+// so the field reads cleaner for typical churches.
+const CITY_TOOLTIP_COPY =
+  "For underground churches, city is hidden and displays as 'Underground Church'.";
+
 const IS_UNDERGROUND = (type: string) => type === 'underground';
 
 // KAN-13 — canonical declaration text passed to register-church as
@@ -68,29 +74,42 @@ interface RegisterChurchSuccessResponse {
   message: string;
 }
 
-export default function RegisterChurchPage1Screen({ navigation }: Props) {
+export default function RegisterChurchPage1Screen({ navigation, route }: Props) {
   const { state, setChurchDetails } = useOnboarding();
   const personalDetails = state.personalDetails;
+  // B4 — editChurch pre-fill. When ASP2's Edit affordance routes here,
+  // basic identity fields seed from the leader's existing selection so
+  // they can fix a typo without re-typing. Contact fields aren't in
+  // ChurchResult — they pre-fill empty (acceptable MVP limitation per
+  // OnboardingEditChurch). The leader's edit submits a NEW church row
+  // server-side; PATCH on register-church is future work.
+  const editChurch = route.params?.editChurch;
+  const isEditMode = !!editChurch;
 
-  const [churchName, setChurchName] = useState('');
-  const [churchType, setChurchType] = useState('');
-  const [country, setCountry] = useState('');
-  const [cityRegion, setCityRegion] = useState('');
+  const [churchName, setChurchName] = useState(editChurch?.churchName ?? '');
+  const [churchType, setChurchType] = useState(editChurch?.churchType ?? '');
+  const [country, setCountry] = useState(editChurch?.country ?? '');
+  const [cityRegion, setCityRegion] = useState(editChurch?.cityRegion ?? '');
   const [address, setAddress] = useState('');
   // KAN-13 v2 — contact_name is required (admin-only PII).
+  // Contact fields not in ChurchResult — start blank on the edit path too.
   const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState(editChurch?.contactEmail ?? '');
+  const [contactPhone, setContactPhone] = useState(editChurch?.contactPhone ?? '');
   // KAN-13 finalization — "Same as my account info" pre-fill toggle.
   // Pre-fills name + email from personalDetails on check; clears on
   // uncheck. Fields remain editable after pre-fill (the checkbox does
   // not lock them); the checkbox is just an entry-shortcut.
   const [sameAsMyInfo, setSameAsMyInfo] = useState(false);
-  const [ragStatus, setRagStatus] = useState('');
+  const [ragStatus, setRagStatus] = useState(editChurch?.ragStatus ?? '');
 
   const [typePickerVisible, setTypePickerVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
+  // B1 — toggleable inline ⓘ tooltip for the City field. Hidden by
+  // default so the field reads cleanly; the leader taps the icon to
+  // surface the underground-church privacy note when they need it.
+  const [showCityTooltip, setShowCityTooltip] = useState(false);
 
   // KAN-13 — Underground submission state. submitting blocks the Next button
   // + spinner; submitError surfaces inline above the button (matches the
@@ -227,6 +246,9 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
             rag_status: ragStatus,
             verification_status: 'pending',
             at_capacity: false,
+            // Brand-new church — the registering leader hasn't been
+            // linked yet (that happens at the ASP2 create-account submit).
+            leader_count: 0,
           },
           newChurchId: result.church_id,
         });
@@ -240,8 +262,19 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
         setSubmitting(false);
       }
     } else {
-      // KAN-14: advance to Page 2 for needs + final submit
-      navigation.navigate('RegisterChurchPage2');
+      // KAN-14: advance to Page 2 for needs + final submit.
+      // B4 — on the edit path, forward isEditMode + editChurch so Page 2
+      // can swap the submit button label to "Apply Changes" and (future)
+      // pre-fill needs/resources/emergency-plan when those become
+      // PATCH-able. MVP: Page 2 still submits a new church row.
+      if (isEditMode) {
+        navigation.navigate('RegisterChurchPage2', {
+          isEditMode: true,
+          editChurch,
+        });
+      } else {
+        navigation.navigate('RegisterChurchPage2');
+      }
     }
   };
 
@@ -351,10 +384,27 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* City / Region — hidden for Underground */}
+        {/* City / Region — hidden for Underground.
+            B1 — moved the underground-privacy field note from an
+            always-on caption to a tap-revealed tooltip via the inline
+            ⓘ icon next to the label. The "online ministry / broadcast
+            city" caption remains as a standing note since it applies
+            to the visible (non-underground) path. */}
         {!isUnderground && (
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>City</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>City</Text>
+              <TouchableOpacity
+                onPress={() => setShowCityTooltip(prev => !prev)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {showCityTooltip && (
+              <Text style={styles.fieldNote}>{CITY_TOOLTIP_COPY}</Text>
+            )}
             <Text style={styles.fieldNote}>
               Online ministries and churches without walls can enter their HQ or broadcast city.
             </Text>
@@ -746,6 +796,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: Colors.textMuted,
     textTransform: 'uppercase',
+  },
+  // B1 — inline label row: label + ⓘ tooltip icon side-by-side.
+  // Used for the City field so the underground-privacy note can be
+  // surfaced on demand instead of taking up vertical space by default.
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  tooltipIcon: {
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   optionalTag: {
     fontFamily: Typography.body,

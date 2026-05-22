@@ -30,15 +30,18 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useAuth } from '../../contexts/AuthProvider';
 import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSetupPage2'>;
 
 // Mirrors the BE `search-churches` row shape — at_capacity is computed
-// server-side (active leader count ≥ 2). FE never sees the raw count;
-// the server-side capacity guard in create-account re-applies the same
-// threshold at write time.
+// server-side (active leader count ≥ 2). FE never sees the raw count
+// for the capacity decision; the server-side capacity guard in
+// create-account re-applies the same threshold at write time.
+// leader_count is surfaced separately (raw active-leader count) so the
+// pending-cascade notice can suppress for 0-leader churches.
 export interface ChurchResult {
   id: string;
   name: string;
@@ -48,6 +51,7 @@ export interface ChurchResult {
   rag_status: string;
   verification_status: string;
   at_capacity: boolean;
+  leader_count: number;
 }
 
 const SEARCH_CHURCHES_URL = `${SUPABASE_URL}/functions/v1/search-churches`;
@@ -83,6 +87,7 @@ const RAG_COLORS: Record<string, string> = {
 
 export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   const { state, setChurchDetails } = useOnboarding();
+  const { refresh } = useAuth();
   const personalDetails = state.personalDetails;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,6 +111,12 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // button opens the modal; the modal's primary action confirms.
   const [skippedChurch, setSkippedChurch] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
+  // Safety net for the create-account → signIn → auth-status-check chain.
+  // If auto-sign-in surfaces an error (or refresh() leaves branch stuck
+  // because auth-status-check 5xx'd silently — SEC 11015 #3a), this flag
+  // unlocks a "tap here to sign in" affordance in the footer so the
+  // leader isn't stranded staring at a frozen "Enter Replant" CTA.
+  const [signInFailed, setSignInFailed] = useState(false);
 
   // Bumped on every new keystroke; in-flight responses check this against
   // their captured value before applying. Belt-and-suspenders alongside
@@ -147,9 +158,22 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // When the leader returns from registering a new church, KAN-13
   // navigates back here with the newly-created church as route.params.
   // We pre-select it and mark isNewChurch so Step 7 fires.
+  //
+  // Defensive — both newChurch AND newChurchId must be present before
+  // we flip the loopback flag. The diagnostic log surfaces the case
+  // where this effect doesn't fire on a second CommonActions.reset
+  // (B6 — re-register after back-and-rereregister silently drops the
+  // Edit affordance).
   useEffect(() => {
     const incoming = route.params?.newChurch;
-    if (incoming) {
+    const incomingId = route.params?.newChurchId;
+    console.log(
+      '[ASP2 loopback useEffect] newChurchId=',
+      incomingId,
+      'will set isNewChurchFromLoopback=',
+      !!(incoming && incomingId),
+    );
+    if (incoming && incomingId) {
       setSelectedChurch(incoming);
       setIsNewChurchFromLoopback(true);
       setCapError(false);
@@ -254,21 +278,54 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
    * Drive Supabase Auth into the signed-in state using the leader's
    * just-set credentials. The AuthProvider listens on
    * onAuthStateChange and the RootNavigator swaps to the authenticated
-   * branch when the session lands. No manual nav.reset needed.
+   * branch when the session lands.
+   *
+   * B8 fix — also call refresh() explicitly. The passive onAuthStateChange
+   * path runs callAuthStatusCheck once; on a 5xx cold-start that's a
+   * silent no-op per SEC 11015 #3a, so branch stays at "unauthenticated"
+   * and RootNavigator never flips. refresh() is initialize() — it calls
+   * callAuthStatusCheck again, giving the branch a second shot to land.
    */
   const tryAutoSignIn = async () => {
     const email = personalDetails.email ?? '';
     const password = personalDetails.password ?? '';
     if (!email || !password) {
+      console.warn('[tryAutoSignIn] missing email or password from personalDetails', {
+        email: !!email,
+        password: !!password,
+      });
       setSubmitError(
         'Account created — sign in failed. Please open the app to continue.',
       );
+      setSignInFailed(true);
       return;
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log('[tryAutoSignIn] calling signInWithPassword');
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+    console.log('[tryAutoSignIn] signInWithPassword result', {
+      hasSession: !!data?.session,
+      error: error?.message,
+    });
     if (error) {
       setSubmitError(
         'Account created — sign in failed. Please open the app to continue.',
+      );
+      setSignInFailed(true);
+      return;
+    }
+    // Explicit refresh() drives a second auth-status-check after the
+    // onAuthStateChange-triggered one. If the first call 5xx'd silently
+    // (SEC 11015 #3a — session retained, branch unchanged), this gives
+    // the branch a chance to flip without waiting for the next AppState
+    // 'active' transition.
+    try {
+      console.log('[tryAutoSignIn] calling refresh() to drive auth-status-check');
+      await refresh();
+      console.log('[tryAutoSignIn] refresh() complete');
+    } catch (refreshErr) {
+      console.warn(
+        '[tryAutoSignIn] refresh() threw — onAuthStateChange path will retry on next AppState active',
+        refreshErr,
       );
     }
   };
@@ -485,12 +542,36 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
                   <TouchableOpacity
                     onPress={() => {
                       setIsNewChurchFromLoopback(false);
-                      navigation.navigate('RegisterChurchPage1');
+                      // Pass the current selection as editChurch so the
+                      // Page 1 form pre-fills with the leader's data
+                      // rather than presenting empty fields. Contact
+                      // fields aren't in ChurchResult — they pre-fill
+                      // empty (MVP limitation; documented in
+                      // OnboardingEditChurch).
+                      navigation.navigate('RegisterChurchPage1', {
+                        editChurch: {
+                          churchId: selectedChurch!.id,
+                          churchName: selectedChurch!.name,
+                          churchType: selectedChurch!.type,
+                          cityRegion: selectedChurch!.city,
+                          country: selectedChurch!.country,
+                          contactEmail: '',
+                          contactPhone: '',
+                          ragStatus: selectedChurch!.rag_status,
+                        },
+                      });
                     }}
                     style={styles.editButton}
                   >
                     <Text style={styles.editText}>Edit</Text>
                   </TouchableOpacity>
+                )}
+                {/* B2 — dot separator between Edit and Clear when both
+                    are visible. Hidden when only Clear is present so
+                    the search-found-church case doesn't have a floating
+                    dot to the left of Clear. */}
+                {isNewChurchFromLoopback && (
+                  <Text style={styles.actionSeparator}>·</Text>
                 )}
                 <TouchableOpacity
                   onPress={() => {
@@ -522,7 +603,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
             doesn't see the cascade copy meant for joining-an-existing-
             pending-church. Their own registration's verification
             countdown is the right signal there. */}
-        {selectedChurch?.verification_status === 'pending' && !isNewChurchFromLoopback && (
+        {selectedChurch?.verification_status === 'pending' && !isNewChurchFromLoopback && (selectedChurch?.leader_count ?? 0) > 0 && (
           <View style={styles.pendingChurchNotice}>
             <Text style={styles.pendingChurchNoticeText}>
               This church is awaiting verification. Your account will also be pending until the church is verified by Replant.
@@ -640,7 +721,24 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         {submitError && (
           <Text style={styles.submitErrorText}>{submitError}</Text>
         )}
-        {!canSubmit && !capError && !submitError && (
+        {/* B8 safety net — if create-account succeeded but the auto-sign-in
+            chain stalled (signInWithPassword error, or refresh() left the
+            branch stuck on a 5xx-cold-start), surface a tappable fallback
+            so the leader can re-run tryAutoSignIn without having to back
+            out and re-enter the flow. Should rarely render once the
+            primary fix lands. */}
+        {signInFailed && (
+          <TouchableOpacity
+            style={styles.signInFallback}
+            onPress={() => { void tryAutoSignIn(); }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.signInFallbackText}>
+              Account created — tap here to sign in
+            </Text>
+          </TouchableOpacity>
+        )}
+        {!canSubmit && !capError && !submitError && !signInFailed && (
           <Text style={styles.footerHint}>Select a church or register one to continue</Text>
         )}
       </View>
@@ -881,6 +979,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.accent,
   },
+  // B2 — visual separator between Edit and Clear actions on the SELECTED
+  // card. Matches the dot pattern used elsewhere in church metadata rows.
+  actionSeparator: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
 
   // Finalization — Skip-for-now is a text-only action beneath the
   // Register a New Church primary button. Tapping opens a confirmation
@@ -1055,5 +1160,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.red,
     textAlign: 'center',
+  },
+  // B8 safety-net fallback. Sky-tinted tappable row beneath the main
+  // CTA / error text. Only renders when signInFailed is true (i.e.
+  // create-account succeeded but tryAutoSignIn surfaced an error). The
+  // primary fix should make this rare; this is the last line of defense
+  // before a leader is told to "open the app to continue."
+  signInFallback: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  signInFallbackText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 14,
+    color: Colors.accent,
+    textDecorationLine: 'underline',
   },
 });

@@ -29,6 +29,8 @@ import ForgotPasswordScreen from '../screens/onboarding/ForgotPasswordScreen';
 // leader returns from registering a brand-new church, KAN-13 navigates back
 // with the freshly-created church so Page 2 can pre-select it (and tag the
 // create-account submit with isNewChurch: true → Step 7 team email fires).
+// leader_count was added with KAN-pending — used by ASP2's pending-cascade
+// notice to suppress the warning for 0-leader churches.
 export interface AccountSetupPage2LoopbackChurch {
   id: string;
   name: string;
@@ -38,6 +40,30 @@ export interface AccountSetupPage2LoopbackChurch {
   rag_status: string;
   verification_status: string;
   at_capacity: boolean;
+  // Always 0 at the loopback site — the leader hasn't been linked yet
+  // (that happens at the create-account submit on ASP2). Required so
+  // the type matches ChurchResult and the loopback church can flow
+  // through setSelectedChurch without an unsafe widening.
+  leader_count: number;
+}
+
+// Edit-church payload passed from ASP2's Edit affordance into the
+// RegisterChurchPage1 → Page2 flow. Pre-fills the basic identity fields
+// (name/type/city/country/rag) so the leader can fix a typo without
+// re-typing the whole form. Contact fields are not in ChurchResult, so
+// they pre-fill empty — the leader re-enters them on the edit pass.
+// MVP limitation: there is no PATCH endpoint on register-church, so the
+// "Apply Changes" submit creates a NEW church row server-side. Acceptable
+// for MVP per dispatch; a future PATCH would let this loop be a true edit.
+export interface OnboardingEditChurch {
+  churchId: string;
+  churchName: string;
+  churchType: string;
+  cityRegion: string;
+  country: string;
+  contactEmail: string;
+  contactPhone: string;
+  ragStatus: string;
 }
 
 export type OnboardingStackParamList = {
@@ -50,8 +76,17 @@ export type OnboardingStackParamList = {
         newChurch?: AccountSetupPage2LoopbackChurch;
       }
     | undefined;
-  RegisterChurchPage1: undefined;
-  RegisterChurchPage2: undefined; // KAN-14 — needs textarea + final non-underground submit
+  RegisterChurchPage1:
+    | {
+        editChurch?: OnboardingEditChurch;
+      }
+    | undefined;
+  RegisterChurchPage2:
+    | {
+        isEditMode?: boolean;
+        editChurch?: OnboardingEditChurch;
+      }
+    | undefined; // KAN-14 — needs textarea + final non-underground submit
   Login: undefined; // KAN-26 — placeholder destination from Splash "Sign In"
   ForgotPassword: undefined; // KAN-38 — Screen 06A reset-link request flow
 };

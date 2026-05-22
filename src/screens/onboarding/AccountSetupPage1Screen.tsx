@@ -91,20 +91,28 @@ const COUNTRIES = [
 ];
 
 export default function AccountSetupPage1Screen({ navigation }: Props) {
-  const { setPersonalDetails } = useOnboarding();
+  const { state, setPersonalDetails } = useOnboarding();
+  // B3 — initialize form state from OnboardingContext.personalDetails so
+  // the back-button-and-re-entry path (e.g. CommonActions.reset from the
+  // post-registration loopback) restores the leader's prior values
+  // instead of presenting empty inputs. The context survives the screen
+  // remount; useState defaults read from it on the initial render.
+  // confirmPassword mirrors password because the context only stores
+  // the validated password — confirm was already proven equal pre-Next.
+  const pd = state.personalDetails;
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('');
-  const [country, setCountry] = useState('');
+  const [firstName, setFirstName] = useState(pd?.firstName ?? '');
+  const [lastName, setLastName] = useState(pd?.lastName ?? '');
+  const [email, setEmail] = useState(pd?.email ?? '');
+  const [password, setPassword] = useState(pd?.password ?? '');
+  const [confirmPassword, setConfirmPassword] = useState(pd?.password ?? '');
+  const [role, setRole] = useState(pd?.role ?? '');
+  const [country, setCountry] = useState(pd?.country ?? '');
   // KAN-196 (D-63) — anonymous mode is now an inline toggle on this page.
   // Default false; flows through OnboardingContext.personalDetails into
   // the create-account payload at Page 2 submit. The standalone
   // AnonymousModeScreen has been retired by this ticket.
-  const [anonymous, setAnonymous] = useState<boolean>(false);
+  const [anonymous, setAnonymous] = useState<boolean>(pd?.anonymous ?? false);
 
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);

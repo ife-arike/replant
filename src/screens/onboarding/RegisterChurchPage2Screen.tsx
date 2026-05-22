@@ -49,8 +49,16 @@ interface RegisterChurchSuccessResponse {
   message: string;
 }
 
-export default function RegisterChurchPage2Screen({ navigation }: Props) {
+export default function RegisterChurchPage2Screen({ navigation, route }: Props) {
   const { state, setChurchDetails } = useOnboarding();
+  // B5 — edit mode swaps the primary CTA label from "Register Church"
+  // to "Apply Changes". MVP limitation: the submit still creates a new
+  // church row (BE has no PATCH on register-church); the label is the
+  // affordance that tells the leader they're acting on an existing
+  // entry. editChurch is forwarded from Page 1 for symmetry; needs/
+  // resources/emergency-plan aren't in ChurchResult so they don't
+  // pre-fill here either.
+  const isEditMode = route.params?.isEditMode ?? false;
 
   // Finalization — needs split into two required free-text fields with
   // context persistence on every change so back-nav restores state.
@@ -196,6 +204,9 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
                   rag_status: ragStatus,
                   verification_status: 'pending',
                   at_capacity: false,
+                  // Brand-new church — leader_count starts at 0; the
+                  // registering leader is linked at ASP2 create-account.
+                  leader_count: 0,
                 },
                 newChurchId: result.church_id,
               },
@@ -439,7 +450,7 @@ export default function RegisterChurchPage2Screen({ navigation }: Props) {
                 !canSubmit && styles.submitButtonTextDisabled,
               ]}
             >
-              Register Church
+              {isEditMode ? 'Apply Changes' : 'Register Church'}
             </Text>
           )}
         </TouchableOpacity>
