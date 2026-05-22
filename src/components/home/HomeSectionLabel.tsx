@@ -20,15 +20,16 @@ export default function HomeSectionLabel({ children }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Wireframe `.screen-section-label`: 0.52rem, letter-spacing 0.2em,
-  // uppercase, color var(--sky). Mobile mapping: 10px size + 3 (≈0.3em)
-  // letter-spacing matches the existing chip / footer eyebrow weight in
-  // AnnouncementCard + DailyScriptureStrip — keeps Home's mono-uppercase
-  // language internally consistent at one scale.
+  // KAN-201 v2 — README L75 production spec: section label is 11 px,
+  // 0.20em letter-spacing, uppercase sky. 0.20em × 11px = 2.2px on
+  // device. v1 used 10 px / 3 px which overstated the tracking AND
+  // undersized the eyebrow relative to scripture-ref + tag-chip at the
+  // same scale. The 11 px reading also matches README typography table
+  // L77 "Meta / timestamp 10-11 px" — section labels read one step up.
   label: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 3,
+    fontSize: 11,
+    letterSpacing: 2.2,
     textTransform: 'uppercase',
     color: Colors.accent,
   },

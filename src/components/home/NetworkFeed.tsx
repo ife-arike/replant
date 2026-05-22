@@ -222,7 +222,9 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   separator: {
-    height: Spacing.sm,
+    // KAN-201 v2 — README L90: 12 px between cards. v1 shipped Spacing.sm
+    // (8) which read too tight at the production scale.
+    height: 12,
   },
   stateContainer: {
     flex: 1,

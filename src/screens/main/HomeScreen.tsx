@@ -53,15 +53,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     paddingTop: 60, // matches the existing safe-area + status-bar offset
   },
-  // Wireframe `.scroll-area`: flex 1, padding 12/16, gap 10. The 16px
-  // horizontal matches the top-bar inset so the section labels + cards
-  // align with the wordmark above. Gap 10 between label/strip/label/feed
-  // keeps the rhythm tight.
+  // KAN-201 v2 — README L90: section gap is 12 px (matches the
+  // between-cards gap, so Home's rhythm stays consistent: 12 between
+  // every visual block from label to strip to label to first feed card).
+  // 16 horizontal inset aligns with the top-bar so section labels +
+  // cards sit directly beneath the wordmark.
   scrollArea: {
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-    gap: 10,
+    gap: 12,
   },
   // Feed takes remaining vertical space so the FlatList can scroll
   // independently — section label stays anchored above.
