@@ -20,7 +20,7 @@
 
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { Colors, Spacing } from "../../constants/theme";
+import { Colors } from "../../constants/theme";
 import DailyScriptureStrip from "../../components/home/DailyScriptureStrip";
 import NetworkFeed from "../../components/home/NetworkFeed";
 import HomeTopBar from "../../components/home/HomeTopBar";
@@ -36,7 +36,14 @@ export default function HomeScreen() {
             the banner sits ABOVE the "Today" label per KAN-16 AC #1. */}
 
         <HomeSectionLabel>Today</HomeSectionLabel>
-        <DailyScriptureStrip />
+        {/* Wrapping View carries the marginBottom — DailyScriptureStrip
+            does not accept a style prop and the dispatch forbids
+            touching its internals. With scrollArea gap: 12, the wrapper's
+            marginBottom: 20 produces the intended 32 px section break
+            from scripture-bottom to NETWORK UPDATES label. */}
+        <View style={{ marginBottom: 20 }}>
+          <DailyScriptureStrip />
+        </View>
 
         <HomeSectionLabel>Network Updates</HomeSectionLabel>
         <View style={styles.feedZone}>
@@ -53,21 +60,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     paddingTop: 60, // matches the existing safe-area + status-bar offset
   },
-  // KAN-201 v4 — horizontal inset 16 → 20 (more screen breathing room
-  // at the production scale); paddingTop 12 → 16 (gap from the top-bar
-  // hairline border down to the "TODAY" label). scrollArea.gap stays
-  // 12, matching the between-cards gap for a consistent rhythm from
-  // top-bar → label → strip → label → first card → next card.
+  // KAN-201 v5 — paddingTop 16 → 24 (top-bar border to TODAY label).
+  // gap: 12 governs label-to-content spacing within each section.
+  // DailyScriptureStrip carries inline marginBottom: 20 so the
+  // scripture→NETWORK UPDATES break reads 32 px total (12 + 20).
   scrollArea: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     gap: 12,
   },
   // Feed takes remaining vertical space so the FlatList can scroll
-  // independently — section label stays anchored above.
+  // independently — section label stays anchored above. The 12 px
+  // scrollArea.gap is the correct label-to-content spacing; v4's
+  // negative marginTop was compensating for something that no longer
+  // needs compensation.
   feedZone: {
     flex: 1,
-    marginTop: -Spacing.xs, // tighter coupling: label sits closer to cards
   },
 });
