@@ -445,6 +445,19 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           </View>
         )}
 
+        {/* KAN-12 finalization — pending-church notice. When the leader
+            selects a church that's still awaiting Replant verification,
+            surface the cascade impact: their account will also stay
+            pending until the church verifies. Amber to match the
+            verification countdown banner family. */}
+        {selectedChurch?.verification_status === 'pending' && (
+          <View style={styles.pendingChurchNotice}>
+            <Text style={styles.pendingChurchNoticeText}>
+              This church is awaiting verification. Your account will also be pending until the church is verified by Replant.
+            </Text>
+          </View>
+        )}
+
         {/* Empty state B — no search yet, initial screen load */}
         {!searched && !searching && !selectedChurch && (
           <View style={styles.emptyState}>
@@ -705,6 +718,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.amber,
     marginTop: 2,
+  },
+
+  // KAN-12 finalization — pending church cascade notice. Sits below the
+  // selectedCard when the chosen church is itself awaiting verification.
+  pendingChurchNotice: {
+    backgroundColor: 'rgba(212, 168, 85, 0.06)',
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+    borderColor: 'rgba(212, 168, 85, 0.3)',
+    padding: Spacing.md,
+  },
+  pendingChurchNoticeText: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.amber,
+    lineHeight: 18,
   },
 
   emptyState: {

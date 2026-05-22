@@ -68,9 +68,27 @@ export const CHURCH_TYPES = [
   { label: 'Underground',          value: 'underground' },
 ] as const;
 
-// RAG options for self-declaration
+// RAG options for self-declaration. Descriptions added (KAN-13/KAN-12
+// finalization 2026-05-22) — surfaced beneath each option on
+// RegisterChurchPage2's Current Status picker so leaders read the
+// concrete meaning of each level before choosing.
 export const RAG_OPTIONS = [
-  { label: 'Freely Operating',          value: 'green', color: '#5BAD7A' },
-  { label: 'Operating with Limitations', value: 'amber', color: '#D4A855' },
-  { label: 'Not Operating Freely',       value: 'red',   color: '#E05555' },
+  {
+    label: 'Freely Operating',
+    value: 'green',
+    color: '#5BAD7A',
+    description: 'Your ministry operates freely without restriction or known threat.',
+  },
+  {
+    label: 'Operating with Limitations',
+    value: 'amber',
+    color: '#D4A855',
+    description: 'You face challenges, scrutiny, or some level of restriction in your ministry.',
+  },
+  {
+    label: 'Not Operating Freely',
+    value: 'red',
+    color: '#E05555',
+    description: 'Your ministry is under active persecution, suppression, or serious threat.',
+  },
 ] as const;

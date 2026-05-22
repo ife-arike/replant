@@ -378,6 +378,24 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
           />
         </View>
 
+        {/* KAN-196 addendum — live identity preview. Shows the leader
+            exactly how they'll appear on other leaders' screens, with
+            the anonymous toggle changing the result in real time:
+              OFF → "Name · Role · Your Church"
+              ON  → "Role · Your Church"
+            Hidden until at least one of firstName/role has a value so
+            a fresh screen doesn't render an empty placeholder block. */}
+        {(firstName.trim() || role) && (
+          <View style={styles.identityPreview}>
+            <Text style={styles.identityPreviewLabel}>HOW YOU'LL APPEAR</Text>
+            <Text style={styles.identityPreviewText} numberOfLines={1}>
+              {anonymous
+                ? `${ROLES.find(r => r.value === role)?.label ?? 'Your Role'} · Your Church`
+                : `${firstName.trim() || 'Your Name'} · ${ROLES.find(r => r.value === role)?.label ?? 'Your Role'} · Your Church`}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -554,6 +572,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSubtle,
     lineHeight: 18,
+  },
+
+  // KAN-196 addendum — identity preview card. Sky-tinted block beneath
+  // the anonymous toggle that previews the leader's appearance on
+  // other leaders' surfaces. Updates live as firstName / role /
+  // anonymous change.
+  identityPreview: {
+    backgroundColor: 'rgba(107, 181, 232, 0.05)',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  identityPreviewLabel: {
+    fontFamily: Typography.body,
+    fontSize: 10,
+    letterSpacing: 2,
+    color: Colors.accent,
+  },
+  identityPreviewText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 15,
+    color: Colors.text,
   },
 
   label: {

@@ -69,7 +69,8 @@ interface RegisterChurchSuccessResponse {
 }
 
 export default function RegisterChurchPage1Screen({ navigation }: Props) {
-  const { setChurchDetails } = useOnboarding();
+  const { state, setChurchDetails } = useOnboarding();
+  const personalDetails = state.personalDetails;
 
   const [churchName, setChurchName] = useState('');
   const [churchType, setChurchType] = useState('');
@@ -80,6 +81,11 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  // KAN-13 finalization — "Same as my account info" pre-fill toggle.
+  // Pre-fills name + email from personalDetails on check; clears on
+  // uncheck. Fields remain editable after pre-fill (the checkbox does
+  // not lock them); the checkbox is just an entry-shortcut.
+  const [sameAsMyInfo, setSameAsMyInfo] = useState(false);
   const [ragStatus, setRagStatus] = useState('');
 
   const [typePickerVisible, setTypePickerVisible] = useState(false);
@@ -93,6 +99,26 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const isUnderground = IS_UNDERGROUND(churchType);
+
+  // KAN-13 finalization — "Same as my account info" handler. Pre-fills
+  // contactName + contactEmail from personalDetails on check; clears
+  // all three contact fields on uncheck. Phone is not pre-filled (not
+  // collected on Page 1 of account setup).
+  const handleSameAsMyInfo = (checked: boolean) => {
+    setSameAsMyInfo(checked);
+    if (checked) {
+      const fullName = [personalDetails.firstName, personalDetails.lastName]
+        .filter(Boolean)
+        .join(' ');
+      setContactName(fullName);
+      setContactEmail(personalDetails.email ?? '');
+      setContactPhone('');
+    } else {
+      setContactName('');
+      setContactEmail('');
+      setContactPhone('');
+    }
+  };
 
   // When Underground is selected, default RAG to red
   const handleTypeSelect = (type: string) => {
@@ -109,6 +135,9 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
   };
 
   // KAN-13 v2 — contact_name required; at-least-one of email/phone.
+  // KAN-13 finalization — ragStatus only required on the underground
+  // path (UG submits from Page 1). Non-underground churches choose
+  // ragStatus on RegisterChurchPage2.
   const isFormValid =
     churchName.trim() &&
     churchType &&
@@ -116,7 +145,7 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
     (isUnderground || cityRegion.trim()) &&
     contactName.trim() &&
     (contactEmail.trim() || contactPhone.trim()) &&
-    ragStatus;
+    (!isUnderground || ragStatus);
 
   // KAN-13 — submit the Underground registration to register-church.
   // Throws on any non-200 response; caller surfaces error to the user.
@@ -359,11 +388,31 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
             (at-least-one-of-email-or-phone enforced both FE + BE). */}
         <Text style={styles.sectionLabel}>Contact Details</Text>
 
+        {/* "Same as my account info" pre-fill — KAN-13 finalization.
+            Quick path for leaders who are themselves the church's primary
+            contact. Pre-fills name + email; phone is left blank because
+            account setup doesn't collect it. Fields stay editable. */}
+        <TouchableOpacity
+          style={styles.checkboxRow}
+          onPress={() => handleSameAsMyInfo(!sameAsMyInfo)}
+          activeOpacity={0.7}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              sameAsMyInfo && styles.checkboxChecked,
+            ]}
+          >
+            {sameAsMyInfo && <Text style={styles.checkboxTick}>✓</Text>}
+          </View>
+          <Text style={styles.checkboxLabel}>Same as my account info</Text>
+        </TouchableOpacity>
+
         {/* Contact Name — required */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Contact Name</Text>
           <Text style={styles.fieldNote}>
-            Admin-only. Used by the Replant team during verification.
+            Seen only by the Replant verification team — never shown publicly.
           </Text>
           <TextInput
             style={styles.input}
@@ -409,60 +458,62 @@ export default function RegisterChurchPage1Screen({ navigation }: Props) {
           />
         </View>
 
-        {/* RAG Status */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Current Status</Text>
-          <Text style={styles.fieldNote}>
-            Self-declaration. You can update this at any time from Settings.
-          </Text>
-          <View style={styles.ragOptions}>
-            {RAG_OPTIONS.map(option => {
-              // Underground status lock per SPEC: only Red is selectable;
-              // Green and Amber are visually muted and non-interactive.
-              // Red itself is not deselectable while underground (no toggle
-              // off → the form always has a valid ragStatus).
-              const lockedOut = isUnderground && option.value !== 'red';
-              const isSelected = ragStatus === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.ragOption,
-                    isSelected && !lockedOut && {
-                      borderColor: option.color,
-                      backgroundColor: `${option.color}12`,
-                    },
-                    lockedOut && styles.ragOptionLocked,
-                  ]}
-                  onPress={() => {
-                    if (isUnderground) return;
-                    setRagStatus(option.value);
-                  }}
-                  disabled={lockedOut}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.ragDot, { backgroundColor: option.color }]} />
-                  <Text style={[
-                    styles.ragOptionText,
-                    isSelected && !lockedOut && { color: option.color },
-                  ]}>
-                    {option.label}
-                  </Text>
-                  {isSelected && !lockedOut && (
-                    <View style={styles.ragCheck}>
-                      <Text style={[styles.ragCheckText, { color: option.color }]}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {isUnderground && (
+        {/* RAG Status — KAN-13 finalization: visible ONLY on the
+            underground path (UG submits from Page 1 and needs the
+            status). Non-underground churches choose Current Status on
+            RegisterChurchPage2 with description text per option. */}
+        {isUnderground && (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Current Status</Text>
+            <Text style={styles.fieldNote}>
+              Self-declaration. You can update this at any time from Settings.
+            </Text>
+            <View style={styles.ragOptions}>
+              {RAG_OPTIONS.map(option => {
+                // Underground status lock per SPEC: only Red is selectable;
+                // Green and Amber are visually muted and non-interactive.
+                // Red itself is not deselectable while underground (no toggle
+                // off → the form always has a valid ragStatus).
+                const lockedOut = option.value !== 'red';
+                const isSelected = ragStatus === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.ragOption,
+                      isSelected && !lockedOut && {
+                        borderColor: option.color,
+                        backgroundColor: `${option.color}12`,
+                      },
+                      lockedOut && styles.ragOptionLocked,
+                    ]}
+                    onPress={() => {
+                      // Underground RAG is locked to red — no interaction.
+                    }}
+                    disabled={lockedOut}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.ragDot, { backgroundColor: option.color }]} />
+                    <Text style={[
+                      styles.ragOptionText,
+                      isSelected && !lockedOut && { color: option.color },
+                    ]}>
+                      {option.label}
+                    </Text>
+                    {isSelected && !lockedOut && (
+                      <View style={styles.ragCheck}>
+                        <Text style={[styles.ragCheckText, { color: option.color }]}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <Text style={styles.fieldNote}>
               Status locked — underground churches are designated Not Operating Freely.
             </Text>
-          )}
-        </View>
+          </View>
+        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -648,6 +699,41 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     textTransform: 'uppercase',
     marginTop: Spacing.sm,
+  },
+
+  // KAN-13 finalization — "Same as my account info" pre-fill toggle.
+  // Sits between the Contact Details section label and the Contact Name
+  // field as a single-tap shortcut for leaders who are themselves the
+  // primary contact for the church they're registering.
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: 6,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  checkboxTick: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 12,
+    color: Colors.background,
+    lineHeight: 14,
+  },
+  checkboxLabel: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.textMuted,
   },
 
   label: {
