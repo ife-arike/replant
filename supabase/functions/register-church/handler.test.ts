@@ -38,11 +38,13 @@ function jsonReq(body: unknown, method = "POST"): Request {
   });
 }
 
+// KAN-13 v2 — contact_name now required at the BE.
 const validBody = {
   name: "Maranatha Fellowship",
   type: "main_campus",
   country: "Kenya",
   city: "Nairobi",
+  contact_name: "Ife James",
   contact_email: "office@maranatha.test",
   rag_status: "green",
   state_declaration: "I affirm the Replant Declaration of Faith.",
