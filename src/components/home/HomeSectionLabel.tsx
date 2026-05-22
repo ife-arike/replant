@@ -20,16 +20,14 @@ export default function HomeSectionLabel({ children }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // KAN-201 v2 — README L75 production spec: section label is 11 px,
-  // 0.20em letter-spacing, uppercase sky. 0.20em × 11px = 2.2px on
-  // device. v1 used 10 px / 3 px which overstated the tracking AND
-  // undersized the eyebrow relative to scripture-ref + tag-chip at the
-  // same scale. The 11 px reading also matches README typography table
-  // L77 "Meta / timestamp 10-11 px" — section labels read one step up.
+  // KAN-201 v3 — Founder scale-up. v2's 11 px / 2.2 tracking still read
+  // small once the surrounding strip + cards landed at production size;
+  // 13 px / 2.6 tracking (= 0.20em × 13) keeps the same 0.20em proportion
+  // and brings the eyebrow into balance with the larger Home blocks.
   label: {
     fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 2.2,
+    fontSize: 13,
+    letterSpacing: 2.6,
     textTransform: 'uppercase',
     color: Colors.accent,
   },

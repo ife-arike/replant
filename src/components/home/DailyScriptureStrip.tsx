@@ -135,33 +135,33 @@ export default function DailyScriptureStrip() {
 }
 
 const styles = StyleSheet.create({
-  // Wireframe v4 scripture-strip block (lines 307-312):
-  // background var(--sky-dim) = rgba(107,181,232,0.06);
-  // border 0.5px var(--sky-mid) = rgba(107,181,232,0.35);
-  // border-radius 6; padding 10 12.
+  // Wireframe v4 scripture-strip block: sky-dim fill, sky-mid hairline,
+  // 6 px radius. KAN-201 v3 lifts padding + type to production scale
+  // (was 10/12 + 15/10 — mockup-frame values).
   strip: {
     backgroundColor: 'rgba(107, 181, 232, 0.06)',
     borderWidth: 0.5,
     borderColor: 'rgba(107, 181, 232, 0.35)',
     borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  // Verse: italic Cormorant Garamond (500 Medium Italic for the right
-  // serif weight at this size), off-white text. lineHeight 1.5 per
-  // wireframe; long verses wrap (AC #13) — no numberOfLines cap.
+  // Verse — Cormorant 500 Medium Italic. fontSize 17 with 1.6 line-height
+  // ratio (= 27.2, rounded to 27 per dispatch literal) — looser leading
+  // than v2 to keep multi-line verses comfortable at the new size.
   verse: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 15,
+    fontSize: 17,
     color: Colors.text,
-    lineHeight: 15 * 1.5,
+    lineHeight: 27,
     marginBottom: 4,
   },
-  // Reference + translation: DM Mono uppercase letterspaced sky.
+  // Reference + translation — DM Mono uppercase. 11 px / 1.65 tracking
+  // (= 0.15em × 11). Keeps the eyebrow distinct from the larger verse.
   reference: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.5,
+    fontSize: 11,
+    letterSpacing: 1.65,
     color: Colors.accent,
     textTransform: 'uppercase',
   },
