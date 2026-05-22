@@ -24,7 +24,10 @@ import { useFonts, isLoaded as fontIsLoaded } from "expo-font";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./src/contexts/AuthProvider";
+import { HamburgerProvider } from "./src/contexts/HamburgerContext";
+import HamburgerPanel from "./src/components/hamburger/HamburgerPanel";
 import RootNavigator from "./src/navigation/RootNavigator";
+import { navigationRef } from "./src/navigation/navigationRef";
 import { supabase } from "./src/lib/supabase";
 import { Colors, fontModules, Typography } from "./src/constants/theme";
 
@@ -78,7 +81,7 @@ function AppGate() {
   if (auth.loading) return <View style={{ flex: 1, backgroundColor: Colors.background }} />;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <RootNavigator />
     </NavigationContainer>
   );
@@ -98,7 +101,12 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
       <AuthProvider>
-        <AppGate />
+        <HamburgerProvider>
+          <AppGate />
+          {/* HamburgerPanel mounted as a sibling so its Modal overlay
+              sits above NavigationContainer's tree on open. KAN-76. */}
+          <HamburgerPanel />
+        </HamburgerProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

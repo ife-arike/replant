@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// HomeTopBar — KAN-201 AC #1
+// HomeTopBar — KAN-201 chassis + KAN-76 hamburger wire
 //
 // Top bar of the Home screen. Layout per wireframe v4 lines 155-195:
 //   - .top-bar       — flex row, space-between, padding 8/16,
@@ -10,17 +10,20 @@
 //   - .hamburger     — flex column, gap 3px, three 16×1.5 var(--off-white)
 //                      bars with border-radius 1px
 //
-// AC #1 — hamburger is VISUAL ONLY at MVP. The Pressable has a no-op
-// onPress with an accessibility label calling out the coming behaviour;
-// KAN-76 will wire the drawer onPress to the real navigation hook.
+// KAN-76 (2026-05-22): hamburger Pressable now calls useHamburger().open
+// — opens the global slide-in panel that lives at the App root. The
+// panel handles the rest (slide animation, dismiss patterns, menu
+// items, identity card, logout).
 // ─────────────────────────────────────────────
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
+import { useHamburger } from '../../contexts/HamburgerContext';
 import RpLogo from './RpLogo';
 
 export default function HomeTopBar() {
+  const { open } = useHamburger();
   return (
     <View style={styles.bar}>
       <View style={styles.logoCluster}>
@@ -29,9 +32,10 @@ export default function HomeTopBar() {
       </View>
 
       <Pressable
-        onPress={noopMenu}
+        onPress={open}
         accessibilityRole="button"
-        accessibilityLabel="Menu (coming soon)"
+        accessibilityLabel="Open menu"
+        accessibilityState={{ expanded: false }}
         hitSlop={10}
         style={styles.hamburger}
       >
@@ -41,12 +45,6 @@ export default function HomeTopBar() {
       </Pressable>
     </View>
   );
-}
-
-// Module-scope no-op so the Pressable doesn't allocate a fresh closure
-// on every render. KAN-76 swaps this for the actual drawer-open hook.
-function noopMenu(): void {
-  // intentional no-op — wired by KAN-76
 }
 
 const styles = StyleSheet.create({
