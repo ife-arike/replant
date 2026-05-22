@@ -14,7 +14,7 @@
 //
 // AC coverage:
 //   #1  feed renders on Home below the scripture strip — composed in
-//        HomePlaceholderScreen, not here.
+//        HomeScreen, not here.
 //   #4  ORDER BY published_at DESC — set on every query.
 //   #5  Posted-only predicate — set on every query AND mirrored FE-side
 //        in NetworkFeedLogic.isPosted as belt-and-suspenders.

@@ -15,7 +15,7 @@ import {
   TheChurchIcon,
 } from "../components/icons/TabIcons";
 import { Colors, Typography } from "../constants/theme";
-import HomePlaceholderScreen from "../screens/main/HomePlaceholderScreen";
+import HomeScreen from "../screens/main/HomeScreen";
 import TheChurchPlaceholderScreen from "../screens/main/TheChurchPlaceholderScreen";
 import PersecutedPlaceholderScreen from "../screens/main/PersecutedPlaceholderScreen";
 import PrayerWallPlaceholderScreen from "../screens/main/PrayerWallPlaceholderScreen";
@@ -51,7 +51,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen
         name="Home"
-        component={HomePlaceholderScreen}
+        component={HomeScreen}
         options={{ tabBarIcon: ({ color }) => <HomeIcon color={color} /> }}
       />
       <Tab.Screen
