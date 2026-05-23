@@ -58,14 +58,6 @@ export interface AuthState {
   verificationDeadline: string | null;
   daysRemaining: number | null;
   loading: boolean;
-  // B30 — true only after auth-status-check has actually populated
-  // verificationDeadline / daysRemaining with real values. Surfaces to
-  // VerificationBanner so the banner stays hidden during the race
-  // window where branch flips to "pending" (via the B14 fallback) but
-  // the real deadline isn't in yet — otherwise the banner would render
-  // its null-deadline red "no church linked" copy for one frame before
-  // the in-flight check completes and re-paints it amber.
-  verificationReady: boolean;
   refresh: () => Promise<void>;
   // KAN-38 — used by SetNewPasswordScreen (Screen 06B) after success /
   // expired states to drop the recovery session and bounce the leader
@@ -101,10 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verificationDeadline, setVerificationDeadline] = useState<string | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  // B30 — see AuthState comment. False until the first successful
-  // auth-status-check populates real verification data; reset to false
-  // when performClearAndRoute wipes the session.
-  const [verificationReady, setVerificationReady] = useState(false);
 
   const inFlight = useRef(false);
   const lastCheckedAt = useRef(0);                          // SEC 11015 #3b — debounce
@@ -130,9 +118,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setBranch("unauthenticated");
       setVerificationDeadline(null);
-      // B30 — paired with the deadline reset; banner should re-arm to
-      // hidden so a subsequent sign-in starts from a clean slate.
-      setVerificationReady(false);
       setDaysRemaining(null);
       // (3) Clear persisted storage (SecureStore adapter removeItem nukes
       //     both ciphertext + AES key). signOut also revokes refresh server-
@@ -196,6 +181,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn(
           `[AuthProvider] auth-status-check non-OK ${response.status} — session retained, will retry on next active`,
         );
+        // B32 — one-time short-fuse retry 3s later. Replaces the
+        // safety-net role refresh() used to play from tryAutoSignIn,
+        // which created the inFlight double-fire that B30 had to gate
+        // against. lastCheckedAt is NOT updated on the non-ok path
+        // (lookup line above this block), so the 30s debounce does not
+        // block this retry. No signOut, no branch change — SEC 11015
+        // #3a preserved; this only retries the read.
+        setTimeout(() => {
+          if (sessionRef.current) void callAuthStatusCheck(sessionRef.current);
+        }, 3_000);
         return false;
       }
 
@@ -203,15 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBranch(data.verification_status);
       setVerificationDeadline(data.verification_deadline);
       setDaysRemaining(data.days_remaining);
-      // B30 — only the success path gates the banner open. The B14
-      // fallback in initialize() (below) intentionally leaves this
-      // false so the banner stays hidden until real data lands on the
-      // next AppState 'active' retry. Without this gate, the race
-      // between tryAutoSignIn's refresh() (which hits the inFlight
-      // guard → false → B14 fallback fires with null deadline) and
-      // the in-flight onAuthStateChange call painted the banner red
-      // for one frame before flipping to amber.
-      setVerificationReady(true);
       return true;
     } catch (err) {
       // AbortError fires when we replace the controller mid-flight — expected,
@@ -352,7 +338,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verificationDeadline,
         daysRemaining,
         loading,
-        verificationReady,
         refresh: initialize,
         clearPasswordRecovery,
         signOut,
