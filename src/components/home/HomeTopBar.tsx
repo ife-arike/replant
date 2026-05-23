@@ -22,13 +22,26 @@ import { Colors, Typography } from '../../constants/theme';
 import { useHamburger } from '../../contexts/HamburgerContext';
 import RpLogo from './RpLogo';
 
+// Lockup constants — WORDMARK_SIZE is the single source of truth for
+// the wordmark font size; LOGO_SIZE is derived via the wireframe ratio
+// (1.6×). Changing WORDMARK_SIZE here propagates to both the <Text> and
+// the <RpLogo>; styles.wordmark.fontSize is overridden inline below so
+// the constant remains authoritative.
+const WORDMARK_SIZE = 24;
+const LOGO_SIZE = Math.round(WORDMARK_SIZE * 1.6);
+
 export default function HomeTopBar() {
   const { open } = useHamburger();
   return (
     <View style={styles.bar}>
+      {/* Lockup: RpLogo + wordmark. Sizes derived from WORDMARK_SIZE
+          via the 1.6× wireframe ratio. The inline ratio comment must
+          NOT sit between JSX siblings inside the View — RN reads the
+          whitespace as a text node and throws "Text strings must be
+          rendered within a <Text>". */}
       <View style={styles.logoCluster}>
-        <RpLogo size={35} /> {/* ratio: wordmarkFontSize 24 × 1.44 — wireframe lockup spec */}
-        <Text style={styles.wordmark}>Replant</Text>
+        <RpLogo size={LOGO_SIZE} />
+        <Text style={{ ...styles.wordmark, fontSize: WORDMARK_SIZE }}>Replant</Text>
       </View>
 
       <Pressable
