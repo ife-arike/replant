@@ -129,16 +129,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const callAuthStatusCheck = useCallback(async (s: Session) => {
+  // B14 — returns Promise<boolean> so initialize() can fall back to a
+  // "pending" branch when the check 5xx'd (SEC 11015 #3a — session
+  // retained, branch unchanged, but RootNavigator never flips on cold
+  // start). `true` means "branch was set (or a recent debounced check
+  // already set it)"; `false` means "branch left untouched, caller may
+  // apply a fallback." onAuthStateChange / AppState callers ignore the
+  // return value — the fallback is initialize-only.
+  const callAuthStatusCheck = useCallback(async (s: Session): Promise<boolean> => {
     // SEC 11015 #3b — 30s debounce.
     const now = Date.now();
     if (now - lastCheckedAt.current < DEBOUNCE_MS) {
       console.log(
         `[AuthProvider] skip auth-status-check — ${now - lastCheckedAt.current}ms since last (debounce ${DEBOUNCE_MS}ms)`,
       );
-      return;
+      // A recent check already set the branch — no fallback needed.
+      return true;
     }
-    if (inFlight.current) return;
+    if (inFlight.current) return false;
     inFlight.current = true;
 
     // Swap AbortController so the prior in-flight (if any) is canceled.
@@ -164,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.status === 401) {
         // SEC 11015 #4 — only an actual 401 triggers clear-and-route.
         await performClearAndRoute();
-        return;
+        return false;
       }
 
       if (!response.ok) {
@@ -173,22 +181,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn(
           `[AuthProvider] auth-status-check non-OK ${response.status} — session retained, will retry on next active`,
         );
-        return;
+        return false;
       }
 
       const data = (await response.json()) as AuthStatusResponse;
       setBranch(data.verification_status);
       setVerificationDeadline(data.verification_deadline);
       setDaysRemaining(data.days_remaining);
+      return true;
     } catch (err) {
       // AbortError fires when we replace the controller mid-flight — expected,
       // not a failure. Other errors are network failures (DNS, timeout, etc.)
       // and per SEC 11015 #3a must leave the session intact.
-      if ((err as Error)?.name === "AbortError") return;
+      if ((err as Error)?.name === "AbortError") return false;
       console.warn(
         "[AuthProvider] auth-status-check network error — session retained, will retry on next active:",
         err,
       );
+      return false;
     } finally {
       inFlight.current = false;
     }
@@ -220,7 +230,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    await callAuthStatusCheck(data.session);
+    // B14 — capture the return value. If the check 5xx'd or hit a
+    // network error, branch is still "loading" (or "unauthenticated"
+    // from a prior clear); RootNavigator never flips to a real branch
+    // and the leader sees a frozen splash on cold start. Fall back to
+    // "pending" so the authenticated tree mounts; the next
+    // AppState "active" / network-recovered check self-corrects to
+    // the real status. SEC 11015 #3a honoured — no signOut, session
+    // retained. Only initialize() applies this fallback;
+    // onAuthStateChange + AppState handlers ignore the return value
+    // because they fire on already-authenticated state where the
+    // branch was already set on initialize().
+    const branchSet = await callAuthStatusCheck(data.session);
+    if (!branchSet) {
+      console.warn(
+        '[AuthProvider] initialize: auth-status-check did not set branch (5xx/network) — falling back to "pending"',
+      );
+      setBranch('pending');
+    }
     setLoading(false);
   }, [callAuthStatusCheck]);
 

@@ -29,7 +29,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
-import { useOnboarding } from '../../context/OnboardingContext';
+import { useOnboarding, type OnboardingLoopbackChurch } from '../../context/OnboardingContext';
 import { useAuth } from '../../contexts/AuthProvider';
 import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase';
@@ -86,7 +86,7 @@ const RAG_COLORS: Record<string, string> = {
 };
 
 export default function AccountSetupPage2Screen({ navigation, route }: Props) {
-  const { state, setChurchDetails } = useOnboarding();
+  const { state, setChurchDetails, setLoopbackChurch } = useOnboarding();
   const { refresh } = useAuth();
   const personalDetails = state.personalDetails;
 
@@ -94,13 +94,23 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   const [results, setResults] = useState<ChurchResult[]>([]);
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [selectedChurch, setSelectedChurch] = useState<ChurchResult | null>(null);
+  // B13 — seed from OnboardingContext.loopbackChurch so the post-
+  // CommonActions.reset remount of ASP2 restores the loopback selection.
+  // OnboardingLoopbackChurch is shape-compatible with ChurchResult; the
+  // cast preserves the type contract without a runtime copy.
+  const [selectedChurch, setSelectedChurch] = useState<ChurchResult | null>(
+    state.loopbackChurch ? (state.loopbackChurch as ChurchResult) : null,
+  );
   const [capError, setCapError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // True only when the current selection came from the KAN-13 loopback —
   // controls the create-account `isNewChurch` payload flag (Step 7 email).
-  const [isNewChurchFromLoopback, setIsNewChurchFromLoopback] = useState(false);
+  // B13 — seeds from context too so the loopback flag survives the
+  // post-registration remount.
+  const [isNewChurchFromLoopback, setIsNewChurchFromLoopback] = useState(
+    !!state.loopbackChurch,
+  );
   // Finalization — Skip-for-now path. A leader who cannot yet name
   // their church still belongs in the network; create-account accepts
   // churchId: null. The 30-day verification window starts ticking
@@ -177,6 +187,12 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       setSelectedChurch(incoming);
       setIsNewChurchFromLoopback(true);
       setCapError(false);
+      // B13 — persist the loopback church to context so a subsequent
+      // remount (back-and-rereregister, CommonActions.reset) restores
+      // the selection from context rather than landing on an empty
+      // ASP2. The shape is structurally compatible with the
+      // OnboardingLoopbackChurch interface.
+      setLoopbackChurch(incoming as OnboardingLoopbackChurch);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.newChurchId]);
@@ -185,6 +201,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     setSearching(true);
     setSelectedChurch(null);
     setIsNewChurchFromLoopback(false);
+    // B13 — starting a new search replaces any prior loopback selection,
+    // so the persisted context must clear too. Otherwise a remount
+    // (back-nav) would restore the stale loopback church and override
+    // the leader's intent to search again.
+    setLoopbackChurch(null);
     setCapError(false);
     try {
       const response = await fetch(SEARCH_CHURCHES_URL, {
@@ -241,6 +262,9 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     setSelectedChurch(church);
     // A selection from the search list is NOT a new-church flow.
     setIsNewChurchFromLoopback(false);
+    // B13 — selecting an existing church via search replaces any
+    // prior loopback selection; clear context too.
+    setLoopbackChurch(null);
   };
 
   const handleRegisterNew = () => {
@@ -542,6 +566,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
                   <TouchableOpacity
                     onPress={() => {
                       setIsNewChurchFromLoopback(false);
+                      // B13 — clear loopback context too. If the leader
+                      // bails out of the register-flow Back without
+                      // re-registering, the previous (stale) loopback
+                      // shouldn't reappear when they return to ASP2.
+                      setLoopbackChurch(null);
                       // Pass the current selection as editChurch so the
                       // Page 1 form pre-fills with the leader's data
                       // rather than presenting empty fields. Contact
@@ -577,6 +606,9 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
                   onPress={() => {
                     setSelectedChurch(null);
                     setIsNewChurchFromLoopback(false);
+                    // B13 — Clear wipes loopback context too so the
+                    // selection doesn't reappear on remount.
+                    setLoopbackChurch(null);
                   }}
                 >
                   <Text style={styles.clearText}>Clear</Text>
@@ -969,10 +1001,16 @@ const styles = StyleSheet.create({
   selectedActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    // B12 — gap was Spacing.md (16) which read as a yawning chasm
+    // between Edit · Clear; Spacing.xs (4) tightens it to a typical
+    // inline-actions pair.
+    gap: Spacing.xs,
   },
   editButton: {
-    paddingHorizontal: 4,
+    // B12 — paddingHorizontal was 4 which compounded with the gap to
+    // push Edit visibly off-axis from Clear; zeroed so the dot
+    // separator visually anchors between matching text glyphs.
+    paddingHorizontal: 0,
   },
   editText: {
     fontFamily: Typography.body,

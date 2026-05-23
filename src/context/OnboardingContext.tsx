@@ -6,6 +6,25 @@
 
 import React, { createContext, useContext, useState } from 'react';
 
+// B13 — Loopback church survives the CommonActions.reset that fires
+// when RegisterChurchPage2 returns a successful registration. Without
+// this, the fresh ASP2 instance loses selectedChurch + the
+// isNewChurchFromLoopback flag (they live in component useState). The
+// Edit affordance + isNewChurch flag at submit both depend on this.
+// Shape mirrors search-churches' ChurchResult plus leader_count so the
+// in-memory selectedChurch can be reconstructed from context on remount.
+export interface OnboardingLoopbackChurch {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  country: string;
+  rag_status: string;
+  verification_status: string;
+  at_capacity: boolean;
+  leader_count: number;
+}
+
 interface PersonalDetails {
   firstName: string;
   lastName: string;
@@ -42,6 +61,7 @@ interface OnboardingState {
   personalDetails: Partial<PersonalDetails>;
   churchDetails: Partial<ChurchDetails>;
   declarationAgreed: boolean;
+  loopbackChurch: OnboardingLoopbackChurch | null;
 }
 
 interface OnboardingContextValue {
@@ -49,6 +69,9 @@ interface OnboardingContextValue {
   setPersonalDetails: (details: Partial<PersonalDetails>) => void;
   setChurchDetails: (details: Partial<ChurchDetails>) => void;
   setDeclarationAgreed: (agreed: boolean) => void;
+  // B13 — replaces outright (not merged) since loopback is a discrete
+  // "selected loopback church" or "no loopback church" state.
+  setLoopbackChurch: (church: OnboardingLoopbackChurch | null) => void;
   reset: () => void;
 }
 
@@ -56,6 +79,7 @@ const defaultState: OnboardingState = {
   personalDetails: {},
   churchDetails: {},
   declarationAgreed: false,
+  loopbackChurch: null,
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -81,11 +105,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setState(prev => ({ ...prev, declarationAgreed: agreed }));
   };
 
+  const setLoopbackChurch = (church: OnboardingLoopbackChurch | null) => {
+    setState(prev => ({ ...prev, loopbackChurch: church }));
+  };
+
   const reset = () => setState(defaultState);
 
   return (
     <OnboardingContext.Provider
-      value={{ state, setPersonalDetails, setChurchDetails, setDeclarationAgreed, reset }}
+      value={{ state, setPersonalDetails, setChurchDetails, setDeclarationAgreed, setLoopbackChurch, reset }}
     >
       {children}
     </OnboardingContext.Provider>

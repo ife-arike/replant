@@ -158,13 +158,14 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
     setConfirmError(val !== password ? 'Passwords do not match' : null);
   };
 
-  const handleNext = async () => {
-    if (checkingEmail) return;
+  // B9 — extract the check-email-available call so it can be reused
+  // by both the email TextInput.onBlur (inline pre-check) and the Next
+  // tap (Layer 1 idempotency check). Returns the resulting EmailCheckError
+  // (null on success). State is updated inside; the return value gives
+  // handleNext a synchronous answer instead of relying on the batched
+  // setEmailCheckError landing before the post-call branch.
+  const runEmailCheck = async (trimmedEmail: string): Promise<EmailCheckError> => {
     setCheckingEmail(true);
-    setEmailCheckError(null);
-
-    const trimmedEmail = email.trim();
-
     try {
       const response = await fetch(CHECK_EMAIL_URL, {
         method: 'POST',
@@ -180,64 +181,106 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
 
       // AC #11 — 10 req/hr per IP rate limit returns 429.
       if (response.status === 429) {
-        setEmailCheckError({
+        const err: EmailCheckError = {
           kind: 'rate_limit',
           message:
             'Too many attempts from this network. Please try again in a little while.',
-        });
-        return;
+        };
+        setEmailCheckError(err);
+        return err;
       }
 
       // AC #12 — anything else non-2xx is treated as network/5xx; Next
       // re-enables so the user can retry.
       if (!response.ok) {
-        setEmailCheckError({
+        const err: EmailCheckError = {
           kind: 'network',
           message: 'Something went wrong. Please check your connection and try again.',
-        });
-        return;
+        };
+        setEmailCheckError(err);
+        return err;
       }
 
       const body = (await response.json()) as { available?: boolean };
 
       if (body.available === false) {
         // AC #10 — inline error; Next disabled until the user changes email.
-        setEmailCheckError({
+        const err: EmailCheckError = {
           kind: 'taken',
           message: 'An account with this email already exists.',
-        });
-        return;
+        };
+        setEmailCheckError(err);
+        return err;
       }
 
       if (body.available !== true) {
         // Defensive: server returned 2xx but a shape we don't recognise.
-        setEmailCheckError({
+        const err: EmailCheckError = {
           kind: 'network',
           message: 'Something went wrong. Please try again.',
-        });
-        return;
+        };
+        setEmailCheckError(err);
+        return err;
       }
 
-      // Email is available — persist and advance to Page 2.
-      // KAN-196 — anonymous is carried inline (no longer a separate screen).
-      setPersonalDetails({
-        firstName,
-        lastName,
-        email: trimmedEmail,
-        password,
-        role,
-        country,
-        anonymous,
-      });
-      navigation.navigate('AccountSetupPage2');
+      setEmailCheckError(null);
+      return null;
     } catch {
-      setEmailCheckError({
+      const err: EmailCheckError = {
         kind: 'network',
         message: 'Something went wrong. Please check your connection and try again.',
-      });
+      };
+      setEmailCheckError(err);
+      return err;
     } finally {
       setCheckingEmail(false);
     }
+  };
+
+  // B9 — onBlur pre-check. Fires only when the email looks plausible
+  // (contains '@' and is longer than 3 chars) and when we're not already
+  // displaying a blocking error from a prior check. void-fired because
+  // blur shouldn't block the leader's focus shift — the result lands
+  // inline via setEmailCheckError.
+  const handleEmailBlur = () => {
+    const trimmed = email.trim();
+    if (!trimmed.includes('@') || trimmed.length <= 3) return;
+    if (
+      emailCheckError?.kind === 'taken' ||
+      emailCheckError?.kind === 'rate_limit'
+    ) {
+      return;
+    }
+    if (checkingEmail) return;
+    void runEmailCheck(trimmed);
+  };
+
+  const handleNext = async () => {
+    if (checkingEmail) return;
+    // Re-run the check on submit even if onBlur already ran — Layer 1
+    // requires a fresh server answer at the submit boundary (the leader
+    // could have changed email between blur and Next, or the server
+    // state could have changed between the two calls).
+    const trimmedEmail = email.trim();
+    const result = await runEmailCheck(trimmedEmail);
+    if (result !== null) {
+      // Any error blocks the navigation — the inline error UI already
+      // surfaces the reason to the leader.
+      return;
+    }
+
+    // Email is available — persist and advance to Page 2.
+    // KAN-196 — anonymous is carried inline (no longer a separate screen).
+    setPersonalDetails({
+      firstName,
+      lastName,
+      email: trimmedEmail,
+      password,
+      role,
+      country,
+      anonymous,
+    });
+    navigation.navigate('AccountSetupPage2');
   };
 
   return (
@@ -298,6 +341,7 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
               // the user sees what blocked their last attempt.
               if (emailCheckError?.kind === 'taken') setEmailCheckError(null);
             }}
+            onBlur={handleEmailBlur}
             placeholder="you@example.com"
             placeholderTextColor={Colors.textSubtle}
             keyboardType="email-address"
