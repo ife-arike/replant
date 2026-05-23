@@ -433,7 +433,7 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
               style={styles.input}
               value={otherRole}
               onChangeText={setOtherRole}
-              placeholder="e.g. Youth Leader, Church Administrator…"
+              placeholder="e.g. Youth Pastor, Worship Leader…"
               placeholderTextColor={Colors.textSubtle}
               autoCapitalize="words"
             />

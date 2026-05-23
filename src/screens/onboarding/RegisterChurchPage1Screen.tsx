@@ -488,7 +488,7 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Contact Email</Text>
           <Text style={styles.fieldNote}>
-            At least one of email or phone required.
+            We will reach out to this email address and/or phone number to validate your church.
           </Text>
           <TextInput
             style={styles.input}
