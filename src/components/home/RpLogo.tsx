@@ -1,16 +1,21 @@
 // ─────────────────────────────────────────────
 // RpLogo — KAN-201
 //
-// "Replant" mark from the brandkit SVG (`assets/rp vector.svg`).
-// Inlined as an RN-SVG component per project convention — same pattern
-// as `src/components/icons/TabIcons.tsx`. The asset SVG is kept in
-// `assets/` for designer reference but is NOT bundled or read at
-// runtime; the path-data constants below are the live wire.
+// "Replant" mark from the design-handoff SVG
+// (`design_handoff_replant_app/replant-logo.svg` — the tightened viewBox
+// version). Inlined as an RN-SVG component per project convention —
+// same pattern as `src/components/icons/TabIcons.tsx`. The asset SVG is
+// kept in the handoff folder for designer reference but is NOT bundled
+// or read at runtime; the path-data constants below are the live wire
+// and are character-identical to the handoff SVG paths.
 //
-// The source SVG has two compound paths in a 1536×1024 viewBox, both
-// filled `#71bdfe`. We pass that exact hex through as the default —
-// brand sky `Colors.accent` (#6BB5E8) is close but the brandkit
-// authority is the SVG's own fill, so the logo stays faithful to source.
+// The handoff SVG uses viewBox "501.85 201.73 543.05 543.05" — a square
+// frame tightened to the glyph bounds. Earlier versions used a wider
+// 1536×1024 viewBox which rendered rectangular at `size × size×0.667`;
+// the tightened viewBox renders square at `size × size` (matches the
+// 80×80 dispatch and the screenshots in design_handoff_replant_app/).
+// Both paths filled `#71bdfe` per the handoff SVG (brand sky
+// Colors.accent #6BB5E8 is close but the handoff fill is canon).
 // Callers can override `color` if a recolor variant is ever needed.
 // ─────────────────────────────────────────────
 
@@ -34,7 +39,7 @@ interface Props {
 
 export default function RpLogo({ size = 22, color = '#71bdfe' }: Props) {
   return (
-    <Svg width={size} height={size * (1024 / 1536)} viewBox="0 0 1536 1024">
+    <Svg width={size} height={size} viewBox="501.85 201.73 543.05 543.05">
       <Path d={PATH_OUTER} fill={color} fillOpacity={0.992} />
       <Path d={PATH_INNER} fill={color} fillOpacity={0.992} />
     </Svg>
