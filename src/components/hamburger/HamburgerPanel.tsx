@@ -415,12 +415,13 @@ export default function HamburgerPanel() {
               <Text style={styles.avatarText}>{getInitials(card?.fullName ?? null)}</Text>
             </View>
             <View style={styles.identityText}>
-              {/* B28 — restore single-line firstName · roleLabel (pre-B24
-                  pattern). All white via identityName — the accent-tinted
-                  three-line layout from B24 over-emphasized role and broke
-                  the visual rhythm of the identity card. role === 'other'
-                  maps to "Minister" (ministry_leader label) as the interim
-                  display per B15 identity-preview convention. */}
+              {/* B31 — line 1 format: "${roleLabel} ${firstName} · ${churchOrFallback}".
+                  role === 'other' maps to "Minister" (ministry_leader label,
+                  interim display per B15). When roleLabel resolves to null
+                  (role missing mid-fetch), the format collapses to
+                  "${firstName} · ${churchOrFallback}". Church fallback
+                  is "No Church Registered" so the dot separator never
+                  reads as a trailing artifact. */}
               <Text style={styles.identityName} numberOfLines={1}>
                 {(() => {
                   const firstName = card?.firstName ?? '…';
@@ -430,17 +431,33 @@ export default function HamburgerPanel() {
                     : rawRole
                       ? (ROLES.find(r => r.value === rawRole)?.label ?? null)
                       : null;
-                  return roleLabel ? `${firstName} · ${roleLabel}` : firstName;
+                  const churchOrFallback = card?.churchName ?? 'No Church Registered';
+                  return roleLabel
+                    ? `${roleLabel} ${firstName} · ${churchOrFallback}`
+                    : `${firstName} · ${churchOrFallback}`;
                 })()}
               </Text>
-              {/* B28 — line 2: church name or no-church status. Church
-                  name is privacy-safe at this layer — register-church
-                  stores the real name and underground name-masking
-                  happens on other leaders' surfaces; self-view shows
-                  own real church name. */}
-              <Text style={styles.identityLocation} numberOfLines={1}>
-                {card?.churchName ?? 'No church registered'}
-              </Text>
+              {/* B31 — line 2: location.
+                  - Underground churches: not rendered (KAN-76 privacy rule —
+                    underground geographic data is excluded from all surfaces).
+                  - No church linked OR neither city nor country present:
+                    'No location found'.
+                  - Otherwise: city, country (or whichever is non-null). */}
+              {card?.churchType !== 'underground' && (() => {
+                if (!card?.churchName) {
+                  return (
+                    <Text style={styles.identityLocation} numberOfLines={1}>
+                      No location found
+                    </Text>
+                  );
+                }
+                const parts = [card.city, card.country].filter(Boolean);
+                return (
+                  <Text style={styles.identityLocation} numberOfLines={1}>
+                    {parts.length > 0 ? parts.join(', ') : 'No location found'}
+                  </Text>
+                );
+              })()}
             </View>
           </View>
 
@@ -568,7 +585,10 @@ const styles = StyleSheet.create({
   },
   identityName: {
     fontFamily: Typography.body,
-    fontSize: 17,
+    // B31 — 17 → 15 so the longer "${role} ${firstName} · ${church}"
+    // format reads at a calmer size and is less likely to truncate
+    // on narrow devices.
+    fontSize: 15,
     fontWeight: '500',
     color: Colors.text,
   },

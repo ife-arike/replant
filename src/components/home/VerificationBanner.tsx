@@ -47,10 +47,19 @@ function getBannerState(days: number): BannerState {
 }
 
 export default function VerificationBanner() {
-  const { verificationDeadline } = useAuth();
+  const { verificationDeadline, verificationReady } = useAuth();
   const [dismissed, setDismissed] = useState(false);
 
   const days = computeDays(verificationDeadline);
+
+  // B30 — suppress render until auth-status-check has actually
+  // populated verification data. Without this, the post-signup race
+  // between onAuthStateChange's in-flight check and the B14 fallback's
+  // setBranch('pending') with a still-null deadline paints the red
+  // "no church linked" copy for one frame before the in-flight call
+  // resolves and flips the banner amber. verificationReady reads as
+  // "deadline is the real one (or confirmed null = genuine skip-flow)".
+  if (!verificationReady) return null;
 
   // Not rendered: dismissed this session, or deadline has already passed
   // (the Deactivation Popup story owns the past-deadline UX; a stale red
