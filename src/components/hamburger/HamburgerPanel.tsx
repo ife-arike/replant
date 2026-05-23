@@ -76,14 +76,16 @@ const ICON_STROKE = 1.5;
 const CLOSE_DURATION_MS = 200;
 const OPEN_DURATION_MS = 250;
 
-// Lockup constants — HAMBURGER_WORDMARK_SIZE is the single source of
-// truth for the panel header's wordmark font size; HAMBURGER_LOGO_SIZE
-// is derived via the wireframe ratio (1.75×). Changing the wordmark
-// size here propagates to both the <Text> and the <RpLogo>;
-// styles.headerWordmark.fontSize is overridden inline below so the
-// constant remains authoritative.
+// Lockup constants.
+// HAMBURGER_LOGO_SIZE: Founder ruling — hardcoded 80 px from the
+// design-handoff (replant-logo.svg, tightened viewBox version). Not
+// derived from the wordmark. Overrides the earlier × 1.75 ratio.
+// HAMBURGER_WORDMARK_SIZE: remains the single source of truth for the
+// panel header wordmark font size; styles.headerWordmark.fontSize is
+// overridden inline below so the constant stays authoritative. Gap to
+// logo stays 8 (PR #65).
 const HAMBURGER_WORDMARK_SIZE = 30;
-const HAMBURGER_LOGO_SIZE = Math.round(HAMBURGER_WORDMARK_SIZE * 1.75);
+const HAMBURGER_LOGO_SIZE = 80;
 
 interface CardData {
   fullName: string | null;

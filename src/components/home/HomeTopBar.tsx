@@ -22,13 +22,15 @@ import { Colors, Typography } from '../../constants/theme';
 import { useHamburger } from '../../contexts/HamburgerContext';
 import RpLogo from './RpLogo';
 
-// Lockup constants — WORDMARK_SIZE is the single source of truth for
-// the wordmark font size; LOGO_SIZE is derived via the wireframe ratio
-// (1.6×). Changing WORDMARK_SIZE here propagates to both the <Text> and
-// the <RpLogo>; styles.wordmark.fontSize is overridden inline below so
-// the constant remains authoritative.
+// Lockup constants.
+// LOGO_SIZE: Founder ruling — hardcoded 80 px from the design-handoff
+// (replant-logo.svg, tightened viewBox version). Not derived from the
+// wordmark. Overrides the earlier × 1.6 ratio.
+// WORDMARK_SIZE: remains the single source of truth for the wordmark
+// font size; styles.wordmark.fontSize is overridden inline below so the
+// constant stays authoritative. Gap to logo stays 8 (PR #65).
 const WORDMARK_SIZE = 24;
-const LOGO_SIZE = Math.round(WORDMARK_SIZE * 1.6);
+const LOGO_SIZE = 80;
 
 export default function HomeTopBar() {
   const { open } = useHamburger();
