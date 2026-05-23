@@ -76,6 +76,15 @@ const ICON_STROKE = 1.5;
 const CLOSE_DURATION_MS = 200;
 const OPEN_DURATION_MS = 250;
 
+// Lockup constants — HAMBURGER_WORDMARK_SIZE is the single source of
+// truth for the panel header's wordmark font size; HAMBURGER_LOGO_SIZE
+// is derived via the wireframe ratio (1.75×). Changing the wordmark
+// size here propagates to both the <Text> and the <RpLogo>;
+// styles.headerWordmark.fontSize is overridden inline below so the
+// constant remains authoritative.
+const HAMBURGER_WORDMARK_SIZE = 30;
+const HAMBURGER_LOGO_SIZE = Math.round(HAMBURGER_WORDMARK_SIZE * 1.75);
+
 interface CardData {
   fullName: string | null;
   firstName: string | null;
@@ -392,9 +401,15 @@ export default function HamburgerPanel() {
         style={[styles.panel, { paddingTop: insets.top + 28, transform: [{ translateX }] }]}
         {...panResponder.panHandlers}
       >
+        {/* Lockup: RpLogo + wordmark. Sizes derived from
+            HAMBURGER_WORDMARK_SIZE via the 1.75× wireframe ratio.
+            Constants are defined at module scope above. The ratio
+            comment must NOT sit between JSX siblings inside the View
+            — RN reads the whitespace as a text node and throws "Text
+            strings must be rendered within a <Text>". */}
         <View style={styles.header}>
-          <RpLogo size={47} /> {/* ratio: headerWordmark fontSize 30 × 1.58 — wireframe lockup spec */}
-          <Text style={styles.headerWordmark}>Replant</Text>
+          <RpLogo size={HAMBURGER_LOGO_SIZE} />
+          <Text style={{ ...styles.headerWordmark, fontSize: HAMBURGER_WORDMARK_SIZE }}>Replant</Text>
         </View>
 
         <View style={styles.menuList}>
