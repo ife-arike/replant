@@ -415,24 +415,29 @@ export default function HamburgerPanel() {
               <Text style={styles.avatarText}>{getInitials(card?.fullName ?? null)}</Text>
             </View>
             <View style={styles.identityText}>
-              {/* B24 — Line 1: first name only. The church name moves to
-                  line 3 (or "No church registered" for skip-flow). */}
+              {/* B28 — restore single-line firstName · roleLabel (pre-B24
+                  pattern). All white via identityName — the accent-tinted
+                  three-line layout from B24 over-emphasized role and broke
+                  the visual rhythm of the identity card. role === 'other'
+                  maps to "Minister" (ministry_leader label) as the interim
+                  display per B15 identity-preview convention. */}
               <Text style={styles.identityName} numberOfLines={1}>
-                {card?.firstName ?? '…'}
+                {(() => {
+                  const firstName = card?.firstName ?? '…';
+                  const rawRole = card?.role ?? null;
+                  const roleLabel = rawRole === 'other'
+                    ? (ROLES.find(r => r.value === 'ministry_leader')?.label ?? 'Minister')
+                    : rawRole
+                      ? (ROLES.find(r => r.value === rawRole)?.label ?? null)
+                      : null;
+                  return roleLabel ? `${firstName} · ${roleLabel}` : firstName;
+                })()}
               </Text>
-              {/* B24 — Line 2: role label. Resolved via ROLES; raw value
-                  is a defensive fallback if the row carries a label the
-                  picker hasn't shipped yet. Empty string keeps layout
-                  stable when role is null mid-fetch. */}
-              <Text style={styles.identityRole} numberOfLines={1}>
-                {card?.role
-                  ? (ROLES.find(r => r.value === card.role)?.label ?? card.role)
-                  : ''}
-              </Text>
-              {/* B24 — Line 3: church name or no-church status. Church
-                  name is privacy-safe at this layer — search-churches +
-                  register-church return "Underground Church" for the
-                  underground type, so we don't need an extra guard here. */}
+              {/* B28 — line 2: church name or no-church status. Church
+                  name is privacy-safe at this layer — register-church
+                  stores the real name and underground name-masking
+                  happens on other leaders' surfaces; self-view shows
+                  own real church name. */}
               <Text style={styles.identityLocation} numberOfLines={1}>
                 {card?.churchName ?? 'No church registered'}
               </Text>
@@ -571,13 +576,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 14,
     color: Colors.textMuted,
-  },
-  // B24 — role label between firstName (line 1) and church name (line 3).
-  // Accent-tinted to read distinct from the muted location/church line.
-  identityRole: {
-    fontFamily: Typography.body,
-    fontSize: 13,
-    color: Colors.accent,
   },
   logoutRow: {
     flexDirection: 'row',

@@ -605,18 +605,23 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
                 {isNewChurchFromLoopback && (
                   <TouchableOpacity
                     onPress={() => {
-                      setIsNewChurchFromLoopback(false);
-                      // B13 — clear loopback context too. If the leader
-                      // bails out of the register-flow Back without
-                      // re-registering, the previous (stale) loopback
-                      // shouldn't reappear when they return to ASP2.
-                      setLoopbackChurch(null);
+                      // B29 — do NOT clear isNewChurchFromLoopback or
+                      // loopbackChurch here. Clearing proactively breaks
+                      // the Back-from-edit path: a leader who presses
+                      // Back from RegCP1 without applying changes loses
+                      // the Edit affordance permanently. Loopback state
+                      // clears only on:
+                      //   - Clear tap on the SELECTED card
+                      //   - Replace-confirm in handleReplaceConfirm
+                      //   - A successful Apply Changes (the loopback
+                      //     useEffect re-fires on the new newChurchId
+                      //     param after RegCP2's CommonActions.reset)
+                      // Edit tap is not a commitment — loopback should
+                      // survive navigation without an apply step.
                       // Pass the current selection as editChurch so the
-                      // Page 1 form pre-fills with the leader's data
-                      // rather than presenting empty fields. Contact
-                      // fields aren't in ChurchResult — they pre-fill
-                      // empty (MVP limitation; documented in
-                      // OnboardingEditChurch).
+                      // Page 1 form pre-fills. Contact fields aren't in
+                      // ChurchResult — RegCP1 seeds them from context
+                      // on the edit path per B17.
                       navigation.navigate('RegisterChurchPage1', {
                         editChurch: {
                           churchId: selectedChurch!.id,
