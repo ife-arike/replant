@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   // KAN-201 v4 — verse at 18 / 27 (1.5 line-height ratio). Cormorant 500
   // Medium Italic for the right serif weight at this size.
   verse: {
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.displayItalic,
     fontSize: 18,
     color: Colors.text,
     lineHeight: 27,
