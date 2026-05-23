@@ -30,7 +30,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding, type OnboardingLoopbackChurch } from '../../context/OnboardingContext';
-import { useAuth } from '../../contexts/AuthProvider';
 import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase';
 
@@ -87,7 +86,6 @@ const RAG_COLORS: Record<string, string> = {
 
 export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   const { state, setChurchDetails, setLoopbackChurch } = useOnboarding();
-  const { refresh } = useAuth();
   const personalDetails = state.personalDetails;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,11 +128,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // a result row.
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [pendingReplaceChurch, setPendingReplaceChurch] = useState<ChurchResult | null>(null);
-  // Safety net for the create-account → signIn → auth-status-check chain.
-  // If auto-sign-in surfaces an error (or refresh() leaves branch stuck
-  // because auth-status-check 5xx'd silently — SEC 11015 #3a), this flag
-  // unlocks a "tap here to sign in" affordance in the footer so the
-  // leader isn't stranded staring at a frozen "Enter Replant" CTA.
+  // Safety net for the create-account → signIn chain. If
+  // signInWithPassword surfaces an error after a successful
+  // create-account, this flag unlocks a "tap here to sign in"
+  // affordance in the footer so the leader isn't stranded staring at
+  // a frozen "Enter Replant" CTA.
   const [signInFailed, setSignInFailed] = useState(false);
 
   // Bumped on every new keystroke; in-flight responses check this against
@@ -340,15 +338,14 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
 
   /**
    * Drive Supabase Auth into the signed-in state using the leader's
-   * just-set credentials. The AuthProvider listens on
-   * onAuthStateChange and the RootNavigator swaps to the authenticated
-   * branch when the session lands.
-   *
-   * B8 fix — also call refresh() explicitly. The passive onAuthStateChange
-   * path runs callAuthStatusCheck once; on a 5xx cold-start that's a
-   * silent no-op per SEC 11015 #3a, so branch stays at "unauthenticated"
-   * and RootNavigator never flips. refresh() is initialize() — it calls
-   * callAuthStatusCheck again, giving the branch a second shot to land.
+   * just-set credentials. signInWithPassword fires onAuthStateChange,
+   * which is the sole driver for the branch flip via callAuthStatusCheck.
+   * RootNavigator swaps to the authenticated branch when the session
+   * lands. B32 removed the explicit refresh() that used to fire here —
+   * the double-fire created the inFlight race that B30 had to gate
+   * against. Single-driver path is simpler and eliminates the race;
+   * the 5xx safety net is now an internal short-fuse retry inside
+   * callAuthStatusCheck (see AuthProvider).
    */
   const tryAutoSignIn = async () => {
     const email = personalDetails.email ?? '';
@@ -375,22 +372,6 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         'Account created — sign in failed. Please open the app to continue.',
       );
       setSignInFailed(true);
-      return;
-    }
-    // Explicit refresh() drives a second auth-status-check after the
-    // onAuthStateChange-triggered one. If the first call 5xx'd silently
-    // (SEC 11015 #3a — session retained, branch unchanged), this gives
-    // the branch a chance to flip without waiting for the next AppState
-    // 'active' transition.
-    try {
-      console.log('[tryAutoSignIn] calling refresh() to drive auth-status-check');
-      await refresh();
-      console.log('[tryAutoSignIn] refresh() complete');
-    } catch (refreshErr) {
-      console.warn(
-        '[tryAutoSignIn] refresh() threw — onAuthStateChange path will retry on next AppState active',
-        refreshErr,
-      );
     }
   };
 
@@ -802,12 +783,12 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         {submitError && (
           <Text style={styles.submitErrorText}>{submitError}</Text>
         )}
-        {/* B8 safety net — if create-account succeeded but the auto-sign-in
-            chain stalled (signInWithPassword error, or refresh() left the
-            branch stuck on a 5xx-cold-start), surface a tappable fallback
-            so the leader can re-run tryAutoSignIn without having to back
-            out and re-enter the flow. Should rarely render once the
-            primary fix lands. */}
+        {/* B8 safety net — if create-account succeeded but
+            signInWithPassword threw, surface a tappable fallback so
+            the leader can re-run tryAutoSignIn without backing out
+            and re-entering the flow. Should rarely render — most
+            sign-in errors are transient (network) and the second tap
+            usually succeeds. */}
         {signInFailed && (
           <TouchableOpacity
             style={styles.signInFallback}
