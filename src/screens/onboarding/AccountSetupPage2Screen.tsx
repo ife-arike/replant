@@ -30,8 +30,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding, type OnboardingLoopbackChurch } from '../../context/OnboardingContext';
+import { useAuth } from '../../contexts/AuthProvider';
 import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase';
+import {
+  type CallerContext,
+  shouldFireOptimisticPending,
+} from '../../utils/asp2OptimisticPending';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSetupPage2'>;
 
@@ -86,6 +91,14 @@ const RAG_COLORS: Record<string, string> = {
 
 export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   const { state, setChurchDetails, setLoopbackChurch } = useOnboarding();
+  // B35 — setOptimisticPending lets tryAutoSignIn flip RootNavigator
+  // off "unauthenticated" the moment signInWithPassword resolves, so
+  // the leader is navigated to Home before they can re-tap and trigger
+  // the Layer 1 email pre-check (which would surface
+  // user_already_exists since the account now exists). The
+  // onAuthStateChange-triggered callAuthStatusCheck self-corrects the
+  // branch 1-3s later. SEC ruling KAN-12 c.14155.
+  const { setOptimisticPending } = useAuth();
   const personalDetails = state.personalDetails;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -339,15 +352,24 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   /**
    * Drive Supabase Auth into the signed-in state using the leader's
    * just-set credentials. signInWithPassword fires onAuthStateChange,
-   * which is the sole driver for the branch flip via callAuthStatusCheck.
-   * RootNavigator swaps to the authenticated branch when the session
-   * lands. B32 removed the explicit refresh() that used to fire here —
-   * the double-fire created the inFlight race that B30 had to gate
-   * against. Single-driver path is simpler and eliminates the race;
-   * the 5xx safety net is now an internal short-fuse retry inside
-   * callAuthStatusCheck (see AuthProvider).
+   * which runs callAuthStatusCheck to land the real branch ~1-3s later.
+   *
+   * B35 (SEC c.14155) — race-window sealing. The async
+   * callAuthStatusCheck takes 1-3s on a cold Supabase function; before
+   * PR #62 the FE called refresh() to force a second check, but that
+   * created the inFlight double-fire that B30 had to gate against and
+   * PR #62 ultimately removed. We now flip `branch = 'pending'`
+   * optimistically (via setOptimisticPending) the moment signInWithPassword
+   * resolves so RootNavigator transitions to Home before the leader can
+   * re-tap the CTA. callAuthStatusCheck overwrites the optimistic value
+   * with the real status (active / pending / deactivated) without a
+   * race because setOptimisticPending is a direct setBranch — not a
+   * second callAuthStatusCheck.
+   *
+   * `context` is SEC-locked to a one-member literal union. New callers
+   * require SEC review — see src/utils/asp2OptimisticPending.ts header.
    */
-  const tryAutoSignIn = async () => {
+  const tryAutoSignIn = async (opts: { context: CallerContext }) => {
     const email = personalDetails.email ?? '';
     const password = personalDetails.password ?? '';
     if (!email || !password) {
@@ -372,6 +394,15 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         'Account created — sign in failed. Please open the app to continue.',
       );
       setSignInFailed(true);
+      return;
+    }
+    // B35 SEC Condition 1 — type-checked guard. shouldFireOptimisticPending
+    // only returns true for the audited 'asp2_skip_after_create' literal.
+    // Future callers passing a different context (even via `as any`) will
+    // fall through and wait for the real callAuthStatusCheck branch flip.
+    // SEC Condition 3 — locked in CI via asp2OptimisticPending.test.ts.
+    if (shouldFireOptimisticPending(opts.context)) {
+      setOptimisticPending();
     }
   };
 
@@ -454,7 +485,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
 
       if (response.ok) {
         // 200 — account created. Sign in; AuthProvider routes to main app.
-        await tryAutoSignIn();
+        await tryAutoSignIn({ context: 'asp2_skip_after_create' });
         return;
       }
 
@@ -491,7 +522,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       if (response.status >= 500 || errCode === 'internal_error') {
         const recheck = await checkEmailAvailable(personalDetails.email);
         if (recheck.kind === 'registered') {
-          await tryAutoSignIn();
+          await tryAutoSignIn({ context: 'asp2_skip_after_create' });
           return;
         }
       }
@@ -500,7 +531,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       // Network error from create-account itself — Layer 2 retry guard.
       const recheck = await checkEmailAvailable(personalDetails.email);
       if (recheck.kind === 'registered') {
-        await tryAutoSignIn();
+        await tryAutoSignIn({ context: 'asp2_skip_after_create' });
         return;
       }
       setSubmitError(COPY_NETWORK_FAIL);
@@ -792,7 +823,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         {signInFailed && (
           <TouchableOpacity
             style={styles.signInFallback}
-            onPress={() => { void tryAutoSignIn(); }}
+            onPress={() => { void tryAutoSignIn({ context: 'asp2_skip_after_create' }); }}
             activeOpacity={0.7}
           >
             <Text style={styles.signInFallbackText}>

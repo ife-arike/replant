@@ -68,6 +68,16 @@ export interface AuthState {
   // (which manages the pending_signout_revocation deferred-retry flag)
   // then runs the same ordered clear-and-route SEC 11015 #4 uses for 401s.
   signOut: () => Promise<void>;
+  // B35 (KAN-12) — direct branch flip used by tryAutoSignIn in
+  // AccountSetupPage2 to navigate the leader to Home immediately after
+  // signInWithPassword resolves. See header at src/utils/
+  // asp2OptimisticPending.ts for the SEC contract and threat model.
+  // SEC ruling KAN-12 c.14155 (APPROVE WITH CONDITIONS) — new callers
+  // require SEC review. Does NOT call initialize/refresh/
+  // callAuthStatusCheck — those would re-introduce the inFlight
+  // double-fire that PR #62 removed. onAuthStateChange-triggered
+  // callAuthStatusCheck self-corrects to the real branch ~1-3s later.
+  setOptimisticPending: () => void;
 }
 
 interface AuthStatusResponse {
@@ -330,6 +340,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await performClearAndRoute();
   }, [performClearAndRoute]);
 
+  // ────────────────────────────────────────────────────────────────
+  // B35 (KAN-12) — Optimistic branch flip for ASP2 skip-flow.
+  //
+  // SECURITY BOUNDARY:
+  //   (a) Safety contract — new-account-only. Every freshly created
+  //       account is provably `verification_status = 'pending'` on
+  //       INSERT (BE-03 Step 5). This call sets the FE's `branch`
+  //       state to "pending" so RootNavigator transitions to Home
+  //       before the asynchronous callAuthStatusCheck completes,
+  //       sealing the duplicate-tap race (B35).
+  //   (b) Threat model reference — BE (RLS + auth-status-check) is the
+  //       authoritative enforcement layer. This is a UI-only optimistic
+  //       set; no access is granted by it. RLS still gates every
+  //       read/write by the leader's real verification_status.
+  //       auth-status-check (fired by onAuthStateChange after the
+  //       signInWithPassword session lands) runs 1-3s later and
+  //       overwrites this optimistic value with the server's truth.
+  //   (c) Cross-reference — `supabase/functions/create-account/`
+  //       guarantees `verification_status = 'pending'` on the
+  //       public.users INSERT; the optimistic branch matches that
+  //       guaranteed state. Cannot drift "active" or "deactivated"
+  //       except via a subsequent auth-status-check correction.
+  //   (d) FUTURE CALLERS REQUIRE SEC REVIEW. The caller-context guard
+  //       at src/utils/asp2OptimisticPending.ts enforces Condition 1
+  //       (type-checked CallerContext literal) — adding a new context
+  //       value is a SEC-reviewable change.
+  //
+  // Touches `branch` ONLY. Does NOT touch session, verificationDeadline,
+  // daysRemaining, or loading — those land via the subsequent
+  // callAuthStatusCheck without a race. SEC 11015 #3a unaffected:
+  // no signOut, no auth-state flush.
+  //
+  // SEC ruling: KAN-12 c.14155 (APPROVE WITH CONDITIONS).
+  // ────────────────────────────────────────────────────────────────
+  const setOptimisticPending = useCallback(() => {
+    setBranch("pending");
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -341,6 +389,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refresh: initialize,
         clearPasswordRecovery,
         signOut,
+        setOptimisticPending,
       }}
     >
       {children}
