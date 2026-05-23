@@ -121,20 +121,33 @@ function makeDeps(): Deps {
         countByChurch.set(cid, (countByChurch.get(cid) ?? 0) + 1);
       }
 
-      return rows.map((r) => {
-        const leaderCount = countByChurch.get(r.id as string) ?? 0;
-        return {
-          id: r.id as string,
-          name: r.name as string,
-          type: r.type as string,
-          city: r.city as string,
-          country: r.country as string,
-          rag_status: r.rag_status as string,
-          verification_status: r.verification_status as string,
-          at_capacity: isAtCapacity(leaderCount),
-          leader_count: leaderCount,
-        };
-      });
+      return rows
+        .map((r) => {
+          const leaderCount = countByChurch.get(r.id as string) ?? 0;
+          return {
+            id: r.id as string,
+            name: r.name as string,
+            type: r.type as string,
+            city: r.city as string,
+            country: r.country as string,
+            rag_status: r.rag_status as string,
+            verification_status: r.verification_status as string,
+            at_capacity: isAtCapacity(leaderCount),
+            leader_count: leaderCount,
+          };
+        })
+        // KAN-203 B33/B34 — filter out churches with no active leader.
+        // Orphan sources: (1) RegCP1 edit-flow calls register-church on
+        // every Apply Changes, creating new public.churches rows and
+        // leaving prior ones leaderless (B33); (2) ASP2 Clear / Replace
+        // drops FE state but doesn't delete the DB row (B34). DBA
+        // confirmed leader_count is join-computed, active-only
+        // (is_active = true), never null (KAN-12 c.14156). Full fix —
+        // register-church PATCH + a DELETE path for cleared loopbacks
+        // — is Post-MVP (KAN-202 tracks the pg_cron scrub). This filter
+        // is the near-term mitigation: rows remain in DB but are
+        // invisible to the search surface.
+        .filter((r) => r.leader_count > 0);
     },
 
     async rateLimit(ip) {
