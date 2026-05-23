@@ -27,7 +27,7 @@ export default function HomeTopBar() {
   return (
     <View style={styles.bar}>
       <View style={styles.logoCluster}>
-        <RpLogo size={44} />
+        <RpLogo size={60} />
         <Text style={styles.wordmark}>Replant</Text>
       </View>
 
@@ -63,7 +63,11 @@ const styles = StyleSheet.create({
   logoCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    // CD: the RpLogo SVG has internal whitespace on its trailing edge
+    // that inflates the visual gap beyond the style value. 8 here
+    // reads as ~12px between glyph and wordmark — the lockup feels
+    // like one unit instead of two adjacent elements.
+    gap: 8,
   },
   // KAN-201 v4 — wordmark size lifted to 24 (was 22) with letterSpacing
   // 1.9 (= 0.08em × 24 = 1.92, rounded per dispatch literal). Brings

@@ -393,7 +393,7 @@ export default function HamburgerPanel() {
         {...panResponder.panHandlers}
       >
         <View style={styles.header}>
-          <RpLogo size={40} />
+          <RpLogo size={64} />
           <Text style={styles.headerWordmark}>Replant</Text>
         </View>
 
@@ -521,7 +521,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    // CD: matches HomeTopBar.logoCluster.gap — same SVG trailing
+    // whitespace inflates the visual gap. 8 brings the wordmark
+    // tight enough to read as a lockup with the glyph.
+    gap: 8,
     paddingBottom: 24,
     marginBottom: 20,
     borderBottomWidth: 0.5,
