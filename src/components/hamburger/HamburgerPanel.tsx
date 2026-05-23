@@ -393,7 +393,7 @@ export default function HamburgerPanel() {
         {...panResponder.panHandlers}
       >
         <View style={styles.header}>
-          <RpLogo size={64} />
+          <RpLogo size={47} /> {/* ratio: headerWordmark fontSize 30 × 1.58 — wireframe lockup spec */}
           <Text style={styles.headerWordmark}>Replant</Text>
         </View>
 

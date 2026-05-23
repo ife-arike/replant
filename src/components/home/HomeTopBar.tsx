@@ -27,7 +27,7 @@ export default function HomeTopBar() {
   return (
     <View style={styles.bar}>
       <View style={styles.logoCluster}>
-        <RpLogo size={60} />
+        <RpLogo size={35} /> {/* ratio: wordmarkFontSize 24 × 1.44 — wireframe lockup spec */}
         <Text style={styles.wordmark}>Replant</Text>
       </View>
 
