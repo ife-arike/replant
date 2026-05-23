@@ -91,7 +91,9 @@ export default function VerificationBanner() {
             </>
           )}
           {state === 'red' && days === null && (
-            'No church linked. You have 30 days from account creation to join a church.'
+            // B22 — copy correction to match the 7-day register / 30-day
+            // verify cascade explained in the ASP2 skip modal.
+            'No church linked. You have 7 days from account creation to register or join a church.'
           )}
           {state === 'red' && days !== null && (
             <>
@@ -154,7 +156,9 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: Typography.body,
-    fontSize: 12,
+    // B23 — bump from 12 to 14 so the pending-state banner copy reads
+    // at body-text weight rather than fine-print.
+    fontSize: 14,
     lineHeight: 18,
   },
   emailLink: {

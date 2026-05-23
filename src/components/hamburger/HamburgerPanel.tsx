@@ -63,6 +63,7 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { useHamburger } from '../../contexts/HamburgerContext';
 import { supabase } from '../../lib/supabase';
 import { navigationRef } from '../../navigation/navigationRef';
+import { ROLES } from '../../utils/displayHelpers';
 import RpLogo from '../home/RpLogo';
 
 // Responsive panel width — 75% mobile / 50% tablet / 360 fixed desktop.
@@ -78,6 +79,9 @@ const OPEN_DURATION_MS = 250;
 interface CardData {
   fullName: string | null;
   firstName: string | null;
+  // B24 — raw users.role value (canonical role key, e.g. "ministry_leader").
+  // Resolved to a label via ROLES on render.
+  role: string | null;
   churchName: string | null;
   city: string | null;
   country: string | null;
@@ -279,14 +283,20 @@ export default function HamburgerPanel() {
     (async () => {
       const { data } = await supabase
         .from('users')
-        .select('full_name, church:church_id(name, city, country, type)')
+        // B24 — pull role in addition to full_name + embedded church row
+        // so the identity card can surface "Minister" / "Pastor" / etc.
+        .select('full_name, role, church:church_id(name, city, country, type)')
         .eq('auth_id', authId)
         .maybeSingle();
       if (cancelled || !data) return;
       // Supabase types embedded relationships as either an object or
       // an array depending on FK cardinality. Defensive shape here:
       // accept either, normalize to a single object or null.
-      const row = data as unknown as { full_name: string | null; church?: unknown };
+      const row = data as unknown as {
+        full_name: string | null;
+        role?: string | null;
+        church?: unknown;
+      };
       const cf = row.church;
       const c = Array.isArray(cf) ? (cf[0] ?? null) : (cf ?? null);
       const typed = c as
@@ -296,6 +306,7 @@ export default function HamburgerPanel() {
       setCard({
         fullName,
         firstName: fullName ? fullName.trim().split(/\s+/)[0] : null,
+        role: row.role ?? null,
         churchName: typed?.name ?? null,
         city: typed?.city ?? null,
         country: typed?.country ?? null,
@@ -404,15 +415,27 @@ export default function HamburgerPanel() {
               <Text style={styles.avatarText}>{getInitials(card?.fullName ?? null)}</Text>
             </View>
             <View style={styles.identityText}>
+              {/* B24 — Line 1: first name only. The church name moves to
+                  line 3 (or "No church registered" for skip-flow). */}
               <Text style={styles.identityName} numberOfLines={1}>
                 {card?.firstName ?? '…'}
-                {card?.churchName ? ` · ${card.churchName}` : ''}
               </Text>
-              {card?.churchType !== 'underground' && (card?.city || card?.country) && (
-                <Text style={styles.identityLocation} numberOfLines={1}>
-                  {[card.city, card.country].filter(Boolean).join(', ')}
-                </Text>
-              )}
+              {/* B24 — Line 2: role label. Resolved via ROLES; raw value
+                  is a defensive fallback if the row carries a label the
+                  picker hasn't shipped yet. Empty string keeps layout
+                  stable when role is null mid-fetch. */}
+              <Text style={styles.identityRole} numberOfLines={1}>
+                {card?.role
+                  ? (ROLES.find(r => r.value === card.role)?.label ?? card.role)
+                  : ''}
+              </Text>
+              {/* B24 — Line 3: church name or no-church status. Church
+                  name is privacy-safe at this layer — search-churches +
+                  register-church return "Underground Church" for the
+                  underground type, so we don't need an extra guard here. */}
+              <Text style={styles.identityLocation} numberOfLines={1}>
+                {card?.churchName ?? 'No church registered'}
+              </Text>
             </View>
           </View>
 
@@ -505,7 +528,9 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontFamily: Typography.displayRegular,
-    fontSize: 24,
+    // B25 — bumped down from 24 to 18 so the menu list reads as a
+    // navigation surface rather than competing with the header wordmark.
+    fontSize: 18,
     color: Colors.text,
   },
   footer: {
@@ -546,6 +571,13 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 14,
     color: Colors.textMuted,
+  },
+  // B24 — role label between firstName (line 1) and church name (line 3).
+  // Accent-tinted to read distinct from the muted location/church line.
+  identityRole: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.accent,
   },
   logoutRow: {
     flexDirection: 'row',

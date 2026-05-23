@@ -71,8 +71,15 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
   // Finalization fix 8 — emergency preparedness self-report. Both
   // optional (tri-state null/true/false); never gate submission.
   // Tapping the already-selected option deselects (back to null).
-  const [hasEmergencyPlan, setHasEmergencyPlan] = useState<boolean | null>(null);
-  const [openToCollaboration, setOpenToCollaboration] = useState<boolean | null>(null);
+  // B18 — seed from context so back-nav and the edit-path remount
+  // restore the leader's prior Yes/No selection rather than resetting
+  // to null on every mount.
+  const [hasEmergencyPlan, setHasEmergencyPlan] = useState<boolean | null>(
+    state.churchDetails.hasEmergencyPlan ?? null,
+  );
+  const [openToCollaboration, setOpenToCollaboration] = useState<boolean | null>(
+    state.churchDetails.openToCollaboration ?? null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -351,7 +358,13 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
                 styles.yesNoButton,
                 hasEmergencyPlan === true && styles.yesNoButtonSelected,
               ]}
-              onPress={() => setHasEmergencyPlan(hasEmergencyPlan === true ? null : true)}
+              onPress={() => {
+                // B18 — persist alongside the toggle so edit-path remount
+                // and back-nav restore prior selection from context.
+                const next = hasEmergencyPlan === true ? null : true;
+                setHasEmergencyPlan(next);
+                setChurchDetails({ hasEmergencyPlan: next });
+              }}
               activeOpacity={0.7}
             >
               <Text
@@ -368,7 +381,11 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
                 styles.yesNoButton,
                 hasEmergencyPlan === false && styles.yesNoButtonSelected,
               ]}
-              onPress={() => setHasEmergencyPlan(hasEmergencyPlan === false ? null : false)}
+              onPress={() => {
+                const next = hasEmergencyPlan === false ? null : false;
+                setHasEmergencyPlan(next);
+                setChurchDetails({ hasEmergencyPlan: next });
+              }}
               activeOpacity={0.7}
             >
               <Text
@@ -396,7 +413,13 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
                 styles.yesNoButton,
                 openToCollaboration === true && styles.yesNoButtonSelected,
               ]}
-              onPress={() => setOpenToCollaboration(openToCollaboration === true ? null : true)}
+              onPress={() => {
+                // B18 — persist alongside the toggle (same pattern as
+                // hasEmergencyPlan above).
+                const next = openToCollaboration === true ? null : true;
+                setOpenToCollaboration(next);
+                setChurchDetails({ openToCollaboration: next });
+              }}
               activeOpacity={0.7}
             >
               <Text
@@ -413,7 +436,11 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
                 styles.yesNoButton,
                 openToCollaboration === false && styles.yesNoButtonSelected,
               ]}
-              onPress={() => setOpenToCollaboration(openToCollaboration === false ? null : false)}
+              onPress={() => {
+                const next = openToCollaboration === false ? null : false;
+                setOpenToCollaboration(next);
+                setChurchDetails({ openToCollaboration: next });
+              }}
               activeOpacity={0.7}
             >
               <Text

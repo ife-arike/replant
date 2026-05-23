@@ -84,12 +84,23 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
   const [churchType, setChurchType] = useState(editChurch?.churchType ?? '');
   const [country, setCountry] = useState(editChurch?.country ?? '');
   const [cityRegion, setCityRegion] = useState(editChurch?.cityRegion ?? '');
-  const [address, setAddress] = useState('');
+  // B17 — on the edit path, seed contact + address fields from
+  // OnboardingContext.churchDetails (persisted from the original
+  // registration). ChurchResult never carries contact fields; context
+  // does. Non-edit path starts blank as before.
+  const [address, setAddress] = useState(
+    isEditMode ? (state.churchDetails.address ?? '') : '',
+  );
   // KAN-13 v2 — contact_name is required (admin-only PII).
-  // Contact fields not in ChurchResult — start blank on the edit path too.
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState(editChurch?.contactEmail ?? '');
-  const [contactPhone, setContactPhone] = useState(editChurch?.contactPhone ?? '');
+  const [contactName, setContactName] = useState(
+    isEditMode ? (state.churchDetails.contactName ?? '') : '',
+  );
+  const [contactEmail, setContactEmail] = useState(
+    isEditMode ? (state.churchDetails.contactEmail ?? '') : '',
+  );
+  const [contactPhone, setContactPhone] = useState(
+    isEditMode ? (state.churchDetails.contactPhone ?? '') : '',
+  );
   // KAN-13 finalization — "Same as my account info" pre-fill toggle.
   // Pre-fills name + email from personalDetails on check; clears on
   // uncheck. Fields remain editable after pre-fill (the checkbox does
@@ -100,6 +111,12 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
   const [typePickerVisible, setTypePickerVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
+  // B16 — tap-reveal ⓘ tooltip for the City field. PR #58's B11 fix
+  // incorrectly converted this to an always-visible caption; the
+  // CWW (churches-without-walls) note belongs behind the tooltip per
+  // original design intent. Only the underground-privacy line (which
+  // was always unreachable under !isUnderground) stays removed.
+  const [showCityTooltip, setShowCityTooltip] = useState(false);
 
   // KAN-13 — Underground submission state. submitting blocks the Next button
   // + spinner; submitError surfaces inline above the button (matches the
@@ -375,16 +392,27 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
         </View>
 
         {/* City / Region — hidden for Underground.
-            B11 — Underground churches now hide the City field entirely
-            (the !isUnderground gate above), so the prior tap-revealed ⓘ
-            tooltip about underground privacy was unreachable in practice.
-            Removed; the standing online-ministry caption stays. */}
+            B16 — tap-reveal ⓘ tooltip restored. PR #58 B11 incorrectly
+            removed the tooltip mechanism; only the underground-privacy
+            line was the regression target. CWW note stays as tap-reveal
+            per original design intent. */}
         {!isUnderground && (
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>City</Text>
-            <Text style={styles.fieldNote}>
-              Online ministries and churches without walls can enter their HQ or broadcast city.
-            </Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>City</Text>
+              <TouchableOpacity
+                onPress={() => setShowCityTooltip(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {showCityTooltip && (
+              <Text style={styles.fieldNote}>
+                Online ministries and churches without walls can enter their HQ or broadcast city.
+              </Text>
+            )}
             <TextInput
               style={styles.input}
               value={cityRegion}
@@ -773,6 +801,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: Colors.textMuted,
     textTransform: 'uppercase',
+  },
+  // B16 — label + ⓘ tap-reveal tooltip icon row. Used by the City
+  // field; pattern mirrors ASP1's B15 "Describe your role" labelRow.
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  tooltipIcon: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.accent,
   },
   optionalTag: {
     fontFamily: Typography.body,

@@ -121,6 +121,15 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // button opens the modal; the modal's primary action confirms.
   const [skippedChurch, setSkippedChurch] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
+  // B19/B20 — replace-confirmation flow. pendingReplaceChurch holds the
+  // candidate selection while the leader decides whether to abandon
+  // their registered loopback church. Confirmed → swap + clear loopback.
+  // Cancelled → close modal, loopback church retained. Skip modal +
+  // replace modal are mutually exclusive surfaces — replace is gated on
+  // isNewChurchFromLoopback in handleSelect, and skip cannot fire from
+  // a result row.
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [pendingReplaceChurch, setPendingReplaceChurch] = useState<ChurchResult | null>(null);
   // Safety net for the create-account → signIn → auth-status-check chain.
   // If auto-sign-in surfaces an error (or refresh() leaves branch stuck
   // because auth-status-check 5xx'd silently — SEC 11015 #3a), this flag
@@ -199,13 +208,12 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
 
   const doSearch = async (q: string, version: number, signal: AbortSignal) => {
     setSearching(true);
-    setSelectedChurch(null);
-    setIsNewChurchFromLoopback(false);
-    // B13 — starting a new search replaces any prior loopback selection,
-    // so the persisted context must clear too. Otherwise a remount
-    // (back-nav) would restore the stale loopback church and override
-    // the leader's intent to search again.
-    setLoopbackChurch(null);
+    // B19 — do NOT clear selectedChurch / isNewChurchFromLoopback /
+    // loopbackChurch here. PR #58's B13 logic cleared on every search
+    // keystroke, which silently abandoned the just-registered loopback
+    // church the moment the leader touched the search box. The search
+    // now runs in the background; the leader explicitly confirms a
+    // replacement via handleSelect → showReplaceModal.
     setCapError(false);
     try {
       const response = await fetch(SEARCH_CHURCHES_URL, {
@@ -259,12 +267,44 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     // intent, so a leader who tapped Skip → backed out of the modal →
     // then picked a church doesn't silently submit churchId: null.
     setSkippedChurch(false);
+
+    // B20 — if a loopback church is currently selected, the leader is
+    // about to abandon a church they just registered in this session.
+    // Surface a confirmation modal before swapping. The DB row for the
+    // loopback church already exists; orphan cleanup is deferred to
+    // KAN-202 (Post-MVP pg_cron auto-scrub).
+    if (isNewChurchFromLoopback) {
+      setPendingReplaceChurch(church);
+      setShowReplaceModal(true);
+      return;
+    }
+
     setSelectedChurch(church);
-    // A selection from the search list is NOT a new-church flow.
     setIsNewChurchFromLoopback(false);
     // B13 — selecting an existing church via search replaces any
     // prior loopback selection; clear context too.
     setLoopbackChurch(null);
+  };
+
+  // B20 — replace-modal handlers. Confirm swaps the selection to the
+  // candidate church and clears all loopback state; Cancel discards the
+  // candidate and keeps the loopback selection.
+  const handleReplaceConfirm = () => {
+    if (pendingReplaceChurch) {
+      setSelectedChurch(pendingReplaceChurch);
+      setIsNewChurchFromLoopback(false);
+      // B21 — orphaned church row cleanup deferred to KAN-202 (Post-MVP
+      // pg_cron auto-scrub for churches with no associated leader).
+      // Clearing context is the only FE action needed at MVP.
+      setLoopbackChurch(null);
+    }
+    setPendingReplaceChurch(null);
+    setShowReplaceModal(false);
+  };
+
+  const handleReplaceCancel = () => {
+    setPendingReplaceChurch(null);
+    setShowReplaceModal(false);
   };
 
   const handleRegisterNew = () => {
@@ -668,7 +708,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           </View>
         )}
 
-        {results.length > 0 && !selectedChurch && (
+        {/* B19/B20 — results list renders even when a church is selected,
+            so the leader can browse alternatives. Tapping a candidate
+            while isNewChurchFromLoopback is true opens the replace
+            confirmation modal (handleSelect). */}
+        {results.length > 0 && (
           <View style={styles.results}>
             {results.map(church => (
               <TouchableOpacity
@@ -803,6 +847,45 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
             <TouchableOpacity
               style={styles.skipModalSecondary}
               onPress={() => setShowSkipModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipModalSecondaryText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* B20 — Replace loopback church confirmation. Shown when the
+          leader taps a search result while their newly-registered
+          church is the current selection. Confirmation orphans the DB
+          row (KAN-202 handles cleanup); cancelling preserves the
+          loopback church. Mutually exclusive with the skip modal —
+          replace is gated on isNewChurchFromLoopback which presupposes
+          a selected church (so the leader cannot have triggered skip
+          from the same state). */}
+      <Modal
+        visible={showReplaceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleReplaceCancel}
+        statusBarTranslucent
+      >
+        <View style={styles.skipModalBackdrop}>
+          <View style={styles.skipModalCard}>
+            <Text style={styles.skipModalTitle}>Replace your church?</Text>
+            <Text style={styles.skipModalBody}>
+              Are you sure you want to join this church? You will lose all progress on the church you are currently registering.
+            </Text>
+            <TouchableOpacity
+              style={[styles.submitButton, styles.skipModalPrimary]}
+              onPress={handleReplaceConfirm}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.submitButtonText}>Confirm</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.skipModalSecondary}
+              onPress={handleReplaceCancel}
               activeOpacity={0.7}
             >
               <Text style={styles.skipModalSecondaryText}>Go Back</Text>
