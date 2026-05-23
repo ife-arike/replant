@@ -33,6 +33,10 @@ interface PersonalDetails {
   role: string;
   country: string;
   anonymous?: boolean; // KAN-83 — D-37 field; held in context until create-account on KAN-12
+  // B15 — free-text describing the leader's role when role === 'other'.
+  // Surfaced for the Replant team to review; account displays as Minister
+  // in the interim per the inline tooltip copy.
+  otherRole?: string;
 }
 
 interface ChurchDetails {
@@ -55,6 +59,10 @@ interface ChurchDetails {
   // re-type if they bounce back from a later step).
   hasText?: string;
   needsText?: string;
+  // B18 — emergency preparedness responses. Tri-state: null = unanswered.
+  // Persisted so back-nav and edit-path restore prior selections.
+  hasEmergencyPlan?: boolean | null;
+  openToCollaboration?: boolean | null;
 }
 
 interface OnboardingState {

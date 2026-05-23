@@ -107,6 +107,11 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
   const [password, setPassword] = useState(pd?.password ?? '');
   const [confirmPassword, setConfirmPassword] = useState(pd?.password ?? '');
   const [role, setRole] = useState(pd?.role ?? '');
+  // B15 — free-text describing the leader's role when role === 'other'.
+  // Seeded from context so back-nav restores the field after the
+  // post-registration CommonActions.reset (mirrors B3 for other fields).
+  const [otherRole, setOtherRole] = useState(pd?.otherRole ?? '');
+  const [showOtherTooltip, setShowOtherTooltip] = useState(false);
   const [country, setCountry] = useState(pd?.country ?? '');
   // KAN-196 (D-63) — anonymous mode is now an inline toggle on this page.
   // Default false; flows through OnboardingContext.personalDetails into
@@ -142,6 +147,10 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
     /[A-Z]/.test(password) &&
     password === confirmPassword &&
     role &&
+    // B15 — if "Other" is the selected role, the free-text description
+    // is required; the team uses it to map the leader to a canonical
+    // role post-registration.
+    (role !== 'other' || otherRole.trim()) &&
     country &&
     !blockingEmailError;
 
@@ -279,6 +288,9 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
       role,
       country,
       anonymous,
+      // B15 — only carry the free-text role when "Other" is selected;
+      // otherwise pass undefined so the field stays unset in context.
+      otherRole: role === 'other' ? otherRole.trim() : undefined,
     });
     navigation.navigate('AccountSetupPage2');
   };
@@ -395,6 +407,39 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
+        {/* B15 — "Other" role free-text field. Surfaces only when the
+            leader picks Other from the canonical role list. Tap ⓘ to
+            reveal the team-review notice. Account displays the
+            ministry_leader label ("Minister") in the meantime per the
+            identity preview block below. */}
+        {role === 'other' && (
+          <View style={styles.fieldGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Describe your role</Text>
+              <TouchableOpacity
+                onPress={() => setShowOtherTooltip(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {showOtherTooltip && (
+              <Text style={styles.fieldNote}>
+                The team will review this role and apply it to your account. In the meantime, your role will be displayed as Minister.
+              </Text>
+            )}
+            <TextInput
+              style={styles.input}
+              value={otherRole}
+              onChangeText={setOtherRole}
+              placeholder="e.g. Youth Leader, Church Administrator…"
+              placeholderTextColor={Colors.textSubtle}
+              autoCapitalize="words"
+            />
+          </View>
+        )}
+
         {/* Country picker */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Country</Text>
@@ -442,7 +487,13 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
             <Text style={styles.identityPreviewLabel}>HOW YOU'LL APPEAR</Text>
             <Text style={styles.identityPreviewText} numberOfLines={1}>
               {(() => {
-                const roleLabel = ROLES.find(r => r.value === role)?.label ?? 'Your Role';
+                // B15 — when the leader picks "Other", the preview shows
+                // Minister (ministry_leader label) as the interim display
+                // role; the Replant team reviews the free-text and assigns
+                // a canonical role post-registration.
+                const roleLabel = role === 'other'
+                  ? (ROLES.find(r => r.value === 'ministry_leader')?.label ?? 'Minister')
+                  : (ROLES.find(r => r.value === role)?.label ?? 'Your Role');
                 if (anonymous) return `${roleLabel} · Your Church`;
                 const name = firstName.trim();
                 return name
@@ -629,6 +680,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSubtle,
     lineHeight: 18,
+  },
+
+  // B15 — label + ⓘ tooltip icon side-by-side. Used by the "Describe
+  // your role" field when the leader picks Other from the role picker.
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  tooltipIcon: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.accent,
   },
 
   // KAN-196 addendum — identity preview card. Sky-tinted block beneath
