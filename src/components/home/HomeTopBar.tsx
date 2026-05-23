@@ -30,7 +30,7 @@ import RpLogo from './RpLogo';
 // font size; styles.wordmark.fontSize is overridden inline below so the
 // constant stays authoritative. Gap to logo stays 8 (PR #65).
 const WORDMARK_SIZE = 24;
-const LOGO_SIZE = 56;
+const LOGO_SIZE = 44;
 
 export default function HomeTopBar() {
   const { open } = useHamburger();

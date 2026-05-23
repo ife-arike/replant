@@ -85,7 +85,7 @@ const OPEN_DURATION_MS = 250;
 // overridden inline below so the constant stays authoritative. Gap to
 // logo stays 8 (PR #65).
 const HAMBURGER_WORDMARK_SIZE = 30;
-const HAMBURGER_LOGO_SIZE = 60;
+const HAMBURGER_LOGO_SIZE = 48;
 
 interface CardData {
   fullName: string | null;
