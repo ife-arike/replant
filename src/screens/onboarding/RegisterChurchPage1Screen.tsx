@@ -30,12 +30,6 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'RegisterChurchPage1'>;
 
-// City tooltip copy — surfaces the underground-church privacy guarantee
-// inline next to the City label rather than as an always-visible note,
-// so the field reads cleaner for typical churches.
-const CITY_TOOLTIP_COPY =
-  "For underground churches, city is hidden and displays as 'Underground Church'.";
-
 const IS_UNDERGROUND = (type: string) => type === 'underground';
 
 // KAN-13 — canonical declaration text passed to register-church as
@@ -106,10 +100,6 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
   const [typePickerVisible, setTypePickerVisible] = useState(false);
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
-  // B1 — toggleable inline ⓘ tooltip for the City field. Hidden by
-  // default so the field reads cleanly; the leader taps the icon to
-  // surface the underground-church privacy note when they need it.
-  const [showCityTooltip, setShowCityTooltip] = useState(false);
 
   // KAN-13 — Underground submission state. submitting blocks the Next button
   // + spinner; submitError surfaces inline above the button (matches the
@@ -385,26 +375,13 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
         </View>
 
         {/* City / Region — hidden for Underground.
-            B1 — moved the underground-privacy field note from an
-            always-on caption to a tap-revealed tooltip via the inline
-            ⓘ icon next to the label. The "online ministry / broadcast
-            city" caption remains as a standing note since it applies
-            to the visible (non-underground) path. */}
+            B11 — Underground churches now hide the City field entirely
+            (the !isUnderground gate above), so the prior tap-revealed ⓘ
+            tooltip about underground privacy was unreachable in practice.
+            Removed; the standing online-ministry caption stays. */}
         {!isUnderground && (
           <View style={styles.fieldGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>City</Text>
-              <TouchableOpacity
-                onPress={() => setShowCityTooltip(prev => !prev)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                activeOpacity={0.6}
-              >
-                <Text style={styles.tooltipIcon}>ⓘ</Text>
-              </TouchableOpacity>
-            </View>
-            {showCityTooltip && (
-              <Text style={styles.fieldNote}>{CITY_TOOLTIP_COPY}</Text>
-            )}
+            <Text style={styles.label}>City</Text>
             <Text style={styles.fieldNote}>
               Online ministries and churches without walls can enter their HQ or broadcast city.
             </Text>
@@ -796,18 +773,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: Colors.textMuted,
     textTransform: 'uppercase',
-  },
-  // B1 — inline label row: label + ⓘ tooltip icon side-by-side.
-  // Used for the City field so the underground-privacy note can be
-  // surfaced on demand instead of taking up vertical space by default.
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  tooltipIcon: {
-    fontSize: 13,
-    color: Colors.textMuted,
   },
   optionalTag: {
     fontFamily: Typography.body,
