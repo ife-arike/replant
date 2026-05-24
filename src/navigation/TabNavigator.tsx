@@ -18,7 +18,7 @@ import { Colors, Typography } from "../constants/theme";
 import HomeScreen from "../screens/main/HomeScreen";
 import TheChurchPlaceholderScreen from "../screens/main/TheChurchPlaceholderScreen";
 import PersecutedPlaceholderScreen from "../screens/main/PersecutedPlaceholderScreen";
-import PrayerWallPlaceholderScreen from "../screens/main/PrayerWallPlaceholderScreen";
+import PrayerWallScreen from "../screens/main/PrayerWallScreen";
 import ConnectPlaceholderScreen from "../screens/main/ConnectPlaceholderScreen";
 import type { TabsParamList } from "./types";
 
@@ -66,7 +66,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="Prayer Wall"
-        component={PrayerWallPlaceholderScreen}
+        component={PrayerWallScreen}
         options={{ tabBarIcon: ({ color }) => <PrayerWallIcon color={color} /> }}
       />
       <Tab.Screen
