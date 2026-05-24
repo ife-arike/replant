@@ -29,7 +29,7 @@
 //     screen sits underneath the modal once it appears.
 // ─────────────────────────────────────────────
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -47,6 +47,7 @@ import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import RpMark from '../../components/icons/RpMark';
+import { useAuth } from '../../contexts/AuthProvider';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Login'>;
 
@@ -77,6 +78,23 @@ export default function LoginScreen({ navigation }: Props) {
 
   // Focus management — email submit → focus password → submit → sign in.
   const passwordRef = useRef<TextInput>(null);
+
+  // KAN-36 bug fix — deactivation path leaves loading=true because
+  // succeeded=true skips the finally setLoading(false). The branch stays
+  // "unauthenticated" (no flip, no remount), so the spinner hangs and
+  // inputs are frozen. Reset on modal appearance so the leader can try a
+  // different account after dismissal.
+  const { deactivationModalPath } = useAuth();
+  useEffect(() => {
+    if (deactivationModalPath !== null) {
+      setLoading(false);
+      inFlight.current = false;
+      // Clear password — session is gone, leader is starting fresh.
+      // Email is preserved so they can see which account was deactivated.
+      setPassword('');
+      setPasswordVisible(false);
+    }
+  }, [deactivationModalPath]);
 
   const canSubmit = email.trim().length > 0 && password.length > 0;
 
