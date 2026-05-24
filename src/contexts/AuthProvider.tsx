@@ -249,6 +249,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setDeactivationModalPath(data.recovery_path ?? "support_contact");
         setVerificationDeadline(null);
         setDaysRemaining(null);
+        // KAN-36 bug fix — reset debounce so the leader's next sign-in
+        // attempt gets a fresh auth-status-check. Without this, any
+        // sign-in within 30s of the deactivated response is debounced,
+        // callAuthStatusCheck returns early, setDeactivationModalPath
+        // never fires, and the LoginScreen loading state stays stuck.
+        // The user is being signed out here, so the next sign-in is
+        // effectively a new session — the debounce window does not apply.
+        lastCheckedAt.current = 0;
         await supabase.auth.signOut().catch(() => {
           // signOut errors don't block local clearing — onAuthStateChange
           // still fires SIGNED_OUT on the local SDK side, and any server
