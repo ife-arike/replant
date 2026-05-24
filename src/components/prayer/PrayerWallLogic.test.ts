@@ -27,6 +27,7 @@ import {
   getLeaderLine,
   getLocationLine,
   hasActiveFilter,
+  hasPrayedStateChanged,
   type PrayerCategory,
 } from './PrayerWallLogic';
 
@@ -187,6 +188,64 @@ describe('getLeaderLine — anonymous fallback', () => {
   it('non-null name passes through verbatim', () => {
     expect(getLeaderLine('Pastor Daniel')).toBe('Pastor Daniel');
     expect(getLeaderLine('Jane')).toBe('Jane');
+  });
+});
+
+describe('hasPrayedStateChanged — detail-sheet dismiss fan-out gate', () => {
+  // Test (a) from the dispatch — fires when the leader toggled
+  // stand-in-the-gap during the sheet session (i_prayed flipped AND
+  // prayed_count adjusted by ±1). Sheet dismiss must fan the new state
+  // back to the feed row.
+  it('returns true when the leader toggled in (false → true, count +1)', () => {
+    expect(
+      hasPrayedStateChanged(
+        { i_prayed: false, prayed_count: 12 },
+        { i_prayed: true, prayed_count: 13 },
+      ),
+    ).toBe(true);
+  });
+
+  it('returns true when the leader toggled out (true → false, count -1)', () => {
+    expect(
+      hasPrayedStateChanged(
+        { i_prayed: true, prayed_count: 13 },
+        { i_prayed: false, prayed_count: 12 },
+      ),
+    ).toBe(true);
+  });
+
+  // Test (b) from the dispatch — silent dismiss (no toggle) must NOT
+  // fire onPrayedChange. A leader who opened the sheet to read and
+  // closed it without tapping should not trigger a feed-state update.
+  it('returns false when state is unchanged from row initial (silent dismiss)', () => {
+    expect(
+      hasPrayedStateChanged(
+        { i_prayed: false, prayed_count: 12 },
+        { i_prayed: false, prayed_count: 12 },
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when the row was already prayed and stays that way', () => {
+    expect(
+      hasPrayedStateChanged(
+        { i_prayed: true, prayed_count: 7 },
+        { i_prayed: true, prayed_count: 7 },
+      ),
+    ).toBe(false);
+  });
+
+  it('returns true when only the count diverged (defensive — should not happen normally)', () => {
+    // i_prayed and prayed_count are expected to move together via the
+    // sheet's handleStandInTheGap. This case is here so a future bug
+    // that drifts count without flipping the flag still trips the
+    // fan-out and surfaces the stale-display problem on the card.
+    expect(
+      hasPrayedStateChanged(
+        { i_prayed: true, prayed_count: 7 },
+        { i_prayed: true, prayed_count: 8 },
+      ),
+    ).toBe(true);
   });
 });
 

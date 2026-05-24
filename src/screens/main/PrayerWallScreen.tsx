@@ -320,6 +320,18 @@ export default function PrayerWallScreen() {
       <PrayerWallDetailSheet
         row={detailRow}
         onDismiss={() => setDetailRow(null)}
+        onPrayedChange={(id, iPrayed, prayedCount) => {
+          // KAN-23 corrections r1 — mirror the sheet's optimistic
+          // stand-in-the-gap toggle back to the feed row so the card
+          // heart count + filled state don't go stale when the sheet
+          // closes. STUB until the stand_in_the_gap RPC lands; next
+          // feed refresh overwrites with server-truth.
+          setRows((prev) =>
+            prev.map((r) =>
+              r.id === id ? { ...r, i_prayed: iPrayed, prayed_count: prayedCount } : r,
+            ),
+          );
+        }}
       />
     </SafeAreaView>
   );

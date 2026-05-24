@@ -43,11 +43,11 @@ import {
 } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
-import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import {
   formatRelativeTime,
   getLeaderLine,
   getLocationLine,
+  hasPrayedStateChanged,
   type PrayerRow,
 } from './PrayerWallLogic';
 import { HeartIcon, XIcon } from './PrayerIcons';
@@ -55,6 +55,21 @@ import { HeartIcon, XIcon } from './PrayerIcons';
 interface Props {
   row: PrayerRow | null;
   onDismiss: () => void;
+  /**
+   * KAN-23 corrections r1 — fires on every dismiss path (✕, backdrop,
+   * swipe-down) when the leader's stand-in-the-gap state has changed
+   * during this sheet session. Parent uses it to mirror the new
+   * i_prayed / prayed_count back to the matching row in its feed
+   * cache, so the card heart count doesn't go stale when the sheet
+   * closes. Suppressed when state matches the row's initial values
+   * (silent dismiss, no fire) — see hasPrayedStateChanged.
+   *
+   * STUB note: this is FE-local mirror state. The real
+   * stand_in_the_gap RPC is still pending SEC checkpoint; until then,
+   * the propagation is optimistic-UI-only and will be overwritten by
+   * the next feed reload.
+   */
+  onPrayedChange?: (requestId: string, iPrayed: boolean, prayedCount: number) => void;
   now?: Date;
 }
 
@@ -64,7 +79,7 @@ const SHEET_HEIGHT = SCREEN_H * SHEET_MAX_RATIO;
 const ANIM_MS = 320;
 const SWIPE_DISMISS_THRESHOLD = 80;
 
-export default function PrayerWallDetailSheet({ row, onDismiss, now }: Props) {
+export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, now }: Props) {
   const reduced = useReducedMotion();
   const slideY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -134,6 +149,35 @@ export default function PrayerWallDetailSheet({ row, onDismiss, now }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row, reduced]);
 
+  // Single dismiss path — fires onPrayedChange (if provided) when the
+  // leader's stand-in-the-gap toggled during this sheet session, then
+  // delegates to onDismiss. Used by ✕ tap, backdrop tap, and swipe-
+  // down. Initial values for the change-detection are taken from the
+  // row prop itself; iStanding / standCount are reset to row.* every
+  // time row changes (sync effect above).
+  const handleDismiss = () => {
+    if (
+      row !== null &&
+      onPrayedChange &&
+      hasPrayedStateChanged(
+        { i_prayed: row.i_prayed, prayed_count: row.prayed_count },
+        { i_prayed: iStanding, prayed_count: standCount },
+      )
+    ) {
+      onPrayedChange(row.id, iStanding, standCount);
+    }
+    onDismiss();
+  };
+
+  // Stash latest handleDismiss in a ref so the panResponder closure
+  // (built once via useRef at first render) always sees the freshest
+  // values. Without this, the panResponder would call onDismiss
+  // directly with a stale prop and miss the onPrayedChange fan-out.
+  const handleDismissRef = useRef(handleDismiss);
+  useEffect(() => {
+    handleDismissRef.current = handleDismiss;
+  });
+
   // Swipe-down dismiss — only react to downward drag, ignore upward.
   const panResponder = useRef(
     PanResponder.create({
@@ -143,7 +187,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, now }: Props) {
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy > SWIPE_DISMISS_THRESHOLD) {
-          onDismiss();
+          handleDismissRef.current();
         } else {
           Animated.timing(slideY, {
             toValue: 0,
@@ -178,11 +222,10 @@ export default function PrayerWallDetailSheet({ row, onDismiss, now }: Props) {
 
   if (!mounted || row === null) return null;
 
-  const churchTypeLabel = getChurchTypeLabel(row.church_type);
-  const locationLine = getLocationLine(
-    `${row.church_name} (${churchTypeLabel})`,
-    row.country,
-  );
+  // KAN-23 corrections r1 — church type removed from sheet header per
+  // dispatch. Matches the same change in PrayerWallCard. Identity is
+  // church name + country only.
+  const locationLine = getLocationLine(row.church_name, row.country);
   const leaderLine = getLeaderLine(row.leader_display_name);
   const timestamp = formatRelativeTime(row.created_at, now);
   const isUnderground = row.church_type === 'underground';
@@ -192,7 +235,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, now }: Props) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Backdrop — dim + tap-to-dismiss. */}
-      <Pressable onPress={onDismiss} style={StyleSheet.absoluteFill} accessibilityLabel="Dismiss prayer detail">
+      <Pressable onPress={handleDismiss} style={StyleSheet.absoluteFill} accessibilityLabel="Dismiss prayer detail">
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
@@ -219,7 +262,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, now }: Props) {
           >
             {locationLine.toUpperCase()}
           </Text>
-          <Pressable onPress={onDismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
+          <Pressable onPress={handleDismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
             <XIcon size={16} color={Colors.textMuted} />
           </Pressable>
         </View>
