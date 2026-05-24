@@ -159,21 +159,30 @@ Deno.test("resolveStatus — pending + past deadline returns pending_past_deadli
   }
 });
 
-Deno.test("resolveStatus — pending + no church throws (data anomaly)", () => {
+// KAN-36 (Founder Option Y, SEC c.14194, locked 2026-05-21) — NULL
+// deadline = fail-closed. Both NULL-source variants (no church
+// attached, or church attached with NULL deadline) must resolve to
+// kind: "deactivated" WITHOUT the write path firing. The two tests
+// below previously asserted a throw; they now lock the fail-closed
+// behaviour and the no-write guarantee.
+
+Deno.test("resolveStatus — pending + no church (skip-flow) resolves to deactivated, no write", () => {
   const row = baseRow({ verification_status: "pending", church: null });
-  assertThrows(
-    () => resolveStatus(row, "2026-05-05T12:00:00.000Z"),
-    Error,
-    "Pending user has no church verification_deadline",
-  );
+  const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
+  assertEquals(r, { kind: "deactivated" });
+  // Belt-and-suspenders: explicitly confirm we are NOT returning the
+  // write-triggering variant.
+  assertEquals(r.kind === "pending_past_deadline_needs_write", false);
 });
 
-Deno.test("resolveStatus — pending + church row with null deadline throws", () => {
+Deno.test("resolveStatus — pending + church row with null deadline resolves to deactivated, no write", () => {
   const row = baseRow({
     verification_status: "pending",
     church: { verification_deadline: null },
   });
-  assertThrows(() => resolveStatus(row, "2026-05-05T12:00:00.000Z"));
+  const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
+  assertEquals(r, { kind: "deactivated" });
+  assertEquals(r.kind === "pending_past_deadline_needs_write", false);
 });
 
 Deno.test("buildResponse — active shape has explicit nulls (not undefined)", () => {
