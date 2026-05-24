@@ -1,39 +1,33 @@
 // ─────────────────────────────────────────────
-// PrayerWallScreen — KAN-23
+// PrayerWallScreen — KAN-23 v2 (Step 8)
 //
-// Full-screen scrollable list of prayer requests from verified
-// churches. Sort is server-side (urgent DESC, created_at DESC inside
-// the get_prayer_wall RPC). Filtering is client-side per AC ("no
-// network call on change"); 12 category × urgency combinations exercised
-// in PrayerWallLogic.test.ts.
+// View-state switcher inside a single tab screen. Four views:
+//   landing         → PrayerWallLanding (Eph 6:18 scripture + 2 action
+//                     cards + quick-link + testimony rotator)
+//   feed            → top bar + segmented control (Feed/Testimonies)
+//                     + multi-axis filter bar + paginated card list +
+//                     detail sheet
+//   testimonies     → top bar + segmented control + Rev 12:11 scripture
+//                     + testimony list (with optional deep-link glow)
+//   my_open_prayers → top bar + own-church prayer cards + overflow
+//                     menu / stubbed write actions
 //
-// Pagination: 20 per page via page_offset on the RPC; infinite scroll
-// triggers loadMore as the user approaches the bottom (FlatList's
-// onEndReachedThreshold = 0.5 ≈ 3 cards from end for typical card
-// heights). Pull-to-refresh resets to offset 0 and scrolls to top.
+// Filtering is server-side in v2 — the screen calls
+// supabase.rpc('get_prayer_wall', { page_offset, filter_urgent,
+// filter_categories }) and resets to offset 0 on any filter change.
+// No client-side applyFilters call survives from v1.
 //
-// Empty-state matrix:
-//   - filter active + no matches → "No prayer requests match this
-//     filter." + clearable
-//   - verified branch ('active'), no rows at all → "No prayer requests
-//     yet. Be the first to lift one up." + Post CTA
-//   - unverified branch ('pending'), no rows → "Prayer requests from
-//     verified churches will appear here." (no CTA)
+// useFocusEffect cleanup on tab blur resets:
+//   - view → 'landing'
+//   - filter axes → defaults
+//   - detail sheet target → null
+//   - testimony deep-link id → null
+// So a leader returning to the tab lands on the wide-open default view.
 //
-// Post CTA gate: rendered only when AuthProvider's branch === 'active'.
-// Pending leaders see read-only feed + filters; no Post button anywhere.
-// The actual posting flow is a separate ticket — tapping the CTA here
-// surfaces a "coming soon" Alert.
-//
-// Tab-leave reset: useFocusEffect runs a cleanup on blur that restores
-// the filter defaults (All categories, All urgency) so a leader who
-// returns to the tab lands on the wide-open default view.
-//
-// Read pattern: supabase.rpc('get_prayer_wall', { page_offset }). The
-// RPC owns underground masking + anonymous masking; the FE trusts the
-// wire shape and renders. Do NOT re-derive or layer on FE-side
-// masking — that would duplicate the BE perimeter and rot if the RPC
-// changes. (Watched invariant per dispatch.)
+// Post CTA (top-right "+ Post" on the feed top bar) renders only for
+// verified leaders — pending leaders see read-only feed + filters.
+// Tapping the CTA surfaces a "coming soon" Alert; the posting flow is
+// a separate ticket.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -53,132 +47,228 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
 import PrayerWallCard from '../../components/prayer/PrayerWallCard';
+import PrayerWallDetailSheet from '../../components/prayer/PrayerWallDetailSheet';
 import PrayerWallFilterBar from '../../components/prayer/PrayerWallFilterBar';
+import PrayerWallLanding from '../../components/prayer/PrayerWallLanding';
+import PrayerWallSegmentedControl from '../../components/prayer/PrayerWallSegmentedControl';
+import TestimoniesView from '../../components/prayer/TestimoniesView';
+import MyOpenPrayersView from '../../components/prayer/MyOpenPrayersView';
 import {
-  DEFAULT_CATEGORY,
   DEFAULT_URGENCY,
   PAGE_SIZE,
-  applyFilters,
-  isDefaultFilter,
-  type CategoryFilter,
+  buildRpcFilters,
+  type PrayerCategory,
   type PrayerRow,
+  type SelectedCategories,
   type UrgencyFilter,
 } from '../../components/prayer/PrayerWallLogic';
 
+type PrayerWallView = 'landing' | 'feed' | 'testimonies' | 'my_open_prayers';
 type LoadState = 'initial' | 'refreshing' | 'paging' | 'idle' | 'error';
 
 const SKELETON_COUNT = 3;
 
-async function fetchPage(offset: number): Promise<{
-  rows: PrayerRow[];
-  error: string | null;
-}> {
+async function fetchPage(
+  offset: number,
+  filterUrgent: boolean | null,
+  filterCategories: string[] | null,
+): Promise<{ rows: PrayerRow[]; error: string | null }> {
   const { data, error } = await supabase.rpc('get_prayer_wall', {
     page_offset: offset,
+    filter_urgent: filterUrgent,
+    filter_categories: filterCategories,
   });
-  if (error) {
-    return { rows: [], error: error.message };
-  }
+  if (error) return { rows: [], error: error.message };
   return { rows: (data ?? []) as PrayerRow[], error: null };
 }
 
 export default function PrayerWallScreen() {
   const { branch } = useAuth();
+  const isVerified = branch === 'active';
+
+  const [view, setView] = useState<PrayerWallView>('landing');
   const [rows, setRows] = useState<PrayerRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('initial');
   const [hasMore, setHasMore] = useState(true);
-  const [category, setCategory] = useState<CategoryFilter>(DEFAULT_CATEGORY);
+  const [selectedCategories, setSelectedCategories] = useState<SelectedCategories>(
+    () => new Set<PrayerCategory>(),
+  );
   const [urgency, setUrgency] = useState<UrgencyFilter>(DEFAULT_URGENCY);
+  const [detailRow, setDetailRow] = useState<PrayerRow | null>(null);
+  const [deepLinkTestimonyId, setDeepLinkTestimonyId] = useState<string | null>(null);
   const hasFetchedOnce = useRef(false);
-  const listRef = useRef<FlatList<PrayerRow>>(null);
+  const listRef = useRef<FlatList<PrayerRow> | null>(null);
 
-  const loadInitial = useCallback(async () => {
-    setLoadState('initial');
-    const { rows: pageRows, error } = await fetchPage(0);
-    hasFetchedOnce.current = true;
-    if (error) {
-      setLoadState('error');
-      return;
-    }
-    setRows(pageRows);
-    setHasMore(pageRows.length === PAGE_SIZE);
-    setLoadState('idle');
+  // Toggle a category in/out of the selected Set. Always returns a new
+  // Set instance so React re-renders consumers (Set identity is the
+  // change signal; mutating in place would not trip dependency arrays).
+  const handleCategoryToggle = useCallback((cat: PrayerCategory) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
   }, []);
+
+  // ─── Feed loaders ─────────────────────────────────────────────────
+
+  const loadInitial = useCallback(
+    async (cats: SelectedCategories, urg: UrgencyFilter) => {
+      setLoadState('initial');
+      const { filter_urgent, filter_categories } = buildRpcFilters(cats, urg);
+      const { rows: page, error } = await fetchPage(0, filter_urgent, filter_categories);
+      hasFetchedOnce.current = true;
+      if (error) {
+        setLoadState('error');
+        return;
+      }
+      setRows(page);
+      setHasMore(page.length === PAGE_SIZE);
+      setLoadState('idle');
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
     setLoadState('refreshing');
-    const { rows: pageRows, error } = await fetchPage(0);
+    const { filter_urgent, filter_categories } = buildRpcFilters(selectedCategories, urgency);
+    const { rows: page, error } = await fetchPage(0, filter_urgent, filter_categories);
     hasFetchedOnce.current = true;
     if (error) {
       setLoadState('error');
       return;
     }
-    setRows(pageRows);
-    setHasMore(pageRows.length === PAGE_SIZE);
+    setRows(page);
+    setHasMore(page.length === PAGE_SIZE);
     setLoadState('idle');
-    // Scroll to top on pull-to-refresh per AC.
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, []);
+  }, [selectedCategories, urgency]);
 
   const loadMore = useCallback(async () => {
     if (loadState !== 'idle' || !hasMore || rows.length === 0) return;
     setLoadState('paging');
-    const { rows: pageRows, error } = await fetchPage(rows.length);
+    const { filter_urgent, filter_categories } = buildRpcFilters(selectedCategories, urgency);
+    const { rows: page, error } = await fetchPage(rows.length, filter_urgent, filter_categories);
     if (error) {
-      // Paging failure leaves what's on screen intact — surface a quiet
-      // idle and let the leader pull-to-refresh.
       setLoadState('idle');
       return;
     }
-    if (pageRows.length === 0) {
-      setHasMore(false);
-    } else {
-      setRows((prev) => [...prev, ...pageRows]);
-      setHasMore(pageRows.length === PAGE_SIZE);
+    if (page.length === 0) setHasMore(false);
+    else {
+      setRows((prev) => [...prev, ...page]);
+      setHasMore(page.length === PAGE_SIZE);
     }
     setLoadState('idle');
-  }, [hasMore, loadState, rows.length]);
+  }, [selectedCategories, urgency, hasMore, loadState, rows.length]);
 
+  // Feed mounts on view transition to 'feed'. The fetch always runs
+  // on first entry; subsequent entries within the same focus cycle
+  // refresh implicitly when filters change (effect below).
   useEffect(() => {
-    void loadInitial();
-  }, [loadInitial]);
+    if (view !== 'feed') return;
+    if (!hasFetchedOnce.current) {
+      void loadInitial(selectedCategories, urgency);
+    }
+    // intentionally omits filter deps — filter-change effect handles those
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
-  // AC: "Reset to default on tab leave." useFocusEffect's cleanup runs
-  // on blur — drop both axes back to the wide-open default so a leader
-  // returning to the tab sees the same first paint as a cold mount.
+  // Filter changes — reset to offset 0 and refetch. Only fires while
+  // the leader is on the feed view; switching to other views doesn't
+  // trigger a network call here. selectedCategories identity changes
+  // on every toggle (handleCategoryToggle always returns a new Set),
+  // so this effect catches multi-select additions and removals.
+  useEffect(() => {
+    if (view !== 'feed') return;
+    if (!hasFetchedOnce.current) return; // initial-load effect owns the first fetch
+    void loadInitial(selectedCategories, urgency);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategories, urgency]);
+
+  // Tab-blur reset — restore landing + defaults + clear deep-link.
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setCategory(DEFAULT_CATEGORY);
+        setView('landing');
+        setSelectedCategories(new Set());
         setUrgency(DEFAULT_URGENCY);
+        setDetailRow(null);
+        setDeepLinkTestimonyId(null);
       };
     }, []),
   );
 
-  const filteredRows = applyFilters(rows, category, urgency);
-  const isVerified = branch === 'active';
-  const hasFilters = !isDefaultFilter(category, urgency);
-
-  const clearFilters = () => {
-    setCategory(DEFAULT_CATEGORY);
+  const handleClearFilters = () => {
+    setSelectedCategories(new Set());
     setUrgency(DEFAULT_URGENCY);
   };
 
   const handlePostPress = () => {
-    // Posting a prayer request is out of scope per the KAN-23 dispatch
-    // (separate ticket). Surface a courteous coming-soon so the leader
-    // knows the affordance is real, not broken.
     Alert.alert(
       'Posting a prayer request',
       'This is coming in a future update. Thank you for wanting to lift up your church.',
     );
   };
 
+  // ─── View routing ────────────────────────────────────────────────
+
+  if (view === 'landing') {
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.topBar}>
+          <Text style={styles.title}>Prayer Wall</Text>
+        </View>
+        <PrayerWallLanding
+          onEnterFeed={() => setView('feed')}
+          onSeeAllTestimonies={() => setView('testimonies')}
+          onOpenTestimony={(id) => {
+            setDeepLinkTestimonyId(id);
+            setView('testimonies');
+          }}
+          onViewMyOpenPrayers={() => setView('my_open_prayers')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (view === 'my_open_prayers') {
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.topBar}>
+          <Pressable
+            onPress={() => setView('landing')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Prayer Wall landing"
+          >
+            <Text style={styles.backArrow}>←</Text>
+          </Pressable>
+          <Text style={styles.title}>My open prayers</Text>
+          <View style={styles.topBarRightPlaceholder} />
+        </View>
+        <MyOpenPrayersView onBackToLanding={() => setView('landing')} />
+      </SafeAreaView>
+    );
+  }
+
+  // 'feed' and 'testimonies' share top-bar + segmented control chrome.
+  const segmentValue = view === 'feed' ? 'feed' : 'testimonies';
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.topBar}>
+        <Pressable
+          onPress={() => setView('landing')}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Prayer Wall landing"
+        >
+          <Text style={styles.backArrow}>←</Text>
+        </Pressable>
         <Text style={styles.title}>Prayer Wall</Text>
-        {isVerified ? (
+        {isVerified && view === 'feed' ? (
           <Pressable
             onPress={handlePostPress}
             accessibilityRole="button"
@@ -187,73 +277,77 @@ export default function PrayerWallScreen() {
           >
             <Text style={styles.postCta}>+ Post</Text>
           </Pressable>
-        ) : null}
+        ) : (
+          <View style={styles.topBarRightPlaceholder} />
+        )}
       </View>
 
-      <PrayerWallFilterBar
-        category={category}
-        urgency={urgency}
-        onCategoryChange={setCategory}
-        onUrgencyChange={setUrgency}
+      <PrayerWallSegmentedControl
+        value={segmentValue}
+        onChange={(next) => setView(next)}
       />
 
-      {renderBody({
-        loadState,
-        hasFetchedOnce: hasFetchedOnce.current,
-        filteredRows,
-        rawRows: rows,
-        hasFilters,
-        isVerified,
-        clearFilters,
-        loadInitial,
-        refresh,
-        loadMore,
-        listRef,
-        onPostPress: handlePostPress,
-      })}
+      {view === 'feed' ? (
+        <>
+          <PrayerWallFilterBar
+            selectedCategories={selectedCategories}
+            urgency={urgency}
+            resultCount={rows.length}
+            onCategoryToggle={handleCategoryToggle}
+            onUrgencyChange={setUrgency}
+            onClear={handleClearFilters}
+          />
+          {renderFeedBody({
+            loadState,
+            hasFetchedOnce: hasFetchedOnce.current,
+            rows,
+            isVerified,
+            loadInitial: () => void loadInitial(selectedCategories, urgency),
+            refresh,
+            loadMore,
+            listRef,
+            onOpenDetail: setDetailRow,
+            onPostPress: handlePostPress,
+          })}
+        </>
+      ) : (
+        <TestimoniesView
+          deepLinkTestimonyId={deepLinkTestimonyId}
+          onDeepLinkConsumed={() => setDeepLinkTestimonyId(null)}
+        />
+      )}
+
+      <PrayerWallDetailSheet
+        row={detailRow}
+        onDismiss={() => setDetailRow(null)}
+      />
     </SafeAreaView>
   );
 }
 
-interface BodyArgs {
+interface FeedBodyArgs {
   loadState: LoadState;
   hasFetchedOnce: boolean;
-  filteredRows: PrayerRow[];
-  rawRows: PrayerRow[];
-  hasFilters: boolean;
+  rows: PrayerRow[];
   isVerified: boolean;
-  clearFilters: () => void;
   loadInitial: () => void;
   refresh: () => void;
   loadMore: () => void;
   listRef: React.RefObject<FlatList<PrayerRow> | null>;
+  onOpenDetail: (row: PrayerRow) => void;
   onPostPress: () => void;
 }
 
-function renderBody(args: BodyArgs) {
+function renderFeedBody(args: FeedBodyArgs) {
   const {
-    loadState,
-    hasFetchedOnce,
-    filteredRows,
-    rawRows,
-    hasFilters,
-    isVerified,
-    clearFilters,
-    loadInitial,
-    refresh,
-    loadMore,
-    listRef,
-    onPostPress,
+    loadState, hasFetchedOnce, rows, isVerified,
+    loadInitial, refresh, loadMore, listRef, onOpenDetail, onPostPress,
   } = args;
 
-  // Error state — show retry. Read-failure is rare (RPC + RLS); if it
-  // happens we don't want the leader stuck on a phantom skeleton.
   if (loadState === 'error') {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>
-          Couldn't load prayer requests right now.
-        </Text>
+        <Text style={styles.emptyCopy}>Couldn't load prayer requests right now.</Text>
         <Pressable onPress={loadInitial} hitSlop={8} accessibilityRole="button">
           <Text style={styles.retryText}>Tap to retry</Text>
         </Pressable>
@@ -261,8 +355,6 @@ function renderBody(args: BodyArgs) {
     );
   }
 
-  // Skeleton placeholders on initial fetch only — pull-to-refresh and
-  // paging use spinners instead.
   if (loadState === 'initial' && !hasFetchedOnce) {
     return (
       <View style={styles.skeletonContainer}>
@@ -277,37 +369,11 @@ function renderBody(args: BodyArgs) {
     );
   }
 
-  // Filter empty state — has rows underneath but the current narrow
-  // filter zeros them out. Clear-filters link returns to the wide-open
-  // default.
-  if (rawRows.length > 0 && filteredRows.length === 0 && hasFilters) {
-    return (
-      <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>No prayer requests match this filter.</Text>
-        <Pressable onPress={clearFilters} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.clearFiltersText}>Clear filters</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  // True-empty states (no rows at all from the RPC).
-  if (rawRows.length === 0) {
+  if (rows.length === 0) {
     if (isVerified) {
       return (
         <View style={styles.stateContainer}>
-          <Text style={styles.emptyCopy}>
-            No prayer requests yet. Be the first to lift one up.
-          </Text>
-          <Pressable
-            onPress={onPostPress}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Post a prayer request"
-            style={styles.emptyCtaButton}
-          >
-            <Text style={styles.emptyCtaText}>+ Post a Request</Text>
-          </Pressable>
+          <Text style={styles.emptyCopy}>No prayer requests match this filter.</Text>
         </View>
       );
     }
@@ -320,15 +386,14 @@ function renderBody(args: BodyArgs) {
     );
   }
 
-  // Main scrollable list.
   return (
     <FlatList
       ref={listRef}
-      data={filteredRows}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
+      data={rows}
+      keyExtractor={(r) => r.id}
+      renderItem={({ item }) => <PrayerWallCard row={item} onPress={onOpenDetail} />}
       contentContainerStyle={styles.listContent}
-      ItemSeparatorComponent={Separator}
+      ItemSeparatorComponent={() => <View style={{ height: 3 }} />}
       onEndReached={loadMore}
       onEndReachedThreshold={0.5}
       refreshControl={
@@ -349,24 +414,8 @@ function renderBody(args: BodyArgs) {
   );
 }
 
-function keyExtractor(row: PrayerRow): string {
-  return row.id;
-}
-
-function renderItem({ item }: { item: PrayerRow }) {
-  return <PrayerWallCard row={item} />;
-}
-
-function Separator() {
-  // Card margin-bottom per dispatch sizing.
-  return <View style={styles.separator} />;
-}
-
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  root: { flex: 1, backgroundColor: Colors.background },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -380,6 +429,15 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: 0.4,
   },
+  backArrow: {
+    fontFamily: Typography.body,
+    fontSize: 22,
+    color: Colors.accent,
+    lineHeight: 24,
+  },
+  topBarRightPlaceholder: {
+    width: 24, // keep title centered when no right action
+  },
   postCta: {
     fontFamily: Typography.mono,
     fontSize: 11,
@@ -387,13 +445,7 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     textTransform: 'uppercase',
   },
-  listContent: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  separator: {
-    height: 3,
-  },
+  listContent: { paddingVertical: 8, paddingHorizontal: 14 },
   stateContainer: {
     flex: 1,
     alignItems: 'center',
@@ -409,29 +461,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  clearFiltersText: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.5,
-    color: Colors.accent,
-    textTransform: 'uppercase',
-  },
   retryText: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.5,
-    color: Colors.accent,
-    textTransform: 'uppercase',
-  },
-  emptyCtaButton: {
-    marginTop: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.borderAccent,
-    borderRadius: 4,
-  },
-  emptyCtaText: {
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 1.5,

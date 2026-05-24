@@ -1,0 +1,2145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall Wireframes (Surfaces 1, 2, 3)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --surface3: #1f1f1f;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --red-mid: rgba(224,85,85,0.50);
+    --red-dim: rgba(224,85,85,0.10);
+    --amber: #D4A855;
+    --amber-dim: rgba(212,168,85,0.12);
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-dim: rgba(91,173,122,0.10);
+    --green-tint: rgba(91,173,122,0.06);
+  }
+
+  body {
+    background: #0d0d0d;
+    font-family: var(--sans);
+    font-weight: 300;
+    color: var(--text);
+    padding: 3rem 2rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .doc { max-width: 1480px; margin: 0 auto; }
+
+  /* HEADER */
+  .page-header { text-align: center; margin-bottom: 2.5rem; padding-bottom: 1.8rem; border-bottom: 0.5px solid var(--faint); }
+  .page-eyebrow { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; display:inline-flex; align-items:center; gap:8px; }
+  .page-eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--green); }
+  .page-title { font-family: var(--serif); font-size: 2.4rem; font-weight: 300; letter-spacing: 0.04em; margin-bottom: 0.6rem; }
+  .page-sub { font-size: 0.82rem; color: var(--muted-strong); max-width: 800px; margin: 0 auto; line-height: 1.7; }
+  .page-meta { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em; color: var(--muted); margin-top: 14px; text-transform: uppercase; }
+
+  /* SURFACE BLOCK */
+  .surface-block { margin: 4rem 0 0; }
+  .surface-head { max-width: 1100px; margin: 0 auto 1.8rem; }
+  .surface-num { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; margin-bottom: 8px; }
+  .surface-title { font-family: var(--serif); font-size: 1.55rem; font-weight: 400; letter-spacing: 0.02em; margin-bottom: 8px; }
+  .surface-desc  { font-size: 0.78rem; color: var(--muted-strong); line-height: 1.7; max-width: 760px; }
+
+  /* SECTION DIVIDER */
+  .section-divider { text-align: center; margin: 3rem 0 1.5rem; display: flex; align-items: center; gap: 1.5rem; }
+  .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 0.5px; background: var(--faint); }
+  .section-divider span { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+
+  /* FRAME GRID */
+  .frame-row { display: flex; gap: 2.5rem; justify-content: center; flex-wrap: wrap; align-items: flex-start; margin-bottom: 1.5rem; }
+  .frame-col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .frame-tag { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+  .frame-tag .num { color: var(--sky); }
+  .frame-caption { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.16em; color: var(--muted); max-width: 215px; text-align: center; line-height: 1.6; text-transform: uppercase; }
+
+  /* ───── iPhone 14 Pro Max frame · 430 × 932 pt · scaled 50% (215 × 466) ─────
+     Inside the frame, every pixel = 0.5 pt. So a 32-pt-tall chip renders 16 px tall.
+     Annotation labels next to frames quote the full device pt values. */
+  .iphone {
+    width: 215px;
+    height: 466px;
+    background: #000;
+    border-radius: 33px;
+    border: 1.5px solid rgba(240,237,230,0.14);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 28px 80px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+  }
+  .iphone::before {
+    content: '';
+    position: absolute;
+    top: 6px; left: 50%; transform: translateX(-50%);
+    width: 60px; height: 17px;
+    background: #000;
+    border-radius: 999px;
+    z-index: 30;
+  }
+  .stage {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  /* Status bar */
+  .ios-status {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 16px 0;
+    font-size: 0.5rem;
+    color: var(--text);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .ios-status .right { display:flex; gap: 4px; align-items: center; opacity: 0.92; }
+
+  /* Top bar (inside frame) */
+  .pw-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 13px 8px;
+    border-bottom: 0.25px solid var(--faint);
+    flex-shrink: 0;
+  }
+  .pw-top-left { display:flex; align-items:center; gap:6px; }
+  .pw-back { font-size: 0.6rem; color: var(--sky); line-height: 1; }
+  .pw-title { font-family: var(--serif); font-size: 0.78rem; font-weight: 400; letter-spacing: 0.04em; }
+  .pw-top-right { font-family: var(--mono); font-size: 0.4rem; letter-spacing: 0.12em; color: var(--sky); text-transform: uppercase; }
+
+  /* ──── FILTER BAR (Surface 1) ───────────────────────────────
+     Real specs:
+       row padding: 12 pt top, 14 pt h, 12 pt bottom
+       chip gap:    8 pt
+       chip:        height 32 pt, h-padding 12 pt, radius 16 pt
+       border:      0.5 pt
+       chip font:   13 pt SF/DM Sans, weight 500 selected, 400 idle
+       divider:     1 pt × 16 pt high, rgba(text, 0.10), 12 pt h-margins
+       clear chip:  no fill, 0.5 pt border (muted), × icon 10 pt
+  */
+  .pw-filter {
+    display: flex; align-items: center;
+    gap: 4px;
+    padding: 6px 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    border-bottom: 0.25px solid var(--faint);
+    scrollbar-width: none;
+  }
+  .pw-filter::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0;
+    height: 16px;            /* 32 pt */
+    padding: 0 6px;          /* 12 pt h */
+    border-radius: 8px;
+    border: 0.25px solid var(--hair);
+    background: transparent;
+    color: var(--muted-strong);
+    font-size: 0.42rem;       /* ~13 pt */
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    display: inline-flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .chip-cat-on {
+    background: var(--sky-dim);
+    border-color: var(--sky-mid);
+    color: var(--sky);
+    font-weight: 500;
+  }
+  .chip-urgent {
+    color: var(--red);
+  }
+  .chip-urgent-on {
+    background: var(--red-dim);
+    border-color: var(--red-mid);
+    color: var(--red);
+    font-weight: 500;
+  }
+  .chip-urgent .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--red); }
+  .chip-clear { border: none; color: var(--muted); font-family: var(--mono); font-size: 0.36rem; letter-spacing: 0.15em; text-transform: uppercase; padding-left: 2px; }
+  .chip-clear .x { display:inline-flex; align-items:center; justify-content:center; width: 9px; height: 9px; border-radius: 50%; border: 0.25px solid var(--muted); margin-right: 4px; font-size: 0.5rem; line-height: 1; }
+  .filter-divider { width: 0.5px; height: 8px; background: rgba(240,237,230,0.14); margin: 0 4px; flex-shrink: 0; }
+  .filter-overflow-fade {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 14px;
+    background: linear-gradient(to right, rgba(8,8,8,0), var(--bg));
+    pointer-events: none;
+  }
+  .pw-filter-row { position: relative; }
+  .pw-filter-stack { display: flex; flex-direction: column; gap: 4px; padding: 6px 7px; border-bottom: 0.25px solid var(--faint); }
+  .pw-filter-stack .row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pw-active-count {
+    display:flex; align-items:center; justify-content: space-between;
+    padding: 0 7px 6px;
+    font-family: var(--mono);
+    font-size: 0.34rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 0.25px solid var(--faint);
+  }
+  .pw-active-count strong { color: var(--sky); font-weight: 500; }
+
+  /* Feed cards (Surface 1 frames need a feed below to read context) */
+  .pw-feed { flex: 1; overflow-y: auto; padding: 8px 7px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .pw-feed::-webkit-scrollbar { display: none; }
+  .pr-card {
+    background: var(--surface);
+    border: 0.25px solid var(--faint);
+    border-left: 1px solid var(--sky);
+    border-radius: 0 4px 4px 0;
+    padding: 6px 7px;
+  }
+  .pr-card.urgent { border-left-color: var(--red); }
+  .pr-card.praise { border-left-color: var(--green); }
+  .pr-loc { font-family: var(--mono); font-size: 0.32rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky); margin-bottom: 3px; }
+  .pr-card.urgent .pr-loc { color: var(--red); }
+  .pr-card.praise .pr-loc { color: var(--green); }
+  .pr-text { font-family: var(--serif); font-style: italic; font-size: 0.44rem; line-height: 1.45; color: var(--text); }
+  .pr-meta { display:flex; gap: 5px; align-items: center; margin-top: 4px; }
+  .pr-tag { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 4px; border-radius: 2px; }
+  .pr-tag.sky    { background: var(--sky-dim);   color: var(--sky); }
+  .pr-tag.red    { background: var(--red-dim);   color: var(--red); }
+  .pr-tag.green  { background: var(--green-dim); color: var(--green); }
+  .pr-tag.amber  { background: var(--amber-dim); color: var(--amber); }
+  .pr-time { font-family: var(--mono); font-size: 0.3rem; color: var(--muted); letter-spacing: 0.08em; }
+
+  /* Testimony card variant (Surface 3) */
+  .tm-card {
+    background: var(--green-tint);
+    border: 0.25px solid rgba(91,173,122,0.20);
+    border-left: 1.5px solid var(--green);
+    border-radius: 0 5px 5px 0;
+    padding: 7px 8px;
+  }
+  .tm-card.deep-link { animation: tm-glow 1.6s ease-out forwards; }
+  @keyframes tm-glow {
+    0%   { border-color: rgba(91,173,122,0.9); box-shadow: 0 0 18px rgba(91,173,122,0.45); }
+    100% { border-color: rgba(91,173,122,0.20); box-shadow: 0 0 0 rgba(91,173,122,0); }
+  }
+  .tm-card .pr-loc { color: var(--green); }
+  .tm-orig {
+    background: rgba(240,237,230,0.04);
+    border-left: 0.5px solid var(--hair);
+    padding: 3px 5px;
+    margin: 4px 0 4px;
+    font-family: var(--sans);
+    font-size: 0.32rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .tm-orig em { color: var(--muted-strong); font-style: italic; }
+
+  /* Landing screen (Surface 2) ─────────────────────────────────
+     Real specs:
+       scripture pad:  16 pt top, 24 pt bottom, h-padding 28 pt
+       action card:    width = device - 28 pt h-padding each side, gap 12 pt between
+       card padding:   20 pt
+       card radius:    12 pt
+       card border:    0.5 pt
+       icon circle:    44 pt diameter, sky-dim fill
+       card title:     22 pt Cormorant 400
+       card sub:       14 pt DM Sans, line-height 1.55
+       cta button:     full-width, height 48 pt, radius 8 pt, font 14 pt 500
+       coming-soon pill: height 22 pt, radius 11 pt, mono 10 pt 0.18em
+       testimony rotator block:
+         outer margin: 16 pt above (after action cards), 24 pt h-padding
+         label:        mono 11 pt 0.2em "Testimonies" green
+         card:         h ≈ 132 pt, green left-border 2 pt, padding 14 pt
+         dots:         5 dots max, dot 6 pt, gap 6 pt, active = filled, idle = 30% opacity
+         auto-advance: 5.0 s · fade-out 250 ms · fade-in 250 ms
+  */
+  .pw-scroll { flex: 1; overflow-y: auto; padding: 8px 14px 16px; display: flex; flex-direction: column; }
+  .pw-scroll::-webkit-scrollbar { display: none; }
+
+  .pw-scripture {
+    text-align: center;
+    padding: 8px 0 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.5rem;
+    color: var(--muted-strong);
+    line-height: 1.55;
+  }
+  .pw-scripture .ref {
+    display: block;
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 0.32rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-top: 5px;
+  }
+
+  .pw-actions { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .pw-action {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .pw-action.primary { border-color: var(--sky-mid); }
+  .pw-action.disabled { opacity: 0.55; }
+  .pw-action-head { display: flex; align-items: center; gap: 8px; }
+  .pw-action-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .pw-action.green .pw-action-icon { background: var(--green-dim); border-color: var(--green-mid); }
+  .pw-action.disabled .pw-action-icon { background: rgba(240,237,230,0.04); border-color: var(--hair); }
+  .pw-action-icon svg { width: 12px; height: 12px; }
+  .pw-action-title { font-family: var(--serif); font-size: 0.62rem; font-weight: 400; letter-spacing: 0.01em; line-height: 1.1; }
+  .pw-action-sub { font-size: 0.4rem; color: var(--muted-strong); line-height: 1.5; }
+  .pw-cta {
+    margin-top: 4px;
+    padding: 6px 0;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.42rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+  .pw-cta.primary { background: var(--sky); color: var(--bg); }
+  .pw-cta.ghost { border: 0.5px solid var(--green-mid); color: var(--green); }
+  .pw-cta.locked { background: var(--surface2); color: var(--muted); display:flex; align-items:center; justify-content:center; gap: 6px; }
+  .pw-cta.locked svg { width: 8px; height: 8px; }
+  .pw-coming-soon {
+    font-family: var(--mono);
+    font-size: 0.3rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-dim);
+    border-radius: 99px;
+    padding: 2px 6px;
+    display: inline-block;
+    margin-top: 2px;
+    align-self: flex-start;
+  }
+  .pw-disabled-hint {
+    font-family: var(--mono);
+    font-size: 0.32rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Testimony rotator on landing */
+  .pw-tm-block { margin-top: 12px; }
+  .pw-tm-label-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; padding: 0 1px; }
+  .pw-tm-label { font-family: var(--mono); font-size: 0.34rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--green); }
+  .pw-tm-see-all { font-family: var(--mono); font-size: 0.32rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--green); display: inline-flex; align-items: center; gap: 4px; }
+  .pw-tm-rotator {
+    position: relative;
+    background: var(--green-tint);
+    border: 0.25px solid rgba(91,173,122,0.20);
+    border-left: 1.5px solid var(--green);
+    border-radius: 0 5px 5px 0;
+    padding: 8px 9px 10px;
+    min-height: 72px;
+  }
+  .pw-tm-rotator .pr-loc { color: var(--green); margin-bottom: 4px; }
+  .pw-tm-rotator .pr-text { font-size: 0.42rem; line-height: 1.5; }
+  .pw-tm-dots { display: flex; gap: 4px; justify-content: center; margin-top: 10px; }
+  .pw-tm-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(91,173,122,0.3); }
+  .pw-tm-dot.on { background: var(--green); }
+  .pw-tm-rotator.mid-fade .inner { opacity: 0.35; }
+  .pw-tm-rotator .inner { transition: opacity 250ms ease-out; }
+
+  /* Tab bar */
+  .pw-tabbar {
+    display: flex;
+    border-top: 0.25px solid var(--faint);
+    background: var(--bg);
+    padding: 6px 0 12px;
+    flex-shrink: 0;
+  }
+  .pw-tabbar .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .pw-tabbar svg { width: 11px; height: 11px; }
+  .pw-tabbar .tab.active svg path,
+  .pw-tabbar .tab.active svg circle,
+  .pw-tabbar .tab.active svg line { stroke: var(--red); }
+  .pw-tabbar .tab path, .pw-tabbar .tab circle, .pw-tabbar .tab line { stroke: var(--muted); }
+  .pw-tabbar .label { font-family: var(--mono); font-size: 0.26rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+  .pw-tabbar .active .label { color: var(--red); }
+
+  /* Inner feed/Testimonies tabs (Surface 3) */
+  .pw-segment {
+    display: flex;
+    padding: 6px 7px;
+    gap: 4px;
+    flex-shrink: 0;
+    border-bottom: 0.25px solid var(--faint);
+  }
+  .pw-seg {
+    flex: 1;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.36rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 0.25px solid transparent;
+  }
+  .pw-seg.on { color: var(--text); background: var(--surface2); border-color: var(--hair); }
+
+  /* Testimonies tab header subtitle */
+  .pw-tm-header {
+    padding: 8px 14px 10px;
+    text-align: center;
+    border-bottom: 0.25px solid var(--faint);
+    flex-shrink: 0;
+  }
+  .pw-tm-header p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.46rem;
+    color: var(--muted-strong);
+    line-height: 1.5;
+  }
+
+  /* Deep-link hint pill */
+  .deeplink-pill {
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(91,173,122,0.16);
+    border: 0.25px solid var(--green-mid);
+    border-radius: 99px;
+    padding: 3px 8px;
+    font-family: var(--mono);
+    font-size: 0.3rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--green);
+    z-index: 20;
+  }
+
+  /* POSTING SHEET (future, sketched) */
+  .post-sheet-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: flex-end;
+  }
+  .post-sheet {
+    width: 100%;
+    background: var(--surface);
+    border-top: 0.5px solid var(--hair);
+    border-radius: 12px 12px 0 0;
+    padding: 10px 12px 14px;
+    color: var(--text);
+  }
+  .post-grab { width: 26px; height: 2.5px; border-radius: 2px; background: var(--hair); margin: 0 auto 8px; }
+  .post-step { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .post-title { font-family: var(--serif); font-size: 0.62rem; font-weight: 400; margin-bottom: 8px; }
+  .post-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 8px; }
+  .post-opt { font-size: 0.34rem; padding: 5px 4px; border: 0.25px solid var(--hair); border-radius: 4px; text-align: center; color: var(--muted-strong); }
+  .post-opt.on { background: var(--sky-dim); border-color: var(--sky-mid); color: var(--sky); }
+  .post-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-top: 0.25px solid var(--faint); }
+  .post-toggle-row p { font-size: 0.4rem; }
+  .post-toggle-row .ctrl { width: 18px; height: 10px; border-radius: 5px; background: var(--surface3); position: relative; }
+  .post-toggle-row .ctrl::after { content: ''; position: absolute; top: 1px; left: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .post-toggle-row .ctrl.on { background: var(--sky-dim); }
+  .post-toggle-row .ctrl.on::after { left: 9px; background: var(--sky); }
+  .post-textarea { background: var(--bg); border: 0.25px solid var(--hair); border-radius: 4px; padding: 7px 8px; min-height: 50px; font-family: var(--serif); font-style: italic; font-size: 0.42rem; color: var(--muted-strong); line-height: 1.5; }
+  .post-cta { margin-top: 8px; background: var(--sky); color: var(--bg); padding: 6px 0; text-align: center; font-size: 0.44rem; font-weight: 500; border-radius: 4px; letter-spacing: 0.04em; }
+
+  /* ────────────────────────────────────────────────
+     v2 ADDITIONS
+     ──────────────────────────────────────────────── */
+
+  /* Uniform card height + 3-line clamp on body text */
+  .pr-card { position: relative; min-height: 40px; padding-right: 14px; }   /* 80 pt min, room for chev */
+  .pr-card::after {
+    content: '›';
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .pr-card.no-chev::after { display: none; }
+  .pr-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pr-text.full { display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .pr-card .pr-chev {
+    position: absolute;
+    right: 6px; top: 50%; transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    color: var(--muted);
+    line-height: 1;
+  }
+  .tm-card .pr-text { -webkit-line-clamp: 4; }
+
+  /* View-my-open-prayers link on landing */
+  .pw-open-prayers {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-top: 8px;
+    background: var(--surface);
+    border: 0.25px solid var(--faint);
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 0.36rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-strong);
+  }
+  .pw-open-prayers .count {
+    background: var(--sky-dim);
+    color: var(--sky);
+    border-radius: 99px;
+    padding: 1px 5px;
+    font-size: 0.32rem;
+    margin-right: 6px;
+  }
+  .pw-open-prayers .arrow { color: var(--sky); }
+
+  /* Prayer-detail sheet (tap-to-expand) */
+  .detail-sheet {
+    width: 100%;
+    background: var(--surface);
+    border-top: 0.5px solid var(--hair);
+    border-radius: 12px 12px 0 0;
+    padding: 10px 12px 14px;
+    max-height: 88%;
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-grab { width: 26px; height: 2.5px; border-radius: 2px; background: var(--hair); margin: 0 auto 8px; }
+  .detail-meta-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .detail-close { font-family: var(--mono); font-size: 0.4rem; color: var(--muted); letter-spacing: 0.12em; }
+  .detail-loc { font-family: var(--mono); font-size: 0.36rem; letter-spacing: 0.15em; text-transform: uppercase; }
+  .detail-loc.sky { color: var(--sky); }
+  .detail-loc.red { color: var(--red); }
+  .detail-loc.amber { color: var(--amber); }
+  .detail-body { font-family: var(--serif); font-style: italic; font-size: 0.5rem; line-height: 1.55; color: var(--text); margin: 6px 0 10px; }
+  .detail-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .detail-cta-row { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .detail-cta {
+    padding: 7px 10px;
+    border-radius: 4px;
+    font-size: 0.42rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .detail-cta.primary { background: var(--sky); color: var(--bg); }
+  .detail-cta.ghost { background: transparent; border: 0.5px solid var(--green-mid); color: var(--green); }
+  .detail-cta.disabled { background: var(--surface2); color: var(--muted); border: 0.25px solid var(--faint); }
+  .detail-cta.disabled .reason { display: block; font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 2px; color: var(--muted); font-weight: 400; }
+  .detail-cta svg { width: 9px; height: 9px; }
+
+  /* Overflow menu popover (Surface 04) */
+  .menu-popover {
+    position: absolute;
+    background: var(--surface2);
+    border: 0.5px solid var(--hair);
+    border-radius: 5px;
+    padding: 4px 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    z-index: 30;
+    min-width: 96px;
+  }
+  .menu-popover .item {
+    padding: 5px 10px;
+    font-size: 0.4rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.4;
+  }
+  .menu-popover .item.danger { color: var(--red); }
+  .menu-popover .item.praise { color: var(--green); }
+  .menu-popover .item svg { width: 8px; height: 8px; }
+  .menu-popover .divider { height: 0.25px; background: var(--faint); margin: 2px 0; }
+
+  /* Card overflow trigger */
+  .pr-overflow {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.5rem;
+    line-height: 1;
+  }
+
+  /* Confirm dialog (centered) */
+  .confirm-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+  }
+  .confirm-card {
+    background: var(--surface2);
+    border: 0.5px solid var(--hair);
+    border-radius: 7px;
+    padding: 14px 14px 10px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+  }
+  .confirm-eyebrow { font-family: var(--mono); font-size: 0.32rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 8px; }
+  .confirm-title { font-family: var(--serif); font-size: 0.62rem; font-weight: 400; margin-bottom: 6px; line-height: 1.3; }
+  .confirm-body { font-size: 0.4rem; color: var(--muted-strong); line-height: 1.55; margin-bottom: 12px; }
+  .confirm-actions { display: flex; gap: 5px; }
+  .confirm-btn { flex: 1; padding: 6px 0; border-radius: 4px; font-size: 0.4rem; font-weight: 500; letter-spacing: 0.04em; }
+  .confirm-btn.ghost { background: transparent; border: 0.5px solid var(--hair); color: var(--text); }
+  .confirm-btn.danger { background: rgba(224,85,85,0.85); color: var(--bg); }
+
+  /* Praise / testimony composer */
+  .praise-sheet { padding: 10px 12px 14px; }
+  .praise-step { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--green); margin-bottom: 6px; }
+  .praise-title { font-family: var(--serif); font-size: 0.62rem; font-weight: 400; margin-bottom: 8px; }
+  .praise-original-label { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .praise-original {
+    background: rgba(240,237,230,0.04);
+    border-left: 1px solid var(--green);
+    padding: 6px 8px;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 10px;
+  }
+  .praise-original .pr-loc { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--green); margin-bottom: 3px; }
+  .praise-original .pr-text { font-family: var(--serif); font-style: italic; font-size: 0.4rem; line-height: 1.5; color: var(--muted-strong); }
+  .praise-textarea {
+    background: var(--bg);
+    border: 0.25px solid var(--hair);
+    border-radius: 4px;
+    padding: 8px;
+    min-height: 56px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.44rem;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .praise-textarea.placeholder { color: var(--muted); }
+  .praise-cta {
+    margin-top: 8px;
+    background: var(--green);
+    color: var(--bg);
+    padding: 6px 0;
+    text-align: center;
+    font-size: 0.44rem;
+    font-weight: 500;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+  .praise-charcount { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.14em; color: var(--muted); text-align: right; margin-top: 3px; }
+
+  /* Inline edit pencil hint */
+  .edit-cta { background: transparent; border: 0.5px solid var(--sky-mid); color: var(--sky); }
+
+  /* Make-action heavier title styling */
+  .pw-action-title { font-size: 0.86rem !important; font-weight: 500 !important; letter-spacing: 0.005em !important; }
+  .pw-action-icon { width: 30px !important; height: 30px !important; }
+  .pw-action-icon svg { width: 16px !important; height: 16px !important; }
+  .pw-action { padding: 12px !important; }
+
+  /* ---- v3: inline heart (Stand in the gap) + celebrate (testimony shofar) ---- */
+  .pr-heart, .tm-celebrate {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.32rem;
+    letter-spacing: 0.04em;
+  }
+  .pr-heart svg, .tm-celebrate svg {
+    width: 8px; height: 8px;
+    stroke-width: 2;
+  }
+  .pr-heart.pressed { color: var(--red); }
+  .pr-heart.pressed svg { fill: var(--red); stroke: var(--red); }
+  .tm-celebrate.pressed { color: var(--amber); }
+  .tm-celebrate.pressed svg { fill: var(--amber); stroke: var(--amber); }
+
+  /* Heart in detail sheet (passive count display, no pill) */
+  .detail-heart {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.36rem;
+    letter-spacing: 0.05em;
+    margin-left: auto;
+  }
+  .detail-heart svg { width: 9px; height: 9px; stroke-width: 2; }
+  .detail-heart.pressed { color: var(--red); }
+  .detail-heart.pressed svg { fill: var(--red); stroke: var(--red); }
+
+  /* Stand-in-the-gap button — red filled and red-ghost (already prayed) */
+  .detail-cta.red {
+    background: var(--red);
+    color: var(--bg);
+  }
+  .detail-cta.red svg { stroke: currentColor; fill: none; }
+  .detail-cta.red-ghost {
+    background: transparent;
+    border: 0.5px solid var(--red-mid);
+    color: var(--red);
+  }
+  .detail-cta.red-ghost svg { stroke: var(--red); fill: var(--red); }
+
+  /* Tap-burst on celebrate popper (v4 animation) */
+  @keyframes tambourine-shake {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-12deg); }
+    50% { transform: scale(1.1) rotate(8deg); }
+    75% { transform: scale(1.05) rotate(-4deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .tm-celebrate.pressed svg { animation: tambourine-shake 0.6s ease-out; transform-origin: center; }
+
+  /* Quick text link — “View my open prayers”, login-style */
+  .pw-quick-link {
+    text-align: center;
+    margin-top: 16px;
+    margin-bottom: 4px;
+    font-size: 0.42rem;
+    font-weight: 300;
+    color: rgba(240,237,230,0.4);
+  }
+  .pw-quick-link a {
+    color: var(--sky);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .pw-quick-link .sep { color: rgba(240,237,230,0.2); margin: 0 5px; }
+
+  /* ANNOTATION RAIL (right of frame) */
+  .annot-rail { display: flex; flex-direction: column; gap: 10px; max-width: 270px; }
+  .pin {
+    display: flex; gap: 10px;
+    font-size: 0.7rem; line-height: 1.55;
+    color: var(--muted-strong);
+    padding: 9px 11px;
+    border-radius: 5px;
+    border: 0.5px solid var(--faint);
+    background: var(--surface);
+  }
+  .pin .dot {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    font-family: var(--mono); font-size: 0.55rem; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+    background: var(--sky-dim);
+    color: var(--sky);
+    border: 0.5px solid var(--sky-mid);
+  }
+  .pin.green .dot { background: var(--green-dim); color: var(--green); border-color: var(--green-mid); }
+  .pin.red   .dot { background: var(--red-dim);   color: var(--red);   border-color: var(--red-mid); }
+  .pin.amber .dot { background: var(--amber-dim); color: var(--amber); border-color: rgba(212,168,85,0.45); }
+  .pin strong { color: var(--text); font-weight: 500; }
+  .pin code   { font-family: var(--mono); font-size: 0.66rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+
+  /* SPEC TABLES */
+  .spec {
+    max-width: 1100px;
+    margin: 1.5rem auto 0;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+  }
+  .spec h4 { font-family: var(--serif); font-size: 1rem; font-weight: 500; margin-bottom: 4px; }
+  .spec .sub { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+  .spec table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  .spec th, .spec td { text-align: left; padding: 7px 8px; border-bottom: 0.25px solid var(--faint); vertical-align: top; line-height: 1.55; }
+  .spec th { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  .spec td.k { width: 30%; color: var(--text); font-weight: 500; }
+  .spec td.v { color: var(--muted-strong); font-family: var(--mono); font-size: 0.7rem; }
+  .spec td.why { color: var(--muted); width: 32%; font-size: 0.7rem; }
+
+  /* INTERACTION CONTRACTS */
+  .contract {
+    max-width: 1100px;
+    margin: 1.5rem auto 0;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 6px;
+  }
+  .contract h4 { font-family: var(--serif); font-size: 1rem; font-weight: 500; margin-bottom: 4px; }
+  .contract .sub { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; color: var(--sky); text-transform: uppercase; margin-bottom: 14px; }
+  .contract dl { display: grid; grid-template-columns: 200px 1fr; gap: 8px 16px; font-size: 0.74rem; line-height: 1.6; }
+  .contract dt { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky); padding-top: 2px; }
+  .contract dd { color: var(--muted-strong); }
+  .contract dd strong { color: var(--text); font-weight: 500; }
+  .contract dd code { font-family: var(--mono); font-size: 0.7rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+
+  /* CARD ANATOMY (Surface 3 callout) */
+  .anatomy {
+    max-width: 1100px;
+    margin: 1.8rem auto 0;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+  }
+  .anatomy h4 { font-family: var(--serif); font-size: 1rem; font-weight: 500; margin-bottom: 4px; }
+  .anatomy .sub { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; margin-bottom: 18px; }
+  .anatomy-row { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+  .anatomy-col { flex: 1; min-width: 280px; max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
+  .anatomy-tag { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; }
+  .anatomy-tag.sky { color: var(--sky); }
+  .anatomy-tag.green { color: var(--green); }
+  .anatomy-big {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-left: 2px solid var(--sky);
+    border-radius: 0 6px 6px 0;
+    padding: 14px 16px;
+  }
+  .anatomy-big.tm {
+    background: var(--green-tint);
+    border-color: rgba(91,173,122,0.20);
+    border-left-color: var(--green);
+    border-left-width: 3px;
+  }
+  .anatomy-big .loc { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sky); margin-bottom: 6px; }
+  .anatomy-big.tm .loc { color: var(--green); }
+  .anatomy-big .body { font-family: var(--serif); font-style: italic; font-size: 0.95rem; line-height: 1.55; color: var(--text); }
+  .anatomy-big .meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .anatomy-big .badge { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em; padding: 3px 8px; border-radius: 3px; text-transform: uppercase; }
+  .anatomy-big .badge.sky { background: var(--sky-dim); color: var(--sky); }
+  .anatomy-big .badge.green { background: var(--green-dim); color: var(--green); }
+  .anatomy-big .time { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); }
+  .anatomy-list { font-size: 0.74rem; line-height: 1.7; color: var(--muted-strong); }
+  .anatomy-list li { display: flex; gap: 10px; padding: 3px 0; list-style: none; }
+  .anatomy-list li::before { content: '·'; color: var(--sky); flex-shrink: 0; font-weight: 700; }
+  .anatomy-col.tm .anatomy-list li::before { color: var(--green); }
+
+  .footer-meta { text-align: center; padding-top: 24px; margin-top: 4rem; border-top: 0.5px solid var(--faint); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  /* Sky icon strokes */
+  svg.sky path, svg.sky circle, svg.sky line, svg.sky polygon { stroke: var(--sky); }
+  svg.green path, svg.green circle, svg.green line, svg.green polygon { stroke: var(--green); }
+  svg.muted path, svg.muted circle, svg.muted line, svg.muted polygon { stroke: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="page-header" data-screen-label="Header">
+    <p class="page-eyebrow">UI/UX · PRAYER WALL · v4 · INTENTIONAL TAP</p>
+    <h1 class="page-title">Prayer Wall — Surfaces 1, 2, 3, 4</h1>
+    <p class="page-sub">v4 iteration: <strong>Stand in the gap</strong> goes back to being a deliberate button — a red heart-led CTA inside the detail sheet that mirrors the Connect button’s shape. The card heart becomes a passive count display (shows the global tally + whether <em>this leader</em> has prayed) but the actual press happens behind a deliberate tap. <strong>Receive intercession</strong> icon swapped to a <strong>glass less than half full</strong> (vessel awaiting fullness, sibling to the rising-incense bowl). <strong>Celebrate</strong> swapped to a <strong>confetti popper</strong> with a tap-burst animation. <strong>View my open prayers</strong> stays as a simple text link, no count.</p>
+    <p class="page-meta">REPLANT · MVP · UI/UX · 24 MAY 2026 · v4</p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SURFACE 1 — MULTI-SELECT FILTER BAR                              -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div class="surface-block" data-screen-label="01 Filter bar">
+    <div class="surface-head">
+      <p class="surface-num">Surface 01 · Filter bar</p>
+      <h2 class="surface-title">Multi-select filter bar with Urgent stacking</h2>
+      <p class="surface-desc">Replaces the single-select pills + separate Urgent toggle. Two semantic groups on one row: <strong>Urgent</strong> (a tone modifier, red) on the left, then a hairline divider, then the <strong>category</strong> pills (sky). Both groups multi-select independently. The bar scrolls horizontally on narrow layouts; once ≥1 chip is active a <code>Clear</code> affordance pins to the right edge.</p>
+    </div>
+
+    <div class="section-divider"><span>Five states · scroll horizontally if your viewport is tight</span></div>
+
+    <div class="frame-row">
+
+      <!-- 01·A IDLE -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+              <div class="chip">Praise</div>
+              <div class="chip">Manpower</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card urgent"><p class="pr-loc">Anonymous · Southeast Asia</p><p class="pr-text">"Pray for our underground congregation — our meeting place has been discovered."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-time">4h</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Maranatha Ministries · Atlanta</p><p class="pr-text">"Intercede for our healing and deliverance services this Tuesday."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">6h</span></div></div>
+            <div class="pr-card praise"><p class="pr-loc">Church at Accra · Ghana</p><p class="pr-text">"We give thanks — our church building has been completed."</p><div class="pr-meta"><span class="pr-tag green">Praise</span><span class="pr-time">1d</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Grace Network · Lagos</p><p class="pr-text">"Standing in unity with persecuted believers in the north."</p><div class="pr-meta"><span class="pr-tag sky">Unity</span><span class="pr-time">1d</span></div></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·A</span> &nbsp;Idle (no selection)</p>
+      </div>
+
+      <!-- 01·B ONE SELECTED -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip chip-cat-on">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+              <div class="chip">Praise</div>
+              <div class="chip">Manpower</div>
+              <div class="chip chip-clear"><span class="x">×</span>Clear</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-active-count">
+            <span>Showing requests in <strong>Healing</strong></span>
+            <span>14 results</span>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card"><p class="pr-loc">Maranatha Ministries · Atlanta</p><p class="pr-text">"Intercede for our healing and deliverance services this Tuesday."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">6h</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Church at Nairobi · Kenya</p><p class="pr-text">"Pray for Sister Wanjiku's recovery from surgery this week."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">1d</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Hope Fellowship · Manila</p><p class="pr-text">"Brother Cruz's son in ICU. Standing in faith for his healing."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">2d</span></div></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·B</span> &nbsp;1 category selected</p>
+      </div>
+
+      <!-- 01·C URGENT + CATEGORY STACKED -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent chip-urgent-on"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip chip-cat-on">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+              <div class="chip">Praise</div>
+              <div class="chip">Manpower</div>
+              <div class="chip chip-clear"><span class="x">×</span>Clear</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-active-count">
+            <span><strong>Urgent</strong> · Healing</span>
+            <span>2 results</span>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card urgent"><p class="pr-loc">Hope Fellowship · Manila</p><p class="pr-text">"Brother Cruz's son in ICU. Standing in faith for his healing — urgent."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Healing</span><span class="pr-time">2h</span></div></div>
+            <div class="pr-card urgent"><p class="pr-loc">Church at Khartoum · Sudan</p><p class="pr-text">"Our pastor was injured — pray for swift healing and protection."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Healing</span><span class="pr-time">5h</span></div></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·C</span> &nbsp;Urgent + Healing (AND logic)</p>
+      </div>
+
+      <!-- 01·D MULTI CATEGORIES WRAP -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <!-- When 3+ category chips are active, the bar promotes to 2-row stack to keep all active selections in view without scrolling -->
+          <div class="pw-filter-stack">
+            <div class="row">
+              <div class="chip chip-urgent chip-urgent-on"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip chip-cat-on">Protection</div>
+              <div class="chip chip-cat-on">Unity</div>
+              <div class="chip chip-cat-on">Provision</div>
+            </div>
+            <div class="row">
+              <div class="chip">Healing</div>
+              <div class="chip">Praise</div>
+              <div class="chip">Manpower</div>
+              <div class="chip chip-clear" style="margin-left:auto;"><span class="x">×</span>Clear (4)</div>
+            </div>
+          </div>
+          <div class="pw-active-count">
+            <span><strong>Urgent</strong> · Protection, Unity, Provision (OR within categories)</span>
+            <span>9</span>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card urgent"><p class="pr-loc">Anonymous · Southeast Asia</p><p class="pr-text">"Our meeting place was raided. Pray for protection and unity."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Protection</span><span class="pr-time">2h</span></div></div>
+            <div class="pr-card urgent"><p class="pr-loc">Grace Network · Lagos</p><p class="pr-text">"Standing with persecuted churches in the north — provision and unity."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Provision</span><span class="pr-time">5h</span></div></div>
+            <div class="pr-card urgent"><p class="pr-loc">Anonymous · North Africa</p><p class="pr-text">"Two families displaced. Provision and protection over them."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Provision</span><span class="pr-time">8h</span></div></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·D</span> &nbsp;3+ active · row wraps (active top)</p>
+      </div>
+
+      <!-- 01·E EMPTY-FILTER STATE -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent chip-urgent-on"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip chip-cat-on">Praise</div>
+              <div class="chip">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+              <div class="chip">Manpower</div>
+              <div class="chip chip-clear"><span class="x">×</span>Clear</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-active-count">
+            <span><strong>Urgent</strong> · Praise</span>
+            <span>0</span>
+          </div>
+          <div class="pw-feed" style="align-items:center; justify-content:center; padding: 24px 18px; text-align:center; gap:8px;">
+            <div style="font-family:var(--serif); font-style:italic; font-size:0.6rem; color:var(--muted-strong); line-height:1.6;">"There is nothing here right now."</div>
+            <div style="font-family:var(--mono); font-size:0.34rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); line-height:1.7;">No requests match your filters.<br>Try removing one.</div>
+            <div style="margin-top:6px; font-family:var(--mono); font-size:0.34rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--sky); border:0.25px solid var(--sky-mid); border-radius:99px; padding:4px 10px;">↩ Clear filters</div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·E</span> &nbsp;Empty result · clear CTA</p>
+      </div>
+
+    </div>
+
+    <div class="section-divider"><span>Tap-to-expand detail · background is the dimmed feed at the leader’s scroll position</span></div>
+
+    <div class="frame-row">
+
+      <!-- 01·F EXPANDED DETAIL · ANONYMOUS -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+              <div class="chip">Praise</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-feed" style="opacity:0.22;">
+            <div class="pr-card urgent"><p class="pr-loc">Anonymous · Southeast Asia</p><p class="pr-text">"Pray for our underground congregation — our meeting place has been discovered. Several leaders questioned."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-time">4h</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Maranatha Ministries · Atlanta</p><p class="pr-text">"Intercede for our healing services this Tuesday."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">6h</span></div></div>
+          </div>
+          <div class="post-sheet-overlay">
+            <div class="detail-sheet">
+              <div class="detail-grab"></div>
+              <div class="detail-meta-row">
+                <p class="detail-loc red">Anonymous · Southeast Asia</p>
+                <span class="detail-close">✕</span>
+              </div>
+              <p class="detail-body">"Pray for our underground congregation — our meeting place has been discovered. Several leaders have been questioned. Pray for protection, for wisdom in our response, and that no one becomes a stumbling block. Pray that the Lord would be glorified through what looks like trouble, and that no harm would come to His people."</p>
+              <div class="detail-meta">
+                <span class="pr-tag red">Urgent</span>
+                <span class="pr-tag sky">Protection</span>
+                <span class="pr-time">4h ago</span>
+                <span class="detail-heart pressed">
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21 L4 13 Q1 10 4 7 Q7 4 10 7 L12 9 L14 7 Q17 4 20 7 Q23 10 20 13 Z"/></svg>
+                  <span>15</span>
+                </span>
+              </div>
+              <div class="detail-cta-row">
+                <div class="detail-cta red-ghost">
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21 L4 13 Q1 10 4 7 Q7 4 10 7 L12 9 L14 7 Q17 4 20 7 Q23 10 20 13 Z"/></svg>
+                  You’re standing in the gap
+                </div>
+                <div class="detail-cta disabled">
+                  <span style="display:flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Connect to this church</span>
+                  <span class="reason">Anonymous · direct message unavailable</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·F</span> &nbsp;Detail · anonymous (Connect unavailable)</p>
+      </div>
+
+      <!-- 01·G EXPANDED DETAIL · NAMED -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip chip-cat-on">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-feed" style="opacity:0.22;">
+            <div class="pr-card"><p class="pr-loc">Maranatha Ministries · Atlanta</p><p class="pr-text">"Intercede for our healing and deliverance services this Tuesday."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">6h</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Church at Nairobi · Kenya</p><p class="pr-text">"Pray for Sister Wanjiku's recovery from surgery this week."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">1d</span></div></div>
+          </div>
+          <div class="post-sheet-overlay">
+            <div class="detail-sheet">
+              <div class="detail-grab"></div>
+              <div class="detail-meta-row">
+                <p class="detail-loc sky">Maranatha Ministries · Atlanta</p>
+                <span class="detail-close">✕</span>
+              </div>
+              <p class="detail-body">"Intercede for our healing and deliverance services this Tuesday evening. Our team has been preparing for three weeks. Pray over Pastor Daniel as he leads, and for the families who will come — many carry burdens we won't see on the surface. May the Lord move in power, may every chain be broken, and may His name be glorified."</p>
+              <div class="detail-meta">
+                <span class="pr-tag sky">Healing</span>
+                <span class="pr-time">6h ago</span>
+                <span class="detail-heart">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21 L4 13 Q1 10 4 7 Q7 4 10 7 L12 9 L14 7 Q17 4 20 7 Q23 10 20 13 Z"/></svg>
+                  <span>42</span>
+                </span>
+              </div>
+              <div class="detail-cta-row">
+                <div class="detail-cta red">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21 L4 13 Q1 10 4 7 Q7 4 10 7 L12 9 L14 7 Q17 4 20 7 Q23 10 20 13 Z"/></svg>
+                  Stand in the gap
+                </div>
+                <div class="detail-cta ghost">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Connect to this church
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">01·G</span> &nbsp;Detail · named church (Connect ready)</p>
+      </div>
+
+    </div>
+
+    <!-- SURFACE 1 SPEC TABLE -->
+    <div class="spec">
+      <h4>Surface 01 — dimensions &amp; tokens</h4>
+      <p class="sub">All values in device pt · 430 × 932 baseline · explicit per KAN-76</p>
+      <table>
+        <thead><tr><th style="width:30%">Token</th><th style="width:38%">Value</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Filter row padding</td><td class="v">12 pt top · 14 pt h · 12 pt bottom</td><td class="why">Same horizontal gutter as feed cards so chips align to card edges.</td></tr>
+          <tr><td class="k">Chip-to-chip gap</td><td class="v">8 pt</td><td class="why">Tight enough to read as a group, loose enough to tap each individually.</td></tr>
+          <tr><td class="k">Chip dimensions</td><td class="v">height 32 pt · h-padding 12 pt · radius 16 pt (pill)</td><td class="why">32 pt minimum tap-comfort for mid-row controls. Pill radius distinguishes filter chips from rectangular tags on cards.</td></tr>
+          <tr><td class="k">Chip border</td><td class="v">0.5 pt</td><td class="why">Replant hairline standard.</td></tr>
+          <tr><td class="k">Chip type</td><td class="v">DM Sans · 13 pt · weight 400 idle / 500 selected · letter-spacing 0.02em</td><td class="why">Weight shift reinforces selection without colour-only signalling.</td></tr>
+          <tr><td class="k">Idle chip</td><td class="v">bg transparent · border rgba(text, 0.18) · text rgba(text, 0.55)</td><td class="why">Lowest visual weight — recedes when nothing is active.</td></tr>
+          <tr><td class="k">Selected category chip</td><td class="v">bg rgba(sky, 0.10) · border rgba(sky, 0.45) · text sky · weight 500</td><td class="why">Sky = the wall's voice. Categories share the sky family.</td></tr>
+          <tr><td class="k">Urgent chip · idle</td><td class="v">bg transparent · border rgba(text, 0.18) · text red · 4 pt red dot prefix</td><td class="why">Red dot pre-announces the chip's tone even when inactive — Urgent always looks like Urgent.</td></tr>
+          <tr><td class="k">Urgent chip · active</td><td class="v">bg rgba(red, 0.10) · border rgba(red, 0.50) · text red · weight 500</td><td class="why">Red selection clearly different from sky category selections — leader never confuses the two.</td></tr>
+          <tr><td class="k">Group divider</td><td class="v">1 pt wide · 16 pt high · rgba(text, 0.10) · 12 pt h-margin both sides</td><td class="why">Visually splits Urgent (tone) from categories (subject). Subtle but legible.</td></tr>
+          <tr><td class="k">Clear chip</td><td class="v">no border · DM Mono 10 pt 0.16em UPPERCASE · 9 pt × glyph in 0.5 pt ring · 12 pt h-padding</td><td class="why">Reads as an action, not a filter. Pinned right edge of bar; only renders once ≥1 chip active.</td></tr>
+          <tr><td class="k">Active-count strip</td><td class="v">36 pt height · DM Mono 10 pt 0.18em · padding 14 pt h · 0.25 pt bottom border</td><td class="why">Appears between filter bar and feed only when ≥1 active. Names the active filters in plain language + result count.</td></tr>
+          <tr><td class="k">Overflow behaviour</td><td class="v"><strong>≤2 categories + Urgent</strong>: single row, h-scroll · <strong>3+ categories</strong>: bar promotes to 2-row stack (active chips pinned to top row, idle on second row)</td><td class="why">Stack mode keeps every active chip visible without scrolling — the leader can see what's filtering the feed at a glance.</td></tr>
+          <tr><td class="k">Right-edge fade</td><td class="v">14 pt linear-gradient from rgba(bg, 0) → bg</td><td class="why">Affordance that more chips exist off-screen in scroll mode.</td></tr>
+          <tr><td class="k">Tag colour palette</td><td class="v">Healing · Protection · Unity · Provision · Manpower = sky · Praise = green · Urgent = red</td><td class="why">Praise inherits the testimony-green family because it's the praise-shaped sibling.</td></tr>
+          <tr><td class="k">Categories (v1 ship set)</td><td class="v">Healing, Protection, Unity, Provision, Praise, Manpower</td><td class="why">Six categories cover &gt;95% of v0 prayer-wall posts per Ife's audit. Persecution is an attribute, not a category — it lives on the Persecuted tab.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SURFACE 1 INTERACTION CONTRACT -->
+    <div class="contract">
+      <h4>Surface 01 — interaction contract</h4>
+      <p class="sub">Every state that changes on tap or scroll</p>
+      <dl>
+        <dt>Heart on a card</dt>           <dd>Passive display only — shows total <code>prayed_count</code> + whether <em>this leader</em> has already pressed it (filled red vs outline). <strong>The card heart is not tappable.</strong> Pressing happens only inside the detail sheet (below) so the act feels intentional, not accidental.</dd>
+        <dt>Tap card body</dt>             <dd>Opens the bottom-sheet detail (01·F / 01·G). <strong>Background:</strong> the feed at the leader’s current scroll position, dimmed to <code>opacity: 0.22</code> with a 55% black overlay + 8 pt backdrop blur. Sheet rises from bottom (320 ms cubic-bezier ease-out).</dd>
+        <dt>Detail sheet · Stand in the gap (action state)</dt><dd>Red filled button, outline heart + text. Tap = haptic light tap, button cross-fades to red-ghost variant, the heart in the meta row above fills red, count increments by 1, BE writes <code>prayer_request_prayed_by(request_id, leader_id, prayed_at)</code>. When the sheet closes, the underlying card’s heart reflects the new state.</dd>
+        <dt>Detail sheet · Stand in the gap (after state)</dt><dd>Red-ghost button, filled heart + <em>“You’ve stood in the gap”</em>. Tap is still allowed — it un-toggles (heart empties, count decrements, BE row deletes). The reverse path is for the leader who tapped by mistake, not an undo-of-prayer; copy stays gentle.</dd>
+        <dt>Detail sheet · Connect to this church</dt><dd>If post is <strong>not</strong> anonymous and not underground-masked: routes to a DM thread with that church’s primary contact, pre-seeded with the prayer request as a quoted reply. If post is anonymous: the CTA renders disabled with <em>"Anonymous · direct message unavailable."</em> No tap action.</dd>
+        <dt>Detail sheet · dismiss</dt>   <dd>Swipe-down on the sheet, tap the ✕ in top-right, or tap the dimmed feed behind. Sheet drops, feed returns to full opacity, scroll position preserved.</dd>
+        <dt>Tap idle chip</dt>            <dd>Chip toggles to selected state (250 ms cross-fade of bg, border, text colour, font-weight). Feed re-queries server with the new filter set. Active-count strip animates in if it wasn't already visible (height 0 → 36 pt, 200 ms ease-out).</dd>
+        <dt>Tap selected chip</dt>        <dd>Chip toggles back to idle (250 ms cross-fade). Server re-query. If this was the <strong>last</strong> active chip, active-count strip animates out and <code>Clear</code> chip disappears.</dd>
+        <dt>Tap Urgent</dt>                <dd>Stacks with whatever categories are active. Urgent + 0 categories = "all Urgent across categories." Urgent + ≥1 categories = AND logic (Urgent within those categories).</dd>
+        <dt>Within-category logic</dt>    <dd>When ≥2 categories are active, results are an <strong>OR</strong> within the category set ("posts tagged Healing or Protection"). Urgent is always an AND modifier on top.</dd>
+        <dt>Tap Clear</dt>                 <dd>All active chips revert to idle in one frame, active-count strip animates out, feed reloads unfiltered. No confirm dialog — Clear is cheap.</dd>
+        <dt>Threshold to 2-row stack</dt>  <dd>Bar promotes from single-row h-scroll to 2-row stack when <strong>3 or more category chips</strong> are active (Urgent doesn't count toward the threshold; it's pinned). Animation: 200 ms ease-out; active chips rise to row 1.</dd>
+        <dt>Filter button (top right)</dt> <dd>Reserved for a future "advanced filters" sheet — region, date range, leader-name search. Not in v1 scope; the word in the corner is a placeholder for that future affordance, not a duplicate of these chips. <strong>If we don't ship the sheet for v1, drop the word</strong> so we don't promise a control we don't have.</dd>
+        <dt>Scroll feed while filtered</dt><dd>Filter bar and active-count strip remain sticky at top. Feed scrolls underneath them.</dd>
+        <dt>Empty result (01·E)</dt>       <dd>Renders when filter set yields 0 results. Italic serif sentence + mono helper + "Clear filters" pill. The pill acts the same as the bar's <code>Clear</code> chip.</dd>
+        <dt>Deep-link / saved filters</dt> <dd>Not in v1. If we want it later: encode the active filter set in the URL hash so it survives a refresh / share.</dd>
+        <dt>Reduced motion</dt>            <dd>Drop the 250 ms cross-fades to a 1-frame swap. Keep the row-stack promotion instant. Keep the active-count strip's height animation instant.</dd>
+      </dl>
+    </div>
+
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SURFACE 2 — MAKE / RECEIVE INTERCESSION LANDING                  -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div class="surface-block" data-screen-label="02 Landing">
+    <div class="surface-head">
+      <p class="surface-num">Surface 02 · Landing</p>
+      <h2 class="surface-title">Make / Receive intercession landing</h2>
+      <p class="surface-desc">A separate landing screen — not a collapsible header. The two affordances are heavy enough (each is a full mode) that bolting them on as a collapsing strip pushes the feed around in a way that feels half-committed, and the testimony rotator needs room to breathe. <strong>Make intercession</strong> (primary, sky) routes into the feed. <strong>Receive intercession</strong> (secondary, green) opens the posting sheet — coming-soon in v1, fully designed for v2. The testimony rotator below auto-advances with a fade-cycle.</p>
+    </div>
+
+    <div class="section-divider"><span>Four states</span></div>
+
+    <div class="frame-row">
+
+      <!-- 02·A VERIFIED LEADER -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <span class="pw-title">Prayer Wall</span>
+            <span class="pw-top-right" style="color:var(--muted);">≡</span>
+          </div>
+          <div class="pw-scroll">
+            <p class="pw-scripture">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints."<span class="ref">Eph 6:18 · KJV</span></p>
+            <div class="pw-actions">
+              <div class="pw-action primary">
+                <div class="pw-action-head">
+                  <div class="pw-action-icon">
+                    <svg class="sky" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/><line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/><line x1="9" y1="21" x2="15" y2="21"/><path d="M8.5 11 Q10.5 8 8.5 5"/><path d="M12 11 Q14 7 12 3"/><path d="M15.5 11 Q13.5 8 15.5 5"/></svg>
+                  </div>
+                  <div>
+                    <p class="pw-action-title">Make intercession</p>
+                    <p class="pw-action-sub" style="margin-top:1px;">Stand in the gap. Read and pray through requests across Replant.</p>
+                  </div>
+                </div>
+                <div class="pw-cta primary">Enter the wall →</div>
+              </div>
+              <div class="pw-action green">
+                <div class="pw-action-head">
+                  <div class="pw-action-icon">
+                    <svg class="green" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="4" x2="19" y2="4"/><path d="M5 4 L7 21 H17 L19 4"/><path d="M7.7 15 Q12 16.5 16.3 15"/></svg>
+                  </div>
+                  <div>
+                    <p class="pw-action-title">Receive intercession</p>
+                    <p class="pw-action-sub" style="margin-top:1px;">Submit a prayer request. Let the Body lift you up.</p>
+                  </div>
+                </div>
+                <span class="pw-coming-soon">Coming soon · v2</span>
+                <div class="pw-cta locked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Submit a request
+                </div>
+              </div>
+            </div>
+
+            <p class="pw-quick-link"><a>View my open prayers →</a></p>
+
+            <div class="pw-tm-block">
+              <div class="pw-tm-label-row">
+                <span class="pw-tm-label">Testimonies</span>
+                <span class="pw-tm-see-all">See all →</span>
+              </div>
+              <div class="pw-tm-rotator">
+                <div class="inner">
+                  <p class="pr-loc">Anonymous · East Africa</p>
+                  <p class="pr-text">"Three months ago we asked this wall for prayer over our pastor who was ill. He has fully recovered. We testify to the faithfulness of God."</p>
+                </div>
+                <div class="pw-tm-dots">
+                  <span class="pw-tm-dot on"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pw-tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="label">Home</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="label">Local</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg><span class="label">Global</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg><span class="label">Pray</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M12 2v8"/><path d="M5 22V11a3 3 0 0 1 6 0v6"/></svg><span class="label">Pers.</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="label">Connect</span></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">02·A</span> &nbsp;Verified leader · default landing</p>
+      </div>
+
+      <!-- 02·B PENDING LEADER -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <span class="pw-title">Prayer Wall</span>
+            <span class="pw-top-right" style="color:var(--muted);">≡</span>
+          </div>
+          <div class="pw-scroll">
+            <p class="pw-scripture">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints."<span class="ref">Eph 6:18 · KJV</span></p>
+            <div class="pw-actions">
+              <div class="pw-action primary">
+                <div class="pw-action-head">
+                  <div class="pw-action-icon">
+                    <svg class="sky" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/><line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/><line x1="9" y1="21" x2="15" y2="21"/><path d="M8.5 11 Q10.5 8 8.5 5"/><path d="M12 11 Q14 7 12 3"/><path d="M15.5 11 Q13.5 8 15.5 5"/></svg>
+                  </div>
+                  <div>
+                    <p class="pw-action-title">Make intercession</p>
+                    <p class="pw-action-sub" style="margin-top:1px;">Read and pray through requests across Replant.</p>
+                  </div>
+                </div>
+                <div class="pw-cta primary">Enter the wall →</div>
+              </div>
+              <div class="pw-action green disabled">
+                <div class="pw-action-head">
+                  <div class="pw-action-icon">
+                    <svg class="muted" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="4" x2="19" y2="4"/><path d="M5 4 L7 21 H17 L19 4"/><path d="M7.7 15 Q12 16.5 16.3 15"/></svg>
+                  </div>
+                  <div>
+                    <p class="pw-action-title" style="color:var(--muted-strong);">Receive intercession</p>
+                    <p class="pw-action-sub" style="margin-top:1px;">Submit a prayer request to the Body.</p>
+                  </div>
+                </div>
+                <p class="pw-disabled-hint">Available after your church is verified</p>
+                <div class="pw-cta locked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Verification required
+                </div>
+              </div>
+            </div>
+
+            <div class="pw-tm-block">
+              <div class="pw-tm-label-row">
+                <span class="pw-tm-label">Testimonies</span>
+                <span class="pw-tm-see-all">See all →</span>
+              </div>
+              <div class="pw-tm-rotator">
+                <div class="inner">
+                  <p class="pr-loc">Church at Manila · Philippines</p>
+                  <p class="pr-text">"Our outreach reached 47 families this month. To God be the glory."</p>
+                </div>
+                <div class="pw-tm-dots">
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot on"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pw-tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="label">Home</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="label">Local</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg><span class="label">Global</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg><span class="label">Pray</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M12 2v8"/><path d="M5 22V11a3 3 0 0 1 6 0v6"/></svg><span class="label">Pers.</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="label">Connect</span></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">02·B</span> &nbsp;Pending leader · Receive disabled</p>
+      </div>
+
+      <!-- 02·C ROTATOR MID-FADE -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <span class="pw-title">Prayer Wall</span>
+            <span class="pw-top-right" style="color:var(--muted);">≡</span>
+          </div>
+          <div class="pw-scroll">
+            <p class="pw-scripture">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints."<span class="ref">Eph 6:18 · KJV</span></p>
+            <div class="pw-actions">
+              <div class="pw-action primary">
+                <div class="pw-action-head">
+                  <div class="pw-action-icon">
+                    <svg class="sky" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/><line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/><line x1="9" y1="21" x2="15" y2="21"/><path d="M8.5 11 Q10.5 8 8.5 5"/><path d="M12 11 Q14 7 12 3"/><path d="M15.5 11 Q13.5 8 15.5 5"/></svg>
+                  </div>
+                  <div>
+                    <p class="pw-action-title">Make intercession</p>
+                    <p class="pw-action-sub" style="margin-top:1px;">Stand in the gap. Read and pray through requests.</p>
+                  </div>
+                </div>
+                <div class="pw-cta primary">Enter the wall →</div>
+              </div>
+              <div class="pw-action green">
+                <div class="pw-action-head">
+                  <div class="pw-action-icon">
+                    <svg class="green" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="4" x2="19" y2="4"/><path d="M5 4 L7 21 H17 L19 4"/><path d="M7.7 15 Q12 16.5 16.3 15"/></svg>
+                  </div>
+                  <div>
+                    <p class="pw-action-title">Receive intercession</p>
+                    <p class="pw-action-sub" style="margin-top:1px;">Submit a prayer request to the Body.</p>
+                  </div>
+                </div>
+                <span class="pw-coming-soon">Coming soon · v2</span>
+                <div class="pw-cta locked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Submit a request
+                </div>
+              </div>
+            </div>
+
+            <p class="pw-quick-link"><a>View my open prayers →</a></p>
+            <div class="pw-tm-block">
+              <div class="pw-tm-label-row">
+                <span class="pw-tm-label">Testimonies</span>
+                <span class="pw-tm-see-all">See all →</span>
+              </div>
+              <div class="pw-tm-rotator mid-fade">
+                <div class="inner">
+                  <p class="pr-loc">Berean Assembly · Accra</p>
+                  <p class="pr-text">"Glory to God — our building project finished. Years of prayer answered."</p>
+                </div>
+                <div class="pw-tm-dots">
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot on"></span>
+                  <span class="pw-tm-dot"></span>
+                  <span class="pw-tm-dot"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pw-tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="label">Home</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="3"/></svg><span class="label">Local</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg><span class="label">Global</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg><span class="label">Pray</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M5 22V11a3 3 0 0 1 6 0v6"/></svg><span class="label">Pers.</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="label">Connect</span></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">02·C</span> &nbsp;Rotator mid fade-cycle</p>
+      </div>
+
+      <!-- 02·D POSTING SHEET (FUTURE v2) -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <span class="pw-title">Prayer Wall</span>
+            <span class="pw-top-right" style="color:var(--muted);">≡</span>
+          </div>
+          <div class="pw-scroll" style="opacity:0.4;">
+            <p class="pw-scripture">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints."<span class="ref">Eph 6:18 · KJV</span></p>
+            <div class="pw-actions">
+              <div class="pw-action primary">
+                <div class="pw-action-head"><div class="pw-action-icon"></div><div><p class="pw-action-title">Make intercession</p></div></div>
+              </div>
+              <div class="pw-action green">
+                <div class="pw-action-head"><div class="pw-action-icon"></div><div><p class="pw-action-title">Receive intercession</p></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="post-sheet-overlay">
+            <div class="post-sheet">
+              <div class="post-grab"></div>
+              <p class="post-step">Step 2 of 4 · Category</p>
+              <p class="post-title">What is this request about?</p>
+              <div class="post-options">
+                <div class="post-opt on">Healing</div>
+                <div class="post-opt">Protection</div>
+                <div class="post-opt">Unity</div>
+                <div class="post-opt">Provision</div>
+                <div class="post-opt">Praise</div>
+                <div class="post-opt">Manpower</div>
+              </div>
+              <div class="post-toggle-row"><p>Mark as urgent</p><div class="ctrl"></div></div>
+              <div class="post-toggle-row"><p>Post anonymously</p><div class="ctrl on"></div></div>
+              <div class="post-textarea" style="margin-top:6px;">"Pray for sister Wanjiku's recovery from surgery this week. The procedure went well but recovery is slow…"</div>
+              <div class="post-cta">Review &amp; submit →</div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">02·D</span> &nbsp;Posting sheet · v2 (sketch)</p>
+      </div>
+
+    </div>
+
+    <!-- SURFACE 2 SPEC -->
+    <div class="spec">
+      <h4>Surface 02 — dimensions &amp; tokens</h4>
+      <p class="sub">All values in device pt · 430 × 932 baseline</p>
+      <table>
+        <thead><tr><th style="width:30%">Token</th><th style="width:38%">Value</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Scripture block</td><td class="v">padding 16 pt top · 24 pt bottom · 28 pt h-padding · serif italic 16 pt · line-height 1.55 · reference DM Mono 11 pt 0.18em sky</td><td class="why">Same scripture pattern as v4 — leader is greeted by the verse before any UI.</td></tr>
+          <tr><td class="k">Action card</td><td class="v">width = device − 28 pt h-padding each side · padding 20 pt · radius 12 pt · border 0.5 pt · gap-between 12 pt</td><td class="why">Cards are doors; they deserve full width and generous internal padding.</td></tr>
+          <tr><td class="k">Action card · primary border</td><td class="v">rgba(sky, 0.45)</td><td class="why">Visually marks "Make intercession" as the default action.</td></tr>
+          <tr><td class="k">Action card · secondary border</td><td class="v">rgba(text, 0.08) — faint hairline</td><td class="why">"Receive" recedes a half-step so the eye lands on "Make" first.</td></tr>
+          <tr><td class="k">Icon circle</td><td class="v">44 pt diameter · 0.5 pt border · 16 pt SVG inside · sky-dim fill on primary / green-dim on secondary</td><td class="why">Same circle treatment as v4 landing — keeps the surface in family.</td></tr>
+          <tr><td class="k">Card title</td><td class="v">Cormorant 22 pt weight 400 · letter-spacing 0.01em · line-height 1.1</td><td class="why">Quiet serif voice — "Make intercession" is a sentence, not a button label.</td></tr>
+          <tr><td class="k">Card sub</td><td class="v">DM Sans 14 pt weight 300 · line-height 1.55 · color rgba(text, 0.65)</td><td class="why">One short sentence; long copy lives inside the action, not on the card.</td></tr>
+          <tr><td class="k">CTA button</td><td class="v">full-width · height 48 pt · radius 8 pt · font 14 pt weight 500 · letter-spacing 0.04em</td><td class="why">iOS-comfortable tap height.</td></tr>
+          <tr><td class="k">Primary CTA</td><td class="v">bg sky · text bg-color</td><td class="why">Matches the rest of the app's primary action.</td></tr>
+          <tr><td class="k">Ghost CTA</td><td class="v">bg transparent · border rgba(green, 0.45) · text green</td><td class="why">Reserved for the verified-leader "Submit a request" once v2 ships.</td></tr>
+          <tr><td class="k">Coming-soon pill</td><td class="v">height 22 pt · radius 11 pt · padding 2 × 8 pt · DM Mono 10 pt 0.18em UPPERCASE · amber on amber-dim</td><td class="why">Single, calm signal that this surface exists but isn't live yet.</td></tr>
+          <tr><td class="k">Disabled CTA (locked)</td><td class="v">bg surface2 · text muted · 8 pt lock-icon prefix</td><td class="why">Visually de-pressable — leader can tell at a glance it won't fire.</td></tr>
+          <tr><td class="k">Testimony rotator outer</td><td class="v">margin-top 16 pt · 24 pt h-padding · label-row 18 pt</td><td class="why">Breathing room between the action cards and the rotator.</td></tr>
+          <tr><td class="k">Rotator card</td><td class="v">min-height 132 pt · 14 pt padding · 2 pt green left-border · radius 0 6 6 0 · bg green-tint (rgba 0.06) · outer border rgba(green, 0.20)</td><td class="why">Matches the testimony-card treatment from v4 so the visual language is consistent landing → tab.</td></tr>
+          <tr><td class="k">Rotator dots</td><td class="v">5 dots max · 6 pt diameter · 6 pt gap · active filled green · idle rgba(green, 0.30)</td><td class="why">5 dots is the cap; pool of testimonies on landing is the 5 newest at server load.</td></tr>
+          <tr><td class="k">See-all link</td><td class="v">DM Mono 10 pt 0.16em UPPERCASE green · "See all →"</td><td class="why">Surface 3 entry point #1 (see Surface 3 below for entry-point #2).</td></tr>
+          <tr><td class="k">Auto-advance timing</td><td class="v">5.0 s dwell · 250 ms fade-out · 250 ms fade-in (cross-fade total 500 ms · gap 0)</td><td class="why">Slow enough to read a 1-line testimony comfortably. Fade (not slide) is calmer.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SURFACE 2 INTERACTION CONTRACT -->
+    <div class="contract">
+      <h4>Surface 02 — interaction contract</h4>
+      <p class="sub">Every state that changes on tap or scroll</p>
+      <dl>
+        <dt>Tap Prayer Wall tab</dt>     <dd>Routes to this landing every time (not the feed). The feed lives one tap deeper.</dd>
+        <dt>Tap Make intercession CTA</dt><dd>Routes to the feed (Surface 1 with no filters applied). Forward-only — back button on the feed returns here.</dd>
+        <dt>Tap Receive intercession CTA · v1</dt><dd>Fires an alert sheet: <em>"Receive intercession is coming soon. For now, your church can request prayer by writing us at <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2c4f434242494f586c5c5e4346494f585e495c404d425802435e4b">[email&#160;protected]</a></code>."</em> Single button: <strong>OK</strong>. No toast — this is meaningful, not a flash.</dd>
+        <dt>Tap Receive · v2 (verified)</dt><dd>Opens the posting sheet (frame 02·D). 4-step wizard: Category → Urgent? → Anonymous? → Compose → Review. Bottom-sheet pattern, swipe-down to dismiss with a confirm-discard guard if any field is dirty.</dd>
+        <dt>Tap Receive · v2 (pending)</dt><dd>Same alert as v1, but the message reads <em>"Submitting requests becomes available once your church is verified — you have N days left in your verification window."</em> Reuses the verification copy already in flow 06.</dd>
+        <dt>Tap rotator card</dt>          <dd>Routes to the Testimonies tab (Surface 3) with this specific testimony deep-linked: card expanded, scrolled into view, 1.6 s green glow on its border.</dd>
+        <dt>Tap rotator dot</dt>           <dd>Jumps to that index (manual control). Auto-advance pauses for 12 s after manual control, then resumes.</dd>
+        <dt>Swipe rotator left/right</dt>  <dd>Manual prev/next. Same 12 s auto-advance pause.</dd>
+        <dt>Long-press rotator</dt>        <dd>Pauses auto-advance indefinitely until next tap. Dot strip dims to 50% to indicate pause.</dd>
+        <dt>Reduced motion</dt>            <dd>Auto-advance disabled. Dots remain tappable. Card swap is an instant swap, no cross-fade. Add a small "Next →" tap target in the rotator's lower right.</dd>
+        <dt>Tab away &amp; return</dt>     <dd>Rotator resets to index 0 on every tab visit so leaders always see the newest testimony first.</dd>
+        <dt>Rotator pool size</dt>         <dd>Fetch the 5 newest testimonies on tab-enter; cycle indefinitely until tab leaves.</dd>
+        <dt>Zero testimonies</dt>          <dd>If the server returns 0, the rotator block hides entirely (do not show an empty card). The "See all →" link also hides.</dd>
+        <dt>Scroll body</dt>               <dd>Whole scroll-area scrolls (scripture + action cards + rotator). Top bar and tab bar are sticky.</dd>
+      </dl>
+    </div>
+
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SURFACE 3 — TESTIMONIES                                          -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div class="surface-block" data-screen-label="03 Testimonies">
+    <div class="surface-head">
+      <p class="surface-num">Surface 03 · Testimonies</p>
+      <h2 class="surface-title">Testimonies — entry points, destination &amp; card anatomy</h2>
+      <p class="surface-desc">Two ways a leader gets to the Testimonies tab: (1) tapping a rotating card on the landing — deep-links directly to that testimony; (2) a persistent <strong>Feed / Testimonies</strong> segmented control inside the Prayer Wall feed (Surface 1), so a leader who is already reading prayer requests can flip across without backing all the way out. Card anatomy is deliberately distinct from prayer-request cards so the two never get confused in a scan.</p>
+    </div>
+
+    <div class="section-divider"><span>Three frames</span></div>
+
+    <div class="frame-row">
+
+      <!-- 03·A SEGMENTED CONTROL IN FEED -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right">Filter</span>
+          </div>
+          <div class="pw-segment">
+            <div class="pw-seg on">Feed</div>
+            <div class="pw-seg">Testimonies</div>
+          </div>
+          <div class="pw-filter-row">
+            <div class="pw-filter">
+              <div class="chip chip-urgent"><span class="dot"></span>Urgent</div>
+              <div class="filter-divider"></div>
+              <div class="chip">Healing</div>
+              <div class="chip">Protection</div>
+              <div class="chip">Unity</div>
+              <div class="chip">Provision</div>
+              <div class="chip">Praise</div>
+              <div class="chip">Manpower</div>
+            </div>
+            <div class="filter-overflow-fade"></div>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card urgent"><p class="pr-loc">Anonymous · Southeast Asia</p><p class="pr-text">"Pray for our underground congregation — our meeting place has been discovered."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-time">4h</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Maranatha Ministries · Atlanta</p><p class="pr-text">"Intercede for our healing and deliverance services this Tuesday."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">6h</span></div></div>
+            <div class="pr-card"><p class="pr-loc">Grace Network · Lagos</p><p class="pr-text">"Standing in unity with persecuted believers in the north."</p><div class="pr-meta"><span class="pr-tag sky">Unity</span><span class="pr-time">1d</span></div></div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">03·A</span> &nbsp;Feed view · segmented control</p>
+      </div>
+
+      <!-- 03·B TESTIMONIES TAB ROOT -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right" style="color:var(--green);">Filter</span>
+          </div>
+          <div class="pw-segment">
+            <div class="pw-seg">Feed</div>
+            <div class="pw-seg on" style="border-color:var(--green-mid); background:rgba(91,173,122,0.06); color:var(--green);">Testimonies</div>
+          </div>
+          <div class="pw-tm-header">
+            <p>"And they overcame him by the blood of the Lamb<br>and by the word of their testimony…"</p>
+          </div>
+          <div class="pw-feed">
+            <div class="tm-card">
+              <p class="pr-loc">Anonymous · East Africa</p>
+              <p class="pr-text">"Three months ago we asked this wall for prayer over our pastor who was ill. He has fully recovered. We testify to the faithfulness of God."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">2d</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Church at Manila · Philippines</p>
+              <p class="pr-text">"Our outreach reached 47 families this month. To God be the glory."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">3d</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Berean Assembly · Accra</p>
+              <p class="pr-text">"Glory to God — our building project is finished. Years of prayer answered."</p>
+              <div class="tm-orig"><em>Originally posted as:</em> "We've been building for four years. Pray for provision and unity among our deacons…"</div>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">1w</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Hope Fellowship · Nairobi</p>
+              <p class="pr-text">"Sister Wanjiku is home. Praise the Lord for the prayers of His saints."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">2w</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">03·B</span> &nbsp;Testimonies tab · root</p>
+      </div>
+
+      <!-- 03·C DEEP-LINK ARRIVAL -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right" style="color:var(--green);">Filter</span>
+          </div>
+          <div class="pw-segment">
+            <div class="pw-seg">Feed</div>
+            <div class="pw-seg on" style="border-color:var(--green-mid); background:rgba(91,173,122,0.06); color:var(--green);">Testimonies</div>
+          </div>
+          <div class="pw-tm-header" style="position:relative;">
+            <span class="deeplink-pill">From landing</span>
+            <p>"And they overcame him by the blood of the Lamb<br>and by the word of their testimony…"</p>
+          </div>
+          <div class="pw-feed">
+            <div class="tm-card deep-link">
+              <p class="pr-loc">Anonymous · East Africa</p>
+              <p class="pr-text">"Three months ago we asked this wall for prayer over our pastor who was ill. He has fully recovered. We testify to the faithfulness of God."</p>
+              <div class="tm-orig"><em>Originally posted as:</em> "Our pastor has been ill for weeks. The doctors haven't found a cause. Pray for healing and discernment for the medical team…"</div>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">2d</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Church at Manila · Philippines</p>
+              <p class="pr-text">"Our outreach reached 47 families this month. To God be the glory."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">3d</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Berean Assembly · Accra</p>
+              <p class="pr-text">"Glory to God — our building project is finished."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">1w</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">03·C</span> &nbsp;Deep-link arrival · green glow</p>
+      </div>
+
+    </div>
+
+    <!-- CARD ANATOMY COMPARISON (large) -->
+    <div class="anatomy" data-screen-label="03·D Anatomy compare">
+      <h4>Card anatomy — prayer request vs testimony</h4>
+      <p class="sub">Drawn at 100% (not phone-scaled) so the differentiators are unmissable</p>
+      <div class="anatomy-row">
+        <div class="anatomy-col">
+          <p class="anatomy-tag sky">Prayer request</p>
+          <div class="anatomy-big">
+            <p class="loc">Maranatha Ministries · Atlanta</p>
+            <p class="body">"Intercede for our healing and deliverance services this Tuesday."</p>
+            <div class="meta"><span class="badge sky">Healing</span><span class="time">6h ago</span></div>
+          </div>
+          <ul class="anatomy-list">
+            <li>Sky <strong>2 pt</strong> left-border</li>
+            <li>Surface fill <code style="color:var(--sky)">#111111</code></li>
+            <li>Hairline outer border, faint</li>
+            <li>Tag colour = category (sky / red / amber / green-praise)</li>
+            <li>Body in serif italic — request, asking voice</li>
+          </ul>
+        </div>
+        <div class="anatomy-col tm">
+          <p class="anatomy-tag green">Testimony</p>
+          <div class="anatomy-big tm">
+            <p class="loc">Anonymous · East Africa</p>
+            <p class="body">"Three months ago we asked this wall for prayer over our pastor who was ill. He has fully recovered. We testify to the faithfulness of God."</p>
+            <div class="meta"><span class="badge green">Testimony</span><span class="time">2d ago</span></div>
+          </div>
+          <ul class="anatomy-list">
+            <li>Green <strong>3 pt</strong> left-border (50% heavier than prayer request)</li>
+            <li>Green-tint fill <code style="color:var(--green)">rgba(91,173,122,0.06)</code></li>
+            <li>Green-tinted outer border <code style="color:var(--green)">rgba(91,173,122,0.20)</code></li>
+            <li>Location text rendered green (not sky)</li>
+            <li>Tag is always <strong>Testimony</strong> (green) — never a category tag</li>
+            <li>Optional <em>Originally posted as:</em> inline quote when the testimony links back to a request</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SURFACE 3 SPEC -->
+    <div class="spec">
+      <h4>Surface 03 — dimensions &amp; tokens</h4>
+      <p class="sub">All values in device pt · 430 × 932 baseline</p>
+      <table>
+        <thead><tr><th style="width:30%">Token</th><th style="width:38%">Value</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Segmented control</td><td class="v">height 40 pt · padding 12 pt h · 8 pt v · gap 8 pt · radius 8 pt · DM Mono 11 pt 0.16em UPPERCASE</td><td class="why">Persistent entry point #2 — sits below top bar, above filter row, both in Feed and Testimonies modes.</td></tr>
+          <tr><td class="k">Segment idle</td><td class="v">color muted · transparent fill · transparent border</td><td class="why">Recedes when not selected.</td></tr>
+          <tr><td class="k">Segment selected · Feed</td><td class="v">bg surface2 · border rgba(text, 0.18) · text off-white</td><td class="why">Neutral when on the standard feed.</td></tr>
+          <tr><td class="k">Segment selected · Testimonies</td><td class="v">bg rgba(green, 0.06) · border rgba(green, 0.45) · text green</td><td class="why">Same green family as the testimony cards — selecting the tab tints the chrome.</td></tr>
+          <tr><td class="k">Testimonies header copy</td><td class="v">scripture quote · Cormorant italic 14 pt · line-height 1.5 · muted-strong</td><td class="why">Rev 12:11 — names what testimonies are. Anchors the tab thematically.</td></tr>
+          <tr><td class="k">Testimony card</td><td class="v">3 pt green left-border · radius 0 6 6 0 · padding 14 pt · bg rgba(green, 0.06) · outer border rgba(green, 0.20) 0.5 pt · gap-between 10 pt</td><td class="why">3 pt left-border vs the 2 pt on prayer requests is the single biggest visual differentiator. Border weight + tint + tag wording — three independent signals.</td></tr>
+          <tr><td class="k">Testimony location</td><td class="v">DM Mono 11 pt 0.18em UPPERCASE · green</td><td class="why">Mirrors prayer request location but tinted green.</td></tr>
+          <tr><td class="k">Testimony body</td><td class="v">Cormorant italic 15 pt · line-height 1.55 · text colour off-white</td><td class="why">Slightly larger than prayer body (which is 14 pt) — testimonies tell longer stories.</td></tr>
+          <tr><td class="k">Originally-posted-as block</td><td class="v">bg rgba(text, 0.04) · 0.5 pt left-border rgba(text, 0.18) · 8 pt h × 6 pt v padding · DM Sans 11 pt · color muted</td><td class="why">Optional. Renders only when testimony has a linked original request. Tied to BE field <code>original_request_id</code>.</td></tr>
+          <tr><td class="k">Testimony tag</td><td class="v">DM Mono 10 pt 0.14em UPPERCASE · 3 × 8 pt padding · bg rgba(green, 0.12) · text green · radius 3 pt</td><td class="why">Always "Testimony", never a category. Reinforces the kind of card this is.</td></tr>
+          <tr><td class="k">Deep-link glow</td><td class="v">border-color rgba(green, 0.9) + box-shadow 0 0 18 pt rgba(green, 0.45) · animates back to defaults over 1.6 s ease-out</td><td class="why">Lets the leader's eye find the card they tapped on the landing without scrolling around.</td></tr>
+          <tr><td class="k">"From landing" pill</td><td class="v">DM Mono 10 pt 0.16em UPPERCASE green · rgba(green, 0.16) bg · 0.5 pt green border · radius 99 · 3 × 8 pt padding</td><td class="why">Tiny breadcrumb so the leader knows why this testimony jumped out at them. Auto-fades after 2.0 s (ease-out 400 ms).</td></tr>
+          <tr><td class="k">Scroll pattern</td><td class="v">Infinite scroll · page size 10 · trigger fetch at 80% scroll depth · skeleton card on pending fetch</td><td class="why">Matches the feed pattern from Surface 1 — leaders shouldn't have to relearn navigation.</td></tr>
+          <tr><td class="k">Empty state</td><td class="v">Centered serif italic 16 pt "No testimonies yet — be the first when God moves." + a hairline rule + scripture reference Rev 12:11</td><td class="why">Tab is launching with 0 testimonies on day 1; the empty state has to feel like an invitation, not a defect.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SURFACE 3 INTERACTION CONTRACT -->
+    <div class="contract">
+      <h4>Surface 03 — interaction contract</h4>
+      <p class="sub">Every state that changes on tap or scroll</p>
+      <dl>
+        <dt>Tap shofar on a testimony card</dt><dd><strong>Celebrate with them</strong> action. One-tap, no expand. The <strong>confetti popper</strong> icon bursts (0.6 s scale 1→1.2→1.0 + slight rotate ±12°/+8°/−4° keyframes), 6–8 small amber sparkle particles drift up and fade over 800 ms, and the count increments by 1. Haptic light tap. Same per-leader-once toggle pattern — tap again to un-celebrate (popper empties to outline, count decrements). State persists.</dd>
+        <dt>Tap testimony card body</dt>     <dd>v1: no-op (the shofar is the only action on a testimony). v2 (KAN-205 future): opens testimony detail with comments / share.</dd>
+        <dt>Tap rotator card (Surface 2)</dt><dd>Navigates to Testimonies tab. The tapped testimony is <strong>scrolled-into-view at top</strong>, expanded if it has an Originally-posted-as block, and pulses with a 1.6 s green glow. The "From landing" pill appears in the header for 2.0 s then fades.</dd>
+        <dt>Tap See all → (Surface 2)</dt>   <dd>Navigates to Testimonies tab at the top. No deep-link glow. No "From landing" pill.</dd>
+        <dt>Tap Feed segment</dt>            <dd>Switches segmented control to Feed mode. Filter bar reappears. Scroll position resets to top. State of filter chips is preserved across mode flips (so if leader had Healing+Urgent active, that survives a trip into Testimonies and back).</dd>
+        <dt>Tap Testimonies segment</dt>      <dd>Switches to Testimonies mode. Filter bar replaced by the scripture header. Testimonies feed loads.</dd>
+        <dt>Tap testimony card</dt>          <dd>v1: no-op (the celebrate-shofar in the meta row is the only interactive element). Visual ripple feedback only (200 ms rgba(green, 0.10) flash) on tap-down. v2 (KAN-205 future): opens testimony detail with prayer count, comments, share.</dd>
+        <dt>Pull-to-refresh</dt>             <dd>Standard iOS pattern. Refresh icon tinted green. Refetches the page-1 testimonies.</dd>
+        <dt>Filter button (top right)</dt>   <dd>In Testimonies mode, opens a future filter sheet for region / time range / category-of-original-request. Out of scope for v1; the word "Filter" is dimmed if the sheet isn't shipped.</dd>
+        <dt>Scroll near bottom</dt>          <dd>Auto-fetch next page of 10. Skeleton card placeholder while loading.</dd>
+        <dt>Reduced motion</dt>              <dd>Drop the glow and pill fade animations. Instead, render a 3 pt green outer ring on the deep-linked card (static) and keep the pill visible until next tap.</dd>
+        <dt>Underground masking</dt>         <dd>Out of scope for this design — RPC enforces masking and FE never re-derives it. Card shows whatever location field the server returns (which may be "Anonymous · &lt;region&gt;").</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- HANDOFF SUMMARY                                                  -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SURFACE 4 — MY OPEN PRAYERS -->
+  <div class="surface-block" data-screen-label="04 My open prayers">
+    <div class="surface-head">
+      <p class="surface-num">Surface 04 · My open prayers</p>
+      <h2 class="surface-title">My open prayers — edit, delete, mark as praise</h2>
+      <p class="surface-desc">Reached from the <strong>View my open prayers</strong> link on the landing (Surface 02). Lists every <em>open</em> request submitted by anyone in this leader’s church — not just this user’s account, so co-leaders see the same list. Each card carries an overflow menu (Edit · Mark as praise · Delete). Marking as praise opens a composer that quotes the original request above the testimony body — the same “Originally posted as:” treatment used for deep-linked testimonies in Surface 03.</p>
+    </div>
+
+    <div class="section-divider"><span>Five frames</span></div>
+
+    <div class="frame-row">
+
+      <!-- 04·A LIST -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">My open prayers</span></div>
+            <span class="pw-top-right" style="color:var(--muted);">3 open</span>
+          </div>
+          <div style="padding:8px 14px 10px;border-bottom:0.25px solid var(--faint);flex-shrink:0;">
+            <p style="font-family:var(--mono);font-size:0.34rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);line-height:1.6;">Requests posted by your church<br><span style="color:var(--muted-strong);">Maranatha Ministries · Atlanta</span></p>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card no-chev">
+              <span class="pr-overflow">•••</span>
+              <p class="pr-loc">Healing · 6h ago</p>
+              <p class="pr-text">"Intercede for our healing and deliverance services this Tuesday. Pray over Pastor Daniel as he leads, and for the families who will come."</p>
+              <div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">by Pastor Daniel · 12 prayed</span></div>
+            </div>
+            <div class="pr-card no-chev urgent">
+              <span class="pr-overflow">•••</span>
+              <p class="pr-loc">Healing · 1d ago</p>
+              <p class="pr-text">"Sister Wanjiku's surgery moved to Friday. Pray for the surgical team and her family."</p>
+              <div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Healing</span><span class="pr-time">by Elder Mwangi · 28 prayed</span></div>
+            </div>
+            <div class="pr-card no-chev">
+              <span class="pr-overflow">•••</span>
+              <p class="pr-loc">Unity · 3d ago</p>
+              <p class="pr-text">"Our outreach team commissions Sunday. Stand with us for unity and clarity in our calling."</p>
+              <div class="pr-meta"><span class="pr-tag sky">Unity</span><span class="pr-time">by Pastor Daniel · 7 prayed</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">04·A</span> &nbsp;List view · 3 open</p>
+      </div>
+
+      <!-- 04·B OVERFLOW MENU OPEN -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">My open prayers</span></div>
+            <span class="pw-top-right" style="color:var(--muted);">3 open</span>
+          </div>
+          <div style="padding:8px 14px 10px;border-bottom:0.25px solid var(--faint);flex-shrink:0;">
+            <p style="font-family:var(--mono);font-size:0.34rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);line-height:1.6;">Requests posted by your church<br><span style="color:var(--muted-strong);">Maranatha Ministries · Atlanta</span></p>
+          </div>
+          <div class="pw-feed">
+            <div class="pr-card no-chev urgent" style="border-color:var(--sky-mid);">
+              <span class="pr-overflow" style="color:var(--text);">•••</span>
+              <div class="menu-popover" style="top:18px;right:6px;">
+                <div class="item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                  Edit
+                </div>
+                <div class="item praise">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Mark as praise
+                </div>
+                <div class="divider"></div>
+                <div class="item danger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  Delete
+                </div>
+              </div>
+              <p class="pr-loc">Healing · 1d ago</p>
+              <p class="pr-text">"Sister Wanjiku's surgery moved to Friday. Pray for the surgical team and her family."</p>
+              <div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-tag sky">Healing</span><span class="pr-time">by Elder Mwangi</span></div>
+            </div>
+            <div class="pr-card no-chev" style="opacity:0.45;">
+              <span class="pr-overflow">•••</span>
+              <p class="pr-loc">Unity · 3d ago</p>
+              <p class="pr-text">"Our outreach team commissions Sunday. Stand with us for unity and clarity in our calling."</p>
+              <div class="pr-meta"><span class="pr-tag sky">Unity</span><span class="pr-time">by Pastor Daniel</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">04·B</span> &nbsp;Overflow menu open</p>
+      </div>
+
+      <!-- 04·C DELETE CONFIRM -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">My open prayers</span></div>
+            <span class="pw-top-right" style="color:var(--muted);">3 open</span>
+          </div>
+          <div style="padding:8px 14px 10px;border-bottom:0.25px solid var(--faint);flex-shrink:0;opacity:0.4;">
+            <p style="font-family:var(--mono);font-size:0.34rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);line-height:1.6;">Requests posted by your church<br>Maranatha Ministries · Atlanta</p>
+          </div>
+          <div class="pw-feed" style="opacity:0.30;">
+            <div class="pr-card no-chev"><p class="pr-loc">Healing · 6h ago</p><p class="pr-text">"Intercede for our healing services this Tuesday."</p><div class="pr-meta"><span class="pr-tag sky">Healing</span><span class="pr-time">by Pastor Daniel</span></div></div>
+            <div class="pr-card no-chev urgent"><p class="pr-loc">Healing · 1d ago</p><p class="pr-text">"Sister Wanjiku's surgery moved to Friday."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-time">by Elder Mwangi</span></div></div>
+          </div>
+          <div class="confirm-overlay">
+            <div class="confirm-card">
+              <p class="confirm-eyebrow">Delete request</p>
+              <p class="confirm-title">Are you sure you want to delete this prayer request?</p>
+              <p class="confirm-body">It will no longer appear on the wall. Intercessors who haven't already prayed over it won't see it again. This can't be undone.</p>
+              <div class="confirm-actions">
+                <div class="confirm-btn ghost">Cancel</div>
+                <div class="confirm-btn danger">Delete</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">04·C</span> &nbsp;Delete · confirmation</p>
+      </div>
+
+      <!-- 04·D MARK AS PRAISE COMPOSER -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">My open prayers</span></div>
+            <span class="pw-top-right" style="color:var(--muted);">3 open</span>
+          </div>
+          <div class="pw-feed" style="opacity:0.25;">
+            <div class="pr-card no-chev urgent"><p class="pr-loc">Healing · 1d ago</p><p class="pr-text">"Sister Wanjiku's surgery moved to Friday."</p><div class="pr-meta"><span class="pr-tag red">Urgent</span><span class="pr-time">by Elder Mwangi</span></div></div>
+          </div>
+          <div class="post-sheet-overlay">
+            <div class="detail-sheet praise-sheet">
+              <div class="detail-grab"></div>
+              <p class="praise-step">Mark as praise · share the testimony</p>
+              <p class="praise-title">What did God do?</p>
+              <p class="praise-original-label">Original request</p>
+              <div class="praise-original">
+                <p class="pr-loc">Healing · 1d ago · Elder Mwangi</p>
+                <p class="pr-text">"Sister Wanjiku's surgery moved to Friday. Pray for the surgical team and her family."</p>
+              </div>
+              <div class="praise-textarea">"The surgery went well. She's already home and recovering faster than the doctors expected. Praise the Lord for His hand on the team and on Wanjiku. Thank you, Replant family, for standing with us."</div>
+              <p class="praise-charcount">189 / 500</p>
+              <div class="post-toggle-row" style="border-top:none;margin-top:4px;padding:4px 0;">
+                <p>Post anonymously</p>
+                <div class="ctrl"></div>
+              </div>
+              <div class="praise-cta">Post as praise →</div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">04·D</span> &nbsp;Mark-as-praise · composer</p>
+      </div>
+
+      <!-- 04·E AFTER-STATE -->
+      <div class="frame-col">
+        <div class="iphone"><div class="stage">
+          <div class="ios-status"><span>9:41</span><span class="right">●●● ◗</span></div>
+          <div class="pw-top">
+            <div class="pw-top-left"><span class="pw-back">←</span><span class="pw-title">Prayer Wall</span></div>
+            <span class="pw-top-right" style="color:var(--green);">Filter</span>
+          </div>
+          <div class="pw-segment">
+            <div class="pw-seg">Feed</div>
+            <div class="pw-seg on" style="border-color:var(--green-mid); background:rgba(91,173,122,0.06); color:var(--green);">Testimonies</div>
+          </div>
+          <div class="pw-tm-header" style="position:relative;">
+            <span class="deeplink-pill">Just posted</span>
+            <p>"And they overcame him by the blood of the Lamb,<br>and by the word of their testimony."</p>
+          </div>
+          <div class="pw-feed">
+            <div class="tm-card deep-link">
+              <p class="pr-loc">Maranatha Ministries · Atlanta</p>
+              <p class="pr-text">"The surgery went well. She's already home and recovering faster than the doctors expected. Praise the Lord for His hand on the team and on Wanjiku. Thank you, Replant family, for standing with us."</p>
+              <div class="tm-orig"><em>Originally posted as:</em> "Sister Wanjiku's surgery moved to Friday. Pray for the surgical team and her family."</div>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">Just now</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Anonymous · East Africa</p>
+              <p class="pr-text">"Three months ago we asked this wall for prayer over our pastor who was ill. He has fully recovered."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">2d</span></div>
+            </div>
+            <div class="tm-card">
+              <p class="pr-loc">Church at Manila · Philippines</p>
+              <p class="pr-text">"Our outreach reached 47 families this month. To God be the glory."</p>
+              <div class="pr-meta"><span class="pr-tag green">Testimony</span><span class="pr-time">3d</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="frame-tag"><span class="num">04·E</span> &nbsp;Posted · lands at Testimonies top</p>
+      </div>
+
+    </div>
+
+    <div class="spec">
+      <h4>Surface 04 — dimensions &amp; tokens</h4>
+      <p class="sub">All values in device pt · 430 × 932 baseline</p>
+      <table>
+        <thead><tr><th style="width:30%">Token</th><th style="width:38%">Value</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="k">List header strip</td><td class="v">padding 16 pt h · 14 pt v · DM Mono 11 pt 0.18em UPPERCASE · 0.25 pt bottom rule</td><td class="why">Names the scope: church, not user. Removes ambiguity — leaders share visibility.</td></tr>
+          <tr><td class="k">Open-prayer card</td><td class="v">same chrome as feed card · <strong>no chevron</strong> · overflow trigger 28 pt at top-right · line-clamp 3 · author + prayed-count in meta</td><td class="why">Drops the tap-to-expand affordance — actions are inline via overflow menu.</td></tr>
+          <tr><td class="k">Overflow trigger</td><td class="v">28 pt circle · top-right 12 pt offset · DM Mono 14 pt three-dot · tap region full circle</td><td class="why">iOS standard. 28 pt clears the chip tag below.</td></tr>
+          <tr><td class="k">Overflow popover</td><td class="v">192 pt min-width · 0.5 pt border · 10 pt radius · bg surface2 · shadow 0 16pt 48pt rgba(black,0.6) · anchored to trigger</td><td class="why">Replant elevation. 192 pt fits “Mark as praise” with its icon.</td></tr>
+          <tr><td class="k">Menu items</td><td class="v">10 pt v-padding · 20 pt h-padding · 16 pt icon · 14 pt DM Sans · 8 pt icon gap · 0.25 pt rule above Delete</td><td class="why">Standard popover row sizing.</td></tr>
+          <tr><td class="k">Menu · Mark as praise</td><td class="v">label green</td><td class="why">Constructive action carries the praise colour.</td></tr>
+          <tr><td class="k">Menu · Delete</td><td class="v">label red · below divider</td><td class="why">Destructive separated from constructive.</td></tr>
+          <tr><td class="k">Confirm dialog</td><td class="v">width device − 28 pt h-margin · 28 pt padding · 14 pt radius · bg surface2 · 0.5 pt hairline</td><td class="why">iOS-comfortable destructive modal, centred for gravity.</td></tr>
+          <tr><td class="k">Confirm eyebrow</td><td class="v">DM Mono 10 pt 0.2em UPPERCASE red</td><td class="why">Names the action class.</td></tr>
+          <tr><td class="k">Confirm buttons</td><td class="v">flex · height 44 pt · gap 10 pt · Cancel: ghost · Delete: red fill</td><td class="why">Standard iOS destructive pairing.</td></tr>
+          <tr><td class="k">Praise composer sheet</td><td class="v">bottom sheet · max-height 88% · 24 pt top radius · 28 pt h-padding</td><td class="why">Fits original + textarea + toggle + CTA without scrolling.</td></tr>
+          <tr><td class="k">Praise step label</td><td class="v">DM Mono 10 pt 0.18em UPPERCASE green</td><td class="why">Names the mode — “Mark as praise · share the testimony.”</td></tr>
+          <tr><td class="k">Original-request block</td><td class="v">bg rgba(text,0.04) · 2 pt green left-border · 10 pt padding · radius 0 4 4 0</td><td class="why">Pre-quotes the request the leader is replacing — same visual language as Surface 03 “Originally posted as.”</td></tr>
+          <tr><td class="k">Testimony textarea</td><td class="v">min-height 112 pt · Cormorant italic 15 pt · line-height 1.55 · 0.25 pt border · bg <code>--bg</code></td><td class="why">Leader writes in the voice the testimony will display in.</td></tr>
+          <tr><td class="k">Char counter</td><td class="v">DM Mono 10 pt 0.14em muted · right-aligned · 500 cap · amber at 450 · red at 500</td><td class="why">Bounded composition.</td></tr>
+          <tr><td class="k">Praise CTA</td><td class="v">full-width · height 48 pt · radius 8 pt · bg green · text bg · 14 pt weight 500</td><td class="why">Same shape as the landing primary CTA, recoloured.</td></tr>
+          <tr><td class="k">Post-success</td><td class="v">Sheet slides down 300 ms ease-out · route to Testimonies tab · 1.6 s green glow on the new card · “Just posted” pill 2.0 s</td><td class="why">Mirrors the Surface 03 deep-link arrival pattern.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="contract">
+      <h4>Surface 04 — interaction contract</h4>
+      <p class="sub">Every state that changes on tap or scroll</p>
+      <dl>
+        <dt>Tap View my open prayers</dt>      <dd>Navigates from landing (Surface 02) to this list. Header reads <strong>My open prayers</strong>; count in top-right shows total open. Empty state: italic serif “Your church has no open prayer requests yet.”</dd>
+        <dt>Scope of “my”</dt>                 <dd><strong>Church-wide, not user-wide.</strong> Lists every open request from any leader at this user’s church (leader-1 + leader-2 + any co-leader). Author shown in meta row (“by Pastor Daniel”).</dd>
+        <dt>Tap overflow trigger</dt>          <dd>Opens popover anchored to trigger. Tapping outside dismisses without action.</dd>
+        <dt>Tap Edit</dt>                       <dd>Opens the v2 posting sheet (frame 02·D) pre-populated with the current request’s category, urgent flag, anonymous flag, and body. CTA reads <strong>Save changes</strong>. Save updates the post in place; intercessors who already prayed are not re-notified.</dd>
+        <dt>Tap Delete</dt>                     <dd>Fires the confirm dialog (04·C). Cancel dismisses with no state change. Delete soft-deletes (per <code>D-01</code>): row marked <code>is_active=false</code>, removed from the wall, but retained for audit / scrub.</dd>
+        <dt>Tap Mark as praise</dt>             <dd>Opens the praise composer (04·D) with the original request quoted in the green-tinted block. Leader writes the testimony body, optionally toggles anonymous, submits.</dd>
+        <dt>Submit praise</dt>                  <dd>Posts a new Testimony record linked to the original request via <code>original_request_id</code>. Original flips to <code>status=answered</code> and disappears from this list. App routes to Testimonies tab (Surface 03), scrolls to the new testimony with a 1.6 s green glow + “Just posted” pill.</dd>
+        <dt>Anonymous on praise</dt>            <dd>If toggled on, the testimony renders with the church masked to “Anonymous · &lt;region&gt;”. The <em>Originally posted as:</em> quote is also masked for self-consistency.</dd>
+        <dt>Cancel composer</dt>                <dd>If textarea is empty, dismiss without confirm. If textarea is dirty, show a “Discard testimony?” confirm with the same shape as the delete confirm.</dd>
+        <dt>Pull-to-refresh</dt>                <dd>Refreshes the list. Catches co-leader posts from another device.</dd>
+        <dt>Empty state</dt>                    <dd>Centered serif italic “Your church has no open prayer requests yet.” + 0.5 pt rule + a green ghost button <strong>Receive intercession →</strong> back to the landing’s Receive card. (In v1 that path is locked; show the same lock affordance.)</dd>
+      </dl>
+    </div>
+
+  </div>
+
+
+  <!-- HANDOFF SUMMARY -->
+  <div class="surface-block" data-screen-label="05 Handoff">
+    <div class="surface-head">
+      <p class="surface-num">Handoff · summary for CC</p>
+      <h2 class="surface-title">What lands here · what's still open</h2>
+      <p class="surface-desc">Per the handoff contract: every surface ships with (1) a static annotated wireframe at iPhone 14 Pro Max baseline, (2) all spacing/sizing values inline in the spec table, (3) interaction notes for every state that changes on tap or scroll.</p>
+    </div>
+
+    <div class="spec">
+      <h4>Deliverables vs. CD brief · v2 additions</h4>
+      <p class="sub">Cross-check before SM dispatch</p>
+      <table>
+        <thead><tr><th style="width:34%">Brief item</th><th style="width:33%">Surface 1 · Filter + detail</th><th>Surface 2 · Landing</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Static annotated wireframe</td><td class="v" style="color:var(--green);">✓ 7 frames · 01·A–G (·F/·G are v2)</td><td class="v" style="color:var(--green);">✓ 4 frames · 02·A–D · v2 icons + scripture</td></tr>
+          <tr><td class="k">All spacing / sizing explicit</td><td class="v" style="color:var(--green);">✓ spec table</td><td class="v" style="color:var(--green);">✓ spec table</td></tr>
+          <tr><td class="k">Interaction notes per state</td><td class="v" style="color:var(--green);">✓ contract block</td><td class="v" style="color:var(--green);">✓ contract block</td></tr>
+          <tr><td class="k">Tap-to-expand detail (v2)</td><td class="v" style="color:var(--green);">✓ 01·F/G · anonymous + named variants</td><td class="v" style="color:var(--muted);">n/a</td></tr>
+          <tr><td class="k">View-my-open-prayers link (v2)</td><td class="v" style="color:var(--muted);">n/a</td><td class="v" style="color:var(--green);">✓ placed between actions + rotator</td></tr>
+        </tbody>
+        <thead><tr><th>Brief item</th><th>Surface 3 · Testimonies</th><th>Surface 4 · My open prayers (v2)</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Rotating cards deep-link contract</td><td class="v" style="color:var(--green);">✓ Surface 2 → Surface 3 (glow + pill)</td><td class="v" style="color:var(--muted);">n/a</td></tr>
+          <tr><td class="k">Distinct entry point</td><td class="v" style="color:var(--green);">✓ segmented control (03·A) + See all → (02·A)</td><td class="v" style="color:var(--green);">✓ View my open prayers (02·A)</td></tr>
+          <tr><td class="k">Card anatomy distinct</td><td class="v" style="color:var(--green);">✓ anatomy compare panel</td><td class="v" style="color:var(--green);">✓ inherits prayer-request chrome · no chev + overflow trigger</td></tr>
+          <tr><td class="k">Edit / Delete / Mark as praise</td><td class="v" style="color:var(--muted);">n/a</td><td class="v" style="color:var(--green);">✓ 04·B (menu) · 04·C (delete) · 04·D (composer) · 04·E (after-state)</td></tr>
+          <tr><td class="k">Original-prayer quoted in testimony</td><td class="v" style="color:var(--green);">✓ 03·C anatomy <em>“Originally posted as:”</em></td><td class="v" style="color:var(--green);">✓ same block reused in composer + after-state</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="spec" style="border-color: var(--sky-mid);">
+      <h4 style="color:var(--sky);">Project-wide rules established in this pass</h4>
+      <p class="sub" style="color:var(--sky);">Add to the design system doc</p>
+      <table>
+        <tbody>
+          <tr><td class="k">Scripture never truncates</td><td class="v" colspan="2">Anywhere scripture appears in the app — landing scripture-of-the-day, Testimonies header, devotional banners, splash quotes — render the <strong>full verse</strong>. No ellipsis, no “redacted for space.” If it doesn’t fit at the current type scale, drop the scale until it does, or break the verse across more lines, or move it to a calmer position. Truncating scripture is a hard no.</td></tr>
+          <tr><td class="k">Card uniformity</td><td class="v" colspan="2">All prayer-request cards in feed views share a uniform body height via <code>line-clamp: 3</code>. Long content trails to <code>…</code> and the card is tappable to a detail bottom sheet. Chevron <code>›</code> in meta signals tappability. (My-open-prayers cards drop the chevron and use the overflow menu instead.)</td></tr>
+          <tr><td class="k">Connect-to-this-church availability</td><td class="v" colspan="2">Direct-message CTA is enabled only when the post is <strong>not</strong> anonymous and <strong>not</strong> underground-masked. In all other cases the button renders disabled with explicit copy: <em>“Anonymous · direct message unavailable.”</em></td></tr>
+          <tr><td class="k">Action-card weight</td><td class="v" colspan="2">Hero action cards on landings (Make / Receive) render at <strong>30 pt Cormorant weight 500</strong> with a 30 pt icon circle. These are doors, not chips.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="contract" style="border-color: var(--amber);">
+      <h4 style="color:var(--amber);">Open questions for product</h4>
+      <p class="sub" style="color:var(--amber);">Resolve before CC starts the build</p>
+      <dl>
+        <dt>Filter button</dt>          <dd>Top-right "Filter" word: ship a future advanced-filters sheet, or drop the word for v1?</dd>
+        <dt>Rotator pool size</dt>      <dd>Confirmed 5 newest testimonies on tab-enter — or do we want a curated set (e.g., featured by an admin)?</dd>
+        <dt>Receive intercession v1 copy</dt><dd>Alert text: <em>"Receive intercession is coming soon. For now, your church can request prayer by writing us at <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ddbeb2b3b3b8bea99dadafb2b7b8bea9afb8adb1bcb3a9f3b2afba">[email&#160;protected]</a></code>."</em> — sign off?</dd>
+        <dt>Categories v1 set</dt>      <dd>Six chips: Healing · Protection · Unity · Provision · Praise · Manpower. Lock the set or add a 7th?</dd>
+        <dt>Testimony posting (KAN-205)</dt><dd>Wireframe sketched at 02·D — not in this brief's deliverable scope. Track separately?</dd>
+        <dt>Anonymous label for verified leaders</dt><dd>When a verified leader posts anonymously, does the card show "Anonymous · &lt;region&gt;" or just "Anonymous"? Underground masking rules clarify, but anonymous-by-choice may behave differently.</dd>
+        <dt>Receive intercession icon</dt><dd>v4 swap to a <strong>glass less than half full</strong> (vessel with low water-line, awaiting fullness). Pairs with the rising-incense bowl on Make — one rising, one waiting to be filled. Replaces the chalice / plant-being-watered explorations.</dd>
+        <dt>Celebrate icon</dt>             <dd>v4 swap from shofar to a <strong>confetti popper</strong> (🎉 — cone + confetti specks). Reads clearly at icon scale and pairs with the tap-burst animation. Alternatives if it still doesn’t land: a more illustrated shofar, clap, or a dove with olive branch. Say the word.</dd>
+        <dt>Celebrate · secondary action?</dt><dd><strong>Open.</strong> The user asked whether the celebrate tap could trigger something more than just counting. Candidates: (1) a small <em>“send a kind word”</em> bubble that lets the leader attach a one-line note to the celebration; (2) a tiered “celebrate / amen / glory” picker on long-press; (3) just the count + sparkle, nothing else. Default ship is (3) for v1 — calm, fast, doesn’t pull the leader out of scroll. Flag if you want (1).</dd>
+        <dt>“Stand in the gap” server semantics</dt><dd>v3: per-leader-once toggle. Tap fills heart, increments <code>prayed_count</code> by 1, persists. Tap again un-toggles, decrements. Count is total all-time, not windowed. Need BE shape: <code>prayer_request.prayed_count</code> + <code>prayer_request_prayed_by</code> join table keyed on <code>(request_id, leader_id)</code>.</dd>
+        <dt>Praise-report visibility</dt><dd>When a leader marks a request as praise, the testimony appears in the public Testimonies tab. Confirmed — or is there a moderation step?</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <p class="footer-meta">Replant · Prayer Wall surfaces 1/2/3/4 · CD wireframes · v4 · 24 May 2026</p>
+
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // v3: inject inline heart on prayer-request cards, celebrate-shofar on testimony cards.
+  (function() {
+    const HEART_COUNTS = [12, 47, 21, 9, 28, 7, 33, 14, 6, 18, 5, 24, 11, 16, 41, 8, 19, 13];
+    const HEART_PRESSED = new Set([0, 3, 7, 11, 14]);
+    const SHOFAR_COUNTS = [23, 41, 19, 8, 56, 14, 31, 47, 12, 28];
+    const SHOFAR_PRESSED = new Set([0, 2, 4]);
+
+    const HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21 L4 13 Q1 10 4 7 Q7 4 10 7 L12 9 L14 7 Q17 4 20 7 Q23 10 20 13 Z"/></svg>';
+    const SHOFAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21 L13 11"/><path d="M3 21 L9 17"/><path d="M9 17 L13 11"/><line x1="14" y1="7" x2="14" y2="5"/><circle cx="17" cy="6" r="0.6"/><line x1="18" y1="9" x2="20" y2="8"/><circle cx="21" cy="11" r="0.6"/><line x1="19" y1="13" x2="21" y2="14"/><circle cx="16" cy="11" r="0.5"/></svg>';
+
+    let hi = 0;
+    document.querySelectorAll('.pr-card:not(.no-chev) .pr-meta').forEach((meta) => {
+      if (meta.querySelector('.pr-heart')) return;
+      const el = document.createElement('span');
+      el.className = 'pr-heart' + (HEART_PRESSED.has(hi) ? ' pressed' : '');
+      el.innerHTML = HEART_SVG + '<span class="cnt">' + HEART_COUNTS[hi % HEART_COUNTS.length] + '</span>';
+      meta.appendChild(el);
+      hi++;
+    });
+
+    let ci = 0;
+    document.querySelectorAll('.tm-card .pr-meta').forEach((meta) => {
+      if (meta.querySelector('.tm-celebrate')) return;
+      const el = document.createElement('span');
+      el.className = 'tm-celebrate' + (SHOFAR_PRESSED.has(ci) ? ' pressed' : '');
+      el.innerHTML = SHOFAR_SVG + '<span class="cnt">' + SHOFAR_COUNTS[ci % SHOFAR_COUNTS.length] + '</span>';
+      meta.appendChild(el);
+      ci++;
+    });
+  })();
+</script>
+</body>
+</html>

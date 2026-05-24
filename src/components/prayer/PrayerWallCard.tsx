@@ -1,33 +1,38 @@
 // ─────────────────────────────────────────────
-// PrayerWallCard — KAN-23
+// PrayerWallCard — KAN-23 v2 (Ticket B)
 //
-// One prayer request card on the Prayer Wall feed. Left-border colour
-// distinguishes urgent (Colors.red) from standard (Colors.accent /
-// sky). Border-radius is asymmetric so the 2px left edge reads as a
-// flag, not a rounded box:
+// Feed-row card for one prayer request. The card itself is a Pressable
+// that surfaces a tap to the parent (which opens PrayerWallDetailSheet
+// over the feed). The heart count display in the meta row is NOT
+// tappable — it's a passive indicator. The actual "stand in the gap"
+// affordance lives inside the detail sheet, where the leader has
+// confirmation context. This separation is locked by the dispatch:
+//   "Card heart on feed cards is display-only. Not a Pressable. Not
+//   tappable. The press happens only inside the detail sheet."
 //
 //   ┌────────────────────────────────────────────────┐
 //   │ Church Name (Type) · Country                   │  Row 1 — identity
 //   │ {leader_display_name OR "A fellow leader"}     │  Row 1b — attribution
-//   │ ─ 6 px ─                                       │
-//   │ Full prayer text — no truncation               │  Row 2 — body
-//   │ ─ 8 px ─                                       │
-//   │ [Category]  [Urgent]  1h ago                   │  Row 3 — meta
+//   │ Full prayer text — clamped to 3 lines …      › │  Row 2 — body + chevron
+//   │ [Category]  [Urgent]  ♥ 12   1h ago            │  Row 3 — meta
 //   └────────────────────────────────────────────────┘
 //
-// Underground rows arrive with church_name='Underground Church' and
-// country=NULL per the RPC's CASE WHEN c.type='underground' branch —
-// getLocationLine omits the " · null" tail. Anonymous rows arrive with
-// leader_display_name=NULL — getLeaderLine emits "A fellow leader".
-// Both masks are RPC-enforced; the FE just trusts the wire shape.
+// Body is 3-line clamped (was unclamped in v1) — fix this. Chevron sits
+// on the far right of the body row to telegraph "tap to expand". The
+// heart is the icon-and-count in the meta row, NOT a button.
 //
-// Sizing per dispatch (CD Pro Max baseline). paddingVertical 8,
-// paddingHorizontal 10, card margin-bottom is owned by the parent
-// FlatList's ItemSeparatorComponent.
+// Underground rows arrive from the RPC with church_name='Underground
+// Church' and country=null; the FE trusts and renders what's on the
+// wire. Anonymous rows have leader_display_name=null and render under
+// ANONYMOUS_LEADER_LABEL. Both masks are RPC-enforced.
+//
+// Left-border colour: urgency=true → Colors.red; otherwise Colors.accent.
+// status='answered' is a future state — RPC scopes the feed to 'open'
+// today, so we never see other values here.
 // ─────────────────────────────────────────────
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
 import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import {
@@ -36,14 +41,17 @@ import {
   getLocationLine,
   type PrayerRow,
 } from './PrayerWallLogic';
+import { ChevronRightIcon, HeartIcon } from './PrayerIcons';
 
 interface Props {
   row: PrayerRow;
+  /** Tap on the card opens the detail sheet. Owned by the parent screen. */
+  onPress: (row: PrayerRow) => void;
   /** Injectable for tests / pinned clock. Production gets `new Date()`. */
   now?: Date;
 }
 
-export default function PrayerWallCard({ row, now }: Props) {
+export default function PrayerWallCard({ row, onPress, now }: Props) {
   const churchTypeLabel = getChurchTypeLabel(row.church_type);
   const locationLine = getLocationLine(
     `${row.church_name} (${churchTypeLabel})`,
@@ -53,15 +61,28 @@ export default function PrayerWallCard({ row, now }: Props) {
   const timestamp = formatRelativeTime(row.created_at, now);
 
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={() => onPress(row)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open prayer request from ${row.church_name}`}
+      style={({ pressed }) => [
         styles.card,
         { borderLeftColor: row.urgency ? Colors.red : Colors.accent },
+        pressed && styles.cardPressed,
       ]}
     >
       <Text style={styles.location} numberOfLines={2}>{locationLine}</Text>
       <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
-      <Text style={styles.body}>{row.prayer_text}</Text>
+
+      <View style={styles.bodyRow}>
+        <Text style={styles.body} numberOfLines={3}>
+          {row.prayer_text}
+        </Text>
+        <View style={styles.chevronWrap}>
+          <ChevronRightIcon size={14} color={Colors.textMuted} />
+        </View>
+      </View>
+
       <View style={styles.metaRow}>
         {row.category ? (
           <View style={styles.categoryChip}>
@@ -73,9 +94,17 @@ export default function PrayerWallCard({ row, now }: Props) {
             <Text style={styles.urgentChipText}>Urgent</Text>
           </View>
         ) : null}
+
+        {/* Heart count — display only. NOT a Pressable. The press path
+            for stand-in-the-gap lives inside PrayerWallDetailSheet. */}
+        <View style={styles.heartDisplay} accessible accessibilityLabel={`${row.prayed_count} prayed`}>
+          <HeartIcon size={12} color={row.i_prayed ? Colors.red : Colors.textMuted} filled={row.i_prayed} />
+          <Text style={styles.heartCount}>{row.prayed_count}</Text>
+        </View>
+
         {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -83,14 +112,15 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderLeftWidth: 2,
-    // Asymmetric radius — flag edge on the left, rounded on the right.
-    // Values per dispatch card anatomy.
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 6,
     borderBottomRightRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 10,
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
   location: {
     fontFamily: Typography.body,
@@ -105,12 +135,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 1,
   },
+  bodyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 6,
+  },
   body: {
+    flex: 1,
     fontFamily: Typography.body,
     fontSize: 12,
     color: Colors.text,
     lineHeight: 20,
-    marginTop: 6,
+  },
+  chevronWrap: {
+    paddingLeft: 8,
+    paddingTop: 2,
   },
   metaRow: {
     flexDirection: 'row',
@@ -148,6 +187,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1.0,
     color: Colors.red,
     textTransform: 'uppercase',
+  },
+  heartDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 4,
+  },
+  heartCount: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    color: Colors.textMuted,
   },
   timestamp: {
     fontFamily: Typography.mono,
