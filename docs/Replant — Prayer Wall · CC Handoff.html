@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+<head>
+<style data-omelette-injected>html,body{background:transparent}</style><script data-omelette-injected>(()=>{var j=["https://claude.ai","https://preview.claude.ai"];var x=true;var S=30000;var f=3000;document.addEventListener("DOMContentLoaded",()=>{const H=window.Babel;const G="om-src-id";if(H&&H.registerPlugin&&!(H.availablePlugins&&H.availablePlugins[G])){H.registerPlugin(G,({types:Y})=>({visitor:{JSXOpeningElement(U,Q){const J=U.node;if(J.name&&J.name.type==="JSXMemberExpression")return;for(let V=0;V<J.attributes.length;V++){const L=J.attributes[V];if(L.type==="JSXAttribute"&&L.name&&L.name.name==="data-om-id")return}const W=Q.file&&Q.file.opts&&Q.file.opts.filename||"?";const Z=J.loc&&J.loc.start;const z=`jsx:${W}:${J.start??0}:${Z?Z.line:0}:${Z?Z.column+1:0}`;J.attributes.push(Y.jsxAttribute(Y.jsxIdentifier("data-om-id"),Y.stringLiteral(z)))}}}))}const k="om-text-extract";let A=false;if(x&&H&&H.registerPlugin&&!(H.availablePlugins&&H.availablePlugins[k])){const Y=window.React;if(Y&&Y.useSyncExternalStore&&Y.createElement){A=true;const U={};const Q=new Set;let J=0;window.__omTextO=U;window.__omTextSet=(z)=>{for(const V in z){const L=z[V];if(L==null)delete U[V];else U[V]=L}J++;Q.forEach((V)=>V())};const W=(z)=>{Q.add(z);return()=>Q.delete(z)};const Z=()=>J;window.__OmT=function z(V){Y.useSyncExternalStore(W,Z,Z);return Y.createElement("span",{"data-om-text":V.i,className:"__om-t"},V.i in U?U[V.i]:V.children)};H.registerPlugin(k,({types:z})=>{const V={style:1,script:1,noscript:1,textarea:1,title:1,option:1,text:1,tspan:1,textPath:1};const L={placeholder:1,alt:1,title:1,label:1,"aria-label":1,"aria-description":1,"aria-placeholder":1};const _=($,C)=>z.logicalExpression("??",z.memberExpression(z.logicalExpression("||",z.memberExpression(z.identifier("window"),z.identifier("__omTextO")),z.objectExpression([])),z.stringLiteral($),true),C);const E=($)=>$.file&&$.file.opts&&$.file.opts.filename||"?";const B=($)=>$.file&&$.file.code||"";const b=($,C)=>{const X=(F)=>F&&F.start!=null&&F.end!=null&&(F.type==="StringLiteral"||F.type==="TemplateLiteral"&&F.expressions.length===0)?[F.start,F.end]:null;const N=X(C);if(N)return N;if(C&&C.type==="Identifier"){const F=$.scope.getBinding(C.name);if(F&&F.constant&&F.path.node.type==="VariableDeclarator"){return X(F.path.node.init)}}return null};const M=($,C,X)=>{const N=$.node;let F=false;const w=(K,q)=>{F=true;return z.jsxElement(z.jsxOpeningElement(z.jsxIdentifier("__OmT"),[z.jsxAttribute(z.jsxIdentifier("i"),z.stringLiteral(K))],false),z.jsxClosingElement(z.jsxIdentifier("__OmT")),[q],false)};const D=N.children.map((K)=>{if(K.type==="JSXText"){if(K.start==null||K.end==null)return K;const q=X.slice(K.start,K.end);const R=q.length-q.trimStart().length;const m=q.length-q.trimEnd().length;if(R+m>=q.length)return K;return w(`txt:${C}:${K.start+R}:${K.end-m}`,K)}if(K.type==="JSXExpressionContainer"){const q=b($,K.expression);if(q)return w(`str:${C}:${q[0]}:${q[1]}`,K)}return K});if(F)N.children=D};return{visitor:{JSXOpeningElement($,C){const X=$.node;const N=E(C);const F={};for(let w=0;w<X.attributes.length;w++){const D=X.attributes[w];if(D.type!=="JSXAttribute"||!D.name)continue;const K=D.name.name;if(!L[K])continue;if(!D.value||D.value.type!=="StringLiteral")continue;if(D.value.start==null||D.value.end==null)continue;const q=`txt:${N}:${D.value.start}:${D.value.end}`;F[K]=q;D.value=z.jsxExpressionContainer(_(q,z.stringLiteral(D.value.value)))}if(Object.keys(F).length){X.attributes.push(z.jsxAttribute(z.jsxIdentifier("data-om-text-attrs"),z.stringLiteral(JSON.stringify(F))))}},JSXElement($,C){const X=$.node.openingElement;const N=X&&X.name&&X.name.name;if(N==="__OmT")return;if(typeof N==="string"&&V[N])return;M($,E(C),B(C))},JSXFragment($,C){M($,E(C),B(C))}}}})}}const u=A?["transform-react-jsx-source",G,k]:["transform-react-jsx-source",G];document.querySelectorAll('script[type="text/babel"],script[type="text/jsx"]').forEach((Y,U)=>{const Q=Y.getAttribute("data-plugins")||"";const J=u.filter((W)=>Q.indexOf(W)<0);if(J.length){Y.setAttribute("data-plugins",Q?`${Q},${J.join(",")}`:J.join(","))}if(!Y.hasAttribute("data-filename")){Y.setAttribute("data-filename",Y.getAttribute("src")||`inline-${U}`)}})});var y=window.parent;if(y&&y!==window){const H=(Q,J)=>{try{y.postMessage({__omelette_log:true,type:Q,data:J},"*")}catch{}};["log","warn","error"].forEach((Q)=>{const J=console[Q];console[Q]=(...W)=>{const Z=W.map((z)=>{try{return typeof z==="object"?JSON.stringify(z):String(z)}catch{try{return String(z)}catch{return"[unstringifiable]"}}}).join(" ");H(Q,Z);J.apply(console,W)}});window.addEventListener("error",(Q)=>{const J=Q.target;if(J&&J!==window&&J.tagName){const W=J.src||J.href||"";H("resource_error",`${J.tagName} failed to load: ${W}`)}else{H("error",`${Q.message||"Unknown error"} at ${Q.filename||"?"}:${Q.lineno||0}:${Q.colno||0}`)}},true);window.addEventListener("unhandledrejection",(Q)=>{const J=Q.reason;const W=J instanceof Error?`${J.message} ${J.stack}`:String(J);H("error",`Unhandled rejection: ${W}`)});const G=()=>{try{y.postMessage({type:"omelette:height",height:document.documentElement.scrollHeight},"*")}catch{}};if(document.readyState==="complete")G();else window.addEventListener("load",G);if(window.ResizeObserver)new ResizeObserver(G).observe(document.documentElement);const k={};let A=0;window.claude={complete(Q){return new Promise((J,W)=>{if(!j.length){W(new Error("claude.complete: no parent origin"));return}const Z=`c${++A}`;const z=()=>setTimeout(()=>{delete k[Z];W(new Error(`claude.complete: no data for ${S/1000}s`))},S);const V=z();k[Z]={resolve:J,reject:W,text:"",t:V,arm:z};try{for(const L of j){y.postMessage({__om_api:true,id:Z,body:Q},L)}}catch(L){clearTimeout(V);delete k[Z];W(L)}})}};const u={};let Y=0;window.omelette={writeFile:(Q,J)=>new Promise((W,Z)=>{if(!j.length){W();return}const z=`f${++Y}`;const V=setTimeout(()=>{delete u[z];W()},f);u[z]={resolve:W,reject:Z,t:V};try{for(const L of j){y.postMessage({__om_file:true,id:z,op:"write",path:Q,content:J},L)}}catch{clearTimeout(V);delete u[z];W()}})};const U=(Q)=>{try{return JSON.stringify(Q)}catch{return JSON.stringify(String(Q))}};window.addEventListener("message",(Q)=>{if(j.indexOf(Q.origin)<0)return;if(Q.source!==y)return;const J=Q.data;if(!J)return;if(J.type==="omelette-preview-refresh"){if(typeof J.token!=="string"||!/^[0-9a-f.-]+(\.(rc|pr-[0-9]+))?(\.[0-9]+\.[0-9a-f]{16})?$/.test(J.token))return;const z=Math.max(1,Math.floor((J.expiresAt||0)-Date.now()/1000));document.cookie="__Host-omelette-preview="+J.token+"; Path=/; Secure; SameSite=None; Partitioned; Max-Age="+z;return}if(J.__om_file_r){const z=u[J.id];if(!z)return;clearTimeout(z.t);delete u[J.id];if(J.ok)z.resolve();else z.reject(new Error(J.error||"write failed"));return}if(J.__om_api_r){const z=k[J.id];if(!z)return;if(J.error!=null){clearTimeout(z.t);delete k[J.id];z.reject(new Error(J.error));return}if(J.chunk!=null){clearTimeout(z.t);z.t=z.arm();z.text+=J.chunk;return}if(J.done){clearTimeout(z.t);delete k[J.id];z.resolve(J.text!=null?J.text:z.text);return}return}if(!J.__om_eval)return;const W=J;const Z=(z)=>{Q.source.postMessage({...z,__om_eval_r:1,id:W.id},Q.origin)};try{const z=(0,eval)(W.code);if(z&&typeof z.then==="function"){z.then((V)=>Z({ok:1,v:U(V)}),(V)=>Z({ok:0,e:String(V)}))}else{Z({ok:1,v:U(z)})}}catch(z){Z({ok:0,e:String(z)})}})}})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall · CC Handoff</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --red-mid: rgba(224,85,85,0.45);
+    --red-dim: rgba(224,85,85,0.10);
+    --amber: #D4A855;
+    --amber-mid: rgba(212,168,85,0.45);
+    --amber-dim: rgba(212,168,85,0.12);
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-dim: rgba(91,173,122,0.10);
+  }
+
+  body {
+    background: #0d0d0d;
+    font-family: var(--sans);
+    font-weight: 300;
+    color: var(--text);
+    padding: 3rem 2rem 5rem;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+
+  .doc { max-width: 1080px; margin: 0 auto; }
+
+  /* HEADER */
+  .doc-header {
+    padding-bottom: 1.8rem;
+    margin-bottom: 2.2rem;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--sky); }
+  .doc-title {
+    font-family: var(--serif);
+    font-size: 2.6rem;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    margin-bottom: 8px;
+  }
+  .doc-subtitle {
+    font-size: 0.95rem;
+    color: var(--muted-strong);
+    max-width: 720px;
+    line-height: 1.65;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .meta-row strong { color: var(--text); font-weight: 500; }
+  .meta-row a { color: var(--sky); text-decoration: none; }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 99px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    border: 0.5px solid;
+    margin-top: 14px;
+  }
+  .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-pill.green { color: var(--green); border-color: var(--green-mid); background: var(--green-dim); }
+  .status-pill.green .dot { background: var(--green); }
+  .status-pill.amber { color: var(--amber); border-color: var(--amber-mid); background: var(--amber-dim); }
+  .status-pill.amber .dot { background: var(--amber); }
+  .status-pill.red { color: var(--red); border-color: var(--red-mid); background: var(--red-dim); }
+  .status-pill.red .dot { background: var(--red); }
+
+  /* SECTIONS */
+  section { margin: 3.5rem 0 0; }
+  .section-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 10px;
+  }
+  .section-title {
+    font-family: var(--serif);
+    font-size: 1.7rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    margin-bottom: 8px;
+  }
+  .section-sub {
+    font-size: 0.85rem;
+    color: var(--muted-strong);
+    max-width: 760px;
+    margin-bottom: 1.8rem;
+  }
+
+  /* SM NOTES BLOCK */
+  .sm-notes {
+    background: var(--surface);
+    border: 0.5px solid var(--amber-mid);
+    border-radius: 8px;
+    padding: 26px 28px;
+    margin: 1.2rem 0 2rem;
+  }
+  .sm-notes-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .sm-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--amber-dim);
+    border: 0.5px solid var(--amber-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    color: var(--amber);
+    font-size: 1.05rem;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .sm-from {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 2px;
+  }
+  .sm-byline { color: var(--muted); font-size: 0.78rem; font-family: var(--sans); }
+  .sm-notes p { font-size: 0.92rem; color: var(--muted-strong); line-height: 1.75; margin-bottom: 12px; }
+  .sm-notes p:last-child { margin-bottom: 0; }
+  .sm-notes strong { color: var(--text); font-weight: 500; }
+  .sm-notes em { color: var(--amber); font-style: italic; }
+  .sm-notes code {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--sky);
+    background: var(--sky-dim);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .sm-notes ul { margin: 4px 0 12px 18px; }
+  .sm-notes li { padding: 3px 0; }
+  .sm-sig {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 0.5px solid var(--faint);
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  /* TICKET CARDS */
+  .ticket {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 8px;
+    padding: 24px 28px 22px;
+    margin-bottom: 1.4rem;
+  }
+  .ticket-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .ticket-id-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .ticket-id {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    color: var(--sky);
+    text-transform: uppercase;
+  }
+  .ticket-est {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border: 0.5px solid var(--faint);
+    border-radius: 3px;
+  }
+  .ticket-title {
+    font-family: var(--serif);
+    font-size: 1.45rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    flex: 1;
+  }
+  .ticket-status {
+    flex-shrink: 0;
+  }
+  .ticket-scope {
+    color: var(--muted-strong);
+    font-size: 0.88rem;
+    line-height: 1.7;
+    margin: 10px 0 18px;
+  }
+
+  .ticket-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 8px 22px;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    margin-top: 6px;
+  }
+  .ticket-grid dt {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 3px;
+  }
+  .ticket-grid dd { color: var(--muted-strong); }
+  .ticket-grid dd strong { color: var(--text); font-weight: 500; }
+  .ticket-grid dd code {
+    font-family: var(--mono); font-size: 0.74rem; color: var(--sky);
+    background: var(--sky-dim); padding: 1px 5px; border-radius: 3px;
+  }
+  .ticket-grid dd em { color: var(--muted); font-style: italic; }
+  .ticket-grid ul { margin: 4px 0 4px 18px; }
+  .ticket-grid li { padding: 2px 0; }
+
+  .frame-refs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .frame-ref {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 0.5px solid var(--sky-mid);
+    background: var(--sky-dim);
+    color: var(--sky);
+    border-radius: 3px;
+    text-decoration: none;
+  }
+
+  .ac-list { font-size: 0.82rem; line-height: 1.7; }
+  .ac-list li {
+    list-style: none;
+    padding-left: 20px;
+    position: relative;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    color: var(--muted-strong);
+  }
+  .ac-list li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 8px;
+    width: 10px; height: 10px;
+    border: 0.5px solid var(--hair);
+    border-radius: 2px;
+  }
+  .ac-list li strong { color: var(--text); font-weight: 500; }
+  .ac-list li code { font-family: var(--mono); font-size: 0.72rem; color: var(--sky); background: var(--sky-dim); padding: 1px 4px; border-radius: 3px; }
+
+  /* RESOLVED / OPEN / OUT-OF-SCOPE TABLES */
+  .panel {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 8px;
+    padding: 22px 26px;
+    margin-bottom: 1.4rem;
+  }
+  .panel.green { border-color: var(--green-mid); }
+  .panel.amber { border-color: var(--amber-mid); }
+  .panel.muted-edge { border-color: var(--hair); }
+  .panel h3 {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .panel .panel-sub {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .panel.green h3 { color: var(--green); }
+  .panel.amber h3 { color: var(--amber); }
+  .panel ul { list-style: none; }
+  .panel li { padding: 8px 0; border-top: 0.25px solid var(--faint); font-size: 0.85rem; line-height: 1.65; color: var(--muted-strong); display: grid; grid-template-columns: 200px 1fr; gap: 18px; }
+  .panel li:first-child { border-top: none; padding-top: 0; }
+  .panel li strong { color: var(--text); font-weight: 500; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; padding-top: 2px; }
+  .panel li code { font-family: var(--mono); font-size: 0.74rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+  .panel li em { color: var(--text); font-style: italic; }
+
+  /* CHECKLIST */
+  .checklist {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 8px;
+    padding: 22px 26px;
+  }
+  .checklist h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; margin-bottom: 16px; }
+  .check-row {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 14px;
+    padding: 8px 0;
+    border-top: 0.25px solid var(--faint);
+    align-items: center;
+  }
+  .check-row:first-of-type { border-top: none; }
+  .check-row .box {
+    width: 16px; height: 16px;
+    border: 0.5px solid var(--hair);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .check-row.done .box { background: var(--green); border-color: var(--green); }
+  .check-row.done .box::after { content: '\2713'; color: var(--bg); font-size: 0.7rem; font-weight: 700; }
+  .check-row .label { font-size: 0.85rem; color: var(--muted-strong); }
+  .check-row.done .label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .check-row .who {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-left: 10px;
+  }
+
+  .footer-meta {
+    text-align: center;
+    padding-top: 24px;
+    margin-top: 4rem;
+    border-top: 0.5px solid var(--faint);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* PRINT */
+  @media print {
+    @page { size: A4 portrait; margin: 12mm 10mm; }
+    html, body {
+      background: #0d0d0d !important;
+      color: var(--text) !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      font-size: 11pt;
+      line-height: 1.5;
+    }
+    .doc { max-width: none !important; margin: 0 !important; }
+    .doc-header { padding-bottom: 14pt; margin-bottom: 18pt; }
+    .doc-title { font-size: 28pt; }
+    .doc-subtitle { font-size: 11pt; }
+    .meta-row { font-size: 7pt; gap: 16pt; margin-top: 10pt; }
+    .status-pill { font-size: 7pt; padding: 3pt 9pt 3pt 7pt; margin-top: 8pt; }
+
+    section { margin-top: 22pt; page-break-before: auto; break-before: auto; }
+    /* Force a fresh page before each major section except the first */
+    section + section { page-break-before: page; break-before: page; }
+
+    .section-eyebrow { font-size: 7pt; margin-bottom: 6pt; }
+    .section-title { font-size: 18pt; margin-bottom: 6pt; }
+    .section-sub { font-size: 10pt; margin-bottom: 14pt; }
+
+    .sm-notes { page-break-inside: avoid; break-inside: avoid; padding: 18pt 20pt; }
+    .sm-notes p, .sm-notes ul { font-size: 10pt; line-height: 1.55; }
+    .sm-avatar { width: 28pt; height: 28pt; font-size: 12pt; }
+
+    .ticket { page-break-inside: avoid; break-inside: avoid; margin-bottom: 14pt; padding: 16pt 20pt; }
+    .ticket-title { font-size: 16pt; }
+    .ticket-id { font-size: 8pt; }
+    .ticket-scope { font-size: 10pt; margin: 8pt 0 12pt; }
+    .ticket-grid { font-size: 9.5pt; grid-template-columns: 140pt 1fr; gap: 6pt 16pt; }
+    .ticket-grid dt { font-size: 7pt; }
+    .ticket-grid ul { margin: 4pt 0 4pt 14pt; }
+    .ac-list li { padding-top: 2pt; padding-bottom: 2pt; padding-left: 16pt; }
+    .ac-list li::before { top: 5pt; width: 7pt; height: 7pt; }
+    .frame-ref { font-size: 7pt; padding: 2pt 6pt; }
+
+    .panel { page-break-inside: avoid; break-inside: avoid; padding: 16pt 20pt; margin-bottom: 12pt; }
+    .panel h3 { font-size: 13pt; }
+    .panel li { grid-template-columns: 140pt 1fr; gap: 14pt; font-size: 10pt; padding: 6pt 0; }
+    .panel li strong { font-size: 7pt; }
+
+    .checklist { page-break-inside: avoid; break-inside: avoid; }
+    .check-row .label { font-size: 10pt; }
+    .check-row .box { width: 11pt; height: 11pt; }
+    .check-row.done .box::after { font-size: 8pt; }
+
+    a { color: var(--sky); text-decoration: none; }
+
+    .footer-meta { margin-top: 24pt; padding-top: 12pt; font-size: 7pt; }
+  }
+
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <!-- HEADER -->
+  <div class="doc-header" data-screen-label="Header">
+    <p class="eyebrow">CC HANDOFF · SPRINT DISPATCH · v4 wireframes</p>
+    <h1 class="doc-title">Prayer Wall — CC handoff</h1>
+    <p class="doc-subtitle">Five tickets to ship the Prayer Wall surfaces. Wireframes are locked at v4. Two open questions block kickoff; everything else is ready to dispatch.</p>
+    <div class="meta-row">
+      <span><strong>Source:</strong> <a href="Replant Prayer Wall Wireframes v4.html">Replant Prayer Wall Wireframes v4.html</a></span>
+      <span><strong>Baseline:</strong> iPhone 14 Pro Max · 430 × 932 pt</span>
+      <span><strong>Date:</strong> 24 May 2026</span>
+      <span><strong>From:</strong> SM</span>
+      <span><strong>To:</strong> CC</span>
+    </div>
+    <span class="status-pill amber"><span class="dot"></span>2 blockers · ready after</span>
+  </div>
+
+  <!-- SM NOTES -->
+  <section data-screen-label="SM Notes">
+    <p class="section-eyebrow">01 · sprint manager notes</p>
+    <h2 class="section-title">Read this before you start</h2>
+    <p class="section-sub">Sprint context, sequencing, and the two questions I need answered before the first commit. Everything else is on you.</p>
+
+    <div class="sm-notes">
+      <div class="sm-notes-head">
+        <div class="sm-avatar">SM</div>
+        <div>
+          <p class="sm-from">From Sprint Manager</p>
+          <p class="sm-byline">re: Prayer Wall · v4 dispatch · 24 May</p>
+        </div>
+      </div>
+
+      <p>CC — five tickets below. Build them in order: <strong>A → B → C → D → E</strong>. A and B together are the feed shell (filter bar + card chrome + detail sheet) and unlock everything else, so don't sequence those in parallel. C (landing) depends on B because the testimony rotator and card-anatomy are shared. D (Testimonies destination) reuses the segmented control from B. E (My open prayers) is the last one in — it depends on the posting flow stub which we're <em>not</em> shipping in this batch.</p>
+
+      <p>Two things are still <strong>blocked</strong>:</p>
+      <ul>
+        <li><strong>Filter button (top-right of feed)</strong> — Ife hasn't decided whether v1 ships the advanced-filters sheet or whether we drop the word entirely. Don't render it as a no-op. Wait on this.</li>
+        <li><strong>Praise-report moderation</strong> — does a posted praise need admin approval before it lands on the public Testimonies tab? This blocks ticket <strong>E</strong> (the after-state of <em>Mark as praise</em>). The other 4 tickets are unaffected.</li>
+      </ul>
+      <p>Tickets A–D you can start the moment Ife signs off the filter-button question. E waits on both.</p>
+
+      <p><strong>Locked, don't ask:</strong> the type scale, the colour tokens, every spacing value in the spec tables, the chalice-vessel icon for Receive, the confetti-popper for Celebrate, the heart-led <em>Stand in the gap</em> CTA. Those rounds are closed. If you need a value not in the spec, ping me before inventing one — we wrote everything explicit per KAN-76.</p>
+
+      <p><strong>Open to your call:</strong> animation timings beyond the keyframes I quoted, haptic feedback weight (light vs medium), the exact Spring/easing curve on sheet-rise. iOS standards win unless you have a reason.</p>
+
+      <p><strong>Watch for:</strong></p>
+      <ul>
+        <li>Card uniformity. Every <code>.pr-card</code> in feed views is <code>line-clamp: 3</code> on body — long requests must trail to <code>…</code>, not break the rhythm.</li>
+        <li>Scripture <em>never</em> truncates. Anywhere in the app. If it doesn't fit, drop the type scale or break across more lines. This is a hard project-wide rule.</li>
+        <li>The card heart is <strong>display-only</strong>. It shows count + this-leader's pressed state. The press only happens behind a deliberate tap inside the detail sheet. Don't make the heart a tap target on the card.</li>
+        <li>Underground masking is RPC-enforced. FE never re-derives it. Use whatever location string the server returns.</li>
+      </ul>
+
+      <p><strong>QA pairing:</strong> I'll pair with Ife for the design review at the end of A+B. After that we'll check D+E together because the testimony round-trip (post-praise → land in Testimonies tab with glow + "Just posted" pill) needs both surfaces alive to verify.</p>
+
+      <p class="sm-sig">— SM · talk to me if anything in the wireframes contradicts itself or if a value is missing. I'd rather slow you down for a minute than ship a guessed-spec.</p>
+    </div>
+  </section>
+
+  <!-- TICKETS -->
+  <section data-screen-label="Tickets">
+    <p class="section-eyebrow">02 · tickets</p>
+    <h2 class="section-title">Five tickets, in build order</h2>
+    <p class="section-sub">Each ticket includes scope, deliverables, acceptance criteria, frame refs (back to v4), and BE dependencies. Estimates are rough — your call to refine.</p>
+
+    <!-- TICKET A -->
+    <article class="ticket" data-screen-label="A · Filter bar">
+      <div class="ticket-head">
+        <div style="flex:1; min-width:60%;">
+          <div class="ticket-id-row">
+            <span class="ticket-id">KAN-PW-A</span>
+            <span class="ticket-est">~3 pts</span>
+          </div>
+          <h3 class="ticket-title">Multi-select filter bar — Urgent stack + category chips</h3>
+        </div>
+        <span class="status-pill green ticket-status"><span class="dot"></span>Ready</span>
+      </div>
+      <p class="ticket-scope">Replace the single-select pill row with a multi-select bar. Two semantic groups on one row: <strong>Urgent</strong> (tone modifier, red) on the left of a hairline divider; <strong>category</strong> chips (sky) on the right. Both groups multi-select independently. Bar promotes to a 2-row stack at 3+ active categories. <code>Clear</code> chip pins right edge once any chip is active.</p>
+
+      <dl class="ticket-grid">
+        <dt>Frames</dt>
+        <dd><span class="frame-refs"><span class="frame-ref">01·A idle</span><span class="frame-ref">01·B one-cat</span><span class="frame-ref">01·C Urgent+cat</span><span class="frame-ref">01·D 3+ stack</span><span class="frame-ref">01·E empty</span></span></dd>
+
+        <dt>Deliverables</dt>
+        <dd>
+          <ul>
+            <li>Pill chip component with idle / selected / Urgent-idle / Urgent-selected states</li>
+            <li>Sticky filter row at top of feed (under top bar)</li>
+            <li>Active-count strip (renders only when ≥1 chip active)</li>
+            <li>Single-row h-scroll mode + 2-row stack mode (promotes at 3+ cats)</li>
+            <li>Right-edge fade gradient in scroll mode</li>
+            <li>Empty-result state for the feed area</li>
+          </ul>
+        </dd>
+
+        <dt>BE deps</dt>
+        <dd>Extend <code>get_prayer_wall</code> RPC to accept <code>{ urgent: bool, categories: string[] }</code>. OR within <code>categories</code>, AND on <code>urgent</code>. Talk to BE before you start.</dd>
+
+        <dt>Acceptance criteria</dt>
+        <dd>
+          <ul class="ac-list">
+            <li>Tapping a category chip toggles selected; feed re-queries; active-count strip animates in (200 ms ease-out, height 0 → 36 pt)</li>
+            <li>Urgent chip toggles independently and stacks with category selections (AND logic)</li>
+            <li>Within-category logic is OR (≥2 cats selected returns posts tagged with any of them)</li>
+            <li>At 3 categories active, bar promotes to 2-row stack (active chips on top row, idle on second) — 200 ms ease-out</li>
+            <li><code>Clear</code> chip appears the moment any chip is active; tap reverts everything to idle in one frame, no confirm</li>
+            <li>Active-count strip names the active filters in plain language + result count</li>
+            <li>Empty-result frame shows the centered serif sentence + Clear-filters pill</li>
+            <li>All sizing matches Surface 01 spec table — verify chip height 32 pt, padding 12 pt h, radius 16 pt, gap 8 pt</li>
+            <li>Reduced motion: drop 250 ms cross-fades to 1-frame swaps</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <!-- TICKET B -->
+    <article class="ticket" data-screen-label="B · Card + detail">
+      <div class="ticket-head">
+        <div style="flex:1; min-width:60%;">
+          <div class="ticket-id-row">
+            <span class="ticket-id">KAN-PW-B</span>
+            <span class="ticket-est">~5 pts</span>
+          </div>
+          <h3 class="ticket-title">Prayer-card chrome + tap-to-expand detail sheet</h3>
+        </div>
+        <span class="status-pill green ticket-status"><span class="dot"></span>Ready</span>
+      </div>
+      <p class="ticket-scope">Uniform prayer-request card with line-clamp body, passive heart-count display, and tap-to-expand bottom sheet. Sheet carries the deliberate <strong>Stand in the gap</strong> red CTA (heart-led, mirrors Connect's shape) and the <strong>Connect to this church</strong> CTA (disabled for anonymous posts).</p>
+
+      <dl class="ticket-grid">
+        <dt>Frames</dt>
+        <dd><span class="frame-refs"><span class="frame-ref">01·F anon detail</span><span class="frame-ref">01·G named detail</span></span> + every feed card in 01·A–E</dd>
+
+        <dt>Deliverables</dt>
+        <dd>
+          <ul>
+            <li>Card component with 2 pt sky left-border (red for Urgent, green for Praise), line-clamp:3 body, › chevron in meta</li>
+            <li>Heart-count display (♥ N, outline / filled-red for this-leader pressed)</li>
+            <li>Bottom-sheet detail w/ feed dimmed to 0.22 + 8 pt backdrop blur + 55% black overlay</li>
+            <li><code>Stand in the gap</code> CTA: red filled (action) ↔ red-ghost filled-heart "You're standing in the gap" (after)</li>
+            <li><code>Connect to this church</code> CTA: ghost-sky (named) ↔ disabled w/ "Anonymous · direct message unavailable" (anonymous)</li>
+            <li>Sheet dismiss: swipe-down, ✕, tap-outside — feed restores opacity, scroll preserved</li>
+          </ul>
+        </dd>
+
+        <dt>BE deps</dt>
+        <dd>
+          <code>prayer_request.prayed_count</code> (int) +
+          <code>prayer_request_prayed_by(request_id, leader_id, prayed_at)</code> join table.
+          POST <code>/stand-in-the-gap</code> with toggle semantics (insert/delete). BE returns the new total count.
+        </dd>
+
+        <dt>Acceptance criteria</dt>
+        <dd>
+          <ul class="ac-list">
+            <li>Cards in feed are uniform height; long bodies trail to <code>…</code> at line 3</li>
+            <li>Card heart is <strong>not tappable</strong> — only the card body opens the sheet</li>
+            <li>Tap card → sheet rises from bottom (320 ms cubic ease-out), feed dims behind</li>
+            <li>Stand-in-the-gap tap → button cross-fades to red-ghost, meta heart fills, count +1, BE write</li>
+            <li>Second tap of same button → un-toggles cleanly (heart empties, count −1, BE delete)</li>
+            <li>Connect disabled when post is anonymous or underground; tap is no-op</li>
+            <li>Closing the sheet keeps scroll position; the card's heart reflects the post-tap state</li>
+            <li>Underground-masked posts show server-returned location string verbatim (no FE re-derivation)</li>
+          </ul>
+        </dd>
+
+        <dt>Gotchas</dt>
+        <dd>The detail-sheet heart in the meta row is <strong>display-only</strong> — the button below is the action. Don't accidentally make the meta-heart tappable.</dd>
+      </dl>
+    </article>
+
+    <!-- TICKET C -->
+    <article class="ticket" data-screen-label="C · Landing">
+      <div class="ticket-head">
+        <div style="flex:1; min-width:60%;">
+          <div class="ticket-id-row">
+            <span class="ticket-id">KAN-PW-C</span>
+            <span class="ticket-est">~4 pts</span>
+          </div>
+          <h3 class="ticket-title">Prayer Wall landing — Make / Receive + testimony rotator</h3>
+        </div>
+        <span class="status-pill green ticket-status"><span class="dot"></span>Ready</span>
+      </div>
+      <p class="ticket-scope">Tab landing screen. Full Eph 6:18 (KJV, untruncated) up top. Two hero action cards: <strong>Make intercession</strong> (incense bowl, sky border, primary CTA → feed) and <strong>Receive intercession</strong> (glass less-than-half-full, green border, locked v1 / unlocks v2). Small <em>View my open prayers →</em> text link below the cards. Testimony rotator at the bottom with auto-advance + dots.</p>
+
+      <dl class="ticket-grid">
+        <dt>Frames</dt>
+        <dd><span class="frame-refs"><span class="frame-ref">02·A verified</span><span class="frame-ref">02·B pending</span><span class="frame-ref">02·C rotator fade</span><span class="frame-ref">02·D posting sketch</span></span></dd>
+
+        <dt>Deliverables</dt>
+        <dd>
+          <ul>
+            <li>Scripture block — full Eph 6:18 KJV, Cormorant italic 16 pt, no truncation</li>
+            <li>Action card component (Make + Receive variants) — 30 pt Cormorant 500 title, 30 pt icon circle, 48 pt CTA</li>
+            <li>Pending-leader state for Receive (locked icon + "Available after your church is verified")</li>
+            <li>Quick-link <em>View my open prayers →</em> below action cards (sky text, sentence case, no count)</li>
+            <li>Testimony rotator: fetch newest 5, auto-advance 5.0 s, 250/250 ms cross-fade, 5 dots</li>
+            <li>"See all →" link in rotator label row → Testimonies tab</li>
+          </ul>
+        </dd>
+
+        <dt>BE deps</dt>
+        <dd>
+          <code>get_landing_testimonies()</code> RPC — returns 5 newest <code>testimony</code> rows.
+          Reuses the existing <code>users.verification_status</code> field for verified/pending state.
+        </dd>
+
+        <dt>Acceptance criteria</dt>
+        <dd>
+          <ul class="ac-list">
+            <li>Tab tap → lands here (not the feed); Make CTA → feed (Surface 01 with no filters)</li>
+            <li>Receive CTA in v1 fires alert: <em>"Receive intercession is coming soon. For now, your church can request prayer by writing us at <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="197a7677777c7a6d59696b76737c7a6d6b7c697578776d37766b7e">[email&#160;protected]</a></code>."</em></li>
+            <li>Pending leader sees Receive disabled with the verification-required hint copy</li>
+            <li>Scripture renders the full verse on every device width — never an ellipsis</li>
+            <li>Rotator auto-advances every 5.0 s; cross-fade 250 ms out + 250 ms in</li>
+            <li>Tap rotator card → Testimonies tab, that testimony at top with 1.6 s green glow + "From landing" pill (2.0 s fade)</li>
+            <li>Long-press rotator → indefinite pause; dot strip dims to 50%</li>
+            <li>Reduced motion: auto-advance off, dots become tappable, instant swaps</li>
+            <li>Zero testimonies → hide the rotator block entirely (don't show an empty card)</li>
+            <li>View-my-open-prayers link routes to Surface 04 (KAN-PW-E)</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <!-- TICKET D -->
+    <article class="ticket" data-screen-label="D · Testimonies">
+      <div class="ticket-head">
+        <div style="flex:1; min-width:60%;">
+          <div class="ticket-id-row">
+            <span class="ticket-id">KAN-PW-D</span>
+            <span class="ticket-est">~4 pts</span>
+          </div>
+          <h3 class="ticket-title">Testimonies tab — destination, deep-link, celebrate</h3>
+        </div>
+        <span class="status-pill green ticket-status"><span class="dot"></span>Ready</span>
+      </div>
+      <p class="ticket-scope">Testimonies destination screen. Reached two ways: tapping a rotating card on the landing (deep-link to a specific testimony, with glow), or tapping the <strong>Feed / Testimonies</strong> segmented control at the top of the feed. Each testimony card has a one-tap <em>celebrate</em> action (confetti popper + amber sparkle burst).</p>
+
+      <dl class="ticket-grid">
+        <dt>Frames</dt>
+        <dd><span class="frame-refs"><span class="frame-ref">03·A feed segment</span><span class="frame-ref">03·B testimonies root</span><span class="frame-ref">03·C deep-link arrival</span><span class="frame-ref">03·D anatomy</span></span></dd>
+
+        <dt>Deliverables</dt>
+        <dd>
+          <ul>
+            <li>Segmented control (Feed / Testimonies) — sits below top bar, above filter row in Feed mode</li>
+            <li>Testimonies-tab header: scripture (Rev 12:11, KJV, full) + green tint</li>
+            <li>Testimony card variant: 3 pt green left-border, green-tint fill <code>rgba(91,173,122,0.06)</code>, green outer border, "Testimony" tag green</li>
+            <li>Optional <em>Originally posted as:</em> quote block — renders when testimony has <code>original_request_id</code></li>
+            <li>Celebrate (confetti popper) tap action — inline, no expand. Tap-burst animation (0.6 s scale 1→1.2→1.0 + slight rotate) + 6–8 amber sparkle particles drift up & fade over 800 ms</li>
+            <li>Deep-link arrival: target testimony pulses 1.6 s green glow; "From landing" pill in header for 2.0 s then fades</li>
+            <li>Infinite scroll, page size 10, 80 %-depth trigger</li>
+          </ul>
+        </dd>
+
+        <dt>BE deps</dt>
+        <dd>
+          <code>testimony.celebrated_count</code> (int) +
+          <code>testimony_celebrated_by(testimony_id, leader_id, celebrated_at)</code> join.
+          <code>get_testimonies(page_offset)</code> RPC. Deep-link via <code>?testimony=&lt;id&gt;</code> URL param.
+        </dd>
+
+        <dt>Acceptance criteria</dt>
+        <dd>
+          <ul class="ac-list">
+            <li>Segmented control persists filter chip state across mode flips</li>
+            <li>Tapping a celebrate popper → tap-burst, count +1, persists per-leader; second tap un-celebrates</li>
+            <li>Card body tap is a no-op in v1 (200 ms green ripple feedback only)</li>
+            <li>Deep-linked testimony scrolls into view at top, expanded if it has an Originally-posted-as block</li>
+            <li>3 pt vs 2 pt left-border weight difference must be visually unmistakable against prayer-request cards</li>
+            <li>"Testimony" tag is always rendered (never a category tag)</li>
+            <li>Empty state: serif italic "No testimonies yet — be the first when God moves." + hairline rule + Rev 12:11 reference</li>
+            <li>Reduced motion: drop celebrate burst, keep static fill state</li>
+          </ul>
+        </dd>
+      </dl>
+    </article>
+
+    <!-- TICKET E -->
+    <article class="ticket" data-screen-label="E · Open prayers">
+      <div class="ticket-head">
+        <div style="flex:1; min-width:60%;">
+          <div class="ticket-id-row">
+            <span class="ticket-id">KAN-PW-E</span>
+            <span class="ticket-est">~5 pts</span>
+          </div>
+          <h3 class="ticket-title">My open prayers — edit, delete, mark as praise</h3>
+        </div>
+        <span class="status-pill amber ticket-status"><span class="dot"></span>Blocked · 1 question</span>
+      </div>
+      <p class="ticket-scope">Church-wide list of <em>open</em> prayer requests posted by any leader at this user's church. Overflow menu on each card: <strong>Edit</strong> (reuses posting sheet pre-populated), <strong>Delete</strong> (confirm dialog + soft-delete), <strong>Mark as praise</strong> (composer with original quoted → posts testimony → routes to Surface 03 with deep-link glow).</p>
+
+      <dl class="ticket-grid">
+        <dt>Frames</dt>
+        <dd><span class="frame-refs"><span class="frame-ref">04·A list</span><span class="frame-ref">04·B menu</span><span class="frame-ref">04·C confirm</span><span class="frame-ref">04·D composer</span><span class="frame-ref">04·E after-state</span></span></dd>
+
+        <dt>Deliverables</dt>
+        <dd>
+          <ul>
+            <li>List screen with church-scoped requests (not user-scoped) — author shown in meta row</li>
+            <li>Overflow trigger (•••) on each card, anchored top-right</li>
+            <li>Popover menu: Edit · Mark as praise (green) · Delete (red, below 0.25 pt divider)</li>
+            <li>Delete confirm modal — red eyebrow, gentle copy, ghost Cancel + red Delete buttons</li>
+            <li>Mark-as-praise composer (bottom sheet) — original-request green-bordered quote block on top, italic-serif textarea below, anonymous toggle, char counter, full-width green CTA</li>
+            <li>Post-success animation: sheet drops, route to Testimonies tab, 1.6 s green glow + "Just posted" pill</li>
+          </ul>
+        </dd>
+
+        <dt>BE deps</dt>
+        <dd>
+          <code>get_open_prayers(church_id)</code> RPC (returns all open requests at this church, any author).
+          <code>update_prayer_request</code>, <code>soft_delete_prayer_request</code> (sets <code>is_active = false</code> per D-01).
+          <code>create_testimony</code> — accepts <code>original_request_id</code> + body + anonymous flag; on success, flips original to <code>status='answered'</code> atomically.
+        </dd>
+
+        <dt>Acceptance criteria</dt>
+        <dd>
+          <ul class="ac-list">
+            <li>List shows every open request from any leader at this church (not just <code>request.author_id == current_user.id</code>)</li>
+            <li>Each card meta row names the author (<em>"by Pastor Daniel"</em>)</li>
+            <li>Edit reuses the v2 posting sheet (KAN-205); button label changes to <strong>Save changes</strong>; no re-notification of prior intercessors</li>
+            <li>Delete confirm dismisses cleanly on Cancel; Delete soft-deletes per D-01</li>
+            <li>Mark-as-praise composer carries the original request as a quoted block — same visual treatment as the Surface 03 "Originally posted as:" </li>
+            <li>Submitting praise creates Testimony w/ <code>original_request_id</code>, flips original to <code>status='answered'</code>, routes to Surface 03 w/ deep-link glow</li>
+            <li>If anonymous toggle is on, both the testimony and its quoted-original render with the church masked to <em>Anonymous · &lt;region&gt;</em></li>
+            <li>Dirty composer + dismiss → "Discard testimony?" confirm</li>
+            <li>Empty state: italic serif "Your church has no open prayer requests yet." + green ghost <strong>Receive intercession →</strong> back to landing</li>
+          </ul>
+        </dd>
+
+        <dt>Blocker</dt>
+        <dd>Praise moderation question (see SM notes). If a praise must go through admin approval before landing on Testimonies, the after-state animation changes — show a <em>"Pending review"</em> badge instead of the glow + pill. Wait on this answer before building 04·E.</dd>
+      </dl>
+    </article>
+
+  </section>
+
+  <!-- LOCKED / RESOLVED -->
+  <section data-screen-label="Locked decisions">
+    <p class="section-eyebrow">03 · resolved decisions</p>
+    <h2 class="section-title">Locked — don't re-open</h2>
+    <p class="section-sub">Settled across v1 → v4. CC doesn't need to ask; if anything here contradicts a wireframe, the wireframe is the bug, ping SM.</p>
+
+    <div class="panel green">
+      <h3>Locked design decisions</h3>
+      <p class="panel-sub">v4 final · 24 May</p>
+      <ul>
+        <li><strong>Stand in the gap action</strong><span>Lives inside the detail sheet as a deliberate red button (heart-led, Connect-shape mirror). Card heart is display-only. Toggle semantics, persists per leader.</span></li>
+        <li><strong>Card heart state</strong><span>Outline = leader hasn't prayed; filled red = leader has prayed. Count next to it is the global total across all leaders.</span></li>
+        <li><strong>After-state copy</strong><span><em>"You're standing in the gap"</em> — present-continuous, gentle. Re-tap allowed but copy doesn't suggest the prayer is being un-done.</span></li>
+        <li><strong>Celebrate (testimonies)</strong><span>One-tap on the card, no expand. Confetti popper icon with tap-burst (scale + rotate keyframes) + amber sparkle particles. Per-leader-once toggle.</span></li>
+        <li><strong>Receive icon</strong><span>Glass less than half-full (vessel awaiting fullness). Pairs with the rising-incense bowl on Make: one rising, one waiting to be filled.</span></li>
+        <li><strong>Make icon</strong><span>Bowl of incense rising (Rev 5:8 — golden bowls full of incense, which are the prayers of the saints).</span></li>
+        <li><strong>Scripture rule</strong><span>Never truncates. Project-wide. Drop the type scale or break across more lines if it doesn't fit. No ellipsis, ever.</span></li>
+        <li><strong>Card uniformity</strong><span>All feed prayer cards <code>line-clamp: 3</code> on body + › chevron in meta. My-open-prayers cards drop the chevron and use the overflow menu instead.</span></li>
+        <li><strong>Connect availability</strong><span>Direct-message CTA enabled only when post is not anonymous and not underground-masked. Disabled state copy: <em>"Anonymous · direct message unavailable."</em></span></li>
+        <li><strong>Action-card weight</strong><span>Hero action cards (Make / Receive) render at 30 pt Cormorant 500 with a 30 pt icon circle. They're doors, not chips.</span></li>
+        <li><strong>Contact email</strong><span><code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5a393534343f392e1a2a2835303f392e283f2a363b342e7435283d">[email&#160;protected]</a></code>. (Switched from <code>accounts@</code> earlier — this is the final.)</span></li>
+        <li><strong>Categories v1</strong><span>Six chips: Healing · Protection · Unity · Provision · Praise · Manpower. Locked at v1.</span></li>
+        <li><strong>"My" scope on Surface 04</strong><span>Church-wide, not user-wide. Every leader at a church sees every open request from any co-leader.</span></li>
+        <li><strong>Soft-delete pattern</strong><span>D-01 applies. Deleted requests flip <code>is_active = false</code>, never hard-deleted.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- OPEN QUESTIONS -->
+  <section data-screen-label="Open questions">
+    <p class="section-eyebrow">04 · open questions</p>
+    <h2 class="section-title">Blocking · ping Ife</h2>
+    <p class="section-sub">Two questions block kickoff. The remaining three are not blockers but should resolve before the relevant ticket ships.</p>
+
+    <div class="panel amber">
+      <h3>Must resolve before CC starts</h3>
+      <p class="panel-sub">2 blockers · Ife</p>
+      <ul>
+        <li><strong>Filter button</strong><span>Top-right of the feed top-bar. Does v1 ship an advanced-filters sheet (region, date range, leader search) — or do we drop the word entirely so we don't promise UI we won't have? Blocks <strong>KAN-PW-A</strong>.</span></li>
+        <li><strong>Praise moderation</strong><span>When a leader marks a request as praise, does the resulting testimony land on the public Testimonies tab immediately, or does it route through admin approval first? Blocks the after-state in <strong>KAN-PW-E</strong>.</span></li>
+      </ul>
+    </div>
+
+    <div class="panel muted-edge">
+      <h3>Resolve before the relevant ticket ships</h3>
+      <p class="panel-sub">3 non-blockers</p>
+      <ul>
+        <li><strong>Rotator pool size</strong><span>Confirmed at 5 newest testimonies on tab-enter — or do we want a curated set (e.g., admin-featured)? Blocks polish of <strong>KAN-PW-C</strong>.</span></li>
+        <li><strong>Anonymous label scope</strong><span>When a verified leader posts anonymously, does the card show <em>"Anonymous · &lt;region&gt;"</em> or just <em>"Anonymous"</em>? Underground-masked accounts already render <em>"Anonymous · &lt;region&gt;"</em>; anonymous-by-choice may be different. Relevant to all cards.</span></li>
+        <li><strong>Celebrate secondary action</strong><span>Default ship: count + sparkle. Candidate: <em>"send a kind word"</em> inline bubble after the celebrate burst lets the leader attach a one-line note to their celebration. Optional polish on <strong>KAN-PW-D</strong>.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- OUT OF SCOPE -->
+  <section data-screen-label="Out of scope">
+    <p class="section-eyebrow">05 · out of scope</p>
+    <h2 class="section-title">Not in this batch — tracked elsewhere</h2>
+    <p class="section-sub">Three things designed-for-future. Wireframes exist for context; they don't ship in this dispatch.</p>
+
+    <div class="panel">
+      <ul>
+        <li><strong>Posting flow (v2)</strong><span>The 4-step sheet sketched at <code>02·D</code>. Tracked under <strong>KAN-205</strong>. Unlocks Receive intercession + the Edit path in KAN-PW-E.</span></li>
+        <li><strong>Underground masking UI</strong><span>RPC-enforced; FE never re-derives. No FE work needed — the server returns the appropriate location string.</span></li>
+        <li><strong>Anonymous toggle UI</strong><span>Lives inside the posting sheet (KAN-205). Outside the scope of this batch.</span></li>
+        <li><strong>Testimony detail view</strong><span>v2 work. Tap-into-testimony-card opens a detail with comments / prayer count / share. Out of v1. Card body tap is a no-op for now.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- HANDOFF CHECKLIST -->
+  <section data-screen-label="Checklist">
+    <p class="section-eyebrow">06 · handoff checklist</p>
+    <h2 class="section-title">Before CC commits the first line</h2>
+    <p class="section-sub">Where we are on the dispatch flow.</p>
+
+    <div class="checklist">
+      <h3>SM side</h3>
+      <div class="check-row done"><div class="box"></div><div class="label">CD wireframes locked at v4 <span class="who">SM · CD</span></div></div>
+      <div class="check-row done"><div class="box"></div><div class="label">Every value explicit in spec tables (per KAN-76) <span class="who">CD</span></div></div>
+      <div class="check-row done"><div class="box"></div><div class="label">Interaction contracts written for every state that changes on tap or scroll <span class="who">CD</span></div></div>
+      <div class="check-row done"><div class="box"></div><div class="label">Tickets broken down by surface with frame refs <span class="who">SM</span></div></div>
+      <div class="check-row done"><div class="box"></div><div class="label">Resolved decisions captured (this doc) <span class="who">SM</span></div></div>
+      <div class="check-row done"><div class="box"></div><div class="label">Open questions logged & assigned to Ife <span class="who">SM</span></div></div>
+      <div class="check-row"><div class="box"></div><div class="label">Ife signs off on filter-button question <span class="who">PRODUCT</span></div></div>
+      <div class="check-row"><div class="box"></div><div class="label">Ife signs off on praise-moderation question <span class="who">PRODUCT</span></div></div>
+      <div class="check-row"><div class="box"></div><div class="label">BE confirms API shape for <code>stand_in_the_gap</code> + <code>celebrate</code> toggles <span class="who">BE</span></div></div>
+
+      <h3 style="margin-top:24px;">CC side · please confirm before starting</h3>
+      <div class="check-row"><div class="box"></div><div class="label">Read v4 wireframes end-to-end (esp. interaction contracts)<span class="who">CC</span></div></div>
+      <div class="check-row"><div class="box"></div><div class="label">Confirm KAN-PW-A → KAN-PW-D build order works for your sequencing<span class="who">CC</span></div></div>
+      <div class="check-row"><div class="box"></div><div class="label">Flag anything in the spec that isn't explicit before inventing a value<span class="who">CC</span></div></div>
+      <div class="check-row"><div class="box"></div><div class="label">Pair-review with SM + Ife at the end of A+B, again at the end of D+E<span class="who">CC · SM · CD</span></div></div>
+    </div>
+  </section>
+
+  <p class="footer-meta">Replant · Prayer Wall · CC handoff · 24 May 2026 · dispatched from v4</p>
+
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // Auto-print once fonts + DOM are ready
+  (function() {
+    function go() {
+      // Small safety delay to let any layout settle
+      setTimeout(function() { window.print(); }, 500);
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(go);
+    } else if (document.readyState === 'complete') {
+      go();
+    } else {
+      window.addEventListener('load', go);
+    }
+  })();
+</script>
+</body>
+</html>
