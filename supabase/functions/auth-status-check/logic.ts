@@ -73,11 +73,34 @@ export function resolveStatus(
 
   const deadline = row.church?.verification_deadline ?? null;
   if (deadline === null) {
-    // Pending without a church-attached deadline is a data-integrity anomaly:
-    // schema makes churches.verification_deadline NOT NULL and onboarding always
-    // attaches a church before the user can authenticate. Surface as 5xx via the
-    // caller's catch-all rather than fabricate a deadline.
-    throw new Error("Pending user has no church verification_deadline");
+    // KAN-36 (Founder Option Y, SEC c.14194, locked 2026-05-21) —
+    // NULL deadline is fail-closed. Two real ways this lands here:
+    //   (1) `users.church_id IS NULL` — skip-flow leader, no church
+    //       attached. The embedded `church:churches(...)` join returns
+    //       null, so `row.church?.verification_deadline` is null.
+    //   (2) `users.church_id` is set but the church row's
+    //       verification_deadline is NULL — data-integrity anomaly or
+    //       a legacy / test row that bypassed onboarding's deadline
+    //       computation.
+    // Both surfaces are fail-closed per Founder lock. Return the
+    // deactivated branch WITHOUT calling deactivateAtomically:
+    //   - For (1) the user has no church_id to write deactivation
+    //     against in a meaningful way for the audit-log forensic
+    //     surface (the audit row's church_id would be null, and the
+    //     meta would have no missed deadline to record).
+    //   - For (2) the anomaly is the missing deadline itself, not a
+    //     deadline that was missed. The atomic UPDATE + audit-log path
+    //     is reserved for the deadline-passed case where the audit row
+    //     tagged trigger: "login_check" has forensic value about
+    //     which deadline was crossed. NULL-deadline anomalies belong
+    //     to a different forensic surface (data-integrity audit).
+    // Net: branch flips to "deactivated"; RootNavigator routes the
+    // user to the deactivated screen; login flow stops. Persistence
+    // of the deactivated state for these users falls to (a) a
+    // subsequent write that backfills the deadline + flips status,
+    // or (b) admin operator action. SEC 11015 #3a preserved — no
+    // throw, no 5xx, session not retained false-positively.
+    return { kind: "deactivated" };
   }
   const now = Date.parse(nowISO);
   const dl = Date.parse(deadline);
