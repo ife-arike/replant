@@ -48,16 +48,19 @@ export const CATEGORIES = [
   'Laborers',
 ] as const;
 export type PrayerCategory = (typeof CATEGORIES)[number];
-export type CategoryFilter = 'All' | PrayerCategory;
 export type UrgencyFilter = 'All' | 'Urgent';
 
-export const CATEGORY_FILTERS: CategoryFilter[] = ['All', ...CATEGORIES];
+// Multi-select category state — empty Set means "All" (wide-open feed).
+// Read-only at the type level so consumers don't mutate the parent's
+// Set instance; the screen always replaces with `new Set(...)` to keep
+// React's identity-based change detection honest.
+export type SelectedCategories = ReadonlySet<PrayerCategory>;
+
 export const URGENCY_FILTERS: UrgencyFilter[] = ['All', 'Urgent'];
 
 // Default filter state — applied on tab mount and re-applied on tab
-// blur. The "All / All" defaults map to (filter_urgent: null,
-// filter_categories: null) on the wire, which is the wide-open feed.
-export const DEFAULT_CATEGORY: CategoryFilter = 'All';
+// blur. The wide-open feed maps to (filter_urgent: null,
+// filter_categories: null) on the wire.
 export const DEFAULT_URGENCY: UrgencyFilter = 'All';
 
 // Founder ruling 2026-05-24 — anonymous posts (leader_display_name
@@ -101,23 +104,30 @@ export interface TestimonyRow {
 }
 
 // Server-side filter param builder. Maps the two-axis FE filter state
-// to the v2 RPC payload shape. 'All' on either axis collapses to null
-// on the wire so the RPC can short-circuit the filter predicate.
+// to the v2 RPC payload shape. Empty Set or 'All' urgency collapses to
+// null on the wire so the RPC can short-circuit the filter predicate.
+// Category iteration order matches Set insertion order, which the
+// caller controls — the screen's toggle helper appends on add, so the
+// wire array preserves tap order. The RPC uses ANY(...) semantics so
+// order does not affect the result.
 export function buildRpcFilters(
-  category: CategoryFilter,
+  categories: SelectedCategories,
   urgency: UrgencyFilter,
 ): { filter_urgent: boolean | null; filter_categories: string[] | null } {
   return {
     filter_urgent: urgency === 'Urgent' ? true : null,
-    filter_categories: category === 'All' ? null : [category],
+    filter_categories: categories.size === 0 ? null : Array.from(categories),
   };
 }
 
 // True when either axis is narrowed from the wide-open default. Used by
 // the filter bar to decide whether to render the Clear chip + active-
 // count strip.
-export function hasActiveFilter(category: CategoryFilter, urgency: UrgencyFilter): boolean {
-  return category !== DEFAULT_CATEGORY || urgency !== DEFAULT_URGENCY;
+export function hasActiveFilter(
+  categories: SelectedCategories,
+  urgency: UrgencyFilter,
+): boolean {
+  return categories.size > 0 || urgency !== DEFAULT_URGENCY;
 }
 
 // Location-line composer. Underground rows arrive from the RPC with

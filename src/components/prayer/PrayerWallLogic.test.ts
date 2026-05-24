@@ -18,8 +18,6 @@ import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import {
   ANONYMOUS_LEADER_LABEL,
   CATEGORIES,
-  CATEGORY_FILTERS,
-  DEFAULT_CATEGORY,
   DEFAULT_URGENCY,
   PAGE_SIZE,
   TESTIMONY_PAGE_SIZE,
@@ -55,20 +53,6 @@ describe('CATEGORIES — Founder lock 2026-05-24 (8 categories, exact casing)', 
     ]);
   });
 
-  it('CATEGORY_FILTERS prepends "All" to the 8-set', () => {
-    expect(CATEGORY_FILTERS).toEqual([
-      'All',
-      'Healing',
-      'Protection',
-      'Provision',
-      'Salvation',
-      'Unity',
-      'Guidance',
-      'Endurance',
-      'Laborers',
-    ]);
-  });
-
   it('URGENCY_FILTERS is exactly ["All", "Urgent"]', () => {
     expect(URGENCY_FILTERS).toEqual(['All', 'Urgent']);
   });
@@ -79,64 +63,89 @@ describe('CATEGORIES — Founder lock 2026-05-24 (8 categories, exact casing)', 
   });
 });
 
-describe('defaults + hasActiveFilter', () => {
-  it('DEFAULT_CATEGORY / DEFAULT_URGENCY both equal "All"', () => {
-    expect(DEFAULT_CATEGORY).toBe('All');
+describe('defaults + hasActiveFilter (multi-select)', () => {
+  it('DEFAULT_URGENCY equals "All"', () => {
     expect(DEFAULT_URGENCY).toBe('All');
   });
 
-  it('hasActiveFilter is false when both axes are at default', () => {
-    expect(hasActiveFilter('All', 'All')).toBe(false);
+  it('hasActiveFilter is false when both axes are at default (empty Set + All)', () => {
+    expect(hasActiveFilter(new Set(), 'All')).toBe(false);
   });
 
-  it('hasActiveFilter is true when category is narrowed', () => {
-    expect(hasActiveFilter('Healing', 'All')).toBe(true);
-    expect(hasActiveFilter('Salvation', 'All')).toBe(true);
+  it('hasActiveFilter is true when one category is selected', () => {
+    expect(hasActiveFilter(new Set(['Healing']), 'All')).toBe(true);
+    expect(hasActiveFilter(new Set(['Salvation']), 'All')).toBe(true);
   });
 
-  it('hasActiveFilter is true when urgency is narrowed', () => {
-    expect(hasActiveFilter('All', 'Urgent')).toBe(true);
+  it('hasActiveFilter is true when many categories are selected', () => {
+    expect(hasActiveFilter(new Set(['Healing', 'Protection', 'Provision']), 'All')).toBe(true);
+  });
+
+  it('hasActiveFilter is true when urgency is narrowed (empty Set + Urgent)', () => {
+    expect(hasActiveFilter(new Set(), 'Urgent')).toBe(true);
   });
 
   it('hasActiveFilter is true when both axes are narrowed', () => {
-    expect(hasActiveFilter('Healing', 'Urgent')).toBe(true);
+    expect(hasActiveFilter(new Set(['Healing']), 'Urgent')).toBe(true);
   });
 });
 
-describe('buildRpcFilters — v2 RPC payload shape (4 canonical cases)', () => {
-  it('("All", "All") → wide-open feed (both filters null)', () => {
-    expect(buildRpcFilters('All', 'All')).toEqual({
+describe('buildRpcFilters — Set-based v2 RPC payload shape', () => {
+  it('(empty Set, "All") → wide-open feed (both filters null)', () => {
+    expect(buildRpcFilters(new Set(), 'All')).toEqual({
       filter_urgent: null,
       filter_categories: null,
     });
   });
 
-  it('("Healing", "All") → single-category filter', () => {
-    expect(buildRpcFilters('Healing', 'All')).toEqual({
+  it('(["Healing"], "All") → single-category filter', () => {
+    expect(buildRpcFilters(new Set(['Healing']), 'All')).toEqual({
       filter_urgent: null,
       filter_categories: ['Healing'],
     });
   });
 
-  it('("All", "Urgent") → urgent-only filter', () => {
-    expect(buildRpcFilters('All', 'Urgent')).toEqual({
+  it('(["Healing", "Protection"], "All") → multi-category filter', () => {
+    expect(buildRpcFilters(new Set(['Healing', 'Protection']), 'All')).toEqual({
+      filter_urgent: null,
+      filter_categories: ['Healing', 'Protection'],
+    });
+  });
+
+  it('(empty Set, "Urgent") → urgent-only filter', () => {
+    expect(buildRpcFilters(new Set(), 'Urgent')).toEqual({
       filter_urgent: true,
       filter_categories: null,
     });
   });
 
-  it('("Salvation", "Urgent") → both filters set', () => {
-    expect(buildRpcFilters('Salvation', 'Urgent')).toEqual({
+  it('(["Salvation"], "Urgent") → both filters set', () => {
+    expect(buildRpcFilters(new Set(['Salvation']), 'Urgent')).toEqual({
       filter_urgent: true,
       filter_categories: ['Salvation'],
     });
+  });
+
+  it('3+ categories selected → all sent on the wire (reachable stack branch)', () => {
+    expect(buildRpcFilters(new Set(['Healing', 'Protection', 'Provision']), 'All')).toEqual({
+      filter_urgent: null,
+      filter_categories: ['Healing', 'Protection', 'Provision'],
+    });
+  });
+
+  it('all 8 categories selected → full enumeration on the wire', () => {
+    const all = new Set(CATEGORIES);
+    const out = buildRpcFilters(all, 'Urgent');
+    expect(out.filter_urgent).toBe(true);
+    expect(out.filter_categories?.length).toBe(8);
+    expect(new Set(out.filter_categories ?? [])).toEqual(all);
   });
 
   it('preserves exact category casing on the wire', () => {
     // RPC compares filter_categories case-sensitively against
     // prayer_requests.category, so the FE must not down-case here.
     for (const cat of CATEGORIES) {
-      const out = buildRpcFilters(cat, 'All');
+      const out = buildRpcFilters(new Set([cat]), 'All');
       expect(out.filter_categories).toEqual([cat]);
     }
   });

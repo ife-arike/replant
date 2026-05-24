@@ -54,12 +54,12 @@ import PrayerWallSegmentedControl from '../../components/prayer/PrayerWallSegmen
 import TestimoniesView from '../../components/prayer/TestimoniesView';
 import MyOpenPrayersView from '../../components/prayer/MyOpenPrayersView';
 import {
-  DEFAULT_CATEGORY,
   DEFAULT_URGENCY,
   PAGE_SIZE,
   buildRpcFilters,
-  type CategoryFilter,
+  type PrayerCategory,
   type PrayerRow,
+  type SelectedCategories,
   type UrgencyFilter,
 } from '../../components/prayer/PrayerWallLogic';
 
@@ -90,19 +90,33 @@ export default function PrayerWallScreen() {
   const [rows, setRows] = useState<PrayerRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('initial');
   const [hasMore, setHasMore] = useState(true);
-  const [category, setCategory] = useState<CategoryFilter>(DEFAULT_CATEGORY);
+  const [selectedCategories, setSelectedCategories] = useState<SelectedCategories>(
+    () => new Set<PrayerCategory>(),
+  );
   const [urgency, setUrgency] = useState<UrgencyFilter>(DEFAULT_URGENCY);
   const [detailRow, setDetailRow] = useState<PrayerRow | null>(null);
   const [deepLinkTestimonyId, setDeepLinkTestimonyId] = useState<string | null>(null);
   const hasFetchedOnce = useRef(false);
   const listRef = useRef<FlatList<PrayerRow> | null>(null);
 
+  // Toggle a category in/out of the selected Set. Always returns a new
+  // Set instance so React re-renders consumers (Set identity is the
+  // change signal; mutating in place would not trip dependency arrays).
+  const handleCategoryToggle = useCallback((cat: PrayerCategory) => {
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  }, []);
+
   // ─── Feed loaders ─────────────────────────────────────────────────
 
   const loadInitial = useCallback(
-    async (cat: CategoryFilter, urg: UrgencyFilter) => {
+    async (cats: SelectedCategories, urg: UrgencyFilter) => {
       setLoadState('initial');
-      const { filter_urgent, filter_categories } = buildRpcFilters(cat, urg);
+      const { filter_urgent, filter_categories } = buildRpcFilters(cats, urg);
       const { rows: page, error } = await fetchPage(0, filter_urgent, filter_categories);
       hasFetchedOnce.current = true;
       if (error) {
@@ -118,7 +132,7 @@ export default function PrayerWallScreen() {
 
   const refresh = useCallback(async () => {
     setLoadState('refreshing');
-    const { filter_urgent, filter_categories } = buildRpcFilters(category, urgency);
+    const { filter_urgent, filter_categories } = buildRpcFilters(selectedCategories, urgency);
     const { rows: page, error } = await fetchPage(0, filter_urgent, filter_categories);
     hasFetchedOnce.current = true;
     if (error) {
@@ -129,12 +143,12 @@ export default function PrayerWallScreen() {
     setHasMore(page.length === PAGE_SIZE);
     setLoadState('idle');
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  }, [category, urgency]);
+  }, [selectedCategories, urgency]);
 
   const loadMore = useCallback(async () => {
     if (loadState !== 'idle' || !hasMore || rows.length === 0) return;
     setLoadState('paging');
-    const { filter_urgent, filter_categories } = buildRpcFilters(category, urgency);
+    const { filter_urgent, filter_categories } = buildRpcFilters(selectedCategories, urgency);
     const { rows: page, error } = await fetchPage(rows.length, filter_urgent, filter_categories);
     if (error) {
       setLoadState('idle');
@@ -146,7 +160,7 @@ export default function PrayerWallScreen() {
       setHasMore(page.length === PAGE_SIZE);
     }
     setLoadState('idle');
-  }, [category, urgency, hasMore, loadState, rows.length]);
+  }, [selectedCategories, urgency, hasMore, loadState, rows.length]);
 
   // Feed mounts on view transition to 'feed'. The fetch always runs
   // on first entry; subsequent entries within the same focus cycle
@@ -154,29 +168,31 @@ export default function PrayerWallScreen() {
   useEffect(() => {
     if (view !== 'feed') return;
     if (!hasFetchedOnce.current) {
-      void loadInitial(category, urgency);
+      void loadInitial(selectedCategories, urgency);
     }
-    // intentionally omits category/urgency — filter-change effect handles those
+    // intentionally omits filter deps — filter-change effect handles those
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
   // Filter changes — reset to offset 0 and refetch. Only fires while
   // the leader is on the feed view; switching to other views doesn't
-  // trigger a network call here.
+  // trigger a network call here. selectedCategories identity changes
+  // on every toggle (handleCategoryToggle always returns a new Set),
+  // so this effect catches multi-select additions and removals.
   useEffect(() => {
     if (view !== 'feed') return;
     if (!hasFetchedOnce.current) return; // initial-load effect owns the first fetch
-    void loadInitial(category, urgency);
+    void loadInitial(selectedCategories, urgency);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, urgency]);
+  }, [selectedCategories, urgency]);
 
   // Tab-blur reset — restore landing + defaults + clear deep-link.
   useFocusEffect(
     useCallback(() => {
       return () => {
         setView('landing');
-        setCategory(DEFAULT_CATEGORY);
+        setSelectedCategories(new Set());
         setUrgency(DEFAULT_URGENCY);
         setDetailRow(null);
         setDeepLinkTestimonyId(null);
@@ -185,7 +201,7 @@ export default function PrayerWallScreen() {
   );
 
   const handleClearFilters = () => {
-    setCategory(DEFAULT_CATEGORY);
+    setSelectedCategories(new Set());
     setUrgency(DEFAULT_URGENCY);
   };
 
@@ -274,10 +290,10 @@ export default function PrayerWallScreen() {
       {view === 'feed' ? (
         <>
           <PrayerWallFilterBar
-            category={category}
+            selectedCategories={selectedCategories}
             urgency={urgency}
             resultCount={rows.length}
-            onCategoryChange={setCategory}
+            onCategoryToggle={handleCategoryToggle}
             onUrgencyChange={setUrgency}
             onClear={handleClearFilters}
           />
@@ -286,7 +302,7 @@ export default function PrayerWallScreen() {
             hasFetchedOnce: hasFetchedOnce.current,
             rows,
             isVerified,
-            loadInitial: () => void loadInitial(category, urgency),
+            loadInitial: () => void loadInitial(selectedCategories, urgency),
             refresh,
             loadMore,
             listRef,
