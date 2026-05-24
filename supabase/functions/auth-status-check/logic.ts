@@ -1,13 +1,23 @@
 // Type definitions duplicated locally rather than imported from /types/auth.ts so the
 // edge runtime bundle has no out-of-tree imports to resolve. Must stay in lockstep
-// with /types/auth.ts (the canonical FE source). Both derive from the locked contract
-// in KAN-44 comment 10292.
+// with the FE mirror in src/contexts/AuthProvider.tsx. Both derive from the locked
+// contract in KAN-44 comment 10292, amended by KAN-36 v2 per SEC c.14235 + Founder
+// ratification c.14236 to add the binary recovery_path lifecycle field.
 export type VerificationStatus = "active" | "pending" | "deactivated";
+
+// KAN-36 v2 (SEC c.14235 #1) — single binary field, exactly two values.
+// No third value, no enum expansion. Maps to FE copy variant per the
+// design v3 modal.
+export type RecoveryPath = "verification_renewal" | "support_contact";
 
 export interface AuthStatusResponse {
   verification_status: VerificationStatus;
   verification_deadline: string | null;
   days_remaining: number | null;
+  // Present iff verification_status === "deactivated". Omitted on
+  // "active" and "pending" bodies — the FE only branches copy when the
+  // user has landed on the deactivated surface.
+  recovery_path?: RecoveryPath;
 }
 
 export type DbVerificationStatus = "pending" | "verified" | "deactivated";
@@ -24,7 +34,7 @@ export interface UserStatusRow {
 export type ResolvedStatus =
   | { kind: "active" }
   | { kind: "pending"; verification_deadline: string; days_remaining: number }
-  | { kind: "deactivated" }
+  | { kind: "deactivated"; recovery_path: RecoveryPath }
   | { kind: "pending_past_deadline_needs_write"; verification_deadline: string };
 
 export interface AuditLogRow {
@@ -69,7 +79,28 @@ export function resolveStatus(
   nowISO: string,
 ): ResolvedStatus {
   if (row.verification_status === "verified") return { kind: "active" };
-  if (row.verification_status === "deactivated") return { kind: "deactivated" };
+
+  if (row.verification_status === "deactivated") {
+    // KAN-36 v2 (SEC c.14235 #2/#4, Founder c.14236, locked 2026-05-24) —
+    // recovery_path inferred from row data only (constant-time, no extra
+    // query). A deactivation is treated as deadline-driven (renewal path)
+    // when the row carries a past, non-NULL church.verification_deadline —
+    // matching both cron-flipped users and any user the login-check path
+    // wrote on a prior call. Every other shape (future deadline, NULL
+    // deadline, no church attached) falls into the support bucket. NULL-
+    // deadline anomalies on DB-deactivated rows resolve to support_contact
+    // by the same rule that c.14235 #6 locks for the pending+NULL branch
+    // below — the FE never sees verification_renewal on a NULL-deadline
+    // row.
+    const deactDeadline = row.church?.verification_deadline ?? null;
+    if (deactDeadline !== null) {
+      const dl = Date.parse(deactDeadline);
+      const now = Date.parse(nowISO);
+      if (Number.isNaN(dl) || Number.isNaN(now)) throw new Error("Invalid timestamp");
+      if (dl <= now) return { kind: "deactivated", recovery_path: "verification_renewal" };
+    }
+    return { kind: "deactivated", recovery_path: "support_contact" };
+  }
 
   const deadline = row.church?.verification_deadline ?? null;
   if (deadline === null) {
@@ -100,7 +131,16 @@ export function resolveStatus(
     // subsequent write that backfills the deadline + flips status,
     // or (b) admin operator action. SEC 11015 #3a preserved — no
     // throw, no 5xx, session not retained false-positively.
-    return { kind: "deactivated" };
+    //
+    // KAN-36 v2 (SEC c.14235 #6, locked 2026-05-24) — NULL-deadline
+    // fail-closed MUST map to recovery_path: "support_contact", not
+    // verification_renewal. Founder Option Y lock (2026-05-21) is
+    // about the fail-closed *routing*; SEC c.14235 #6 is the explicit
+    // ruling that the recovery_path on this branch is the support
+    // bucket. A leader with no deadline cannot meaningfully "renew"
+    // a window that was never set; the only forward path is a
+    // human conversation.
+    return { kind: "deactivated", recovery_path: "support_contact" };
   }
   const now = Date.parse(nowISO);
   const dl = Date.parse(deadline);
@@ -126,8 +166,25 @@ export function buildResponse(resolved: ResolvedStatus): AuthStatusResponse {
         days_remaining: resolved.days_remaining,
       };
     case "deactivated":
+      return {
+        verification_status: "deactivated",
+        verification_deadline: null,
+        days_remaining: null,
+        recovery_path: resolved.recovery_path,
+      };
     case "pending_past_deadline_needs_write":
-      return { verification_status: "deactivated", verification_deadline: null, days_remaining: null };
+      // KAN-36 v2 (SEC c.14235 #2) — login-check just-flipped a pending
+      // user past their deadline. Same trigger as cron, so the response
+      // collapses with the cron-deactivated past-deadline case to
+      // recovery_path: "verification_renewal". The two paths remain
+      // byte-identical inside the renewal bucket; only the renewal/
+      // support distinction is intentionally exposed.
+      return {
+        verification_status: "deactivated",
+        verification_deadline: null,
+        days_remaining: null,
+        recovery_path: "verification_renewal",
+      };
   }
 }
 

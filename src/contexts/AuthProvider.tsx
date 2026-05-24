@@ -44,13 +44,22 @@ import { on401 } from "../lib/auth-events";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from "../lib/supabase";
 import { signOutAndClear, PENDING_SIGNOUT_KEY } from "../utils/signOutAndClear";
 
+// KAN-36 v2 (SEC c.14235 + Founder c.14236, locked 2026-05-24) — the
+// "deactivated" branch was removed. Deactivation now surfaces as a modal
+// overlay on the Login surface, not a routed Stack.Screen. AuthProvider
+// triggers the modal AND calls signOut on detection, so the branch flips
+// straight from active/pending/loading to unauthenticated and the user
+// lands back on the login form behind the modal.
 export type AuthBranch =
   | "loading"
   | "unauthenticated"
   | "active"
   | "pending"
-  | "deactivated"
   | "password_recovery";
+
+// Mirrored from supabase/functions/auth-status-check/logic.ts; must stay
+// in lockstep. KAN-36 v2 binary-only contract — no third value.
+export type RecoveryPath = "verification_renewal" | "support_contact";
 
 export interface AuthState {
   session: Session | null;
@@ -58,6 +67,14 @@ export interface AuthState {
   verificationDeadline: string | null;
   daysRemaining: number | null;
   loading: boolean;
+  // KAN-36 v2 — non-null when a deactivation modal is on screen. The
+  // session has already been signed out by the time this is set (modal
+  // is presented over the login surface, not over an authenticated
+  // session). DeactivationModal reads this and renders the matching
+  // copy variant; calls dismissDeactivationModal on tap-outside / tap-
+  // contact / tap-elsewhere.
+  deactivationModalPath: RecoveryPath | null;
+  dismissDeactivationModal: () => void;
   refresh: () => Promise<void>;
   // KAN-38 — used by SetNewPasswordScreen (Screen 06B) after success /
   // expired states to drop the recovery session and bounce the leader
@@ -84,6 +101,11 @@ interface AuthStatusResponse {
   verification_status: "active" | "pending" | "deactivated";
   verification_deadline: string | null;
   days_remaining: number | null;
+  // KAN-36 v2 — present iff verification_status === "deactivated". The
+  // BE guarantees one of the two binary values; we default to
+  // "support_contact" on a missing field so an unknown future-pre-v4
+  // function deploy never surfaces "verification_renewal" by accident.
+  recovery_path?: RecoveryPath;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -103,6 +125,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verificationDeadline, setVerificationDeadline] = useState<string | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deactivationModalPath, setDeactivationModalPath] = useState<RecoveryPath | null>(null);
+
+  const dismissDeactivationModal = useCallback(() => {
+    setDeactivationModalPath(null);
+  }, []);
 
   const inFlight = useRef(false);
   const lastCheckedAt = useRef(0);                          // SEC 11015 #3b — debounce
@@ -205,9 +232,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = (await response.json()) as AuthStatusResponse;
+      if (data.verification_status === "deactivated") {
+        // KAN-36 v2 (SEC c.14235 + Founder c.14236, locked 2026-05-24) —
+        // surface as a modal on the Login surface, not as a routed branch.
+        // The session must be cleared before the leader re-engages with
+        // the login form; supabase.auth.signOut() fires SIGNED_OUT, which
+        // the onAuthStateChange handler below flips to branch:
+        // "unauthenticated". The modal stays mounted (top-level overlay
+        // in App.tsx) until the leader dismisses it.
+        //
+        // recovery_path defaults to "support_contact" on a missing field
+        // so a stale pre-v4 function deploy never surfaces the renewal
+        // copy by accident. The BE contract guarantees one of the two
+        // values when v4+ is live, but defending the FE here costs
+        // nothing and preserves the conservative-on-unknown invariant.
+        setDeactivationModalPath(data.recovery_path ?? "support_contact");
+        setVerificationDeadline(null);
+        setDaysRemaining(null);
+        await supabase.auth.signOut().catch(() => {
+          // signOut errors don't block local clearing — onAuthStateChange
+          // still fires SIGNED_OUT on the local SDK side, and any server
+          // revocation failure surfaces on the next foreground/initialize
+          // (no need to retry here).
+        });
+        return true;
+      }
       setBranch(data.verification_status);
       setVerificationDeadline(data.verification_deadline);
       setDaysRemaining(data.days_remaining);
+      // A successful non-deactivated check clears any stale modal state —
+      // e.g., a leader who got deactivated on one account dismissed the
+      // modal, signed in with a working account, and now is active.
+      setDeactivationModalPath(null);
       return true;
     } catch (err) {
       // AbortError fires when we replace the controller mid-flight — expected,
@@ -285,6 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setBranch("password_recovery");
         setVerificationDeadline(null);
         setDaysRemaining(null);
+        setDeactivationModalPath(null);
         return;
       }
 
@@ -386,6 +443,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verificationDeadline,
         daysRemaining,
         loading,
+        deactivationModalPath,
+        dismissDeactivationModal,
         refresh: initialize,
         clearPasswordRecovery,
         signOut,

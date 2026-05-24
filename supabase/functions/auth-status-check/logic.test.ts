@@ -119,9 +119,44 @@ Deno.test("resolveStatus — DB 'verified' maps to active", () => {
   assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), { kind: "active" });
 });
 
-Deno.test("resolveStatus — DB 'deactivated' maps to deactivated", () => {
+Deno.test("resolveStatus — DB 'deactivated' with NULL deadline (baseRow default) → support_contact", () => {
+  // baseRow defaults church.verification_deadline to null. Per c.14235 #6,
+  // NULL deadline on a deactivated row resolves to support_contact (no
+  // verification_renewal can apply when the window itself never existed).
   const row = baseRow({ verification_status: "deactivated", deactivated_at: "2026-04-01T00:00:00.000Z" });
-  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), { kind: "deactivated" });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+  });
+});
+
+Deno.test("resolveStatus — DB 'deactivated' with PAST deadline → verification_renewal (cron-flipped pattern)", () => {
+  // c.14235 #2 — past, non-NULL deadline on a deactivated row is the
+  // cron-flipped fingerprint (or a prior login-check write). Resolves
+  // to verification_renewal.
+  const row = baseRow({
+    verification_status: "deactivated",
+    deactivated_at: "2026-04-15T00:00:00.000Z",
+    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "verification_renewal",
+  });
+});
+
+Deno.test("resolveStatus — DB 'deactivated' with FUTURE deadline → support_contact (admin-flipped pattern)", () => {
+  // Admin-manual deactivation of a user whose window had not yet closed.
+  // No deadline-trigger signal in the row, so recovery_path = support_contact.
+  const row = baseRow({
+    verification_status: "deactivated",
+    deactivated_at: "2026-05-04T00:00:00.000Z",
+    church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+  });
 });
 
 Deno.test("resolveStatus — pending + future deadline returns pending with computed days", () => {
@@ -166,22 +201,24 @@ Deno.test("resolveStatus — pending + past deadline returns pending_past_deadli
 // below previously asserted a throw; they now lock the fail-closed
 // behaviour and the no-write guarantee.
 
-Deno.test("resolveStatus — pending + no church (skip-flow) resolves to deactivated, no write", () => {
+Deno.test("resolveStatus — pending + no church (skip-flow) resolves to deactivated/support_contact, no write", () => {
+  // c.14235 #6 — NULL-deadline fail-closed MUST map to support_contact.
   const row = baseRow({ verification_status: "pending", church: null });
   const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
-  assertEquals(r, { kind: "deactivated" });
+  assertEquals(r, { kind: "deactivated", recovery_path: "support_contact" });
   // Belt-and-suspenders: explicitly confirm we are NOT returning the
   // write-triggering variant.
   assertEquals(r.kind === "pending_past_deadline_needs_write", false);
 });
 
-Deno.test("resolveStatus — pending + church row with null deadline resolves to deactivated, no write", () => {
+Deno.test("resolveStatus — pending + church row with null deadline resolves to deactivated/support_contact, no write", () => {
+  // c.14235 #6 — NULL-deadline fail-closed MUST map to support_contact.
   const row = baseRow({
     verification_status: "pending",
     church: { verification_deadline: null },
   });
   const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
-  assertEquals(r, { kind: "deactivated" });
+  assertEquals(r, { kind: "deactivated", recovery_path: "support_contact" });
   assertEquals(r.kind === "pending_past_deadline_needs_write", false);
 });
 
@@ -209,41 +246,154 @@ Deno.test("buildResponse — pending shape carries deadline + integer days", () 
   });
 });
 
-Deno.test("buildResponse — deactivated shape has explicit nulls", () => {
-  const body = buildResponse({ kind: "deactivated" });
+Deno.test("buildResponse — deactivated/support_contact shape has explicit nulls + recovery_path", () => {
+  const body = buildResponse({ kind: "deactivated", recovery_path: "support_contact" });
   assertEquals(body, {
     verification_status: "deactivated",
     verification_deadline: null,
     days_remaining: null,
+    recovery_path: "support_contact",
   });
 });
 
-Deno.test("buildResponse — pending_past_deadline_needs_write returns same shape as deactivated (TC-44.7 non-leak)", () => {
-  // Critical SEC assertion: a user deactivated by login_check must be byte-identical
-  // in response to a user already deactivated by cron. No distinguishing field.
-  const optionBBody = buildResponse({
+Deno.test("buildResponse — deactivated/verification_renewal shape has explicit nulls + recovery_path", () => {
+  const body = buildResponse({ kind: "deactivated", recovery_path: "verification_renewal" });
+  assertEquals(body, {
+    verification_status: "deactivated",
+    verification_deadline: null,
+    days_remaining: null,
+    recovery_path: "verification_renewal",
+  });
+});
+
+// ─── TC-44.7 v2 (c.14235 #7) ─────────────────────────────────────────────
+// Original TC-44.7 asserted byte-identical regardless of cause. The
+// amendment relaxes that to "byte-identical except for the single
+// recovery_path binary lifecycle field." Inside the same recovery_path
+// bucket the non-leak guarantee is preserved; across buckets the
+// distinction is intentional.
+
+Deno.test("TC-44.7 v2 (c.14235 #7) — login-check and cron both past-deadline → byte-identical", () => {
+  // SEC drift guard preserved within the renewal bucket. The login-check
+  // path that just flipped a pending user is indistinguishable from the
+  // cron path that flipped the user earlier — same trigger (deadline),
+  // same response bytes.
+  const loginCheck = buildResponse({
     kind: "pending_past_deadline_needs_write",
     verification_deadline: "2026-04-01T00:00:00.000Z",
   });
-  const cronBody = buildResponse({ kind: "deactivated" });
-  assertEquals(JSON.stringify(optionBBody), JSON.stringify(cronBody));
-  assertEquals(optionBBody.verification_status, "deactivated");
-  assertEquals(optionBBody.verification_deadline, null);
-  assertEquals(optionBBody.days_remaining, null);
+  const cron = buildResponse({ kind: "deactivated", recovery_path: "verification_renewal" });
+  assertEquals(JSON.stringify(loginCheck), JSON.stringify(cron));
 });
 
-Deno.test("buildResponse — never includes deactivation_reason or triggered_by (SEC: no reason leak)", () => {
-  const cases: ResolvedStatus[] = [
-    { kind: "active" },
-    { kind: "pending", verification_deadline: "2026-05-19T12:00:00.000Z", days_remaining: 14 },
-    { kind: "deactivated" },
-    { kind: "pending_past_deadline_needs_write", verification_deadline: "2026-04-01T00:00:00.000Z" },
+Deno.test("TC-44.7 v2 (c.14235 #7c/e) — admin-deactivated and NULL-deadline → byte-identical (support bucket)", () => {
+  // c.14235 #7(c) + #7(e) + #3 (uniform support bucket). All non-deadline
+  // paths emit identical bytes — admin-manual, NULL-deadline fail-closed,
+  // super_admin downgrade, future settings-initiated. The FE cannot tell
+  // them apart, by design.
+  const adminFlipped = buildResponse({ kind: "deactivated", recovery_path: "support_contact" });
+  const nullDeadline = buildResponse({ kind: "deactivated", recovery_path: "support_contact" });
+  assertEquals(JSON.stringify(adminFlipped), JSON.stringify(nullDeadline));
+});
+
+Deno.test("no-leak v2 (c.14235 #1/#7) — only recovery_path is added; no triggered_by, no deactivation_source, no other field", () => {
+  // The relaxation is strictly bounded: exactly one new key, exactly two
+  // values, only present on deactivated bodies. No other distinguishing
+  // field may sneak through.
+  const cases: { resolved: ResolvedStatus; expectedKeys: string[] }[] = [
+    {
+      resolved: { kind: "active" },
+      expectedKeys: ["days_remaining", "verification_deadline", "verification_status"],
+    },
+    {
+      resolved: { kind: "pending", verification_deadline: "2026-05-19T12:00:00.000Z", days_remaining: 14 },
+      expectedKeys: ["days_remaining", "verification_deadline", "verification_status"],
+    },
+    {
+      resolved: { kind: "deactivated", recovery_path: "verification_renewal" },
+      expectedKeys: ["days_remaining", "recovery_path", "verification_deadline", "verification_status"],
+    },
+    {
+      resolved: { kind: "deactivated", recovery_path: "support_contact" },
+      expectedKeys: ["days_remaining", "recovery_path", "verification_deadline", "verification_status"],
+    },
+    {
+      resolved: { kind: "pending_past_deadline_needs_write", verification_deadline: "2026-04-01T00:00:00.000Z" },
+      expectedKeys: ["days_remaining", "recovery_path", "verification_deadline", "verification_status"],
+    },
   ];
   for (const c of cases) {
-    const body = buildResponse(c);
-    const keys = Object.keys(body).sort();
-    assertEquals(keys, ["days_remaining", "verification_deadline", "verification_status"]);
+    const body = buildResponse(c.resolved);
+    assertEquals(Object.keys(body).sort(), c.expectedKeys);
   }
+});
+
+// ─── c.14235 #7 — five new assertions (a-e) ──────────────────────────────
+
+Deno.test("c.14235 #7(a) — cron-deactivated (past-deadline row) → verification_renewal", () => {
+  // End-to-end through resolveStatus: row that looks like cron flipped it
+  // (verification_status='deactivated' + past, non-NULL deadline) resolves
+  // to verification_renewal.
+  const row = baseRow({
+    verification_status: "deactivated",
+    deactivated_at: "2026-04-15T00:00:00.000Z",
+    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+  });
+  const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
+  assertEquals(body.recovery_path, "verification_renewal");
+  assertEquals(body.verification_status, "deactivated");
+});
+
+Deno.test("c.14235 #7(b) — login-check-deactivated (pending + past deadline) → verification_renewal", () => {
+  // The Option-B write-on-login-check path. Resolves to
+  // pending_past_deadline_needs_write, which buildResponse collapses
+  // into the same renewal-bucket bytes as cron #7(a).
+  const row = baseRow({
+    verification_status: "pending",
+    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+  });
+  const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
+  assertEquals(body.recovery_path, "verification_renewal");
+  assertEquals(body.verification_status, "deactivated");
+});
+
+Deno.test("c.14235 #7(c) — admin-deactivated (no past-deadline signal) → support_contact", () => {
+  // Admin manually flipped a user with a future or absent past-deadline
+  // signal. Row carries no trigger fingerprint → support_contact.
+  const row = baseRow({
+    verification_status: "deactivated",
+    deactivated_at: "2026-05-04T00:00:00.000Z",
+    church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+  });
+  const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
+  assertEquals(body.recovery_path, "support_contact");
+  assertEquals(body.verification_status, "deactivated");
+});
+
+Deno.test("c.14235 #7(d) — NULL-deadline fail-closed (Option Y) → support_contact", () => {
+  // c.14235 #6 explicitly: NULL-deadline routes to the support bucket,
+  // not the renewal bucket. Founder Option Y stays fail-closed; the
+  // FE-facing path is support, not renewal.
+  const row = baseRow({ verification_status: "pending", church: null });
+  const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
+  assertEquals(body.recovery_path, "support_contact");
+  assertEquals(body.verification_status, "deactivated");
+});
+
+Deno.test("c.14235 #7(e) — admin-deactivated and NULL-deadline responses are shape- and byte-identical", () => {
+  // The uniform-support-bucket invariant from c.14235 #3 — distinct
+  // upstream causes that both fall outside the renewal trigger must
+  // collapse into one indistinguishable wire body.
+  const adminRow = baseRow({
+    verification_status: "deactivated",
+    deactivated_at: "2026-05-04T00:00:00.000Z",
+    church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+  });
+  const nullRow = baseRow({ verification_status: "pending", church: null });
+  const adminBody = buildResponse(resolveStatus(adminRow, "2026-05-05T12:00:00.000Z"));
+  const nullBody = buildResponse(resolveStatus(nullRow, "2026-05-05T12:00:00.000Z"));
+  assertEquals(JSON.stringify(adminBody), JSON.stringify(nullBody));
+  assertEquals(Object.keys(adminBody).sort(), Object.keys(nullBody).sort());
 });
 
 Deno.test("buildAuditRow — exact shape per SM 10854 ruling", () => {

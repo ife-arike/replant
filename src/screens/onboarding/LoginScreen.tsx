@@ -22,9 +22,11 @@
 //
 // Out of scope (per dispatch):
 //   - Forgot password (Screen 06A) — Alert + TODO
-//   - Deactivation modal — KAN-36's DeactivatedPlaceholderScreen handles
-//     this via RootNavigator after AuthProvider flips branch=deactivated.
-//     This screen does NOT intercept or render the modal itself.
+//   - Deactivation modal — KAN-36 v2 surfaces deactivation as a top-
+//     level overlay (src/components/auth/DeactivationModal.tsx) rendered
+//     from App.tsx, not as anything this screen owns. AuthProvider
+//     sets the modal path AND calls signOut on detection, so this
+//     screen sits underneath the modal once it appears.
 // ─────────────────────────────────────────────
 
 import React, { useRef, useState } from 'react';

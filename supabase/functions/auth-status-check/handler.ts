@@ -40,10 +40,16 @@ const ACTIVE_BODY: AuthStatusResponse = {
   days_remaining: null,
 };
 
-const DEACTIVATED_BODY: AuthStatusResponse = {
+// KAN-36 v2 (SEC c.14235, Founder c.14236, locked 2026-05-24) — super_admin
+// downgrade is admin-initiated by construction (the super_admin path doesn't
+// touch church.verification_deadline), so recovery_path is always
+// "support_contact" here. Non-super_admin deactivations go through
+// resolveStatus/buildResponse where recovery_path is computed from row data.
+const DEACTIVATED_BODY_SUPPORT: AuthStatusResponse = {
   verification_status: "deactivated",
   verification_deadline: null,
   days_remaining: null,
+  recovery_path: "support_contact",
 };
 
 export function createHandler(deps: Deps) {
@@ -74,7 +80,7 @@ export function createHandler(deps: Deps) {
       if (isSuperAdmin(claims)) {
         const row = await deps.fetchUserStatus(validated.authUid);
         if (!row) return error500();
-        if (row.is_active === false) return json(200, DEACTIVATED_BODY);
+        if (row.is_active === false) return json(200, DEACTIVATED_BODY_SUPPORT);
         return json(200, ACTIVE_BODY);
       }
 
