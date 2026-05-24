@@ -1,9 +1,11 @@
 // Navigator param-list types — KAN-87 foundation.
 //
-// RootStack switches between the auth-gated branches (Login / Pending /
-// Deactivated) and the active app surface (Tabs + Settings). Each branch's
-// Screens are conditionally registered in RootNavigator based on
-// useAuth().branch — see src/navigation/RootNavigator.tsx.
+// RootStack switches between the auth-gated branches and the active app
+// surface (Tabs + Settings). Each branch's Screens are conditionally
+// registered in RootNavigator based on useAuth().branch — see
+// src/navigation/RootNavigator.tsx. KAN-36 v2 removed the Deactivated
+// branch; deactivation surfaces as a top-level modal overlay
+// (src/components/auth/DeactivationModal.tsx), not a routed screen.
 
 import type { NavigatorScreenParams } from "@react-navigation/native";
 
@@ -38,6 +40,5 @@ export type RootStackParamList = MainStackParamList & {
   // is deregistered from RootNavigator; the verification countdown banner
   // on Home replaces its functional purpose. Type entry removed too
   // since no other production code references it.
-  Deactivated: undefined;
   PasswordRecovery: undefined;
 };

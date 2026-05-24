@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Login Flow v3 · Deactivation modal QA</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.35);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #0F0F0F;
+    --elevated: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --faint: rgba(240,237,230,0.08);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --amber: #D4A855;
+    --green: #5BAD7A;
+  }
+
+  body {
+    background: #0d0d0d;
+    font-family: var(--sans);
+    font-weight: 300;
+    color: var(--text);
+    padding: 3rem 2rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .doc { max-width: 1400px; margin: 0 auto; }
+
+  /* HEADER */
+  .page-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.8rem; border-bottom: 0.5px solid var(--faint); }
+  .page-eyebrow { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--amber); margin-bottom: 10px; display:inline-flex; align-items:center; gap:8px; }
+  .page-eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--amber); }
+  .page-title { font-family: var(--serif); font-size: 2.2rem; font-weight: 300; letter-spacing: 0.04em; margin-bottom: 0.6rem; }
+  .page-sub { font-size: 0.82rem; color: var(--muted); max-width: 760px; margin: 0 auto; line-height: 1.65; }
+  .page-meta { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em; color: var(--muted); margin-top: 14px; text-transform: uppercase; }
+
+  /* SECTION DIVIDER */
+  .section-divider { text-align: center; margin: 3rem 0 1.5rem; display: flex; align-items: center; gap: 1.5rem; }
+  .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 0.5px; background: var(--faint); }
+  .section-divider span { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sky); white-space: nowrap; }
+
+  /* COMPARISON ROW */
+  .compare { display: flex; gap: 3rem; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .compare-col { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .col-tag { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; }
+  .col-tag.bad  { color: var(--red);   border: 0.5px solid rgba(224,85,85,0.45);   background: rgba(224,85,85,0.08); }
+  .col-tag.good { color: var(--green); border: 0.5px solid rgba(91,173,122,0.45); background: rgba(91,173,122,0.08); }
+
+  /* ───────── iPhone 14 Pro Max frame — 430×932 logical, scaled to 50% (215×466) ───────── */
+  .iphone {
+    width: 215px;            /* 430 * 0.5 */
+    height: 466px;           /* 932 * 0.5 */
+    background: #000;
+    border-radius: 33px;     /* ~ device corner */
+    border: 1.5px solid rgba(240,237,230,0.14);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+  }
+  /* Dynamic Island */
+  .iphone::before {
+    content: '';
+    position: absolute;
+    top: 6px; left: 50%; transform: translateX(-50%);
+    width: 60px; height: 17px;
+    background: #000;
+    border-radius: 999px;
+    z-index: 20;
+  }
+  .iphone .stage {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+  /* Status row */
+  .ios-status {
+    position: relative; z-index: 5;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 18px 0;
+    font-family: 'SF Pro Text', var(--sans);
+    font-size: 0.55rem;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  .ios-status .right { display:flex; gap: 4px; align-items: center; opacity: 0.92; }
+
+  /* Login behind the modal */
+  .login-bg { position: absolute; inset: 0; padding: 56px 22px 28px; display:flex; flex-direction:column; }
+  .login-bg .lb-logo { display:flex; flex-direction:column; align-items:center; gap:5px; margin: 18px 0 22px; }
+  .login-bg .lb-mark { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(107,181,232,0.7), rgba(107,181,232,0.05) 70%); border: 0.5px solid rgba(107,181,232,0.4); }
+  .login-bg .lb-word { font-family: var(--serif); font-size: 0.72rem; letter-spacing: 0.2em; font-weight: 300; }
+  .login-bg .lb-tag { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; }
+  .login-bg .lb-field { background: var(--bg); border: 0.5px solid rgba(240,237,230,0.18); border-radius: 3px; padding: 5px 7px; font-size: 0.36rem; color: var(--muted); margin-bottom: 6px; }
+  .login-bg .lb-btn { background: var(--sky); color: var(--bg); border-radius: 3px; padding: 5px; text-align:center; font-size: 0.36rem; font-weight: 500; margin-top: 4px; }
+
+  /* MODAL — common */
+  .modal-card { background: var(--surface); width: 100%; border-radius: 4px; text-align: center; }
+  .modal-eyebrow { font-family: var(--mono); font-size: 0.3rem; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(224,85,85,0.7); }
+  .modal-title { font-family: var(--serif); font-weight: 300; color: var(--text); }
+  .modal-body { color: rgba(240,237,230,0.65); }
+  .modal-contact { font-family: var(--serif); font-style: italic; color: var(--sky); display: block; }
+  .modal-hint { font-family: var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(240,237,230,0.30); }
+
+  /* ───── BEFORE — issues ───── */
+  .stage-before .login-bg { opacity: 1; }
+  .stage-before .overlay-before {
+    position: absolute; inset: 0;
+    background: rgba(8,8,8,0.88);              /* ← too opaque: kills depth */
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px;
+  }
+  .stage-before .modal-card {
+    border: 0.5px solid var(--faint);
+    padding: 24px 22px 18px;                    /* same as small wireframe — undersized for full screen */
+  }
+  .stage-before .modal-eyebrow { margin-bottom: 14px; }
+  .stage-before .modal-title { font-size: 1.05rem; letter-spacing: 0.02em; margin-bottom: 14px; }
+  .stage-before .modal-body { font-size: 0.42rem; line-height: 1.75; margin-bottom: 16px; text-align: center; }   /* ← centered on long copy creates orphan lines */
+  .stage-before .modal-contact { font-size: 0.5rem; padding: 8px 4px; margin: 4px 0 8px; border-top: 0.5px solid var(--faint); border-bottom: 0.5px solid var(--faint); }
+  .stage-before .modal-hint { font-size: 0.3rem; line-height: 1.7; }
+
+  /* ───── AFTER — fix ───── */
+  .stage-after .overlay-after {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);                /* ← let the dimmed login peek through */
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    display: flex; align-items: flex-end;        /* ← anchor to bottom — feels intentional, less mid-air float */
+    justify-content: center;
+    padding: 16px 14px 22px;
+  }
+  .stage-after .modal-card {
+    background: var(--elevated);                 /* ← lifts off the dimmed bg */
+    border: 0.5px solid rgba(240,237,230,0.12);
+    border-radius: 7px;
+    padding: 20px 18px 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(0,0,0,0.4);
+  }
+  .stage-after .modal-eyebrow { margin-bottom: 10px; }
+  .stage-after .modal-title { font-size: 0.95rem; letter-spacing: 0.01em; margin-bottom: 10px; }
+  .stage-after .modal-body {
+    font-size: 0.4rem;
+    line-height: 1.7;
+    margin: 0 auto 12px;
+    text-align: left;                            /* ← LEFT — kills orphan words */
+    text-wrap: pretty;
+    max-width: 90%;
+  }
+  .stage-after .modal-body p + p { margin-top: 8px; }
+  .stage-after .modal-contact { font-size: 0.48rem; padding: 8px 4px; margin: 2px 0 6px; border-top: 0.5px solid var(--faint); border-bottom: 0.5px solid var(--faint); }
+  .stage-after .modal-hint { font-size: 0.3rem; line-height: 1.7; }
+
+  /* annotation pins */
+  .pins { display: flex; flex-direction: column; gap: 8px; max-width: 280px; }
+  .pin { display: flex; gap: 10px; font-size: 0.72rem; line-height: 1.55; color: rgba(240,237,230,0.75); padding: 8px 10px; border-radius: 5px; border: 0.5px solid var(--faint); background: var(--surface); }
+  .pin .dot { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; font-family: var(--mono); font-size: 0.55rem; display: flex; align-items: center; justify-content: center; font-weight: 500; margin-top: 1px; }
+  .pin.bad .dot  { background: rgba(224,85,85,0.15); color: var(--red); border: 0.5px solid rgba(224,85,85,0.4); }
+  .pin.good .dot { background: rgba(91,173,122,0.15); color: var(--green); border: 0.5px solid rgba(91,173,122,0.4); }
+  .pin strong { color: var(--text); font-weight: 500; }
+  .pin code   { font-family: var(--mono); font-size: 0.66rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+
+  /* CHANGE TABLE */
+  .changes { max-width: 1000px; margin: 3rem auto 0; padding: 22px 26px; background: var(--surface); border: 0.5px solid var(--faint); border-radius: 6px; }
+  .changes h3 { font-family: var(--serif); font-size: 1.1rem; font-weight: 500; margin-bottom: 14px; letter-spacing: 0.01em; }
+  .changes table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+  .changes th, .changes td { text-align: left; padding: 9px 8px; border-bottom: 0.5px solid var(--faint); vertical-align: top; line-height: 1.55; }
+  .changes th { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  .changes code { font-family: var(--mono); font-size: 0.68rem; color: var(--sky); background: var(--sky-dim); padding: 1px 6px; border-radius: 3px; }
+  .changes .col-issue  { width: 22%; color: var(--text); font-weight: 500; }
+  .changes .col-was    { width: 30%; color: rgba(224,85,85,0.85); }
+  .changes .col-now    { width: 32%; color: rgba(91,173,122,0.95); }
+  .changes .col-why    { width: 16%; color: var(--muted); }
+
+  /* AT-SCALE CALLOUT */
+  .scale-note { text-align: center; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+
+  .footer-meta { text-align: center; padding-top: 24px; margin-top: 3rem; border-top: 0.5px solid var(--faint); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="page-header" data-screen-label="Header">
+    <p class="page-eyebrow">UI/UX · LOGIN FLOW · v3 · QA NOTES</p>
+    <h1 class="page-title">Deactivation modal — sizing, layout &amp; backdrop</h1>
+    <p class="page-sub">Pinpointing the three issues visible in the iPhone 14 Pro Max test capture, plus the last-minute address change. Frames below are rendered at 50% of true device size (430&nbsp;×&nbsp;932) so proportions are honest.</p>
+    <p class="page-meta">REPLANT · MVP · UI/UX · 24 MAY 2026 · v3</p>
+  </div>
+
+  <!-- BEFORE / AFTER -->
+  <div class="section-divider"><span>Side-by-side · 50% scale of iPhone 14 Pro Max</span></div>
+
+  <div class="compare">
+
+    <!-- BEFORE -->
+    <div class="compare-col" data-screen-label="01 Before — issues">
+      <span class="col-tag bad">Current (CC build)</span>
+      <div class="iphone">
+        <div class="stage stage-before">
+          <!-- dimmed login behind (visible because overlay is opaque-ish; here we still draw it to show what *should* be there) -->
+          <div class="login-bg">
+            <div class="ios-status" style="position:relative;padding:0;margin-bottom:8px;"><span>12:56</span><span class="right">●●● ◗</span></div>
+            <div class="lb-logo">
+              <div class="lb-mark"></div>
+              <p class="lb-word">REPLANT</p>
+              <p class="lb-tag">The Church, Connected</p>
+            </div>
+            <div class="lb-field">EMAIL</div>
+            <div class="lb-field">PASSWORD</div>
+            <div class="lb-btn">Sign In</div>
+          </div>
+          <!-- overlay -->
+          <div class="overlay-before">
+            <div class="modal-card">
+              <p class="modal-eyebrow">A NOTE ON YOUR ACCOUNT</p>
+              <p class="modal-title">Account deactivated</p>
+              <p class="modal-body">Your church verification window expired and your account has been deactivated. We're sorry for the difficulty this may cause.<br><br>If you'd like to appeal or restore access, write to us.</p>
+              <a class="modal-contact"><span class="__cf_email__" data-cfemail="a5c6cacbcbc0c6d1e5d5d7cacfc0c6d1d7c0d5c9c4cbd18bcad7c2">[email&#160;protected]</span></a>
+              <p class="modal-hint">Tap to copy &amp; open mail<br>or tap outside to dismiss</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="scale-note">430 × 932 · scaled 50%</p>
+      <div class="pins">
+        <div class="pin bad"><span class="dot">1</span><span><strong>Card too small + centered in dead space.</strong> Padding values were tuned for the 280-px wireframe and stayed the same in production — on a 430-wide screen the card reads as a small island floating mid-viewport.</span></div>
+        <div class="pin bad"><span class="dot">2</span><span><strong>Body text is center-aligned.</strong> On long copy this creates orphan words (<em>"us."</em>) on their own line and ragged middle-aligned paragraphs. Looks unintentional, reads worse than left-aligned.</span></div>
+        <div class="pin bad"><span class="dot">3</span><span><strong>Backdrop is flat &amp; opaque (<code>rgba(8,8,8,0.88)</code>).</strong> The login behind disappears entirely, and the card surface (<code>#0F0F0F</code>) sits on a near-identical tone — no depth, no sense of "modal over screen."</span></div>
+        <div class="pin bad"><span class="dot">4</span><span><strong>Email still reads <code>connect@</code></strong>. Per the late-stage spec change it should be <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="147577777b617a60675464667b7e71776066716478757a603a7b6673">[email&#160;protected]</a></code>.</span></div>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="compare-col" data-screen-label="02 After — fix">
+      <span class="col-tag good">Proposed fix · v3</span>
+      <div class="iphone">
+        <div class="stage stage-after">
+          <div class="login-bg">
+            <div class="ios-status" style="position:relative;padding:0;margin-bottom:8px;"><span>12:56</span><span class="right">●●● ◗</span></div>
+            <div class="lb-logo">
+              <div class="lb-mark"></div>
+              <p class="lb-word">REPLANT</p>
+              <p class="lb-tag">The Church, Connected</p>
+            </div>
+            <div class="lb-field">EMAIL</div>
+            <div class="lb-field">PASSWORD</div>
+            <div class="lb-btn">Sign In</div>
+          </div>
+          <div class="overlay-after">
+            <div class="modal-card">
+              <p class="modal-eyebrow">A NOTE ON YOUR ACCOUNT</p>
+              <p class="modal-title">Account deactivated</p>
+              <div class="modal-body">
+                <p>Your church verification window expired and your account has been deactivated. We're sorry for the difficulty this may cause.</p>
+                <p>If you'd like to appeal or restore access, write to us.</p>
+              </div>
+              <a class="modal-contact"><span class="__cf_email__" data-cfemail="523331313d273c26211222203d383731262037223e333c267c3d2035">[email&#160;protected]</span></a>
+              <p class="modal-hint">Tap to copy &amp; open mail<br>or tap outside to dismiss</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="scale-note">430 × 932 · scaled 50%</p>
+      <div class="pins">
+        <div class="pin good"><span class="dot">1</span><span><strong>Card anchored to bottom</strong> with a 16 / 22 px gutter — feels deliberate on a tall screen, closer to a thumb, and keeps the dimmed login visible as context above it.</span></div>
+        <div class="pin good"><span class="dot">2</span><span><strong>Body text left-aligned</strong> with <code>text-wrap: pretty</code> and split into two real <code>&lt;p&gt;</code> paragraphs (8 px gap). No more orphans. Eyebrow + title stay centered as headings.</span></div>
+        <div class="pin good"><span class="dot">3</span><span><strong>Backdrop is dim + blurred</strong> (<code>rgba(0,0,0,0.55)</code> + <code>backdrop-filter: blur(10px)</code>), and the card lifts to <code>#181818</code> with a soft <code>0 18px 50px</code> shadow. The modal reads as floating glass over the dimmed login.</span></div>
+        <div class="pin good"><span class="dot">4</span><span><strong>Address corrected</strong> to <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0c6d6f6f637962787f4c7c7e6366696f787e697c606d627822637e6b">[email&#160;protected]</a></code>. Make sure the mailto handler and the copy-to-clipboard string both update.</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- WHAT TO CHANGE — for CC -->
+  <div class="changes" data-screen-label="03 Change log">
+    <h3>What to change — hand-off for Claude Code</h3>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-issue">Issue</th>
+          <th class="col-was">Was</th>
+          <th class="col-now">Should be</th>
+          <th class="col-why">Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-issue">Modal overlay (backdrop)</td>
+          <td class="col-was"><code>background: rgba(8,8,8,0.88)</code><br>no blur</td>
+          <td class="col-now"><code>background: rgba(0,0,0,0.55)</code><br><code>backdrop-filter: blur(10px) saturate(120%)</code></td>
+          <td class="col-why">Restore depth; let the dimmed login read through.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Modal positioning</td>
+          <td class="col-was"><code>align-items: center</code><br><code>padding: 24px</code></td>
+          <td class="col-now"><code>align-items: flex-end</code><br><code>padding: 16px 16px 28px</code> (respect safe-area bottom)</td>
+          <td class="col-why">Closer to thumb; less floating-mid-air on a tall device.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Card surface</td>
+          <td class="col-was"><code>background: #0F0F0F</code><br><code>border-radius: 6px</code><br>no shadow</td>
+          <td class="col-now"><code>background: #181818</code><br><code>border-radius: 14px</code><br><code>box-shadow: 0 18px 50px rgba(0,0,0,0.55)</code></td>
+          <td class="col-why">Lift the card off the dim layer; iOS-native corner radius.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Card padding</td>
+          <td class="col-was"><code>24px 22px 18px</code></td>
+          <td class="col-now"><code>28px 24px 20px</code></td>
+          <td class="col-why">Tuned for full-device width, not the wireframe.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Body text alignment</td>
+          <td class="col-was"><code>text-align: center</code><br>single <code>&lt;p&gt;</code> with <code>&lt;br&gt;&lt;br&gt;</code></td>
+          <td class="col-now"><code>text-align: left</code><br><code>text-wrap: pretty</code><br>two real <code>&lt;p&gt;</code> tags, 10 px gap</td>
+          <td class="col-why">Eliminate orphan words; sentences read naturally.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Body font size</td>
+          <td class="col-was"><code>0.66rem</code> (~10.5 px)</td>
+          <td class="col-now"><code>15px</code> · line-height <code>1.6</code></td>
+          <td class="col-why">Production type scale, not wireframe scale.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Title size</td>
+          <td class="col-was"><code>1.15rem</code></td>
+          <td class="col-now"><code>22px</code>, Cormorant 300</td>
+          <td class="col-why">Same — wireframe value rendered too small at full scale.</td>
+        </tr>
+        <tr>
+          <td class="col-issue">Contact email</td>
+          <td class="col-was"><code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="97f4f8f9f9f2f4e3d7e7e5f8fdf2f4e3e5f2e7fbf6f9e3b9f8e5f0">[email&#160;protected]</a></code></td>
+          <td class="col-now"><code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6f0e0c0c001a011b1c2f1f1d00050a0c1b1d0a1f030e011b41001d08">[email&#160;protected]</a></code></td>
+          <td class="col-why">Late-stage requirement change. Update display string, <code>mailto:</code> href, and clipboard payload.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="footer-meta">Replant · Deactivation modal · v3 QA · 24 May 2026</p>
+
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>

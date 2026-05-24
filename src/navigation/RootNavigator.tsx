@@ -10,9 +10,10 @@
 // Branch mapping per AC-5 (locked KAN-44 contract, comment 10292;
 // KAN-35 routing ruling Founder 2026-05-22 — pending now joins active
 // in the Tabs + Settings tree, with a verification countdown banner
-// on Home as the visible signal):
+// on Home as the visible signal; KAN-36 v2 SEC c.14235 + Founder
+// c.14236 — the deactivated branch is gone, replaced by a modal
+// overlay rendered above the navigator from App.tsx):
 //   active | pending          → Tabs + Settings push
-//   deactivated              → Deactivated placeholder (KAN-36 takes over)
 //   unauthenticated / loading → Onboarding (nested OnboardingNavigator
 //                                — Splash → DoF → AccountSetupPage1 →
 //                                AnonymousMode → AccountSetupPage2 →
@@ -33,7 +34,6 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthProvider";
-import DeactivatedPlaceholderScreen from "../screens/auth/DeactivatedPlaceholderScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
 import SetNewPasswordScreen from "../screens/onboarding/SetNewPasswordScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
@@ -52,9 +52,6 @@ export default function RootNavigator() {
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="Settings" component={SettingsScreenContainer} />
         </>
-      )}
-      {branch === "deactivated" && (
-        <Stack.Screen name="Deactivated" component={DeactivatedPlaceholderScreen} />
       )}
       {(branch === "unauthenticated" || branch === "loading") && (
         <Stack.Screen

@@ -26,6 +26,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./src/contexts/AuthProvider";
 import { HamburgerProvider } from "./src/contexts/HamburgerContext";
 import HamburgerPanel from "./src/components/hamburger/HamburgerPanel";
+import DeactivationModal from "./src/components/auth/DeactivationModal";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { navigationRef } from "./src/navigation/navigationRef";
 import { supabase } from "./src/lib/supabase";
@@ -106,6 +107,11 @@ export default function App() {
           {/* HamburgerPanel mounted as a sibling so its Modal overlay
               sits above NavigationContainer's tree on open. KAN-76. */}
           <HamburgerPanel />
+          {/* KAN-36 v2 — DeactivationModal renders above the navigator
+              when AuthProvider sets deactivationModalPath. AuthProvider
+              also signs out on detection, so by the time this is
+              visible the leader is on Login (unauthenticated branch). */}
+          <DeactivationModal />
         </HamburgerProvider>
       </AuthProvider>
     </SafeAreaProvider>
