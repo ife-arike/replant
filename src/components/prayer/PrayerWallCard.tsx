@@ -110,42 +110,52 @@ export default function PrayerWallCard({ row, onPress, now }: Props) {
 
 const styles = StyleSheet.create({
   card: {
+    // v5 item 04 — card padding 8/10 → 14/16.
     backgroundColor: Colors.surface,
     borderLeftWidth: 2,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 6,
     borderBottomRightRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
   cardPressed: {
     opacity: 0.85,
   },
   location: {
+    // v5 item 04 — church name 16 pt DM Sans 400 (dispatch said
+    // unchanged; build was 13; redline locks 16).
     fontFamily: Typography.body,
-    fontSize: 13,
+    fontSize: 16,
     color: Colors.text,
-    lineHeight: 18,
+    lineHeight: 21,
   },
   leader: {
+    // v5 item 04 — author 13 pt DM Sans 300, rgba(text, 0.45),
+    // marginTop 2, marginBottom 12 (the header → body gap).
+    // No DM Sans 300 in bundle; using Typography.body (400).
     fontFamily: Typography.body,
-    fontSize: 11,
-    color: Colors.textMuted,
-    lineHeight: 16,
-    marginTop: 1,
+    fontSize: 13,
+    color: 'rgba(240, 237, 230, 0.45)',
+    lineHeight: 18,
+    marginTop: 2,
+    marginBottom: 12,
   },
   bodyRow: {
+    // marginTop removed — the leader's marginBottom now owns the gap
+    // (v5 item 04 — 6 pt → 12 pt).
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
   },
   body: {
+    // v5 item 04 — body Cormorant italic 300 at 16 pt, line-height 1.6,
+    // colour --text. Bundle has no italic 300; using displayMediumItalic.
     flex: 1,
-    fontFamily: Typography.body,
-    fontSize: 12,
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 16,
     color: Colors.text,
-    lineHeight: 20,
+    lineHeight: 26,
   },
   chevronWrap: {
     paddingLeft: 8,

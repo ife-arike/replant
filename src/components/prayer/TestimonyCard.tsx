@@ -149,7 +149,7 @@ export default function TestimonyCard({ row, isHighlighted = false, now }: Props
           style={styles.celebrateWrap}
         >
           <Animated.View style={{ transform: [{ scale }] }}>
-            <CelebrateIcon size={14} color={iCelebrated ? Colors.amber : Colors.textMuted} />
+            <CelebrateIcon size={16} color={iCelebrated ? Colors.amber : Colors.textMuted} />
           </Animated.View>
           <Text style={[styles.celebrateCount, iCelebrated && styles.celebrateCountActive]}>
             {celebrateCount}
@@ -163,17 +163,20 @@ export default function TestimonyCard({ row, isHighlighted = false, now }: Props
 
 const styles = StyleSheet.create({
   card: {
+    // v5 item 06 — fill rgba(91,173,122,0.06), border 0.5 pt
+    // rgba(91,173,122,0.20) (was 0.25 — redline locks 0.5 / hairline),
+    // 3 pt green left-border, padding 14 × 16.
     backgroundColor: 'rgba(91, 173, 122, 0.06)',
     borderLeftWidth: 3,
     borderLeftColor: Colors.green,
-    borderWidth: 0.25,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91, 173, 122, 0.20)',
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
-    borderTopRightRadius: 5,
-    borderBottomRightRadius: 5,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     overflow: 'hidden',
   },
   glow: {
@@ -185,84 +188,106 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(91, 173, 122, 0.55)',
   },
   location: {
+    // v5 item 06 — location 13 pt DM Mono 400, 0.16em UPPERCASE green.
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
+    fontSize: 13,
+    letterSpacing: 2.1,
     color: Colors.green,
   },
   leader: {
+    // 13 pt DM Sans (bundle has no 300; using 400), rgba(text, 0.45).
     marginTop: 2,
     fontFamily: Typography.body,
-    fontSize: 11,
-    color: Colors.textMuted,
+    fontSize: 13,
+    color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    marginTop: 6,
+    // v5 item 06 — body 15 → 17 pt Cormorant italic, line-height 1.6,
+    // --text. Bundle has no italic 300; using displayMediumItalic.
+    marginTop: 8,
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 14,
+    fontSize: 17,
     color: Colors.text,
-    lineHeight: 22,
+    lineHeight: 27,
   },
   quote: {
-    marginTop: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    // v5 item 06 — "Originally posted as:" block — bg rgba(text, 0.04),
+    // 1 pt green left-border, padding 8 × 10 pt, radius 0 4 4 0.
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     backgroundColor: 'rgba(240, 237, 230, 0.04)',
-    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: 1,
     borderLeftColor: Colors.green,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
   },
   quoteLabel: {
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    color: Colors.textMuted,
+    fontSize: 10,
+    letterSpacing: 1.3,
+    color: 'rgba(240, 237, 230, 0.45)',
     textTransform: 'uppercase',
+    fontStyle: 'italic',
   },
   quoteText: {
-    marginTop: 2,
-    fontFamily: Typography.displayMediumItalic,
-    fontSize: 12,
-    color: Colors.textMuted,
-    lineHeight: 18,
+    // 13 pt DM Sans 300 (closest: 400) muted.
+    marginTop: 4,
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: 'rgba(240, 237, 230, 0.45)',
+    lineHeight: 19,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 10,
+    marginTop: 12,
     flexWrap: 'wrap',
   },
   testimonyChip: {
-    paddingVertical: 2,
-    paddingHorizontal: 6,
+    // v5 item 06 — chip padding 3 × 8 pt, radius 3, bg
+    // rgba(91,173,122,0.12). Always reads "Testimony" — never a
+    // category chip (locked).
+    paddingVertical: 3,
+    paddingHorizontal: 8,
     borderRadius: 3,
     backgroundColor: 'rgba(91, 173, 122, 0.12)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91, 173, 122, 0.35)',
   },
   testimonyChipText: {
+    // v5 item 06 — 11 pt DM Mono 400, 0.14em UPPERCASE green.
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.0,
+    fontSize: 11,
+    letterSpacing: 1.5,
     color: Colors.green,
     textTransform: 'uppercase',
   },
   celebrateWrap: {
+    // v5 item 06 — 28 pt tap-hit-target around the 16 pt icon.
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    minHeight: 28,
+    paddingHorizontal: 4,
   },
   celebrateCount: {
+    // v5 item 06 — count 12 pt DM Mono, 4 pt gap (set via gap above).
     fontFamily: Typography.mono,
-    fontSize: 10,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   celebrateCountActive: {
     color: Colors.amber,
   },
   timestamp: {
+    // v5 item 06 — 11 pt DM Mono, --muted, 0.08em right-aligned.
     fontFamily: Typography.mono,
-    fontSize: 10,
+    fontSize: 11,
+    letterSpacing: 0.9,
     color: Colors.textMuted,
     marginLeft: 'auto',
   },
