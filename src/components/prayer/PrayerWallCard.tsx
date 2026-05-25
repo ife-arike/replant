@@ -34,7 +34,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
-import { getChurchTypeLabel } from '../../utils/displayHelpers';
 import {
   formatRelativeTime,
   getLeaderLine,
@@ -52,11 +51,12 @@ interface Props {
 }
 
 export default function PrayerWallCard({ row, onPress, now }: Props) {
-  const churchTypeLabel = getChurchTypeLabel(row.church_type);
-  const locationLine = getLocationLine(
-    `${row.church_name} (${churchTypeLabel})`,
-    row.country,
-  );
+  // KAN-23 corrections r1 — church type removed from card header per
+  // dispatch. Identity is church name + country only (underground
+  // collapses to church name alone via getLocationLine's null-country
+  // branch). Type still exposed on the wire for other consumers; we
+  // just don't surface it here.
+  const locationLine = getLocationLine(row.church_name, row.country);
   const leaderLine = getLeaderLine(row.leader_display_name);
   const timestamp = formatRelativeTime(row.created_at, now);
 

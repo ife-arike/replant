@@ -130,6 +130,21 @@ export function hasActiveFilter(
   return categories.size > 0 || urgency !== DEFAULT_URGENCY;
 }
 
+// Used by PrayerWallDetailSheet to decide whether to fire
+// onPrayedChange on dismiss. The sheet should only fan the new heart
+// state back to the parent feed when the leader actually toggled
+// stand-in-the-gap — silent dismisses (cancel, swipe-down with no
+// change) must not trigger a state update on the feed row.
+export function hasPrayedStateChanged(
+  initial: { i_prayed: boolean; prayed_count: number },
+  current: { i_prayed: boolean; prayed_count: number },
+): boolean {
+  return (
+    initial.i_prayed !== current.i_prayed ||
+    initial.prayed_count !== current.prayed_count
+  );
+}
+
 // Location-line composer. Underground rows arrive from the RPC with
 // country=null per the server-side CASE WHEN c.type='underground' branch
 // — render only the church name. No "· null", no placeholder. Same
