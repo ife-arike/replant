@@ -5,15 +5,15 @@
 // card. Renders the full prayer body (no clamp), category + urgent
 // chips, passive heart count, and two CTAs:
 //
-//   1. Stand in the gap — toggles a local iStanding state and a local
-//      displayed-count value (optimistic UI). DOES NOT call any RPC.
-//      Marked with an explicit `// TODO: wire stand_in_the_gap RPC —
-//      pending SEC checkpoint` comment at the call site per the
-//      dispatch's write-stub rule. No silent no-op.
+//   1. Stand in the gap — optimistic flip of local iStanding +
+//      standCount, then calls supabase.rpc('stand_in_the_gap',
+//      { p_prayer_request_id }); rolls back on error. The RPC is
+//      SECURITY DEFINER, verified-only, self-prayer blocked, race-safe
+//      on the (prayer_request_id, leader_id) PK.
 //
 //   2. Connect to this church — for named, non-underground posts only.
 //      Anonymous / underground posts render the CTA disabled with the
-//      label "Anonymous · direct message unavailable". Same STUB
+//      label "Anonymous · direct message unavailable". Still a STUB
 //      pattern with explicit TODO comment.
 //
 // Dismiss paths (all restore feed scroll position because the feed
@@ -43,6 +43,7 @@ import {
 } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
+import { supabase } from '../../lib/supabase';
 import {
   formatRelativeTime,
   getLocationLine,
@@ -64,11 +65,6 @@ interface Props {
    * cache, so the card heart count doesn't go stale when the sheet
    * closes. Suppressed when state matches the row's initial values
    * (silent dismiss, no fire) — see hasPrayedStateChanged.
-   *
-   * STUB note: this is FE-local mirror state. The real
-   * stand_in_the_gap RPC is still pending SEC checkpoint; until then,
-   * the propagation is optimistic-UI-only and will be overwritten by
-   * the next feed reload.
    */
   onPrayedChange?: (requestId: string, iPrayed: boolean, prayedCount: number) => void;
   now?: Date;
@@ -201,17 +197,24 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
     }),
   ).current;
 
-  const handleStandInTheGap = () => {
-    // TODO: wire stand_in_the_gap RPC — pending SEC checkpoint.
-    // Optimistic UI only; nothing is persisted. The leader sees their
-    // toggle reflected locally; on next feed reload the server-truth
-    // value will overwrite this. Do NOT remove this TODO until the
-    // RPC + SEC ruling are in place.
-    setIStanding((prev) => {
-      const next = !prev;
-      setStandCount((c) => c + (next ? 1 : -1));
-      return next;
+  const handleStandInTheGap = async () => {
+    if (row === null) return;
+    // Optimistic flip first — server call follows; on failure we roll
+    // back to the captured pre-flip values.
+    const prevStanding = iStanding;
+    const prevCount = standCount;
+    const nextStanding = !prevStanding;
+    const nextCount = prevCount + (nextStanding ? 1 : -1);
+    setIStanding(nextStanding);
+    setStandCount(nextCount);
+
+    const { error } = await supabase.rpc('stand_in_the_gap', {
+      p_prayer_request_id: row.id,
     });
+    if (error) {
+      setIStanding(prevStanding);
+      setStandCount(prevCount);
+    }
   };
 
   const handleConnect = () => {

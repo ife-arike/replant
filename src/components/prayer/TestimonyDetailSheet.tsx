@@ -11,12 +11,14 @@
 // cubic ease-out slide-up, dim backdrop 0 → 0.55 (no expo-blur).
 // Dismiss via ✕ tap, backdrop tap, or swipe-down.
 //
-// Celebrate row is a STUB — optimistic local toggle of iCelebrated +
-// count ±1 + `// TODO: wire celebrate RPC — pending SEC checkpoint`
-// at the call site. onCelebratedChange fires on dismiss only when the
-// state has actually changed (mirrors onPrayedChange on the prayer
-// detail sheet) so the testimony list row reflects the new state
-// without a server round-trip.
+// Celebrate row is wired — optimistic local toggle of iCelebrated +
+// count ±1, then calls supabase.rpc('celebrate', { p_testimony_id });
+// rolls back on error. The RPC is SECURITY DEFINER, verified-only,
+// self-celebrate blocked, race-safe on the (testimony_id, leader_id)
+// PK. onCelebratedChange fires on dismiss only when the state has
+// actually changed (mirrors onPrayedChange on the prayer detail
+// sheet) so the testimony list row reflects the new state without a
+// server round-trip.
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -32,6 +34,7 @@ import {
 } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
+import { supabase } from '../../lib/supabase';
 import {
   formatRelativeTime,
   // v8 Fix H4 — getLeaderLine replaced by formatLeaderLine (from
@@ -54,9 +57,6 @@ interface Props {
    * Suppressed when state matches the row's initial values (silent
    * dismiss, no fire). Parent uses it to mirror the new
    * i_celebrated / celebrated_count back to the testimony list row.
-   *
-   * STUB note: the real celebrate RPC is pending SEC checkpoint; until
-   * then this is optimistic-UI mirror only.
    */
   onCelebratedChange?: (testimonyId: string, iCelebrated: boolean, celebratedCount: number) => void;
   now?: Date;
@@ -187,33 +187,43 @@ export default function TestimonyDetailSheet({
     }),
   ).current;
 
-  const handleCelebrate = () => {
-    // TODO: wire celebrate RPC — pending SEC checkpoint.
-    // Optimistic flip only; nothing is persisted. The leader sees
-    // their toggle reflected locally; on next testimonies reload the
-    // server-truth value overwrites this. Do NOT remove this TODO
-    // until the RPC + SEC ruling are in place.
-    setICelebrated((prev) => {
-      const next = !prev;
-      setCelebratedCount((c) => c + (next ? 1 : -1));
-      return next;
+  const handleCelebrate = async () => {
+    if (row === null) return;
+    // Optimistic flip first — server call follows; on failure we roll
+    // back to the captured pre-flip values. Burst animation fires on
+    // every press regardless of outcome so the tap feels responsive.
+    const prevCelebrated = iCelebrated;
+    const prevCount = celebratedCount;
+    const nextCelebrated = !prevCelebrated;
+    const nextCount = prevCount + (nextCelebrated ? 1 : -1);
+    setICelebrated(nextCelebrated);
+    setCelebratedCount(nextCount);
+
+    if (!reduced) {
+      burst.setValue(0);
+      Animated.sequence([
+        Animated.timing(burst, {
+          toValue: 1,
+          duration: CELEBRATE_BURST_MS / 2,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(burst, {
+          toValue: 0,
+          duration: CELEBRATE_BURST_MS / 2,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+
+    const { error } = await supabase.rpc('celebrate', {
+      p_testimony_id: row.id,
     });
-    if (reduced) return;
-    burst.setValue(0);
-    Animated.sequence([
-      Animated.timing(burst, {
-        toValue: 1,
-        duration: CELEBRATE_BURST_MS / 2,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(burst, {
-        toValue: 0,
-        duration: CELEBRATE_BURST_MS / 2,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (error) {
+      setICelebrated(prevCelebrated);
+      setCelebratedCount(prevCount);
+    }
   };
 
   const burstScale = burst.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.2, 1.2] });
