@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall · v6 Redlines</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-soft: rgba(107,181,232,0.30);
+    --sky-bg: rgba(107,181,232,0.10);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --green: #5BAD7A;
+    --green-bg: rgba(91,173,122,0.10);
+    --green-soft: rgba(91,173,122,0.30);
+  }
+  body { background: #0d0d0d; font-family: var(--sans); font-weight: 300; color: var(--text); padding: 3rem 2rem 5rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .doc { max-width: 1120px; margin: 0 auto; }
+
+  .doc-header { padding-bottom: 1.8rem; margin-bottom: 2.4rem; border-bottom: 0.5px solid var(--faint); }
+  .eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--sky); }
+  .doc-title { font-family: var(--serif); font-size: 2.6rem; font-weight: 300; letter-spacing: 0.02em; margin-bottom: 8px; }
+  .doc-sub { font-size: 0.95rem; color: var(--muted-strong); max-width: 760px; line-height: 1.65; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 18px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .meta-row strong { color: var(--text); font-weight: 500; }
+
+  .item { margin: 3rem 0 0; padding-top: 2rem; border-top: 0.5px solid var(--faint); }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item-num { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; margin-bottom: 6px; }
+  .item-title { font-family: var(--serif); font-size: 1.55rem; font-weight: 400; letter-spacing: 0.01em; margin-bottom: 8px; }
+  .item-ask { font-size: 0.86rem; color: var(--muted-strong); margin-bottom: 1.6rem; max-width: 760px; }
+  .item-ask strong { color: var(--text); font-weight: 500; }
+
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .col-vis { flex: 1 1 360px; min-width: 320px; }
+  .col-spec { flex: 1 1 360px; min-width: 320px; }
+
+  /* Action card visual — at-scale-ish for iPhone 14 PM (renders ~ 75% of real) */
+  .ac-frame {
+    background: var(--bg);
+    border: 0.5px solid var(--faint);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .ac-frame-label {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .ac-frame-label.sky { color: var(--sky); }
+  .ac-frame-label.muted-red { color: rgba(224,85,85,0.7); }
+
+  .action-card {
+    background: var(--surface);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 14px;
+    padding: 22px 22px 20px;
+  }
+  .action-card.green { border-color: rgba(91,173,122,0.45); }
+  .ac-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 14px;
+  }
+  .ac-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ac-icon.green { background: var(--green-bg); border-color: rgba(91,173,122,0.45); }
+  .ac-icon svg { width: 30px; height: 30px; }
+  .ac-text { flex: 1; min-width: 0; }
+  .ac-title {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .ac-sub {
+    font-size: 0.86rem;
+    color: var(--muted-strong);
+    line-height: 1.45;
+  }
+  .ac-cta {
+    background: var(--sky);
+    color: var(--bg);
+    text-align: center;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .ac-cta.locked {
+    background: var(--surface2);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .ac-cta.locked svg { width: 14px; height: 14px; }
+  .ac-coming-soon {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #D4A855;
+    background: rgba(212,168,85,0.12);
+    border-radius: 99px;
+    padding: 3px 8px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .ac-disabled-hint {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  /* Before-render of action card (current build) */
+  .action-card.before {
+    border-color: rgba(224,85,85,0.30);
+    opacity: 0.92;
+  }
+  .action-card.before .ac-head {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .action-card.before .ac-title { font-size: 1.85rem; }
+  .action-card.before .ac-sub { font-size: 1rem; line-height: 1.5; }
+
+  /* Spec table */
+  .spec-table { font-size: 0.84rem; line-height: 1.65; }
+  .spec-table dl { display: grid; grid-template-columns: 200px 1fr; gap: 8px 22px; }
+  .spec-table dt { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .spec-table dd { color: var(--muted-strong); }
+  .spec-table dd strong { color: var(--text); font-weight: 500; }
+  .spec-table dd code { font-family: var(--mono); font-size: 0.74rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+  .spec-table .from { color: var(--muted); text-decoration: line-through; font-family: var(--mono); font-size: 0.72rem; padding-right: 5px; }
+  .spec-table .delta { color: var(--green); font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; padding-left: 6px; }
+
+  .cc-note {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: var(--sky-bg);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--muted-strong);
+    line-height: 1.6;
+  }
+  .cc-note strong { color: var(--sky); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; margin-right: 8px; }
+
+  /* Scripture banner — at-scale */
+  .scrip-banner {
+    background: var(--sky-bg);
+    border: 0.5px solid var(--sky-soft);
+    border-radius: 10px;
+    padding: 22px 24px;
+    text-align: center;
+  }
+  .scrip-banner.green {
+    background: var(--green-bg);
+    border-color: var(--green-soft);
+  }
+  .scrip-banner .body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.15rem;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .scrip-banner .ref {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sky);
+  }
+  .scrip-banner.green .ref { color: var(--green); }
+
+  /* Reference banner labels (sib comparison) */
+  .banner-row { display: flex; flex-direction: column; gap: 14px; }
+  .banner-block { display: flex; flex-direction: column; gap: 8px; }
+  .banner-label { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .banner-label.sky { color: var(--sky); }
+  .banner-label.green { color: var(--green); }
+
+  /* Implementation flags (cc bug list) */
+  .flag-list {
+    background: var(--surface);
+    border: 0.5px solid rgba(212,168,85,0.45);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .flag-list h3 {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: #D4A855;
+    margin-bottom: 4px;
+  }
+  .flag-list .sub {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .flag-list ul { list-style: none; }
+  .flag-list li {
+    padding: 9px 0;
+    border-top: 0.25px solid var(--faint);
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 18px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--muted-strong);
+  }
+  .flag-list li:first-child { border-top: none; }
+  .flag-list li strong {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text);
+    padding-top: 2px;
+  }
+  .flag-list li em { color: var(--text); font-style: italic; }
+  .flag-list li code { font-family: var(--mono); font-size: 0.72rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+
+  .footer-meta { text-align: center; padding-top: 24px; margin-top: 4rem; border-top: 0.5px solid var(--faint); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  /* Schematic boxes for layout diagram */
+  .schematic {
+    background: var(--bg);
+    border: 0.5px dashed var(--hair);
+    border-radius: 10px;
+    padding: 22px;
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--muted-strong);
+  }
+  .schematic .schema-row { display: flex; align-items: center; gap: 14px; }
+  .schematic .schema-icon {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 0.5px dashed var(--sky-mid);
+    background: var(--sky-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sky);
+    flex-shrink: 0;
+    font-size: 0.55rem;
+  }
+  .schematic .schema-text {
+    flex: 1;
+    border: 0.5px dashed var(--hair);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .schematic .schema-text .t1 { color: var(--text); font-size: 0.72rem; letter-spacing: 0.05em; }
+  .schematic .schema-text .t2 { color: var(--muted); font-size: 0.55rem; letter-spacing: 0.05em; }
+  .schematic .schema-cta {
+    margin-top: 14px;
+    border: 0.5px dashed var(--sky-mid);
+    color: var(--sky);
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+  }
+  .schematic .schema-note {
+    margin-top: 12px;
+    font-size: 0.55rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="doc-header" data-screen-label="Header">
+    <p class="eyebrow">CD · v6 redlines · device pass after v5</p>
+    <h1 class="doc-title">Prayer Wall — v6 redlines</h1>
+    <p class="doc-sub">Two CD corrections on the v5 build. <strong>Item 1</strong>: Make / Receive action cards are stacking icon-above-title — needs to be icon-LEFT, with revised type scale (founder: <em>"a tad too large"</em>). <strong>Item 4</strong>: the Eph 6:18 scripture is floating without chrome — give it the sky-tinted banner treatment that the Rev 12:11 scripture has on the Testimonies tab. Both spec'd below. Implementation bugs noticed in device pass are listed at the bottom for CC.</p>
+    <div class="meta-row">
+      <span><strong>Reference:</strong> Prayer Wall v5</span>
+      <span><strong>Device:</strong> iPhone 14 Pro Max · 430 × 932 pt</span>
+      <span><strong>Date:</strong> 25 May 2026</span>
+      <span><strong>From:</strong> CD → CC via SM</span>
+    </div>
+  </div>
+
+  <!-- ITEM 1 — ACTION CARD LAYOUT + TYPE -->
+  <section class="item" data-screen-label="01 Action card">
+    <p class="item-num">Item 01 · action card layout + type scale</p>
+    <h2 class="item-title">Icon-left layout · revised type down</h2>
+    <p class="item-ask"><strong>Build is currently rendering:</strong> 60 pt icon stacked above the title, title at 30 pt Cormorant 500, description at 16 pt. <strong>Correct layout:</strong> icon on the LEFT, vertically centred against the title + description block on the right; CTA spans full card width below. <strong>Type scale revised down</strong> — title 26 pt, description 15 pt, CTA 16 pt.</p>
+
+    <div class="row">
+
+      <div class="col-vis">
+        <p class="ac-frame-label muted-red">Before · current build · icon-above (wrong) + type too large</p>
+        <div class="ac-frame">
+          <div class="action-card before">
+            <div class="ac-head">
+              <div class="ac-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/>
+                  <line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/>
+                  <line x1="9" y1="21" x2="15" y2="21"/>
+                  <path d="M8.5 11 Q10.5 8 8.5 5"/>
+                  <path d="M12 11 Q14 7 12 3"/>
+                  <path d="M15.5 11 Q13.5 8 15.5 5"/>
+                </svg>
+              </div>
+              <div class="ac-text">
+                <p class="ac-title">Make intercession</p>
+                <p class="ac-sub">Pray through the wall of requests from churches around the world.</p>
+              </div>
+            </div>
+            <div class="ac-cta">Enter the prayer wall</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-vis">
+        <p class="ac-frame-label sky">After · v6 · icon-left + revised scale</p>
+        <div class="ac-frame">
+          <div class="action-card">
+            <div class="ac-head">
+              <div class="ac-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/>
+                  <line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/>
+                  <line x1="9" y1="21" x2="15" y2="21"/>
+                  <path d="M8.5 11 Q10.5 8 8.5 5"/>
+                  <path d="M12 11 Q14 7 12 3"/>
+                  <path d="M15.5 11 Q13.5 8 15.5 5"/>
+                </svg>
+              </div>
+              <div class="ac-text">
+                <p class="ac-title">Make intercession</p>
+                <p class="ac-sub">Pray through the wall of requests from churches around the world.</p>
+              </div>
+            </div>
+            <div class="ac-cta">Enter the prayer wall</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="ac-frame-label sky" style="margin-top: 32px;">Receive intercession · same layout, green border, candle icon</p>
+    <div class="ac-frame" style="max-width: 540px;">
+      <div class="action-card green">
+        <div class="ac-head">
+          <div class="ac-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#5BAD7A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4" fill="#5BAD7A" stroke="none" opacity="0.85"/>
+              <path d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4"/>
+              <line x1="12" y1="8" x2="12" y2="11"/>
+              <path d="M10 11 H14 V16 H10 Z"/>
+              <path d="M10 13 Q9.3 14 9.8 15"/>
+              <path d="M5 16 H19 Q19 19 17 19 H7 Q5 19 5 16 Z"/>
+            </svg>
+          </div>
+          <div class="ac-text">
+            <p class="ac-title">Receive intercession</p>
+            <p class="ac-sub">Let the body stand with your church in prayer.</p>
+          </div>
+        </div>
+        <span class="ac-coming-soon">Coming soon</span>
+        <div class="ac-cta locked">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Coming soon
+        </div>
+        <p class="ac-disabled-hint">Available after your church is verified</p>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 28px;">
+      <div class="col-vis">
+        <p class="banner-label sky">Layout schematic</p>
+        <div class="schematic">
+          <div class="schema-row">
+            <div class="schema-icon">60 pt</div>
+            <div class="schema-text">
+              <span class="t1">Title — 26 pt Cormorant 500</span>
+              <span class="t2">Description — 15 pt DM Sans 300</span>
+            </div>
+          </div>
+          <div class="schema-cta">CTA · full-card width · 16 pt 500</div>
+          <p class="schema-note">↳ icon vertically centres on the title+description block · 18 pt gap between icon and text · CTA spans below the entire row</p>
+        </div>
+      </div>
+
+      <div class="col-spec spec-table">
+        <dl>
+          <dt>Layout</dt>
+          <dd>Flex row · <code>align-items: center</code> · icon-left + text-right column. Title and description stacked vertically in the text column. CTA full-card-width below the row.</dd>
+          <dt>Icon</dt>
+          <dd><strong>60 pt</strong> circle · sky-dim or green-dim fill · 0.5 pt mid-tone border · <strong>30 pt</strong> SVG inside <em>(unchanged from v5)</em></dd>
+          <dt>Gap · icon → text</dt>
+          <dd><strong>18 pt</strong></dd>
+          <dt>Title</dt>
+          <dd><span class="from">30 pt</span> → <strong>26 pt</strong> Cormorant 500 · letter-spacing 0.01em · line-height 1.15 <span class="delta">−4 pt</span></dd>
+          <dt>Description</dt>
+          <dd><span class="from">16 pt</span> → <strong>15 pt</strong> DM Sans 300 · line-height 1.45 · color <code>rgba(text, 0.65)</code> <span class="delta">−1 pt · tighter leading</span></dd>
+          <dt>Title → description gap</dt>
+          <dd><strong>4 pt</strong> margin between</dd>
+          <dt>Row → CTA gap</dt>
+          <dd><strong>14 pt</strong> margin below the head row before the CTA</dd>
+          <dt>CTA</dt>
+          <dd>Full card width · <span class="from">15 pt</span> → <strong>16 pt</strong> DM Sans 500 · letter-spacing 0.02em · padding 14 pt vertical · radius <strong>10 pt</strong> <span class="delta">+1 pt type · slightly larger radius to match new title scale</span></dd>
+          <dt>Card padding</dt>
+          <dd><strong>22 pt</strong> top · <strong>22 pt</strong> horizontal · <strong>20 pt</strong> bottom <em>(unchanged)</em></dd>
+          <dt>"Coming soon" pill</dt>
+          <dd>Centered above locked CTA · 11 pt mono caps · 10 pt margin below pill before CTA</dd>
+          <dt>Disabled hint</dt>
+          <dd>Centered below locked CTA · 11 pt mono caps muted · 10 pt margin above</dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> The current build looks like it's still using the v3/v4 vertical layout. Switch the head row to <code>display: flex; align-items: center; gap: 18px;</code> and stack the title + sub inside the text column. Don't centre-align the text; left-align so it pairs with the icon.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 2 — SCRIPTURE BANNER -->
+  <section class="item" data-screen-label="02 Scripture banner">
+    <p class="item-num">Item 04 · scripture banner (Eph 6:18)</p>
+    <h2 class="item-title">Sky-tinted banner · matches the Rev 12:11 treatment on Testimonies</h2>
+    <p class="item-ask"><strong>Build is currently rendering:</strong> Eph 6:18 as floating italic text with no container chrome, and reading too small on device. <strong>Correct:</strong> wrap it in a sky-tinted banner exactly the way Rev 12:11 sits on the Testimonies tab, just recoloured to the intercession theme (sky, not green). Bump the body type one step too.</p>
+
+    <div class="row">
+      <div class="col-vis">
+        <p class="banner-label sky">After · v6 · Eph 6:18 sky banner (Prayer Wall landing)</p>
+        <div class="scrip-banner">
+          <p class="body">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+          <p class="ref">Ephesians 6:18 · KJV</p>
+        </div>
+
+        <p class="banner-label green" style="margin-top: 22px;">Reference · existing Rev 12:11 banner (Testimonies tab)</p>
+        <div class="scrip-banner green">
+          <p class="body">"And they overcame him by the blood of the Lamb, and by the word of their testimony; and they loved not their lives unto the death."</p>
+          <p class="ref">Revelation 12:11 · KJV</p>
+        </div>
+      </div>
+
+      <div class="col-spec spec-table">
+        <dl>
+          <dt>Banner fill</dt>
+          <dd><code>rgba(107,181,232,0.10)</code> · sky-dim</dd>
+          <dt>Banner border</dt>
+          <dd><strong>0.5 pt</strong> · <code>rgba(107,181,232,0.30)</code> · sky-soft</dd>
+          <dt>Border radius</dt>
+          <dd><strong>10 pt</strong></dd>
+          <dt>Padding</dt>
+          <dd><strong>22 pt</strong> vertical · <strong>24 pt</strong> horizontal</dd>
+          <dt>Margin above</dt>
+          <dd><strong>24 pt</strong> below the top "Prayer Wall" title</dd>
+          <dt>Margin below</dt>
+          <dd><strong>24 pt</strong> above the first action card</dd>
+          <dt>Scripture body</dt>
+          <dd><span class="from">18 pt</span> → <strong>20 pt</strong> Cormorant italic 300 · line-height 1.55 · color <code>--text</code> · centred <span class="delta">+2 pt</span></dd>
+          <dt>Reference</dt>
+          <dd><strong>12 pt</strong> DM Mono 400 · letter-spacing 0.18em · UPPERCASE · color <code>--sky</code> · centred · 10 pt above-margin from scripture body</dd>
+          <dt>Parity with Rev 12:11</dt>
+          <dd>Same shape, same padding, same border radius, same type sizes. Only the colour differs (sky for Prayer Wall, green for Testimonies). Build once, theme by tab.</dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> Reuse the Testimonies-tab banner component if you have it — pass <code>tone="sky"</code> or similar. If it's not extracted yet, wrap it once and use the existing Rev 12:11 instance as the second consumer.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPLEMENTATION FLAGS FOR CC -->
+  <section class="item" data-screen-label="Implementation flags">
+    <p class="item-num">Implementation flags · for CC (not CD design changes)</p>
+    <h2 class="item-title">Other observations from the v5 device pass</h2>
+    <p class="item-ask">Founder caught a few things on device that aren't design changes — they're CC implementation bugs from the v5 build. Listing them here so SM can dispatch with the v6 redlines.</p>
+
+    <div class="flag-list">
+      <h3>For CC to fix</h3>
+      <p class="sub">five build flags · v5</p>
+      <ul>
+        <li><strong>Scroll</strong><span>The Prayer Wall landing screen does not scroll on device. View-my-open-prayers link + testimony rotator are below the fold and currently unreachable. Make sure the landing's scroll container has <code>flex: 1; overflow-y: auto</code> with the tab bar sticky outside it.</span></li>
+        <li><strong>Top-bar divider</strong><span>Founder wants a 0.5 pt hairline divider below the "Prayer Wall" top title, matching the Home tab. <em>v5 recommended Option A (no divider) — overridden, ship the hairline.</em> <code>0.5 pt</code> · <code>rgba(240,237,230,0.08)</code> · full-bleed under the title.</span></li>
+        <li><strong>Testimony rotator</strong><span>Not visible in the v5 build under Receive intercession card. Make sure it renders below the action cards on the landing (spec is in Surface 02 of the v4 wireframes).</span></li>
+        <li><strong>Testimony card · tap to expand</strong><span>Testimony body line-clamps to 4 lines and truncates with <em>…</em>, but tapping the card is a no-op in v1 per the Surface 03 contract. Founder needs full-text reading. <strong>Decision needed</strong> — promote tap-to-expand into v1 (same bottom-sheet pattern as prayer requests, with the celebrate inline + a Close)? Or settle for a "Show more" inline text-link inside the card? Ping Ife.</span></li>
+        <li><strong>Detail sheet · type bump</strong><span>The bottom sheet for individual prayer requests is reading tight — the body italic and the two CTAs. Bump body 17 → <strong>19 pt</strong> Cormorant italic, CTAs from 15 → <strong>16 pt</strong> DM Sans 500. Padding stays.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="footer-meta">Replant · Prayer Wall · v6 redlines · 25 May 2026</p>
+
+</div>
+</body>
+</html>

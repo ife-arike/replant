@@ -32,6 +32,8 @@ import {
   type TestimonyRow,
 } from './PrayerWallLogic';
 import TestimonyCard from './TestimonyCard';
+import TestimonyDetailSheet from './TestimonyDetailSheet';
+import ScriptureBanner from './ScriptureBanner';
 
 // Rev 12:11 (KJV) — locked in full. NEVER truncate.
 const REV_12_11_KJV =
@@ -46,11 +48,18 @@ interface Props {
   /** Notifies the parent the deep-link has been consumed so subsequent
    *  visits don't re-glow the same card. */
   onDeepLinkConsumed: () => void;
+  /** v6 Fix G — selected testimony for the bottom sheet, owned at the
+   *  screen level so it can be cleared on tab blur. Null when no
+   *  sheet is open. */
+  selectedTestimony: TestimonyRow | null;
+  onSelectTestimony: (row: TestimonyRow | null) => void;
 }
 
 export default function TestimoniesView({
   deepLinkTestimonyId,
   onDeepLinkConsumed,
+  selectedTestimony,
+  onSelectTestimony,
 }: Props) {
   const [rows, setRows] = useState<TestimonyRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('initial');
@@ -139,6 +148,24 @@ export default function TestimoniesView({
     return () => clearTimeout(fadeT);
   }, [deepLinkTestimonyId, rows, onDeepLinkConsumed, pillFade]);
 
+  // v6 Fix G — onCelebratedChange propagation: mirror sheet-side
+  // optimistic celebrate toggle back to the matching list row so the
+  // card's passive celebrate display reflects the new state on next
+  // render. STUB until the celebrate RPC lands; next testimonies
+  // reload overwrites with server-truth.
+  const handleCelebratedChange = useCallback(
+    (id: string, iCelebrated: boolean, celebratedCount: number) => {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, i_celebrated: iCelebrated, celebrated_count: celebratedCount }
+            : r,
+        ),
+      );
+    },
+    [],
+  );
+
   return (
     <View style={styles.root}>
       <FlatList
@@ -146,7 +173,11 @@ export default function TestimoniesView({
         data={rows}
         keyExtractor={(r) => r.id}
         renderItem={({ item }) => (
-          <TestimonyCard row={item} isHighlighted={item.id === highlightedId} />
+          <TestimonyCard
+            row={item}
+            isHighlighted={item.id === highlightedId}
+            onPress={onSelectTestimony}
+          />
         )}
         ItemSeparatorComponent={Separator}
         contentContainerStyle={styles.listContent}
@@ -176,6 +207,11 @@ export default function TestimoniesView({
           setHighlightedId(null);
         }}
       />
+      <TestimonyDetailSheet
+        row={selectedTestimony}
+        onDismiss={() => onSelectTestimony(null)}
+        onCelebratedChange={handleCelebratedChange}
+      />
     </View>
   );
 }
@@ -187,15 +223,19 @@ function ScriptureHeader({
   pillVisible: boolean;
   pillOpacity: Animated.Value;
 }) {
+  // v6 fix D — Rev 12:11 now uses the shared ScriptureBanner with
+  // tone="green". Same shape, same padding, same type sizes as the
+  // sky banner on landing — only colour differs. From-landing pill
+  // still sits inside the banner (banner exposes a children slot).
   return (
-    <View style={styles.headerBlock}>
-      <Text style={styles.scriptureText}>{REV_12_11_KJV}</Text>
-      <Text style={styles.scriptureRef}>{REV_12_11_REF}</Text>
-      {pillVisible ? (
-        <Animated.View style={[styles.fromLandingPill, { opacity: pillOpacity }]}>
-          <Text style={styles.fromLandingPillText}>From landing</Text>
-        </Animated.View>
-      ) : null}
+    <View style={styles.headerWrap}>
+      <ScriptureBanner tone="green" text={REV_12_11_KJV} reference={REV_12_11_REF}>
+        {pillVisible ? (
+          <Animated.View style={[styles.fromLandingPill, { opacity: pillOpacity }]}>
+            <Text style={styles.fromLandingPillText}>From landing</Text>
+          </Animated.View>
+        ) : null}
+      </ScriptureBanner>
     </View>
   );
 }
@@ -211,7 +251,8 @@ function EmptyState() {
 }
 
 function Separator() {
-  return <View style={{ height: 8 }} />;
+  // v6 fix E — card-to-card gap 8 → 20 pt.
+  return <View style={{ height: 20 }} />;
 }
 
 const styles = StyleSheet.create({
@@ -222,29 +263,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  headerBlock: {
-    backgroundColor: 'rgba(91, 173, 122, 0.06)',
-    paddingTop: 8,
-    paddingBottom: 10,
-    paddingHorizontal: 14,
-    borderRadius: 4,
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  scriptureText: {
-    fontFamily: Typography.displayMediumItalic,
-    fontSize: 13,
-    color: Colors.text,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  scriptureRef: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.6,
-    color: Colors.green,
-    textTransform: 'uppercase',
+  headerWrap: {
+    // v6 fix D — ScriptureBanner owns its own padding (22/24) and
+    // border radius (10). This wrap only provides the gap below the
+    // banner before the first testimony card.
+    marginBottom: 20,
   },
   fromLandingPill: {
     marginTop: 4,

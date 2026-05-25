@@ -1,26 +1,29 @@
 // ─────────────────────────────────────────────
-// TestimonyCard — KAN-23 v2 (Ticket D)
+// TestimonyCard — KAN-23 v6 (Fix G — pressable wrapper)
 //
 // One testimony in the testimonies list. Distinguished from a prayer
 // card by a 3 pt green left border (vs 2 pt sky/red on prayer cards),
 // 4-line body clamp (vs 3), no chevron, and a permanent "Testimony"
 // tag (NEVER a category chip — locked by dispatch).
 //
+// v6 Fix G — card is now a Pressable whose onPress surfaces to the
+// parent (TestimoniesView) so it can open TestimonyDetailSheet. The
+// celebrate icon in the meta row is DISPLAY-ONLY (no Pressable,
+// not tappable) — confirmation lives only inside the sheet, same
+// pattern as PrayerWallCard's heart vs PrayerWallDetailSheet's
+// stand-in-the-gap CTA.
+//
 // Optional "Originally posted as:" quote block renders when the wire
 // shape includes original_request_id. get_landing_testimonies skips
 // the join and emits original_text=null, so the rotator never shows
 // the quote; get_testimonies includes it.
-//
-// Celebrate tap is a write STUB — optimistic flip of iCelebrated +
-// count ±1 with a small scale + sparkle animation. Reduced motion
-// drops the animation. RPC wiring is pending SEC checkpoint.
 //
 // Deep-link glow: when isHighlighted is true (parent passes this for
 // the target testimony arriving from the landing rotator), a 1.6 s
 // green pulse animation overlays the card.
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -42,17 +45,15 @@ import { CelebrateIcon } from './PrayerIcons';
 interface Props {
   row: TestimonyRow;
   isHighlighted?: boolean;
+  /** v6 Fix G — tap opens TestimonyDetailSheet on the parent. */
+  onPress: (row: TestimonyRow) => void;
   now?: Date;
 }
 
 const GLOW_DURATION_MS = 1600;
-const CELEBRATE_BURST_MS = 600;
 
-export default function TestimonyCard({ row, isHighlighted = false, now }: Props) {
+export default function TestimonyCard({ row, isHighlighted = false, onPress, now }: Props) {
   const reduced = useReducedMotion();
-  const [iCelebrated, setICelebrated] = useState(row.i_celebrated);
-  const [celebrateCount, setCelebrateCount] = useState(row.celebrated_count);
-  const burst = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -78,42 +79,24 @@ export default function TestimonyCard({ row, isHighlighted = false, now }: Props
     ]).start();
   }, [isHighlighted, reduced, glow]);
 
-  const handleCelebrate = () => {
-    // TODO: wire celebrate RPC — pending SEC checkpoint.
-    // Optimistic flip only; nothing is persisted. The real RPC lives in
-    // a follow-up ticket and may apply server-side rate-limiting.
-    setICelebrated((prev) => {
-      const next = !prev;
-      setCelebrateCount((c) => c + (next ? 1 : -1));
-      return next;
-    });
-    if (reduced) return;
-    burst.setValue(0);
-    Animated.sequence([
-      Animated.timing(burst, {
-        toValue: 1,
-        duration: CELEBRATE_BURST_MS / 2,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(burst, {
-        toValue: 0,
-        duration: CELEBRATE_BURST_MS / 2,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const scale = burst.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.2, 1.2] });
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
 
   const locationLine = getLocationLine(row.church_name, row.country);
   const leaderLine = getLeaderLine(row.leader_display_name);
   const timestamp = formatRelativeTime(row.created_at, now);
 
+  // v6 Fix G — card is a Pressable wrapping the existing chrome. The
+  // celebrate icon + count in the meta row below are display-only
+  // (no Pressable, no internal state) — the tap path for celebrate
+  // lives inside TestimonyDetailSheet. Card body / quote block / meta
+  // taps all fall through to onPress, opening the sheet.
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={() => onPress(row)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open testimony from ${row.church_name}`}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
       {/* Deep-link glow overlay — sits on top, pointer-events: none. */}
       <Animated.View
         pointerEvents="none"
@@ -141,31 +124,35 @@ export default function TestimonyCard({ row, isHighlighted = false, now }: Props
         <View style={styles.testimonyChip}>
           <Text style={styles.testimonyChipText}>Testimony</Text>
         </View>
-        <Pressable
-          onPress={handleCelebrate}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel={iCelebrated ? 'Un-celebrate' : 'Celebrate'}
+        {/* Passive celebrate display — no Pressable. Fed directly
+            from row props so the parent's onCelebratedChange row swap
+            propagates here on the next render. */}
+        <View
           style={styles.celebrateWrap}
+          accessible
+          accessibilityLabel={`${row.celebrated_count} celebrating`}
         >
-          <Animated.View style={{ transform: [{ scale }] }}>
-            <CelebrateIcon size={16} color={iCelebrated ? Colors.amber : Colors.textMuted} />
-          </Animated.View>
-          <Text style={[styles.celebrateCount, iCelebrated && styles.celebrateCountActive]}>
-            {celebrateCount}
+          <CelebrateIcon
+            size={16}
+            color={row.i_celebrated ? Colors.amber : Colors.textMuted}
+          />
+          <Text
+            style={[
+              styles.celebrateCount,
+              row.i_celebrated && styles.celebrateCountActive,
+            ]}
+          >
+            {row.celebrated_count}
           </Text>
-        </Pressable>
+        </View>
         {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    // v5 item 06 — fill rgba(91,173,122,0.06), border 0.5 pt
-    // rgba(91,173,122,0.20) (was 0.25 — redline locks 0.5 / hairline),
-    // 3 pt green left-border, padding 14 × 16.
     backgroundColor: 'rgba(91, 173, 122, 0.06)',
     borderLeftWidth: 3,
     borderLeftColor: Colors.green,
@@ -178,6 +165,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     overflow: 'hidden',
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
   glow: {
     position: 'absolute',
@@ -267,12 +257,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   celebrateWrap: {
-    // v5 item 06 — 28 pt tap-hit-target around the 16 pt icon.
+    // v6 Fix G — display-only (no tap-hit-target). Icon + count
+    // shown side-by-side with 4 pt gap. The tap path lives in
+    // TestimonyDetailSheet.
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    minHeight: 28,
-    paddingHorizontal: 4,
   },
   celebrateCount: {
     // v5 item 06 — count 12 pt DM Mono, 4 pt gap (set via gap above).
