@@ -391,11 +391,13 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   body: {
+    // v6 fix F — body 16 → 19 pt Cormorant italic, line-height 1.65.
+    // Bundle has no italic 300; using displayMediumItalic (500).
     marginTop: 16,
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 16,
+    fontSize: 19,
     color: Colors.text,
-    lineHeight: 25, // ~1.55 line-height at 16 pt
+    lineHeight: 31, // 19 × 1.65
   },
   metaRow: {
     flexDirection: 'row',
@@ -459,13 +461,16 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   ctaPrimary: {
+    // v6 fix F — Stand-in-the-gap primary CTA min height 48 → 52,
+    // label 14 → 16 pt DM Sans 500.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 48,
+    minHeight: 52,
     borderRadius: 8,
     paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   ctaPrimarySolid: {
     backgroundColor: Colors.red,
@@ -477,7 +482,7 @@ const styles = StyleSheet.create({
   },
   ctaPrimaryText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 16,
   },
   ctaPrimaryTextSolid: {
     color: Colors.background,
@@ -486,9 +491,12 @@ const styles = StyleSheet.create({
     color: Colors.red,
   },
   ctaSecondary: {
-    height: 44,
+    // v6 fix F — Connect-to-this-church secondary CTA min height
+    // 44 → 48, label 13 → 16 pt DM Sans 500.
+    minHeight: 48,
     borderRadius: 8,
     paddingHorizontal: 16,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
@@ -501,7 +509,7 @@ const styles = StyleSheet.create({
   },
   ctaSecondaryText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 13,
+    fontSize: 16,
     color: Colors.accent,
   },
   ctaSecondaryTextDisabled: {

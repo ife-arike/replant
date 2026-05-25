@@ -29,6 +29,7 @@ import {
   Animated,
   Easing,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -43,6 +44,7 @@ import {
   type TestimonyRow,
 } from './PrayerWallLogic';
 import { CandleIcon, IncenseIcon, LockIcon } from './PrayerIcons';
+import ScriptureBanner from './ScriptureBanner';
 
 // Eph 6:18 (KJV) — locked in full. NEVER truncate.
 const EPH_6_18_KJV =
@@ -69,15 +71,30 @@ export default function PrayerWallLanding({
   const { branch } = useAuth();
   const isVerified = branch === 'active';
 
+  // v6 fix A — landing now scrolls. Tab bar sticks outside (TabNavigator
+  // owns it); top bar + hairline divider sit above this ScrollView in
+  // PrayerWallScreen. ContentContainer carries the trailing padding so
+  // the rotator's dots don't graze the tab bar.
   return (
-    <View style={styles.root}>
-      {/* Scripture block — never truncated. */}
-      <View style={styles.scriptureBlock}>
-        <Text style={styles.scriptureText}>{EPH_6_18_KJV}</Text>
-        <Text style={styles.scriptureRef}>{EPH_6_18_REF}</Text>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* v6 fix D — Eph 6:18 wrapped in a sky-tinted ScriptureBanner
+          matching the Rev 12:11 treatment on Testimonies. NEVER
+          truncates. 24 pt top + bottom margin enforced by the
+          banner's parent gaps. */}
+      <View style={styles.scriptureWrap}>
+        <ScriptureBanner
+          tone="sky"
+          text={EPH_6_18_KJV}
+          reference={EPH_6_18_REF}
+        />
       </View>
 
-      {/* Action cards */}
+      {/* Action cards — v6 fix C: icon-LEFT layout, 18 pt gap, title
+          26 pt / sub 15 pt / CTA 16 pt. */}
       <View style={styles.actionStack}>
         <ActionCard
           accent="sky"
@@ -106,7 +123,7 @@ export default function PrayerWallLanding({
         onSeeAll={onSeeAllTestimonies}
         onOpenTestimony={onOpenTestimony}
       />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -139,17 +156,30 @@ function ActionCard({
 }: ActionCardProps) {
   const borderColor = accent === 'sky' ? Colors.borderAccent : 'rgba(91, 173, 122, 0.30)';
   const iconBg = accent === 'sky' ? 'rgba(107, 181, 232, 0.10)' : 'rgba(91, 173, 122, 0.10)';
+  const isLocked = ctaVariant === 'locked';
 
+  // v6 fix C — icon-LEFT layout. Head row uses flex with alignItems
+  // 'center' so the 60 pt circle vertically centres against the
+  // title+description stack. Title and description are LEFT-aligned;
+  // cornerPill (Coming soon) no longer lives next to the icon — it
+  // now centres above the locked CTA per v6 spec, below the head row.
   return (
     <View style={[styles.actionCard, { borderColor, opacity: dimmed ? 0.55 : 1 }]}>
-      <View style={styles.cardHeaderRow}>
+      <View style={styles.cardHeadRow}>
         <View style={[styles.iconCircle, { backgroundColor: iconBg, borderColor }]}>
           {icon}
         </View>
-        {cornerPill}
+        <View style={styles.cardTextCol}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.cardSubtitle}>{subtitle}</Text>
+        </View>
       </View>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardSubtitle}>{subtitle}</Text>
+
+      {/* Coming soon pill — only on locked CTAs, centred above. */}
+      {isLocked && cornerPill ? (
+        <View style={styles.pillSlot}>{cornerPill}</View>
+      ) : null}
+
       {ctaVariant === 'solid' ? (
         <Pressable
           onPress={onPress}
@@ -178,6 +208,8 @@ function ActionCard({
           <Text style={styles.cardCtaTextLocked}>{ctaLabel}</Text>
         </Pressable>
       )}
+
+      {/* Disabled hint — centered below locked CTA, 10 pt above. */}
       {hintBelow ? <Text style={styles.cardHint}>{hintBelow}</Text> : null}
     </View>
   );
@@ -341,61 +373,53 @@ function TestimonyRotator({ onSeeAll, onOpenTestimony }: RotatorProps) {
 
 const styles = StyleSheet.create({
   root: {
+    // v6 fix A — ScrollView wrapper. flex:1 inside the parent
+    // SafeAreaView so the scroll container takes the remaining height
+    // after top bar + hairline.
     flex: 1,
   },
-  scriptureBlock: {
-    // v5 redlines item 02 (Option A — no divider under title) is honoured
-    // implicitly: this block is rendered directly under the topBar in
-    // PrayerWallScreen without any hairline rule between them.
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 28,
-    alignItems: 'center',
+  scrollContent: {
+    // Trailing breath so the testimony rotator's dots don't graze the
+    // tab bar at the bottom of the screen.
+    paddingBottom: 40,
   },
-  scriptureText: {
-    // v5 item 03 — scripture body 16 → 18 pt, line-height 1.55,
-    // rgba(text, 0.65). Bundle has no Cormorant italic 300; using
-    // displayMediumItalic (500) — same fallback documented in the
-    // KAN-36 v2 DeactivationModal comment.
-    fontFamily: Typography.displayMediumItalic,
-    fontSize: 18,
-    color: 'rgba(240, 237, 230, 0.65)',
-    textAlign: 'center',
-    lineHeight: 28,
-  },
-  scriptureRef: {
-    // v5 item 03 — ref 11 → 12 pt, 0.18em UPPERCASE sky.
-    marginTop: 10,
-    fontFamily: Typography.mono,
-    fontSize: 12,
-    letterSpacing: 2.2,
-    color: Colors.accent,
-    textTransform: 'uppercase',
+  scriptureWrap: {
+    // v6 fix D — sky banner is full-width minus a 24 pt safe area,
+    // with 24 pt above (gap from top-bar hairline) and 24 pt below
+    // (gap above the first action card).
+    paddingHorizontal: 24,
+    marginTop: 24,
+    marginBottom: 24,
   },
   actionStack: {
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     gap: 12,
   },
   actionCard: {
-    // v5 item 03 cc-note — if action cards grow too tall after the sub
-    // bump, drop vertical padding 20 → 18. Going to 18 proactively
-    // because the sub bumped 14 → 16 + a 3-line subtitle in the
-    // Receive card.
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    // v6 fix C — padding 22 top / 22 horizontal / 20 bottom.
+    paddingTop: 22,
+    paddingHorizontal: 22,
+    paddingBottom: 20,
+    borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     backgroundColor: Colors.surface,
-    gap: 12,
   },
-  cardHeaderRow: {
+  cardHeadRow: {
+    // v6 fix C — icon-LEFT row: 18 pt gap between icon and text column,
+    // vertical centring. marginBottom 14 sets the gap before the pill
+    // (or directly to the CTA if no pill).
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 18,
+    marginBottom: 14,
+  },
+  cardTextCol: {
+    // flex:1 lets the title + description wrap to multiple lines if
+    // the device is narrow without pushing the icon off-screen.
+    flex: 1,
+    minWidth: 0,
   },
   iconCircle: {
-    // v5 item 01 — circle 60 pt (was 44 in v2-era code; dispatch said
-    // "remains 60 pt" but build was actually 44; bumping to redline).
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -404,26 +428,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
-    // v5 item 03 — title 30 pt Cormorant 500, line-height 1.1
-    // (dispatch said unchanged; build was 22; redline locks 30).
+    // v6 fix C — title 30 → 26 pt Cormorant 500, lh 1.15, ls 0.01em,
+    // left-aligned. 0.01em × 26 pt ≈ 0.26 pt letterSpacing.
     fontFamily: Typography.displayMedium,
-    fontSize: 30,
+    fontSize: 26,
     color: Colors.text,
-    letterSpacing: 0.3,
-    lineHeight: 33,
+    letterSpacing: 0.26,
+    lineHeight: 30, // 26 × 1.15
+    textAlign: 'left',
   },
   cardSubtitle: {
-    // v5 item 03 — sub 14 → 16 pt, line-height 1.55, rgba(text, 0.65).
-    // Bundle has no DM Sans 300; using Typography.body (400).
+    // v6 fix C — sub 16 → 15 pt DM Sans 300, lh 1.45, rgba(text, 0.65),
+    // left-aligned, 4 pt below the title. Bundle has no DM Sans 300;
+    // using Typography.body (400).
+    marginTop: 4,
     fontFamily: Typography.body,
-    fontSize: 16,
+    fontSize: 15,
     color: 'rgba(240, 237, 230, 0.65)',
-    lineHeight: 25,
+    lineHeight: 22, // 15 × 1.45
+    textAlign: 'left',
+  },
+  pillSlot: {
+    // v6 fix C — Coming Soon pill centred above locked CTA, 10 pt
+    // marginBottom from the pill (head row already gave 14 above).
+    alignItems: 'center',
+    marginBottom: 10,
   },
   cardCta: {
-    height: 48,
-    borderRadius: 8,
+    // v6 fix C — CTA padding 14 pt vertical, radius 10. Full card
+    // width. No marginTop because the head row's marginBottom (14)
+    // or the pillSlot's marginBottom (10) already set the gap above.
+    paddingVertical: 14,
     paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -441,23 +478,26 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   cardCtaTextSolid: {
-    // v5 item 03 — CTA 14 → 15 pt, 0.04em (dispatch table bump).
+    // v6 fix C — label 15 → 16 pt DM Sans 500, ls 0.02em
+    // (0.02em × 16 = ~0.32 pt letterSpacing).
     fontFamily: Typography.bodyMedium,
-    fontSize: 15,
-    letterSpacing: 0.6,
+    fontSize: 16,
+    letterSpacing: 0.32,
     color: Colors.background,
   },
   cardCtaTextLocked: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 15,
-    letterSpacing: 0.6,
+    fontSize: 16,
+    letterSpacing: 0.32,
     color: Colors.textMuted,
   },
   cardHint: {
-    // v5 item 03 — disabled-CTA hint 11 → 12 pt, 0.14em UPPERCASE.
+    // v6 fix C — disabled hint centred below locked CTA, 11 pt mono
+    // caps muted, 10 pt margin above.
+    marginTop: 10,
     fontFamily: Typography.mono,
-    fontSize: 12,
-    letterSpacing: 1.7,
+    fontSize: 11,
+    letterSpacing: 1.5,
     color: Colors.textMuted,
     textAlign: 'center',
     textTransform: 'uppercase',

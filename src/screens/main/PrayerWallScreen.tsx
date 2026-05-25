@@ -96,6 +96,7 @@ export default function PrayerWallScreen() {
   const [urgency, setUrgency] = useState<UrgencyFilter>(DEFAULT_URGENCY);
   const [detailRow, setDetailRow] = useState<PrayerRow | null>(null);
   const [deepLinkTestimonyId, setDeepLinkTestimonyId] = useState<string | null>(null);
+  const [selectedTestimony, setSelectedTestimony] = useState<import('../../components/prayer/PrayerWallLogic').TestimonyRow | null>(null);
   const hasFetchedOnce = useRef(false);
   const listRef = useRef<FlatList<PrayerRow> | null>(null);
 
@@ -187,7 +188,10 @@ export default function PrayerWallScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategories, urgency]);
 
-  // Tab-blur reset — restore landing + defaults + clear deep-link.
+  // Tab-blur reset — restore landing + defaults + clear deep-link
+  // + clear selected testimony (v6 Fix G — testimony detail sheet
+  // dismisses when the leader leaves the tab, same posture as the
+  // prayer detail sheet).
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -196,6 +200,7 @@ export default function PrayerWallScreen() {
         setUrgency(DEFAULT_URGENCY);
         setDetailRow(null);
         setDeepLinkTestimonyId(null);
+        setSelectedTestimony(null);
       };
     }, []),
   );
@@ -220,6 +225,10 @@ export default function PrayerWallScreen() {
         <View style={styles.topBar}>
           <Text style={styles.title}>Prayer Wall</Text>
         </View>
+        {/* v6 fix B — Founder override of v5 Option A. Ship the
+            0.5 pt hairline below the Prayer Wall title on the
+            landing, matching Home. Only renders on this view. */}
+        <View style={styles.landingHairline} />
         <PrayerWallLanding
           onEnterFeed={() => setView('feed')}
           onSeeAllTestimonies={() => setView('testimonies')}
@@ -314,6 +323,8 @@ export default function PrayerWallScreen() {
         <TestimoniesView
           deepLinkTestimonyId={deepLinkTestimonyId}
           onDeepLinkConsumed={() => setDeepLinkTestimonyId(null)}
+          selectedTestimony={selectedTestimony}
+          onSelectTestimony={setSelectedTestimony}
         />
       )}
 
@@ -405,7 +416,7 @@ function renderFeedBody(args: FeedBodyArgs) {
       keyExtractor={(r) => r.id}
       renderItem={({ item }) => <PrayerWallCard row={item} onPress={onOpenDetail} />}
       contentContainerStyle={styles.listContent}
-      ItemSeparatorComponent={() => <View style={{ height: 3 }} />}
+      ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
       onEndReached={loadMore}
       onEndReachedThreshold={0.5}
       refreshControl={
@@ -434,6 +445,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 14,
+  },
+  landingHairline: {
+    // v6 fix B — 0.5 pt full-bleed hairline below the Prayer Wall
+    // title on the landing only. Matches Home tab pattern.
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(240, 237, 230, 0.08)',
   },
   title: {
     fontFamily: Typography.display,
