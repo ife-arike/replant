@@ -247,7 +247,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scroll: {
-    flexGrow: 0,
+    // v7 Fix 02 — was `flexGrow: 0, flex: 1`. The two conflict:
+    // flex:1 sets flexGrow:1 + flexShrink:1 + flexBasis:0, then
+    // flexGrow:0 overrides growth → with flexBasis:0 the ScrollView
+    // collapsed to 0 width on device. v7 regression report. Use
+    // flex:1 alone so it fills the row.
     flex: 1,
   },
   scrollContent: {

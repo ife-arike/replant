@@ -40,7 +40,7 @@ import {
   getLocationLine,
   type PrayerRow,
 } from './PrayerWallLogic';
-import { ChevronRightIcon, HeartIcon } from './PrayerIcons';
+import { HeartIcon } from './PrayerIcons';
 
 interface Props {
   row: PrayerRow;
@@ -57,7 +57,11 @@ export default function PrayerWallCard({ row, onPress, now }: Props) {
   // branch). Type still exposed on the wire for other consumers; we
   // just don't surface it here.
   const locationLine = getLocationLine(row.church_name, row.country);
-  const leaderLine = getLeaderLine(row.leader_display_name);
+  // v7 Item 05 — leader line prefixes role label when display name is
+  // non-null ("Pastor Priya", "Minister Felipe"). Anonymous +
+  // underground-masked posts still render "A fellow leader" via the
+  // null branch of getLeaderLine.
+  const leaderLine = getLeaderLine(row.leader_display_name, row.leader_role);
   const timestamp = formatRelativeTime(row.created_at, now);
 
   return (
@@ -71,17 +75,20 @@ export default function PrayerWallCard({ row, onPress, now }: Props) {
         pressed && styles.cardPressed,
       ]}
     >
-      <Text style={styles.location} numberOfLines={2}>{locationLine}</Text>
-      <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
-
-      <View style={styles.bodyRow}>
-        <Text style={styles.body} numberOfLines={3}>
-          {row.prayer_text}
-        </Text>
-        <View style={styles.chevronWrap}>
-          <ChevronRightIcon size={14} color={Colors.textMuted} />
+      {/* v7 Item 05 — header row: church name + author on left,
+          "Tap to open" label on right (decorative; whole card is
+          tappable). Chevron removed entirely. */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.location} numberOfLines={2}>{locationLine}</Text>
+          <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
         </View>
+        <Text style={styles.tapToOpen}>Tap to open</Text>
       </View>
+
+      <Text style={styles.body} numberOfLines={3}>
+        {row.prayer_text}
+      </Text>
 
       <View style={styles.metaRow}>
         {row.category ? (
@@ -123,43 +130,56 @@ const styles = StyleSheet.create({
   cardPressed: {
     opacity: 0.85,
   },
+  headerRow: {
+    // v7 Item 05 — header row: church name + author stacked on left,
+    // "Tap to open" label on right (decorative — whole card is the
+    // tap target). flex-start alignment so the label lines up with
+    // the top of the church-name baseline.
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  headerLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  tapToOpen: {
+    // v7 Item 05 — 11 pt DM Sans 400, rgba(text, 0.35), sentence case,
+    // no arrow. Vertically aligned to the top of the church-name line
+    // via paddingTop:2 (matches the line-height offset).
+    fontFamily: Typography.body,
+    fontSize: 11,
+    color: 'rgba(240, 237, 230, 0.35)',
+    flexShrink: 0,
+    paddingTop: 2,
+  },
   location: {
-    // v5 item 04 — church name 16 pt DM Sans 400 (dispatch said
-    // unchanged; build was 13; redline locks 16).
+    // v7 Item 05 — church name 16 pt DM Sans 400 (unchanged from v6).
     fontFamily: Typography.body,
     fontSize: 16,
     color: Colors.text,
     lineHeight: 21,
   },
   leader: {
-    // v5 item 04 — author 13 pt DM Sans 300, rgba(text, 0.45),
-    // marginTop 2, marginBottom 12 (the header → body gap).
-    // No DM Sans 300 in bundle; using Typography.body (400).
-    fontFamily: Typography.body,
-    fontSize: 13,
+    // v7 Item 05 — author 14 pt DM Sans 300 Light, rgba(text, 0.45),
+    // marginTop 2. Native 300 Light via Typography.sansLight.
+    fontFamily: Typography.sansLight,
+    fontSize: 14,
     color: 'rgba(240, 237, 230, 0.45)',
-    lineHeight: 18,
+    lineHeight: 19,
     marginTop: 2,
-    marginBottom: 12,
-  },
-  bodyRow: {
-    // marginTop removed — the leader's marginBottom now owns the gap
-    // (v5 item 04 — 6 pt → 12 pt).
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   body: {
-    // v5 item 04 — body Cormorant italic 300 at 16 pt, line-height 1.6,
-    // colour --text. Bundle has no italic 300; using displayMediumItalic.
-    flex: 1,
-    fontFamily: Typography.displayMediumItalic,
+    // v5 item 04 — body Cormorant italic 300 at 16 pt, line-height 1.6.
+    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
+    // v7 Item 05 — chevron removed; body now spans full card width
+    // without the flex/row wrapping that held the chevron column.
+    fontFamily: Typography.scriptureItalic,
     fontSize: 16,
     color: Colors.text,
     lineHeight: 26,
-  },
-  chevronWrap: {
-    paddingLeft: 8,
-    paddingTop: 2,
   },
   metaRow: {
     flexDirection: 'row',
@@ -205,13 +225,15 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   heartCount: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
+    // v7 Item 08 — DM Sans 400 (was DM Mono).
+    fontFamily: Typography.body,
+    fontSize: 11,
     color: Colors.textMuted,
   },
   timestamp: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
+    // v7 Item 08 — DM Sans 400, sentence case, no tracking.
+    fontFamily: Typography.body,
+    fontSize: 11,
     color: Colors.textMuted,
     marginLeft: 'auto',
   },

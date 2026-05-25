@@ -280,7 +280,11 @@ export default function TestimonyDetailSheet({
             onPress={handleCelebrate}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={iCelebrated ? 'Un-celebrate' : 'Celebrate'}
+            accessibilityLabel={
+              // v7 Item 09 — Celebrate → Rejoice (Romans 12:15
+              // posture, not a social-media-likes verb).
+              iCelebrated ? 'Stop rejoicing' : 'Rejoice with this testimony'
+            }
             style={styles.celebrateCta}
           >
             <Animated.View style={{ transform: [{ scale: burstScale }] }}>
@@ -295,7 +299,10 @@ export default function TestimonyDetailSheet({
                 iCelebrated && styles.celebrateLabelActive,
               ]}
             >
-              {iCelebrated ? "You're celebrating" : 'Celebrate'}
+              {/* v7 Item 09 — default "Rejoice with them", pressed
+                  "Rejoicing" (present-continuous, mirrors the prayer
+                  detail sheet's "You're standing in the gap" pattern). */}
+              {iCelebrated ? 'Rejoicing' : 'Rejoice with them'}
             </Text>
             <Text
               style={[
@@ -356,14 +363,14 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   body: {
-    // Fix G — body 19 pt Cormorant italic, line-height 1.65 (same as
-    // PrayerWallDetailSheet after Fix F). Bundle has no italic 300;
-    // using displayMediumItalic (500).
+    // v7 Item 11 — 19 pt Cormorant 300 Light Italic, lh 1.55 (v6 had
+    // 1.65 — v7 corrects to 1.55 across all italic-body surfaces now
+    // that native 300 Light loads).
     marginTop: 16,
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 19,
     color: Colors.text,
-    lineHeight: 31, // 19 × 1.65
+    lineHeight: 29, // 19 × 1.55 ≈ 29.45
   },
   quote: {
     // Mirror of the testimony-card quote block: green left-border,
@@ -429,8 +436,9 @@ const styles = StyleSheet.create({
     color: Colors.amber,
   },
   timestamp: {
-    // Fix G — 13 pt DM Mono, --muted, right-aligned.
-    fontFamily: Typography.mono,
+    // v7 Item 08 — 13 pt DM Sans 400, sentence case, no tracking
+    // (was 13 pt DM Mono).
+    fontFamily: Typography.body,
     fontSize: 13,
     color: Colors.textMuted,
     marginLeft: 'auto',

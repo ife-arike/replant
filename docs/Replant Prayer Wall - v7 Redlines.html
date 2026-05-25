@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall · v7 Redlines</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --red-mid: rgba(224,85,85,0.45);
+    --red-dim: rgba(224,85,85,0.10);
+    --amber: #D4A855;
+    --amber-mid: rgba(212,168,85,0.45);
+    --amber-dim: rgba(212,168,85,0.12);
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-dim: rgba(91,173,122,0.10);
+    --green-tint: rgba(91,173,122,0.06);
+  }
+  body { background: #0d0d0d; font-family: var(--sans); font-weight: 300; color: var(--text); padding: 3rem 2rem 5rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .doc { max-width: 1120px; margin: 0 auto; }
+
+  .doc-header { padding-bottom: 1.8rem; margin-bottom: 2.4rem; border-bottom: 0.5px solid var(--faint); }
+  .eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--sky); }
+  .doc-title { font-family: var(--serif); font-size: 2.6rem; font-weight: 300; letter-spacing: 0.02em; margin-bottom: 8px; }
+  .doc-sub { font-size: 0.95rem; color: var(--muted-strong); max-width: 800px; line-height: 1.65; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 18px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .meta-row strong { color: var(--text); font-weight: 500; }
+
+  .toc {
+    margin-top: 2rem;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 30px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+  }
+  .toc a { color: var(--muted-strong); text-decoration: none; padding: 4px 0; display: block; }
+  .toc a:hover { color: var(--sky); }
+  .toc a .num { color: var(--sky); margin-right: 10px; font-weight: 500; }
+
+  .item { margin: 3rem 0 0; padding-top: 2rem; border-top: 0.5px solid var(--faint); scroll-margin-top: 24px; }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item-num { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; margin-bottom: 6px; }
+  .item-num.amber { color: var(--amber); }
+  .item-title { font-family: var(--serif); font-size: 1.55rem; font-weight: 400; letter-spacing: 0.01em; margin-bottom: 8px; }
+  .item-ask { font-size: 0.86rem; color: var(--muted-strong); margin-bottom: 1.6rem; max-width: 780px; }
+  .item-ask strong { color: var(--text); font-weight: 500; }
+  .item-ask em { color: var(--text); }
+
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .col { flex: 1 1 360px; min-width: 320px; }
+
+  /* Spec table */
+  .spec-table { font-size: 0.84rem; line-height: 1.65; }
+  .spec-table dl { display: grid; grid-template-columns: 200px 1fr; gap: 8px 22px; }
+  .spec-table dt { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .spec-table dd { color: var(--muted-strong); }
+  .spec-table dd strong { color: var(--text); font-weight: 500; }
+  .spec-table dd code { font-family: var(--mono); font-size: 0.74rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+  .spec-table .from { color: var(--muted); text-decoration: line-through; font-family: var(--mono); font-size: 0.72rem; padding-right: 5px; }
+  .spec-table .delta { color: var(--green); font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; padding-left: 6px; }
+
+  .cc-note {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--muted-strong);
+    line-height: 1.6;
+  }
+  .cc-note strong { color: var(--sky); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; margin-right: 8px; }
+  .cc-note.amber { background: var(--amber-dim); border-color: var(--amber-mid); }
+  .cc-note.amber strong { color: var(--amber); }
+
+  /* Visual frames */
+  .vis-frame {
+    background: var(--bg);
+    border: 0.5px solid var(--faint);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .frame-label {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .frame-label.sky { color: var(--sky); }
+  .frame-label.green { color: var(--green); }
+  .frame-label.bad { color: rgba(224,85,85,0.75); }
+
+  /* Action card render (after — locked Receive without coming-soon pill) */
+  .action-card {
+    background: var(--surface);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 14px;
+    padding: 22px 22px 20px;
+  }
+  .action-card.green { border-color: var(--green-mid); }
+  .ac-head { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+  .ac-icon {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--sky-dim); border: 0.5px solid var(--sky-mid);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ac-icon.green { background: var(--green-dim); border-color: var(--green-mid); }
+  .ac-icon svg { width: 30px; height: 30px; }
+  .ac-text { flex: 1; min-width: 0; }
+  .ac-title { font-family: var(--serif); font-size: 1.5rem; font-weight: 500; letter-spacing: 0.01em; line-height: 1.15; margin-bottom: 4px; }
+  .ac-sub { font-size: 0.86rem; color: var(--muted-strong); line-height: 1.45; }
+  .ac-cta {
+    background: var(--sky); color: var(--bg);
+    text-align: center; padding: 14px; border-radius: 10px;
+    font-size: 0.92rem; font-weight: 500; letter-spacing: 0.02em;
+  }
+  .ac-cta.locked {
+    background: var(--surface2); color: var(--muted);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ac-cta.locked svg { width: 14px; height: 14px; }
+  .ac-disabled-hint {
+    text-align: center; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em;
+    color: var(--muted); text-transform: uppercase; margin-top: 10px; line-height: 1.5;
+  }
+
+  /* Scripture renders */
+  .scrip-floating {
+    text-align: center;
+    padding: 8px 24px;
+  }
+  .scrip-floating .body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.25rem;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .scrip-floating .ref {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sky);
+  }
+  .scrip-floating.green .ref { color: var(--green); }
+  .scrip-floating.wide { padding: 12px 12px; }
+  .scrip-floating.wide .body { max-width: 100%; }
+
+  /* Before scripture (the v6 banner — for comparison) */
+  .scrip-banner-before {
+    background: rgba(107,181,232,0.10);
+    border: 0.5px solid rgba(107,181,232,0.30);
+    border-radius: 10px;
+    padding: 22px 24px;
+    text-align: center;
+    opacity: 0.6;
+  }
+  .scrip-banner-before .body { font-family: var(--serif); font-style: italic; font-size: 1.1rem; line-height: 1.55; color: var(--text); margin-bottom: 10px; }
+  .scrip-banner-before .ref { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sky); }
+
+  /* Feed card variants — before / after */
+  .feed-card {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-left: 2px solid var(--sky);
+    border-radius: 0 6px 6px 0;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .feed-card.urgent { border-left-color: var(--red); }
+  .fc-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+  .fc-head-left { flex: 1; min-width: 0; }
+  .fc-loc { font-size: 1rem; color: var(--text); margin-bottom: 2px; line-height: 1.3; font-weight: 400; }
+  .fc-author { font-size: 0.85rem; color: var(--muted); }
+  .fc-tap {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    color: rgba(240,237,230,0.35);
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .fc-body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .fc-meta {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .fc-tag {
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px;
+  }
+  .fc-tag.sky { background: var(--sky-dim); color: var(--sky); }
+  .fc-tag.red { background: var(--red-dim); color: var(--red); }
+  .fc-tag.green { background: var(--green-dim); color: var(--green); }
+  .fc-heart {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-left: 4px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .fc-time {
+    font-family: var(--mono); font-size: 0.65rem; color: var(--muted); margin-left: auto;
+  }
+  /* Before-state markers */
+  .feed-card.before .chev-mark {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 1.2rem;
+  }
+
+  /* Testimony card render */
+  .tm-card {
+    background: var(--green-tint);
+    border: 0.5px solid rgba(91,173,122,0.20);
+    border-left: 3px solid var(--green);
+    border-radius: 0 6px 6px 0;
+    padding: 14px 16px;
+  }
+  .tm-loc {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+  .tm-author { font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; }
+  .tm-body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.15rem;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .tm-orig {
+    background: rgba(240,237,230,0.04);
+    border-left: 1px solid var(--green);
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border-radius: 0 4px 4px 0;
+  }
+  .tm-orig-label {
+    font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .tm-orig-body { font-size: 0.85rem; color: rgba(240,237,230,0.55); line-height: 1.55; }
+
+  /* Comparison table for font usage */
+  .font-table {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 0;
+    overflow: hidden;
+    margin-top: 18px;
+  }
+  .font-table table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .font-table th, .font-table td { text-align: left; padding: 10px 14px; border-bottom: 0.25px solid var(--faint); vertical-align: middle; }
+  .font-table th { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 400; background: rgba(240,237,230,0.02); }
+  .font-table td.was { color: rgba(224,85,85,0.85); }
+  .font-table td.now { color: var(--green); font-weight: 500; }
+  .font-table td.k { color: var(--text); font-weight: 500; }
+  .font-table .keep { color: var(--muted-strong); }
+  .font-table code { font-family: var(--mono); font-size: 0.72rem; }
+
+  /* Tap-to-open label samples */
+  .tap-sample {
+    font-family: var(--sans); font-size: 0.7rem; color: rgba(240,237,230,0.35);
+    display: inline-block;
+    padding: 4px 8px;
+    border: 0.5px dashed var(--hair);
+    border-radius: 3px;
+  }
+
+  /* Link comparison */
+  .link-before, .link-after {
+    text-align: center; padding: 14px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .link-before .text { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; color: var(--sky); }
+  .link-after .text { font-family: var(--sans); font-size: 0.92rem; font-weight: 400; color: var(--sky); }
+  .link-after .text-green { font-family: var(--sans); font-size: 0.92rem; font-weight: 400; color: var(--green); }
+
+  /* Holistic font checklist */
+  .holistic-table {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 0;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .holistic-table table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .holistic-table th, .holistic-table td { text-align: left; padding: 10px 14px; border-bottom: 0.25px solid var(--faint); vertical-align: top; line-height: 1.55; }
+  .holistic-table th { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 400; background: rgba(240,237,230,0.02); }
+  .holistic-table .where { color: var(--text); font-weight: 500; width: 25%; }
+  .holistic-table .v4 { color: var(--muted-strong); width: 22%; font-family: var(--mono); font-size: 0.74rem; }
+  .holistic-table .v6 { color: var(--muted-strong); width: 22%; font-family: var(--mono); font-size: 0.74rem; }
+  .holistic-table .v7 { color: var(--green); width: 22%; font-family: var(--mono); font-size: 0.74rem; font-weight: 500; }
+
+  .footer-meta { text-align: center; padding-top: 24px; margin-top: 4rem; border-top: 0.5px solid var(--faint); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+  /* utility */
+  .strike { text-decoration: line-through; opacity: 0.5; }
+  .strike-text { color: rgba(224,85,85,0.6); text-decoration: line-through; }
+  .new-text { color: var(--green); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="doc-header" data-screen-label="Header">
+    <p class="eyebrow">CD · v7 redlines · device pass after v6</p>
+    <h1 class="doc-title">Prayer Wall — v7 redlines</h1>
+    <p class="doc-sub">Eleven items after the v6 device pass. Mostly polish: type weight clean-up (Cormorant 300 Light Italic now wired correctly by CC), scripture banners removed in favour of floating text, feed-card chevron → "Tap to open" label, leader role prefix, Receive coming-soon pill removed, Celebrate → Rejoice, intercession → Intercession (title case), and a holistic font-consistency check.</p>
+    <div class="meta-row">
+      <span><strong>Reference:</strong> v6 build · device pass</span>
+      <span><strong>Device:</strong> iPhone 14 Pro Max</span>
+      <span><strong>Date:</strong> 25 May 2026</span>
+      <span><strong>From:</strong> CD → CC via SM</span>
+    </div>
+
+    <nav class="toc">
+      <a href="#item-00"><span class="num">00</span>Cormorant 300 Light Italic · context</a>
+      <a href="#item-01"><span class="num">01</span>Philippians 4:6 banner on feed + width</a>
+      <a href="#item-04"><span class="num">04</span>Scripture banners — soften or remove</a>
+      <a href="#item-05"><span class="num">05</span>Feed card: chevron out + leader role</a>
+      <a href="#item-06"><span class="num">06</span>Remove "Coming soon" amber pill</a>
+      <a href="#item-07"><span class="num">07</span>Testimony body — final pt value</a>
+      <a href="#item-08"><span class="num">08</span>DM Mono usage review</a>
+      <a href="#item-09"><span class="num">09</span>Celebrate → Rejoice</a>
+      <a href="#item-10"><span class="num">10</span>Intercession → Intercession (title case)</a>
+      <a href="#item-11"><span class="num">11</span>Holistic font-consistency check</a>
+    </nav>
+  </div>
+
+  <!-- ITEM 00 -->
+  <section class="item" id="item-00" data-screen-label="00 Font fix context">
+    <p class="item-num amber">Item 00 · context for CD (no spec change)</p>
+    <h2 class="item-title">Cormorant 300 Light Italic now rendering correctly</h2>
+    <p class="item-ask">CC has wired the 300 Light + 300 Light Italic weights — v6 was falling back to 500 Medium, which is why scripture and prayer body were reading heavier than the wireframes. <strong>CD does not need to change anything for this item.</strong> Every weight spec below uses the correct names: <em>Cormorant Garamond · 300 Light Italic</em> for scripture body and prayer/testimony bodies. With the correct weight loaded, the type will sit more delicately on the dark surface — and several of the size bumps from v5/v6 may end up reading heavier than needed. Item 11 is the holistic recheck.</p>
+    <div class="cc-note"><strong>CC</strong> Confirm in the device pass after this lands that the @font-face declarations point to the 300 + 300i files specifically, not just a single roman weight that's being italicised in CSS. Italic should be a native style, not <code>font-style: italic</code> on a non-italic file.</div>
+  </section>
+
+  <!-- ITEM 01 -->
+  <section class="item" id="item-01" data-screen-label="01 Feed scripture">
+    <p class="item-num">Item 01 · Philippians 4:6 on the feed view + width</p>
+    <h2 class="item-title">Add Phil 4:6 above the first prayer card · wider line-width</h2>
+    <p class="item-ask"><strong>Ask:</strong> when a leader enters the feed (taps "Enter the prayer wall"), they should be greeted by scripture before the first card. Use Philippians 4:6 (KJV) — <em>"Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God."</em> No banner chrome (per Item 04). Width should be wider than the v6 landing-scripture rendering — Founder noticed the Eph 6:18 sat too tightly centred and wrapped to 5+ lines.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label sky">After · v7 · floating Phil 4:6 above feed cards · wide</p>
+        <div class="vis-frame">
+          <div class="scrip-floating wide">
+            <p class="body">"Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God."</p>
+            <p class="ref">Philippians 4:6 · KJV</p>
+          </div>
+          <div style="height: 14px;"></div>
+          <div class="feed-card urgent">
+            <div class="fc-head-row">
+              <div class="fc-head-left">
+                <p class="fc-loc">Underground Church</p>
+                <p class="fc-author">A fellow leader</p>
+              </div>
+              <span class="fc-tap">Tap to open</span>
+            </div>
+            <p class="fc-body">"Authorities visited the home where we usually gather. We have moved twice this month…"</p>
+            <div class="fc-meta">
+              <span class="fc-tag sky">Protection</span>
+              <span class="fc-tag red">Urgent</span>
+              <span class="fc-heart">♡ 0</span>
+              <span class="fc-time">1d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col spec-table">
+        <dl>
+          <dt>Position</dt>
+          <dd>Above the first prayer-request card in the feed scroll container. Below the filter bar + active-count strip. <strong>20 pt</strong> below the active-count strip; <strong>14 pt</strong> above the first card.</dd>
+          <dt>Component</dt>
+          <dd>Reuse the ScriptureBanner CC extracted, rendered with <code>tone="none"</code> — no fill, no border, no radius. Floating text only.</dd>
+          <dt>Width</dt>
+          <dd><strong>Full container width</strong> minus 16 pt horizontal padding (matches feed card horizontal alignment). <em>No max-width centred constraint.</em> The verse should breathe wider — wrap to <strong>2–3 lines</strong> at 18 pt instead of 5–6.</dd>
+          <dt>Body</dt>
+          <dd><strong>18 pt</strong> Cormorant Garamond · weight <strong>300 Light Italic</strong> · line-height 1.55 · color <code>--text</code> · centred text</dd>
+          <dt>Reference</dt>
+          <dd><strong>11 pt</strong> DM Sans 400 · letter-spacing 0.18em · UPPERCASE · color <code>--sky</code> · centred · <strong>8 pt</strong> above-margin from body <em>(see Item 08 — switched from DM Mono to DM Sans for the reference line)</em></dd>
+          <dt>Padding</dt>
+          <dd><strong>8 pt</strong> vertical · <strong>16 pt</strong> horizontal · matches feed card horizontal gutter</dd>
+          <dt>Scroll behavior</dt>
+          <dd>Scrolls with the feed (not sticky). After scrolling past, it doesn't return until the leader pulls back to top.</dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> This verse appears <strong>only once on tab-enter</strong> — not every feed re-query. When filter chips change, the scripture stays put; only the cards re-render below it.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 04 -->
+  <section class="item" id="item-04" data-screen-label="04 Banners — soften or remove">
+    <p class="item-num">Item 04 · banners · soften to match this doc · or remove entirely</p>
+    <h2 class="item-title">Plan A muted banner · Plan B floating fallback</h2>
+    <p class="item-ask"><strong>Updated ask:</strong> the v6 live build is rendering the sky and green banners <strong>too strong</strong> — saturated fills, scripture body not muted. The renders in <em>this</em> v7 doc are how the banners should actually look on device: very low-alpha fill, no border, scripture body in <strong>muted text</strong>, reference in a softer sky/green. <strong>Plan A:</strong> if CC can hit those values exactly, the banners stay. <strong>Plan B:</strong> if Plan A still reads too strong on real hardware after one pass, drop both banners and render scripture as floating text per the fallback spec.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">v6 build · sky banner too strong · scripture not muted</p>
+        <div class="vis-frame">
+          <div style="background: rgba(107,181,232,0.18); border: 0.5px solid rgba(107,181,232,0.50); border-radius: 10px; padding: 22px 24px; text-align: center;">
+            <p style="font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 1.1rem; line-height: 1.55; color: #FFFFFF; margin-bottom: 10px;">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+            <p style="font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sky); font-weight: 500;">Ephesians 6:18 · KJV</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">v7 target · soft fill · muted scripture · no border</p>
+        <div class="vis-frame">
+          <div style="background: rgba(107,181,232,0.06); border-radius: 10px; padding: 24px;">
+            <p style="font-family: var(--serif); font-style: italic; font-weight: 300; font-size: 1.15rem; line-height: 1.55; color: rgba(240,237,230,0.78); text-align: center; margin-bottom: 10px;">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+            <p style="font-family: var(--sans); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(107,181,232,0.70); text-align: center; font-weight: 400;">Ephesians 6:18 · KJV</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 22px;">
+      <div class="col">
+        <p class="frame-label bad">v6 build · green banner too strong · scripture not muted</p>
+        <div class="vis-frame">
+          <div style="background: rgba(91,173,122,0.18); border: 0.5px solid rgba(91,173,122,0.50); border-radius: 10px; padding: 22px 24px; text-align: center;">
+            <p style="font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 1.1rem; line-height: 1.55; color: #FFFFFF; margin-bottom: 10px;">"And they overcame him by the blood of the Lamb, and by the word of their testimony; and they loved not their lives unto the death."</p>
+            <p style="font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--green); font-weight: 500;">Revelation 12:11 · KJV</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label green">v7 target · soft fill · muted scripture · no border</p>
+        <div class="vis-frame">
+          <div style="background: rgba(91,173,122,0.06); border-radius: 10px; padding: 24px;">
+            <p style="font-family: var(--serif); font-style: italic; font-weight: 300; font-size: 1.15rem; line-height: 1.55; color: rgba(240,237,230,0.78); text-align: center; margin-bottom: 10px;">"And they overcame him by the blood of the Lamb, and by the word of their testimony; and they loved not their lives unto the death."</p>
+            <p style="font-family: var(--sans); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(91,173,122,0.70); text-align: center; font-weight: 400;">Revelation 12:11 · KJV</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col spec-table" style="margin-top: 28px;">
+      <dl>
+        <dt>Plan A · banner (preferred)</dt>
+        <dd>Keep the banner shape but soften every dimension. The right column above is the target render.</dd>
+        <dt>Banner · fill</dt>
+        <dd><strong>Sky:</strong> <code>rgba(107,181,232,0.06)</code> &nbsp;·&nbsp; <strong>Green:</strong> <code>rgba(91,173,122,0.06)</code>. <strong>0.06 alpha</strong> — not 0.10, not 0.12. Anything stronger reads as a callout box.</dd>
+        <dt>Banner · border</dt>
+        <dd><strong>None.</strong> Drop the hairline. The soft fill alone defines the shape; adding a border re-introduces the saturation problem.</dd>
+        <dt>Banner · radius / padding</dt>
+        <dd>Border-radius <strong>10 pt</strong> · padding <strong>24 pt</strong> all sides</dd>
+        <dt>Banner · scripture body</dt>
+        <dd>Cormorant Garamond <strong>300 Light Italic</strong> · <strong>20 pt</strong> on landing/testimonies · <strong>18 pt</strong> on feed (Phil 4:6) · line-height 1.55 · color <strong><code>rgba(240,237,230,0.78)</code></strong> — <em>not</em> full <code>#F0EDE6</code>. The verse must read muted, set back from the headlines around it. (The v6 build is rendering scripture in full white — that's the main cause of the "too strong" perception.)</dd>
+        <dt>Banner · reference</dt>
+        <dd>DM Sans 400 · <strong>11 pt</strong> · letter-spacing 0.18em · UPPERCASE · color <strong><code>rgba(107,181,232,0.70)</code></strong> on sky / <strong><code>rgba(91,173,122,0.70)</code></strong> on green · centred · 8 pt above-margin from body. <em>(Sky/green tint, muted by 0.70 alpha — not full saturation.)</em></dd>
+        <dt>Plan B · floating fallback</dt>
+        <dd><strong>Trigger:</strong> if after one device-pass build with Plan A values, Founder still says the banner reads too strong, switch to <code>tone="none"</code> on both surfaces. Floating-text fallback below. <strong>Don't iterate fill values</strong> — Plan A is the ceiling.</dd>
+        <dt>Floating fallback · spec</dt>
+        <dd>Container: <strong>none</strong> · padding <strong>24 pt</strong> top/bottom · <strong>20 pt</strong> horizontal · body Cormorant 300 Light Italic <strong>20 pt</strong> · color <code>rgba(240,237,230,0.78)</code> · centred · reference DM Sans 400 <strong>11 pt</strong> 0.18em UPPERCASE · color <code>rgba(107,181,232,0.70)</code> or <code>rgba(91,173,122,0.70)</code> · 8 pt above-margin from body</dd>
+        <dt>Margin above</dt>
+        <dd>Landing: <strong>20 pt</strong> below the top "Prayer Wall" title divider. Testimonies tab: <strong>16 pt</strong> below the segmented control. Feed: <strong>20 pt</strong> below the active-count strip.</dd>
+        <dt>Margin below</dt>
+        <dd>Landing: <strong>24 pt</strong> above the first action card. Testimonies tab: <strong>20 pt</strong> above the first testimony card. Feed: <strong>14 pt</strong> above the first prayer card.</dd>
+        <dt>Component prop</dt>
+        <dd>Keep the ScriptureBanner component. <code>tone="sky" | "green" | "none"</code> — "sky" and "green" use Plan A; "none" renders the floating fallback.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Do one device-pass build with Plan A and screenshot at iPhone 14 Pro Max. If Founder confirms the banner reads as soft as <em>this</em> doc's right-column render, ship it. If she still says too strong after Plan A is correctly applied, flip the prop to <code>tone="none"</code>. Don't experiment with intermediate fills.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 05 -->
+  <section class="item" id="item-05" data-screen-label="05 Feed card chevron + role">
+    <p class="item-num">Item 05 · feed card · chevron out · leader role in</p>
+    <h2 class="item-title">"Tap to open" label · role prefix before leader name</h2>
+    <p class="item-ask"><strong>Two changes</strong> — (a) drop the › chevron from the right side of the body row, replace with a quiet "Tap to open" label in the top-right of the header row (small, grey, no arrow); (b) when leader is not anonymous, prefix their name with their role label — <em>Minister Felipe</em>, not just <em>Felipe</em>. <strong>No separator</strong> between role and name — just a single space, so it reads as a natural phrase. Role labels come from the existing ROLES enum in <code>src/utils/displayHelpers.ts</code>.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">Before · v6 · chevron right · no role</p>
+        <div class="vis-frame">
+          <div class="feed-card before urgent" style="padding-right: 28px;">
+            <div class="fc-head-row" style="margin-bottom: 8px;">
+              <div class="fc-head-left">
+                <p class="fc-loc">Casa de Oración · Peru</p>
+                <p class="fc-author">Felipe</p>
+              </div>
+            </div>
+            <p class="fc-body">"Our congregation has not been able to pay our pastor's small salary for three months…"</p>
+            <span class="chev-mark">›</span>
+            <div class="fc-meta">
+              <span class="fc-tag sky">Provision</span>
+              <span class="fc-tag red">Urgent</span>
+              <span class="fc-heart">♡ 0</span>
+              <span class="fc-time">2d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">After · v7 · "Tap to open" label · role prefix</p>
+        <div class="vis-frame">
+          <div class="feed-card urgent">
+            <div class="fc-head-row">
+              <div class="fc-head-left">
+                <p class="fc-loc">Casa de Oración · Peru</p>
+                <p class="fc-author">Minister Felipe</p>
+              </div>
+              <span class="fc-tap">Tap to open</span>
+            </div>
+            <p class="fc-body">"Our congregation has not been able to pay our pastor's small salary for three months. He continues to serve faithfully without complaint."</p>
+            <div class="fc-meta">
+              <span class="fc-tag sky">Provision</span>
+              <span class="fc-tag red">Urgent</span>
+              <span class="fc-heart">♡ 0</span>
+              <span class="fc-time">2d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Chevron</dt>
+        <dd>Remove. No replacement glyph on the right edge of the body row.</dd>
+        <dt>"Tap to open" label</dt>
+        <dd><strong>11 pt</strong> DM Sans 400 · color <code>rgba(240,237,230,0.35)</code> · sentence case · <strong>no arrow</strong> · sits in the top-right of the header row, right-aligned, vertically aligned to the top of the church-name line</dd>
+        <dt>Header row layout</dt>
+        <dd><code>display: flex; justify-content: space-between; align-items: flex-start; gap: 12px</code> · church name + author stacked on left · "Tap to open" on right</dd>
+        <dt>Tap behaviour</dt>
+        <dd>Whole card remains tappable to open the detail sheet. The "Tap to open" label is decorative — it's the affordance, not its own hitbox. Don't add a separate handler.</dd>
+        <dt>Leader role · format</dt>
+        <dd><strong>Role label&nbsp;&nbsp;Leader name</strong> · DM Sans 14 pt 300 · color <code>rgba(240,237,230,0.45)</code> · <strong>no middle-dot separator</strong> — just a single space between the role and the name. The phrase reads as <em>Pastor Priya</em>, <em>Minister Felipe</em>. The middle dot stays on the line above (Church · Country); it does not appear on the author line.</dd>
+        <dt>Role labels (display)</dt>
+        <dd>From the existing ROLES array. Map enum keys to display labels:<br>
+          • <code>ministry_leader</code> → <strong>Minister</strong><br>
+          • <code>pastor</code> → <strong>Pastor</strong><br>
+          • <code>elder</code> → <strong>Elder</strong><br>
+          • <code>deacon</code> → <strong>Deacon</strong><br>
+          • <code>missionary</code> → <strong>Missionary</strong><br>
+          • <code>youth_leader</code> → <strong>Youth Leader</strong><br>
+          • <code>worship_leader</code> → <strong>Worship Leader</strong><br>
+          • <code>other</code> → <strong>Minister</strong> <em>(fallback — same as ministry_leader)</em>
+        </dd>
+        <dt>Anonymous posts</dt>
+        <dd>When the post is anonymous, the author line reads <em>"A fellow leader"</em> (no role, no name). Underground-masked posts also use <em>"A fellow leader"</em> regardless of underlying role.</dd>
+        <dt>Null role · safety</dt>
+        <dd>If <code>user.role</code> is null/undefined for any reason, fall back to <em>Minister</em> (same fallback as <code>other</code>) rather than rendering the name alone. Never show a name on the role line without a role prefix.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> The role labels are <strong>display strings</strong> from <code>displayHelpers.ts</code> — don't hard-code in the card. Pull <code>getRoleLabel(user.role)</code>. If <code>user.role</code> is null or anonymous flag is true, fall back to "A fellow leader".</div>
+    </div>
+  </section>
+
+  <!-- ITEM 06 -->
+  <section class="item" id="item-06" data-screen-label="06 Coming soon pill">
+    <p class="item-num">Item 06 · remove "Coming soon" amber pill</p>
+    <h2 class="item-title">Receive intercession card · pill out · locked CTA below description</h2>
+    <p class="item-ask"><strong>Ask:</strong> the amber COMING SOON pill above the locked CTA is redundant — the disabled button itself reads "Coming soon" with a lock icon. Strip the pill. Card flows: icon-left row → locked CTA → hint copy.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label sky">After · v7 · Receive card without amber pill</p>
+        <div class="vis-frame">
+          <div class="action-card green">
+            <div class="ac-head">
+              <div class="ac-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#5BAD7A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4" fill="#5BAD7A" stroke="none" opacity="0.85"/>
+                  <path d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4"/>
+                  <line x1="12" y1="8" x2="12" y2="11"/>
+                  <path d="M10 11 H14 V16 H10 Z"/>
+                  <path d="M10 13 Q9.3 14 9.8 15"/>
+                  <path d="M5 16 H19 Q19 19 17 19 H7 Q5 19 5 16 Z"/>
+                </svg>
+              </div>
+              <div class="ac-text">
+                <p class="ac-title">Receive Intercession</p>
+                <p class="ac-sub">Let the body stand with your church in prayer.</p>
+              </div>
+            </div>
+            <div class="ac-cta locked">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Coming soon
+            </div>
+            <p class="ac-disabled-hint">Available after your church is verified</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col spec-table">
+        <dl>
+          <dt>Amber pill</dt>
+          <dd><strong>Remove.</strong> Strip the <code>.pw-coming-soon</code> element and its top-margin.</dd>
+          <dt>Card flow</dt>
+          <dd>Icon-left row (icon + title + description) → <strong>14 pt</strong> gap → locked CTA → <strong>10 pt</strong> gap → disabled hint copy</dd>
+          <dt>Locked CTA</dt>
+          <dd><strong>Full card width</strong> · background <code>--surface2</code> · text <code>--muted</code> · lock icon 14 pt left of label · padding 14 pt vertical · radius 10 pt · text "Coming soon" 16 pt DM Sans 500 · letter-spacing 0.02em</dd>
+          <dt>Hint copy</dt>
+          <dd><em>"Available after your church is verified"</em> · DM Sans <strong>11 pt</strong> 400 · letter-spacing 0.14em UPPERCASE · color <code>--muted</code> · centred <em>(switched from DM Mono per Item 08)</em></dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> Title-case is locked too — <strong>"Receive Intercession"</strong>, not "Receive intercession". See Item 10.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 07 -->
+  <section class="item" id="item-07" data-screen-label="07 Testimony body">
+    <p class="item-num">Item 07 · testimony card body — final pt value</p>
+    <h2 class="item-title">Hold at 17 pt · re-check after font fix</h2>
+    <p class="item-ask"><strong>Ask:</strong> Founder flagged that testimony body still reads small after v6. The v6 build was rendering 500 Medium Italic as fallback — once 300 Light Italic loads correctly (Item 00), the same 17 pt will look quieter and more delicate. <strong>Hold at 17 pt for now</strong>; do a one-frame device pass after the font fix and confirm.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label green">After · v7 · testimony card · 17 pt Cormorant 300 Light Italic</p>
+        <div class="vis-frame">
+          <div class="tm-card">
+            <p class="tm-loc">Abundant Life Church Mumbai · India</p>
+            <p class="tm-author">Pastor Priya</p>
+            <p class="tm-body">"Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown and were able to remove it cleanly."</p>
+            <div class="tm-orig">
+              <p class="tm-orig-label">Originally posted as</p>
+              <p class="tm-orig-body">"Pastor's wife in our women's ministry was diagnosed with stage two breast cancer last Friday. Treatment begins Monday in Mumbai."</p>
+            </div>
+            <div class="fc-meta">
+              <span class="fc-tag green">Testimony</span>
+              <span class="fc-heart" style="color: var(--amber);">🎉 0</span>
+              <span class="fc-time">2d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col spec-table">
+        <dl>
+          <dt>Body</dt>
+          <dd><strong>17 pt</strong> Cormorant Garamond · weight <strong>300 Light Italic</strong> · line-height <strong>1.55</strong> · color <code>--text</code> <em>(hold — with correct 300 weight now rendering, this should sit more lightly)</em></dd>
+          <dt>If still small after font fix</dt>
+          <dd>Bump to <strong>18 pt</strong> (one nudge up). Don't go higher — the testimony card has more content per card than a feed card (testimony body + originally-posted block + meta) and the column already runs tall.</dd>
+          <dt>Originally-posted block</dt>
+          <dd>Label <strong>11 pt</strong> DM Sans 400 · letter-spacing 0.15em UPPERCASE · muted · 4 pt below the bottom of testimony body<br>Body <strong>14 pt</strong> DM Sans 300 · line-height 1.55 · color <code>rgba(text, 0.55)</code> · 1 pt green left-border · padding 10 × 12 pt · bg <code>rgba(text, 0.04)</code></dd>
+          <dt>Testimony tag</dt>
+          <dd><strong>11 pt</strong> DM Mono 400 · letter-spacing 0.14em UPPERCASE · padding 3 × 8 pt · radius 3 pt · bg <code>rgba(91,173,122,0.12)</code> · text green</dd>
+          <dt>Rejoice icon + count</dt>
+          <dd>16 pt SVG · count <strong>12 pt</strong> DM Sans 400 right of icon · 4 pt gap · amber when pressed <em>(see Item 09 for label change: Celebrate → Rejoice)</em></dd>
+          <dt>Time</dt>
+          <dd><strong>11 pt</strong> DM Sans 400 · color <code>--muted</code> · right-aligned <em>(switched from DM Mono per Item 08)</em></dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> Do a device pass once the 300 Light Italic loads. If Founder still says small at 17 pt, bump to 18 pt only. Don't push body italic past 18 pt — it starts to feel performative.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 08 -->
+  <section class="item" id="item-08" data-screen-label="08 DM Mono review">
+    <p class="item-num">Item 08 · DM Mono usage review</p>
+    <h2 class="item-title">Keep mono for tags only · everything else → DM Sans</h2>
+    <p class="item-ask"><strong>Ask:</strong> DM Mono is reading as a coding font on too many surfaces. Founder flagged "View my open prayers →" and "See all →" specifically. Drop the arrows on both. <strong>Recommendation:</strong> reserve DM Mono for chip / tag / label use only (chips like HEALING / URGENT, the TESTIMONY chip on testimony cards). Everything else — timestamps, location lines on testimony cards, scripture references, quick-links, hint copy — switches to DM Sans.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">Before · v6 · mono on links · arrows</p>
+        <div class="link-before">
+          <span class="text" style="font-family: var(--mono); letter-spacing: 0.08em;">VIEW MY OPEN PRAYERS →</span>
+        </div>
+        <div class="link-before" style="margin-top: 12px;">
+          <span class="text" style="font-family: var(--mono); letter-spacing: 0.08em; color: var(--green);">SEE ALL →</span>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">After · v7 · DM Sans · no arrows</p>
+        <div class="link-after">
+          <span class="text">View my open prayers</span>
+        </div>
+        <div class="link-after" style="margin-top: 12px;">
+          <span class="text-green">See all</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="font-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Surface / element</th>
+            <th>v6 (was)</th>
+            <th>v7 (now)</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="k">Filter chips · HEALING / URGENT / etc.</td>
+            <td class="keep">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td class="keep">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td>Keep — chips read as labels, mono works.</td>
+          </tr>
+          <tr>
+            <td class="k">Tags on feed cards · HEALING / URGENT / PROVISION</td>
+            <td class="keep">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td class="keep">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td>Keep — chips on cards mirror filter chips.</td>
+          </tr>
+          <tr>
+            <td class="k">Testimony chip · TESTIMONY</td>
+            <td class="keep">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td class="keep">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td>Keep — same family as feed-card tags.</td>
+          </tr>
+          <tr>
+            <td class="k">Testimony card location · CHURCH · COUNTRY</td>
+            <td class="was">DM Mono 13 pt 0.16em UPPERCASE</td>
+            <td class="now">DM Sans 14 pt 400 · sentence case · letter-spacing 0.02em</td>
+            <td>Sentence case + sans makes it read as a name, not a label.</td>
+          </tr>
+          <tr>
+            <td class="k">Timestamps · "2d ago" "1d ago"</td>
+            <td class="was">DM Mono 11 pt 0.08em</td>
+            <td class="now">DM Sans 11 pt 400 · sentence case · letter-spacing 0</td>
+            <td>Reads as a relative time, not a hash.</td>
+          </tr>
+          <tr>
+            <td class="k">Scripture reference · EPHESIANS 6:18 · KJV</td>
+            <td class="was">DM Mono 11 pt 0.18em UPPERCASE</td>
+            <td class="now">DM Sans 11 pt 400 · letter-spacing 0.18em · UPPERCASE</td>
+            <td>Tracking + UPPERCASE without mono geometry reads more elegant.</td>
+          </tr>
+          <tr>
+            <td class="k">"View my open prayers" quick link</td>
+            <td class="was">DM Mono 11 pt 0.08em UPPERCASE · arrow</td>
+            <td class="now">DM Sans 15 pt 400 · sentence case · <strong>no arrow</strong></td>
+            <td>Login-style text link — quiet, not a callout.</td>
+          </tr>
+          <tr>
+            <td class="k">"See all" link in rotator label</td>
+            <td class="was">DM Mono 11 pt UPPERCASE · arrow</td>
+            <td class="now">DM Sans 14 pt 400 · sentence case · <strong>no arrow</strong></td>
+            <td>Same logic. Less keyboard-clack on the screen.</td>
+          </tr>
+          <tr>
+            <td class="k">TESTIMONIES rotator label on landing</td>
+            <td class="was">DM Mono 11 pt 0.2em UPPERCASE</td>
+            <td class="now">DM Sans 12 pt 500 · letter-spacing 0.18em · UPPERCASE</td>
+            <td>Sans with tracking + caps still reads as a section header.</td>
+          </tr>
+          <tr>
+            <td class="k">"Available after your church is verified" hint</td>
+            <td class="was">DM Mono 11 pt 0.14em UPPERCASE</td>
+            <td class="now">DM Sans 11 pt 400 · letter-spacing 0.14em · UPPERCASE</td>
+            <td>Same hint, less code-prompt energy.</td>
+          </tr>
+          <tr>
+            <td class="k">"Originally posted as" label</td>
+            <td class="was">DM Mono 11 pt 0.16em UPPERCASE</td>
+            <td class="now">DM Sans 11 pt 400 · letter-spacing 0.15em · UPPERCASE</td>
+            <td>Tracked sans, same effect.</td>
+          </tr>
+          <tr>
+            <td class="k">Tab bar labels · HOME / PRAYER WALL / CONNECT</td>
+            <td class="keep">DM Sans 10 pt · letter-spacing 0.1em UPPERCASE</td>
+            <td class="keep">DM Sans 10 pt · letter-spacing 0.1em UPPERCASE</td>
+            <td>Already sans — keep as-is.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cc-note" style="margin-top: 18px;">
+      <strong>CC</strong> The rule is simple: <strong>DM Mono on chips/tags only</strong> (filter chips, card category tags, the Testimony chip). Everything else switches to DM Sans, with tracking + UPPERCASE preserved where labels need to read as labels.
+    </div>
+  </section>
+
+  <!-- ITEM 09 -->
+  <section class="item" id="item-09" data-screen-label="09 Rejoice">
+    <p class="item-num">Item 09 · copy · Celebrate → Rejoice</p>
+    <h2 class="item-title">All "Celebrate" instances → "Rejoice"</h2>
+    <p class="item-ask"><strong>Ask:</strong> all "Celebrate" copy on the Prayer Wall → "Rejoice". Affects the testimony card tap-button label, the testimony detail sheet CTA (when v2 ships), accessibility labels, the chip on testimony cards if present, and any toast or success message.</p>
+
+    <div class="col spec-table">
+      <dl>
+        <dt>Testimony card tap action</dt>
+        <dd>Label/aria <span class="strike-text">Celebrate</span> → <span class="new-text">Rejoice</span> · icon (confetti popper) unchanged</dd>
+        <dt>Toast / haptic announce</dt>
+        <dd><span class="strike-text">"Celebrated"</span> → <span class="new-text">"Rejoicing with them"</span></dd>
+        <dt>Testimony detail sheet CTA (v2)</dt>
+        <dd><span class="strike-text">"Celebrate with them"</span> → <span class="new-text">"Rejoice with them"</span></dd>
+        <dt>After-state (pressed)</dt>
+        <dd><span class="strike-text">"Celebrated"</span> → <span class="new-text">"Rejoicing"</span> (present-continuous, same pattern as "You're standing in the gap")</dd>
+        <dt>Accessibility labels</dt>
+        <dd><span class="strike-text">aria-label="Celebrate this testimony"</span> → <span class="new-text">aria-label="Rejoice with this testimony"</span></dd>
+        <dt>Find-replace scope</dt>
+        <dd>Prayer Wall surfaces only. Don't touch the rest of the app if "Celebrate" appears elsewhere (e.g., an admin event log).</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Romans 12:15 — <em>"Rejoice with them that do rejoice."</em> The verb upgrades the action from social-media-likes to scriptural posture.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 10 -->
+  <section class="item" id="item-10" data-screen-label="10 Title case">
+    <p class="item-num">Item 10 · copy · intercession → Intercession</p>
+    <h2 class="item-title">Action card titles · title case locked</h2>
+    <p class="item-ask"><strong>Ask:</strong> action card titles on the landing render as <em>"Make intercession"</em> and <em>"Receive intercession"</em> — title-case the second word. Founder wants both titles to read as their own proper noun.</p>
+
+    <div class="col spec-table">
+      <dl>
+        <dt>Make card title</dt>
+        <dd><span class="strike-text">Make intercession</span> → <span class="new-text">Make Intercession</span></dd>
+        <dt>Receive card title</dt>
+        <dd><span class="strike-text">Receive intercession</span> → <span class="new-text">Receive Intercession</span></dd>
+        <dt>Other surfaces</dt>
+        <dd>This rule applies <strong>only</strong> to the two landing action card titles. Body copy, descriptions, alerts, and hint text use sentence case: <em>"Pray through the wall of requests..."</em> — leave those alone.</dd>
+        <dt>The Coming soon alert</dt>
+        <dd><em>"Receive Intercession is coming soon. For now, your church can request prayer by writing us at <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c2a1adacaca7a1b682b2b0ada8a7a1b6b0a7b2aea3acb6ecadb0a5">[email&#160;protected]</a>."</em> · the action name is title-case in the alert too · sentence case for the rest</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ITEM 11 -->
+  <section class="item" id="item-11" data-screen-label="11 Holistic font check">
+    <p class="item-num">Item 11 · holistic font-consistency check</p>
+    <h2 class="item-title">v4 wireframe ↔ v6 build ↔ v7 spec · prayer body + scripture</h2>
+    <p class="item-ask"><strong>Ask:</strong> with the 300 Light Italic landing in CC, scan whether the v4 wireframe sizes still match the now-correctly-rendering v6 build. Two surfaces matter — feed prayer-request body, and the scripture headers (landing Eph 6:18, feed Phil 4:6, testimonies Rev 12:11). Founder reports both will look heavier than wireframe even at the v6 specs once 300 Light loads, so v7 keeps them flat rather than bumping further.</p>
+
+    <div class="holistic-table">
+      <table>
+        <thead>
+          <tr>
+            <th class="where">Where</th>
+            <th class="v4">v4 wireframe</th>
+            <th class="v6">v6 build (was rendering 500)</th>
+            <th class="v7">v7 spec (correct 300 Light)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="where">Feed prayer body</td>
+            <td class="v4">14 pt italic · lh 1.45</td>
+            <td class="v6">16 pt italic · lh 1.6 · rendering bold</td>
+            <td class="v7">16 pt 300 Light Italic · lh 1.6</td>
+          </tr>
+          <tr>
+            <td class="where">Testimony body</td>
+            <td class="v4">15 pt italic · lh 1.55</td>
+            <td class="v6">17 pt italic · lh 1.55 · rendering bold</td>
+            <td class="v7">17 pt 300 Light Italic · lh 1.55 <em>(hold; bump to 18 only if still small on device)</em></td>
+          </tr>
+          <tr>
+            <td class="where">Eph 6:18 landing scripture</td>
+            <td class="v4">16 pt italic · lh 1.55</td>
+            <td class="v6">20 pt italic · banner · rendering bold</td>
+            <td class="v7">20 pt 300 Light Italic · lh 1.55 · no banner</td>
+          </tr>
+          <tr>
+            <td class="where">Phil 4:6 feed scripture</td>
+            <td class="v4">n/a (new in v7)</td>
+            <td class="v6">n/a</td>
+            <td class="v7">18 pt 300 Light Italic · lh 1.55 · no banner</td>
+          </tr>
+          <tr>
+            <td class="where">Rev 12:11 testimonies scripture</td>
+            <td class="v4">14 pt italic · lh 1.5</td>
+            <td class="v6">20 pt italic · banner · rendering bold</td>
+            <td class="v7">20 pt 300 Light Italic · lh 1.55 · no banner</td>
+          </tr>
+          <tr>
+            <td class="where">Detail sheet · prayer body</td>
+            <td class="v4">17 pt italic · lh 1.55</td>
+            <td class="v6">17 pt italic · rendering bold</td>
+            <td class="v7">19 pt 300 Light Italic · lh 1.55 <em>(per v6 flag — bump for sheet specifically)</em></td>
+          </tr>
+          <tr>
+            <td class="where">Action card title</td>
+            <td class="v4">22 pt 500</td>
+            <td class="v6">30 pt 500 (oversized)</td>
+            <td class="v7">26 pt 500 · lh 1.15 <em>(per v6 redline · unchanged here)</em></td>
+          </tr>
+          <tr>
+            <td class="where">Action card description</td>
+            <td class="v4">13 pt 300</td>
+            <td class="v6">16 pt 300 (oversized)</td>
+            <td class="v7">15 pt 300 · lh 1.45 <em>(per v6 redline · unchanged here)</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cc-note" style="margin-top: 18px;">
+      <strong>CC</strong> All v7 values above are <strong>final</strong> for this dispatch. Do a device pass after the 300 Light Italic + 300 Light fonts wire in, and if Founder still flags weight on any of these, ping SM before nudging — don't trim a point unilaterally.
+    </div>
+  </section>
+
+  <p class="footer-meta">Replant · Prayer Wall · v7 redlines · 25 May 2026 · post-font-fix · CC dispatch ready</p>
+
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>

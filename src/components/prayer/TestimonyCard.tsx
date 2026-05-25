@@ -104,7 +104,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
       />
 
       <Text style={styles.location} numberOfLines={1}>
-        {locationLine.toUpperCase()}
+        {locationLine}
       </Text>
       <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
 
@@ -130,7 +130,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
         <View
           style={styles.celebrateWrap}
           accessible
-          accessibilityLabel={`${row.celebrated_count} celebrating`}
+          accessibilityLabel={`${row.celebrated_count} rejoicing`}
         >
           <CelebrateIcon
             size={16}
@@ -178,27 +178,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(91, 173, 122, 0.55)',
   },
   location: {
-    // v5 item 06 — location 13 pt DM Mono 400, 0.16em UPPERCASE green.
-    fontFamily: Typography.mono,
-    fontSize: 13,
-    letterSpacing: 2.1,
+    // v7 Item 08 — 14 pt DM Sans 400 sentence case (was 13 pt mono
+    // UPPERCASE). letter-spacing 0.02em × 14 ≈ 0.28 pt. Reads as a
+    // church name, not a label.
+    fontFamily: Typography.body,
+    fontSize: 14,
+    letterSpacing: 0.28,
     color: Colors.green,
   },
   leader: {
-    // 13 pt DM Sans (bundle has no 300; using 400), rgba(text, 0.45).
+    // v7 Item 00 — native DM Sans 300 Light via Typography.sansLight.
     marginTop: 2,
-    fontFamily: Typography.body,
+    fontFamily: Typography.sansLight,
     fontSize: 13,
     color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v5 item 06 — body 15 → 17 pt Cormorant italic, line-height 1.6,
-    // --text. Bundle has no italic 300; using displayMediumItalic.
+    // v5 item 06 — body 15 → 17 pt Cormorant italic.
+    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
+    // v7 Item 11 — hold at 17 pt, line-height 1.55. Bump to 18 only
+    // if Founder flags small on device after the native 300 Light
+    // weight lands.
     marginTop: 8,
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 17,
     color: Colors.text,
-    lineHeight: 27,
+    lineHeight: 26, // 17 × 1.55 ≈ 26.35
   },
   quote: {
     // v5 item 06 — "Originally posted as:" block — bg rgba(text, 0.04),
@@ -215,20 +220,21 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   quoteLabel: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.3,
+    // v7 Item 08 — 11 pt DM Sans 400 0.15em UPPERCASE (was 10 pt mono).
+    fontFamily: Typography.body,
+    fontSize: 11,
+    letterSpacing: 1.65, // 0.15em × 11
     color: 'rgba(240, 237, 230, 0.45)',
     textTransform: 'uppercase',
-    fontStyle: 'italic',
   },
   quoteText: {
-    // 13 pt DM Sans 300 (closest: 400) muted.
+    // v7 Item 07 — 14 pt DM Sans 300 Light, lh 1.55, rgba(text, 0.55).
+    // Native 300 Light via Typography.sansLight.
     marginTop: 4,
-    fontFamily: Typography.body,
-    fontSize: 13,
-    color: 'rgba(240, 237, 230, 0.45)',
-    lineHeight: 19,
+    fontFamily: Typography.sansLight,
+    fontSize: 14,
+    color: 'rgba(240, 237, 230, 0.55)',
+    lineHeight: 22, // 14 × 1.55 ≈ 21.7
   },
   metaRow: {
     flexDirection: 'row',
@@ -265,8 +271,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   celebrateCount: {
-    // v5 item 06 — count 12 pt DM Mono, 4 pt gap (set via gap above).
-    fontFamily: Typography.mono,
+    // v7 Item 08 — 12 pt DM Sans 400 (was DM Mono).
+    fontFamily: Typography.body,
     fontSize: 12,
     color: Colors.textMuted,
   },
@@ -274,10 +280,10 @@ const styles = StyleSheet.create({
     color: Colors.amber,
   },
   timestamp: {
-    // v5 item 06 — 11 pt DM Mono, --muted, 0.08em right-aligned.
-    fontFamily: Typography.mono,
+    // v7 Item 08 — 11 pt DM Sans 400, sentence case, no tracking
+    // (was 11 pt mono 0.08em).
+    fontFamily: Typography.body,
     fontSize: 11,
-    letterSpacing: 0.9,
     color: Colors.textMuted,
     marginLeft: 'auto',
   },
