@@ -67,6 +67,22 @@ export function getRoleLabel(role: string | null | undefined): string {
   return PRAYER_WALL_ROLE_LABELS[role] ?? 'Minister';
 }
 
+// KAN-23 v8 Item 05 / H5 — one canonical attribution-string builder
+// for every Prayer Wall card type (prayer card + prayer detail sheet
+// + testimony card + testimony detail sheet). Anonymous always wins
+// over role/name. Non-anonymous renders `<RoleLabel> <DisplayName>`
+// trimmed — handles a null name defensively (still trims clean).
+// Consumers should prefer this over composing the string locally so
+// the four card types stay in lockstep.
+export function formatLeaderLine(
+  role: string | null | undefined,
+  name: string | null | undefined,
+  isAnonymous: boolean,
+): string {
+  if (isAnonymous) return 'A fellow leader';
+  return `${getRoleLabel(role)} ${name ?? ''}`.trim();
+}
+
 // Role list — 12 items, order locked per SPEC Doc 01 Amendment
 export const ROLES = [
   { label: 'Pastor',          value: 'pastor' },

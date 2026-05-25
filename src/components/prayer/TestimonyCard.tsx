@@ -36,11 +36,26 @@ import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
   formatRelativeTime,
-  getLeaderLine,
   getLocationLine,
   type TestimonyRow,
 } from './PrayerWallLogic';
+import { formatLeaderLine } from '../../utils/displayHelpers';
 import { CelebrateIcon } from './PrayerIcons';
+
+/**
+ * v8 Fix G — shared body style for TestimonyCard +
+ * TestimonyDetailSheet. Same 18 pt Cormorant 500 Medium Italic as
+ * PRAYER_BODY_STYLE — both card types now match per Founder ruling
+ * (prayer and testimony body weights should not differ at the same
+ * size). Kept as a separate const from PRAYER_BODY_STYLE so the two
+ * surfaces can diverge later without touching each other.
+ */
+export const TESTIMONY_BODY_STYLE = {
+  fontFamily: Typography.displayMediumItalic,
+  fontSize: 18,
+  lineHeight: 27, // 18 × 1.50
+  color: Colors.text,
+} as const;
 
 interface Props {
   row: TestimonyRow;
@@ -82,7 +97,15 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
 
   const locationLine = getLocationLine(row.church_name, row.country);
-  const leaderLine = getLeaderLine(row.leader_display_name);
+  // v8 Fix H3 — attribution flows through shared formatLeaderLine
+  // helper. isAnonymous derived from leader_display_name === null
+  // (server-side mask returns null for anonymous + underground
+  // posts; no separate wire flag).
+  const leaderLine = formatLeaderLine(
+    row.leader_role,
+    row.leader_display_name,
+    row.leader_display_name === null,
+  );
   const timestamp = formatRelativeTime(row.created_at, now);
 
   // v6 Fix G — card is a Pressable wrapping the existing chrome. The
@@ -108,7 +131,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
       </Text>
       <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
 
-      <Text style={styles.body} numberOfLines={4}>
+      <Text style={[styles.body, TESTIMONY_BODY_STYLE]} numberOfLines={4}>
         {row.testimony_text}
       </Text>
 
@@ -187,23 +210,21 @@ const styles = StyleSheet.create({
     color: Colors.green,
   },
   leader: {
-    // v7 Item 00 — native DM Sans 300 Light via Typography.sansLight.
+    // v8 Fix H3 — attribution 14 pt DM Sans 400, lh 1.3, muted-45%.
+    // Directly below the Church · Country (green) line with 2 pt
+    // top-margin. Content formatted via formatLeaderLine: role
+    // prefix + name, or "A fellow leader" when anonymous/underground.
     marginTop: 2,
-    fontFamily: Typography.sansLight,
-    fontSize: 13,
+    fontFamily: Typography.body,
+    fontSize: 14,
+    lineHeight: 18, // 14 × 1.3 ≈ 18.2
     color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v5 item 06 — body 15 → 17 pt Cormorant italic.
-    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
-    // v7 Item 11 — hold at 17 pt, line-height 1.55. Bump to 18 only
-    // if Founder flags small on device after the native 300 Light
-    // weight lands.
+    // v8 Fix G — type values sourced from the shared
+    // TESTIMONY_BODY_STYLE constant (exported above). This style
+    // block owns only card-specific positioning (marginTop).
     marginTop: 8,
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 17,
-    color: Colors.text,
-    lineHeight: 26, // 17 × 1.55 ≈ 26.35
   },
   quote: {
     // v5 item 06 — "Originally posted as:" block — bg rgba(text, 0.04),

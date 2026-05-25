@@ -1,35 +1,32 @@
 // ─────────────────────────────────────────────
-// ScriptureBanner — KAN-23 v7 (Item 04 Plan A + tone="none")
+// ScriptureBanner — KAN-23 v8 (Fix A: all three surfaces tone="none")
 //
-// Shared tinted-banner component for the three scripture surfaces on
-// the Prayer Wall tab:
-//   - Eph 6:18 on landing            tone="sky"   (Plan A banner)
-//   - Phil 4:6 above the feed        tone="none"  (floating fallback)
-//   - Rev 12:11 on testimonies       tone="green" (Plan A banner)
+// Shared scripture-display component for the three Prayer Wall
+// surfaces. After v8 Fix A, all three flip to tone="none" (floating
+// text, no fill, no border, no container):
+//   - Eph 6:18 on landing            tone="none" · 20 pt body
+//   - Phil 4:6 above the feed        tone="none" · 18 pt body
+//   - Rev 12:11 on testimonies       tone="none" · 20 pt body
+//
+// The sky/green tone branches are retained for source compatibility
+// (no consumer uses them after v8 Fix A; the FE-facing API stays
+// stable in case a future surface wants the tinted treatment).
 //
 // Hard rule from the dispatch hierarchy: Your Word never truncates.
 // No numberOfLines, no ellipsis. Text wraps to more lines if the
 // device is narrow — that's intentional.
 //
-// v7 Item 04 — Plan A: soften every dimension after v6 device pass
-// flagged the banners as too saturated. Fill 0.06 (NOT 0.10), no
-// border (drop the hairline entirely — borders re-introduce
-// saturation), 24 pt all-sides padding, scripture body at
-// rgba(text, 0.78) NOT full --text, reference tinted at 0.70 alpha.
-//
-// v7 Item 04 — tone="none" floating fallback: no container, no fill,
-// no border, no radius. Body + ref render as floating text. Parent
-// controls horizontal padding + outer margins.
+// v8 Fix A — tone="none" block padding spec:
+//   Landing + Testimonies: 24 pt vert · 20 pt horiz (per dispatch)
+//   Feed (Phil 4:6, approved reference): smaller — caller passes its
+//     own paddingVertical to preserve the v7 layout that Founder OK'd
 //
 // v7 Item 00 — body uses native Cormorant 300 Light Italic via
-// Typography.scriptureItalic (no more synthetic-italic 500 fallback).
+// Typography.scriptureItalic.
+// v7 Item 08 — reference font: DM Sans 400 (NOT DM Mono).
 //
-// v7 Item 08 — reference font swapped from DM Mono to DM Sans 400.
-// Mono stays only on filter chips + feed card tags + testimony chip.
-//
-// Children slot lets consumers (e.g. TestimoniesView) overlay the
-// "From landing" pill on the banner without leaking that concern back
-// into this component.
+// Children slot lets consumers (TestimoniesView) overlay the
+// "From landing" pill on the banner without leaking that concern.
 // ─────────────────────────────────────────────
 
 import React from 'react';
@@ -39,12 +36,23 @@ import { Typography } from '../../constants/theme';
 interface Props {
   text: string;
   reference: string;
-  /** sky/green = Plan A tinted banner. none = floating text, no container. */
+  /** sky/green = retained tinted variants. none = floating text. */
   tone: 'sky' | 'green' | 'none';
   /** Per-surface body size: 20 pt on landing/testimonies, 18 pt on feed. */
   bodyFontSize?: number;
   /** Per-surface body line-height. Defaults to round(bodyFontSize × 1.55). */
   bodyLineHeight?: number;
+  /**
+   * v8 Fix A — tone="none" block padding. Defaults match the
+   * Landing + Testimonies spec (24 vert / 20 horiz). Feed passes
+   * paddingVertical={8} + paddingHorizontal={0} to preserve the v7
+   * approved layout (its parent wrapper supplies the outer 16 pt
+   * horizontal gutter via listContent padding).
+   */
+  paddingVertical?: number;
+  paddingHorizontal?: number;
+  /** v8 Fix A — reference colour tint override (defaults are tone-based). */
+  referenceColor?: string;
   children?: React.ReactNode;
 }
 
@@ -66,21 +74,40 @@ export default function ScriptureBanner({
   tone,
   bodyFontSize = 20,
   bodyLineHeight,
+  paddingVertical,
+  paddingHorizontal,
+  referenceColor,
   children,
 }: Props) {
   const computedLineHeight = bodyLineHeight ?? Math.round(bodyFontSize * 1.55);
 
+  // v8 Fix A — block padding defaults: 24 vert / 20 horiz (matches
+  // Landing + Testimonies spec). Feed overrides with smaller values.
+  const padV = paddingVertical ?? 24;
+  const padH = paddingHorizontal ?? 20;
+
   let containerStyle;
   if (tone === 'sky') {
-    containerStyle = [styles.banner, { backgroundColor: SKY_FILL }];
+    containerStyle = [
+      styles.banner,
+      { backgroundColor: SKY_FILL, paddingVertical: padV, paddingHorizontal: padH },
+    ];
   } else if (tone === 'green') {
-    containerStyle = [styles.banner, { backgroundColor: GREEN_FILL }];
+    containerStyle = [
+      styles.banner,
+      { backgroundColor: GREEN_FILL, paddingVertical: padV, paddingHorizontal: padH },
+    ];
   } else {
-    // tone="none" — floating fallback. No fill, no border, no radius.
-    containerStyle = styles.floating;
+    // tone="none" — floating, no fill, no border, no radius. Block
+    // padding is the only chrome; defaults above match Landing +
+    // Testimonies. Feed passes explicit smaller values.
+    containerStyle = [
+      styles.floating,
+      { paddingVertical: padV, paddingHorizontal: padH },
+    ];
   }
 
-  const refColor = tone === 'green' ? REF_GREEN : REF_SKY;
+  const refColor = referenceColor ?? (tone === 'green' ? REF_GREEN : REF_SKY);
 
   return (
     <View style={containerStyle}>
@@ -100,18 +127,16 @@ export default function ScriptureBanner({
 
 const styles = StyleSheet.create({
   banner: {
-    // v7 Item 04 Plan A — radius 10, padding 24 all sides, NO border.
+    // v7 Item 04 Plan A — radius 10, NO border. Padding now controlled
+    // per-instance via props (defaults to 24 vert / 20 horiz).
     borderRadius: 10,
-    padding: 24,
     alignItems: 'center',
   },
   floating: {
-    // v7 Item 04 tone="none" — floating fallback, no chrome. Vertical
-    // breath inside; parent handles horizontal padding + outer
-    // margins. Per Item 01 for Phil 4:6: 8 pt vertical is enough
-    // since parent's filter-bar padding + list contentContainerStyle
-    // already provide outer gaps.
-    paddingVertical: 8,
+    // v8 Fix A — tone="none". Padding controlled per-instance via
+    // props (defaults to 24 vert / 20 horiz for Landing + Testimonies;
+    // Feed overrides with 8 vert / 0 horiz to keep the v7 approved
+    // visual since its parent wrap already provides outer gutters).
     alignItems: 'center',
   },
   body: {

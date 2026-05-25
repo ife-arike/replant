@@ -233,13 +233,21 @@ function ScriptureHeader({
   pillVisible: boolean;
   pillOpacity: Animated.Value;
 }) {
-  // v6 fix D — Rev 12:11 now uses the shared ScriptureBanner with
-  // tone="green". Same shape, same padding, same type sizes as the
-  // sky banner on landing — only colour differs. From-landing pill
-  // still sits inside the banner (banner exposes a children slot).
+  // v8 Fix A — Rev 12:11 flips to tone="none" (no fill, no border).
+  // Body 20 pt 300 Light Italic rgba(text, 0.78); reference 11 pt
+  // DM Sans 0.18em GREEN-tinted (rgba(green, 0.70)). NEVER truncates.
+  // Block padding 24/24/20 + margin above 16 (below segmented
+  // control) + margin below 20 (above first testimony card) — set
+  // by styles.headerWrap. From-landing pill still sits inside the
+  // banner via the children slot.
   return (
     <View style={styles.headerWrap}>
-      <ScriptureBanner tone="green" text={REV_12_11_KJV} reference={REV_12_11_REF}>
+      <ScriptureBanner
+        tone="none"
+        text={REV_12_11_KJV}
+        reference={REV_12_11_REF}
+        referenceColor="rgba(91, 173, 122, 0.70)"
+      >
         {pillVisible ? (
           <Animated.View style={[styles.fromLandingPill, { opacity: pillOpacity }]}>
             <Text style={styles.fromLandingPillText}>From landing</Text>
@@ -274,9 +282,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   headerWrap: {
-    // v6 fix D — ScriptureBanner owns its own padding (22/24) and
-    // border radius (10). This wrap only provides the gap below the
-    // banner before the first testimony card.
+    // v8 Fix A — ScriptureBanner is now tone="none" and owns its
+    // own 24/20 block padding. Wrap supplies outer margins only:
+    //   16 pt above (below the segmented control — list parent's
+    //                paddingTop: 8 + this marginTop: 8 = 16)
+    //   20 pt below (above the first testimony card)
+    marginTop: 8,
     marginBottom: 20,
   },
   fromLandingPill: {

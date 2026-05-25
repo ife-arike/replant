@@ -42,6 +42,20 @@ import {
 } from './PrayerWallLogic';
 import { HeartIcon } from './PrayerIcons';
 
+/**
+ * v8 Fix D — shared body style for the prayer card + prayer detail
+ * sheet. Both surfaces render the same italic at the same size + lh.
+ * Cormorant 500 Medium Italic (NOT 300 Light Italic — v8 device pass
+ * matched on a slightly heavier weight to keep prayer text readable
+ * against the soft surface). PrayerWallDetailSheet imports this.
+ */
+export const PRAYER_BODY_STYLE = {
+  fontFamily: Typography.displayMediumItalic,
+  fontSize: 18,
+  lineHeight: 27, // 18 × 1.50
+  color: Colors.text,
+} as const;
+
 interface Props {
   row: PrayerRow;
   /** Tap on the card opens the detail sheet. Owned by the parent screen. */
@@ -86,7 +100,7 @@ export default function PrayerWallCard({ row, onPress, now }: Props) {
         <Text style={styles.tapToOpen}>Tap to open</Text>
       </View>
 
-      <Text style={styles.body} numberOfLines={3}>
+      <Text style={[styles.body, PRAYER_BODY_STYLE]} numberOfLines={3}>
         {row.prayer_text}
       </Text>
 
@@ -172,14 +186,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   body: {
-    // v5 item 04 — body Cormorant italic 300 at 16 pt, line-height 1.6.
-    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
-    // v7 Item 05 — chevron removed; body now spans full card width
-    // without the flex/row wrapping that held the chevron column.
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 16,
-    color: Colors.text,
-    lineHeight: 26,
+    // v8 Fix D — body uses the shared PRAYER_BODY_STYLE constant
+    // (exported below) so PrayerWallCard + PrayerWallDetailSheet
+    // render the same italic at the same size + line-height. Both
+    // surfaces moved off Typography.scriptureItalic (300 Light) in
+    // favour of Typography.displayMediumItalic (500 Medium) at
+    // 18 pt + lh 27. Spread via array style at the render site.
   },
   metaRow: {
     flexDirection: 'row',

@@ -101,6 +101,11 @@ export interface TestimonyRow {
   celebrated_count: number;
   i_celebrated: boolean;
   leader_display_name: string | null;
+  // v8 Fix H1+H2 — both get_testimonies + get_landing_testimonies
+  // now return leader_role (text cast from the user_role enum).
+  // FE consumers feed this into formatLeaderLine to render the
+  // role-prefixed attribution ("Pastor Priya", "Minister Felipe").
+  leader_role: string | null;
 }
 
 // Server-side filter param builder. Maps the two-axis FE filter state
