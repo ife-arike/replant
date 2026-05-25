@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall · v5 Redlines</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --red-mid: rgba(224,85,85,0.45);
+    --red-dim: rgba(224,85,85,0.10);
+    --amber: #D4A855;
+    --amber-mid: rgba(212,168,85,0.45);
+    --amber-dim: rgba(212,168,85,0.12);
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-dim: rgba(91,173,122,0.10);
+    --green-tint: rgba(91,173,122,0.06);
+  }
+  body { background: #0d0d0d; font-family: var(--sans); font-weight: 300; color: var(--text); padding: 3rem 2rem 5rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .doc { max-width: 1120px; margin: 0 auto; }
+
+  .doc-header { padding-bottom: 1.8rem; margin-bottom: 2.4rem; border-bottom: 0.5px solid var(--faint); }
+  .eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--sky); }
+  .doc-title { font-family: var(--serif); font-size: 2.6rem; font-weight: 300; letter-spacing: 0.02em; margin-bottom: 8px; }
+  .doc-sub { font-size: 0.95rem; color: var(--muted-strong); max-width: 760px; line-height: 1.65; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 18px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .meta-row strong { color: var(--text); font-weight: 500; }
+
+  .item { margin: 3rem 0 0; padding-top: 2rem; border-top: 0.5px solid var(--faint); }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item-num { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; margin-bottom: 6px; }
+  .item-title { font-family: var(--serif); font-size: 1.55rem; font-weight: 400; letter-spacing: 0.01em; margin-bottom: 8px; }
+  .item-ask { font-size: 0.86rem; color: var(--muted-strong); margin-bottom: 1.4rem; max-width: 760px; }
+  .item-ask strong { color: var(--text); font-weight: 500; }
+
+  /* Layout — main + side */
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .col-vis { flex: 0 0 auto; }
+  .col-spec { flex: 1 1 360px; min-width: 320px; }
+
+  /* Mini frame card (oil lamp etc) */
+  .mini {
+    width: 280px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 8px;
+    padding: 22px;
+  }
+  .mini-label {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .mini-label.green { color: var(--green); }
+  .mini-label.red { color: var(--red); }
+  .mini-label.amber { color: var(--amber); }
+  .mini-label.sky { color: var(--sky); }
+
+  .icon-stage { display: flex; align-items: center; gap: 16px; }
+  .icon-circle {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .icon-circle.green { background: var(--green-dim); border-color: var(--green-mid); }
+  .icon-circle svg { width: 30px; height: 30px; }
+  .icon-circle.sky svg path, .icon-circle.sky svg line, .icon-circle.sky svg circle, .icon-circle.sky svg ellipse { stroke: var(--sky); }
+  .icon-meta { display: flex; flex-direction: column; gap: 4px; }
+  .icon-meta .name { font-family: var(--serif); font-size: 1.05rem; }
+  .icon-meta .note { font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+
+  /* Spec table */
+  .spec-table { font-size: 0.82rem; line-height: 1.65; }
+  .spec-table dl { display: grid; grid-template-columns: 220px 1fr; gap: 8px 22px; }
+  .spec-table dt { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .spec-table dd { color: var(--muted-strong); }
+  .spec-table dd strong { color: var(--text); font-weight: 500; }
+  .spec-table dd code { font-family: var(--mono); font-size: 0.74rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+  .spec-table dd em { color: var(--muted); font-style: italic; }
+  .spec-table .delta { color: var(--green); font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; padding-left: 6px; }
+  .spec-table .from { color: var(--muted); text-decoration: line-through; font-family: var(--mono); font-size: 0.72rem; padding-right: 5px; }
+
+  .cc-note {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: rgba(107,181,232,0.06);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--muted-strong);
+    line-height: 1.6;
+  }
+  .cc-note strong { color: var(--sky); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; margin-right: 8px; }
+
+  /* Filter bar redline */
+  .filter-redline {
+    background: var(--bg);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    scrollbar-width: none;
+  }
+  .filter-redline::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0;
+    height: 32px; padding: 0 12px; border-radius: 16px;
+    border: 0.5px solid var(--hair);
+    color: var(--muted-strong);
+    font-size: 0.74rem;
+    display: inline-flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .chip.cat-on { background: var(--sky-dim); border-color: var(--sky-mid); color: var(--sky); font-weight: 500; }
+  .chip.urgent { color: var(--red); }
+  .chip.urgent .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--red); }
+  .chip.urgent.on { background: var(--red-dim); border-color: var(--red-mid); }
+  .chip.clear-x { width: 32px; padding: 0; justify-content: center; border-color: var(--red-mid); color: var(--red); }
+  .filter-divider-x { width: 1px; height: 18px; background: rgba(240,237,230,0.14); flex-shrink: 0; }
+  .filter-label { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+
+  /* Card redline (annotated card example) */
+  .card-redline {
+    background: var(--surface);
+    border-left: 2px solid var(--sky);
+    border: 0.5px solid var(--faint);
+    border-radius: 0 6px 6px 0;
+    padding: 16px 18px 14px;
+    border-left-width: 2px;
+    border-left-color: var(--sky);
+  }
+  .card-redline.urgent { border-left-color: var(--red); }
+  .card-redline.tm { background: var(--green-tint); border-color: rgba(91,173,122,0.20); border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; }
+  .card-redline .loc { font-size: 1rem; color: var(--text); margin-bottom: 2px; line-height: 1.3; }
+  .card-redline .author { font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; }
+  .card-redline .body { font-family: var(--serif); font-style: italic; font-size: 1.05rem; line-height: 1.6; color: var(--text); margin-bottom: 12px; }
+  .card-redline.tm .body { font-size: 1.1rem; }
+  .card-redline .meta-row-x { display: flex; gap: 8px; align-items: center; }
+  .card-redline .tag {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px;
+  }
+  .card-redline .tag.sky { background: var(--sky-dim); color: var(--sky); }
+  .card-redline .tag.red { background: var(--red-dim); color: var(--red); }
+  .card-redline .tag.green { background: var(--green-dim); color: var(--green); }
+  .card-redline .heart {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-left: 4px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .card-redline .time {
+    font-family: var(--mono); font-size: 0.65rem; color: var(--muted); margin-left: auto;
+  }
+
+  /* Two-up landing comparison */
+  .twoup { display: flex; gap: 24px; flex-wrap: wrap; }
+  .twoup .col { flex: 1 1 280px; min-width: 260px; }
+  .twoup .frame {
+    background: var(--bg);
+    border-radius: 14px;
+    border: 0.5px solid var(--faint);
+    padding: 20px 18px;
+    min-height: 200px;
+  }
+  .twoup .frame .pwtop {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    padding: 4px 0;
+  }
+  .twoup .frame .hairline { height: 0.5px; background: var(--faint); margin: 6px -18px 6px; }
+  .twoup .frame .scrip { font-family: var(--serif); font-style: italic; font-size: 0.78rem; color: var(--muted); margin: 14px 0 6px; line-height: 1.5; }
+  .twoup .frame .ref { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sky); }
+  .twoup .frame-label { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+
+  /* Empty-state CTA redline */
+  .empty-cta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .empty-cta {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: 0.5px solid var(--green-mid);
+    color: var(--green);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    background: transparent;
+  }
+  .empty-cta.new {
+    border-color: var(--sky-mid);
+    color: var(--sky);
+  }
+  .empty-cta-label { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .strike { text-decoration: line-through; opacity: 0.5; }
+
+  .legend-row {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .legend-row .swatch { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-strong); }
+  .legend-row .swatch::before {
+    content: ''; width: 4px; height: 18px; border-radius: 1px;
+  }
+  .legend-row .red::before { background: var(--red); }
+  .legend-row .sky::before { background: var(--sky); }
+  .legend-row .green::before { background: var(--green); }
+
+  .footer-meta { text-align: center; padding-top: 24px; margin-top: 4rem; border-top: 0.5px solid var(--faint); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="doc-header" data-screen-label="Header">
+    <p class="eyebrow">CD · v5 visual corrections pass · device-tested</p>
+    <h1 class="doc-title">Prayer Wall — v5 redlines</h1>
+    <p class="doc-sub">Seven targeted spec revisions after the v4 device pass. Each item: the ask, the redline, the new pt values for CC. iPhone 14 Pro Max baseline. Item 8 (church-type stripped from card headers) is logic-only and goes to CC direct.</p>
+    <div class="meta-row">
+      <span><strong>Source:</strong> Prayer Wall Wireframes v4</span>
+      <span><strong>Device pass:</strong> iPhone 14 Pro Max</span>
+      <span><strong>Date:</strong> 24 May 2026</span>
+      <span><strong>From:</strong> CD → CC via SM</span>
+    </div>
+  </div>
+
+  <!-- ITEM 1 — ICON PAIR -->
+  <section class="item" data-screen-label="01 Icon pair">
+    <p class="item-num">Item 01 · icon pair</p>
+    <h2 class="item-title">Incense bowl stays on Make · Candle goes to Receive</h2>
+    <p class="item-ask"><strong>Ask:</strong> keep the <strong>rising-incense bowl</strong> on Make intercession (unchanged from v4). The <strong>low candlestick, lit, burned near its end</strong> replaces the glass less-than-half-full on <strong>Receive intercession</strong>. Both at 60 pt circle · 30 pt SVG · sky stroke on Make, green stroke on Receive.</p>
+
+    <div class="row">
+      <div class="col-vis">
+        <div class="mini">
+          <p class="mini-label sky">Make intercession · unchanged</p>
+          <div class="icon-stage">
+            <div class="icon-circle sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/>
+                <line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/>
+                <line x1="9" y1="21" x2="15" y2="21"/>
+                <path d="M8.5 11 Q10.5 8 8.5 5"/>
+                <path d="M12 11 Q14 7 12 3"/>
+                <path d="M15.5 11 Q13.5 8 15.5 5"/>
+              </svg>
+            </div>
+            <div class="icon-meta">
+              <span class="name">Incense bowl</span>
+              <span class="note">Rev 5:8 · prayers rising</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-vis">
+        <div class="mini">
+          <p class="mini-label green">Receive intercession · new</p>
+          <div class="icon-stage">
+            <div class="icon-circle green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#5BAD7A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4" fill="#5BAD7A" stroke="none" opacity="0.85"/>
+                <path d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4"/>
+                <line x1="12" y1="8" x2="12" y2="11"/>
+                <path d="M10 11 H14 V16 H10 Z"/>
+                <path d="M10 13 Q9.3 14 9.8 15"/>
+                <path d="M5 16 H19 Q19 19 17 19 H7 Q5 19 5 16 Z"/>
+              </svg>
+            </div>
+            <div class="icon-meta">
+              <span class="name">Candle · near end</span>
+              <span class="note">stubby wax · drip · lit</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-spec spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Make · incense bowl</dt>
+        <dd><strong>No change from v4.</strong> Bowl base + three rising-smoke wisps. Sky stroke 1.5 pt. Rev 5:8 — “golden bowls full of incense, which are the prayers of the saints.” Don’t swap; just ship.</dd>
+        <dt>Receive · candle</dt>
+        <dd>Stubby candle stub (~5 pt tall body), single melted-wax drip down left side, sitting in a wide flat holder dish. Wick rises ~3 pt above; filled flame teardrop at 0.85 opacity. Stroke 1.5 pt, <strong>green</strong>.</dd>
+        <dt>Symbol pairing</dt>
+        <dd><strong>Bowl rises</strong> (intercession ascends to God). <strong>Candle is burning down</strong> (a leader at the end of themselves, asking the Body to stand with them in prayer). One offering up, one running out — the two postures of the wall.</dd>
+        <dt>Containers</dt>
+        <dd><strong>60 pt</strong> circle · sky-dim fill on Make, green-dim fill on Receive · 0.5 pt mid-tone border to match. <strong>30 pt</strong> SVG inside.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Two SVGs above are the spec. Make is the v4 bowl unchanged — don’t re-implement, just keep what’s already shipped. Candle is new and green: stroke <code>#5BAD7A</code>, filled flame at 0.85 opacity, single drip on the left, wide holder dish. Drop the glass-less-than-half-full entirely.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 2 — LANDING LAYOUT -->
+  <section class="item" data-screen-label="02 Landing layout">
+    <p class="item-num">Item 02 · landing layout</p>
+    <h2 class="item-title">Centered link · hairline divider call</h2>
+    <p class="item-ask"><strong>Ask:</strong> <em>"View my open prayers →"</em> currently rendering left-aligned in the build — must be horizontally centred under the Receive intercession card. Also: should the Prayer Wall top title have a hairline divider below it? Showing both options below.</p>
+
+    <p class="filter-label">A · No divider (recommended)</p>
+    <div class="twoup">
+      <div class="col">
+        <p class="frame-label">Option A · clean / no rule</p>
+        <div class="frame">
+          <p class="pwtop">Prayer Wall</p>
+          <p class="scrip">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+          <p class="ref">Ephesians 6:18 · KJV</p>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label">Option B · 0.5 pt hairline below title</p>
+        <div class="frame">
+          <p class="pwtop">Prayer Wall</p>
+          <div class="hairline"></div>
+          <p class="scrip">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+          <p class="ref">Ephesians 6:18 · KJV</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-spec spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Recommendation</dt>
+        <dd><strong>Option A — no divider.</strong> The scripture immediately below the title already establishes vertical rhythm; a hairline competes with it. The other tabs in Replant (Local, Connect) sit without dividers under their serif titles — match that.</dd>
+        <dt>View-my-open-prayers link</dt>
+        <dd><code>text-align: center</code> on the link wrapper. <code>display: block</code> with horizontal padding equal to the action-card gutters (24 pt h-margin). Mono <strong>11 pt</strong>, letter-spacing 0.08em, sky <code>#6BB5E8</code>. Sits <strong>16 pt</strong> below the Receive card.</dd>
+        <dt>If Option B is picked</dt>
+        <dd>0.5 pt rule, colour <code>rgba(240,237,230,0.06)</code>, full-width minus 24 pt safe-area, <strong>10 pt</strong> below title baseline.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Ship Option A unless Ife says otherwise. The link being left-aligned in the build is a flex/align bug — fix it; the spec has always said centred.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 3 — LANDING TEXT SIZE -->
+  <section class="item" data-screen-label="03 Landing type">
+    <p class="item-num">Item 03 · landing type scale</p>
+    <h2 class="item-title">Bump landing body type +1–2 pt</h2>
+    <p class="item-ask"><strong>Ask:</strong> overall landing text felt small on device. Bumping the scripture, scripture reference, and action-card sub copy. Action-card titles stay; CTA stays.</p>
+
+    <div class="spec-table">
+      <dl>
+        <dt>Scripture body</dt>
+        <dd><span class="from">16 pt</span> → <strong>18 pt</strong> Cormorant italic 300 · line-height 1.55 · color <code>rgba(text, 0.65)</code> <span class="delta">+2 pt</span></dd>
+        <dt>Scripture reference</dt>
+        <dd><span class="from">11 pt</span> → <strong>12 pt</strong> DM Mono 400 · letter-spacing 0.18em UPPERCASE · sky <span class="delta">+1 pt</span></dd>
+        <dt>Action card sub</dt>
+        <dd><span class="from">14 pt</span> → <strong>16 pt</strong> DM Sans 300 · line-height 1.55 · color <code>rgba(text, 0.65)</code> <span class="delta">+2 pt</span></dd>
+        <dt>Action card title</dt>
+        <dd><strong>30 pt</strong> Cormorant 500 · line-height 1.1 <em>(unchanged)</em></dd>
+        <dt>Action card CTA</dt>
+        <dd><strong>15 pt</strong> DM Sans 500 · letter-spacing 0.04em <em>(unchanged from 14 pt — actually bump 1 pt to match the new density)</em></dd>
+        <dt>"Coming soon" pill</dt>
+        <dd><strong>11 pt</strong> DM Mono · letter-spacing 0.18em UPPERCASE · amber on amber-dim <em>(unchanged)</em></dd>
+        <dt>Disabled-CTA hint</dt>
+        <dd><span class="from">11 pt</span> → <strong>12 pt</strong> DM Mono · 0.14em UPPERCASE · muted <span class="delta">+1 pt</span></dd>
+        <dt>View-my-open-prayers</dt>
+        <dd><span class="from">10 pt</span> → <strong>11 pt</strong> DM Mono · sky <span class="delta">+1 pt</span> · see Item 02 for alignment</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Bumps are coherent — keep the same proportions between title (30 pt) → sub (16 pt) → ref (12 pt). If the action card grows too tall after the sub bump, drop card vertical padding from 20 pt → 18 pt. Don't shrink the type to fit.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 4 — FEED CARD DENSITY -->
+  <section class="item" data-screen-label="04 Feed cards">
+    <p class="item-num">Item 04 · feed card density</p>
+    <h2 class="item-title">Bigger body type · more breathing above body · confirm left-border colours</h2>
+    <p class="item-ask"><strong>Ask:</strong> feed cards feel cramped on device. (a) bump body type, (b) add breathing room between the church-name header and body text, (c) confirm border-colour intent.</p>
+
+    <div class="row">
+      <div class="col-vis">
+        <p class="mini-label sky" style="margin-bottom: 8px;">Annotated · prayer-request card</p>
+        <div class="card-redline" style="width: 320px;">
+          <p class="loc">Casa de Oración · Peru</p>
+          <p class="author">Felipe</p>
+          <p class="body">"Our congregation has not been able to pay our pastor's small salary for three months. Pray for provision before his family runs out of food."</p>
+          <div class="meta-row-x">
+            <span class="tag sky">Provision</span>
+            <span class="tag red">Urgent</span>
+            <span class="heart">♡ 0</span>
+            <span class="time">2d ago</span>
+          </div>
+        </div>
+        <div class="legend-row">
+          <span class="swatch red">Urgent · red</span>
+          <span class="swatch sky">Standard · sky</span>
+          <span class="swatch green">Praise · green</span>
+        </div>
+      </div>
+
+      <div class="col-spec spec-table">
+        <dl>
+          <dt>Body text (a)</dt>
+          <dd><span class="from">14 pt</span> → <strong>16 pt</strong> Cormorant italic 300 · line-height <span class="from">1.45</span> → <strong>1.6</strong> · color <code>--text</code> <span class="delta">+2 pt · denser leading</span></dd>
+          <dt>Header → body gap (b)</dt>
+          <dd><span class="from">6 pt</span> → <strong>12 pt</strong> margin between author line and body text <span class="delta">+6 pt breathing</span></dd>
+          <dt>Church name</dt>
+          <dd><strong>16 pt</strong> DM Sans 400 · color <code>--text</code> · line-height 1.3 <em>(unchanged size — bumped if needed once Item 08 is in)</em></dd>
+          <dt>Author / "A fellow leader"</dt>
+          <dd><strong>13 pt</strong> DM Sans 300 · color <code>rgba(text, 0.45)</code> · margin-top 2 pt</dd>
+          <dt>Left-border colour intent (c)</dt>
+          <dd>Confirmed — <strong>red = urgent</strong>, <strong>sky = standard</strong>, <strong>green = praise/testimony</strong>. Each card carries one border colour, decided by: <code>is_urgent ? red : (is_praise ? green : sky)</code>. Urgent wins over praise (rare combo).</dd>
+          <dt>Border weight</dt>
+          <dd><strong>2 pt</strong> left-border on prayer requests · <strong>3 pt</strong> left-border on testimonies (already specced — adds visual distinction in scrolling feed)</dd>
+          <dt>Card padding</dt>
+          <dd><span class="from">10 pt</span> → <strong>14 pt</strong> vertical · <strong>16 pt</strong> horizontal <span class="delta">+4 pt vertical</span></dd>
+          <dt>Card gap (between cards)</dt>
+          <dd><strong>10 pt</strong> <em>(unchanged)</em></dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> The build is rendering left-borders correctly per the colour rule — no spec change needed there, just verify the urgent-priority logic. The density issue is type + spacing, not colour.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 5 — FILTER BAR -->
+  <section class="item" data-screen-label="05 Filter bar">
+    <p class="item-num">Item 05 · filter bar</p>
+    <h2 class="item-title">Single horizontal scroll · × Clear on the LEFT (front of row)</h2>
+    <p class="item-ask"><strong>Ask:</strong> drop the 2-row stack promotion. Always a single horizontal scroll. The × Clear chip moves from the right edge to the <strong>front of the row</strong>, before the Urgent chip.</p>
+
+    <p class="filter-label">Before · v4 (right-pinned Clear, promotes to 2 rows at 3+ active)</p>
+    <div class="filter-redline" style="opacity: 0.55;">
+      <div class="chip urgent on"><span class="dot"></span>Urgent</div>
+      <div class="filter-divider-x"></div>
+      <div class="chip cat-on">Healing</div>
+      <div class="chip cat-on">Protection</div>
+      <div class="chip cat-on">Provision</div>
+      <div class="chip">Unity</div>
+      <div class="chip">Praise</div>
+      <div class="chip" style="margin-left: auto; border-color: rgba(240,237,230,0.18); color: var(--muted);">× Clear</div>
+    </div>
+
+    <p class="filter-label" style="margin-top: 18px;">After · v5 (Clear pinned LEFT, always single scroll)</p>
+    <div class="filter-redline">
+      <div class="chip clear-x" aria-label="Clear filters">×</div>
+      <div class="filter-divider-x"></div>
+      <div class="chip urgent on"><span class="dot"></span>Urgent</div>
+      <div class="filter-divider-x"></div>
+      <div class="chip cat-on">Healing</div>
+      <div class="chip cat-on">Protection</div>
+      <div class="chip cat-on">Provision</div>
+      <div class="chip">Unity</div>
+      <div class="chip">Praise</div>
+      <div class="chip">Manpower</div>
+      <div class="chip">Salvation</div>
+      <div class="chip">Guidance</div>
+    </div>
+
+    <div class="spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Behavior</dt>
+        <dd><strong>Always single-row horizontal scroll.</strong> No 2-row stack promotion at 3+ active. Right-edge fade gradient stays (14 pt linear-gradient bg → transparent) to signal more chips off-screen.</dd>
+        <dt>Clear chip · position</dt>
+        <dd>Pinned to the <strong>left</strong>, before the Urgent chip. Renders only when <strong>≥1 chip is active</strong>; otherwise the row begins with Urgent + divider.</dd>
+        <dt>Clear chip · shape</dt>
+        <dd><strong>32 pt</strong> square (matches chip height) · radius 16 pt (circle on its own — keeps the row rhythm) · 0.5 pt red-mid border <code>rgba(224,85,85,0.45)</code> · × glyph 14 pt mono red · padding 0 (centered).</dd>
+        <dt>Clear chip · tap behavior</dt>
+        <dd>Single tap clears all active chips in one frame · feed re-queries unfiltered · the chip itself slides out (200 ms ease-out) since nothing is active anymore.</dd>
+        <dt>Dividers</dt>
+        <dd>Two 1 pt × 18 pt dividers in the row: one after Clear (when present), one after Urgent. <code>rgba(text, 0.14)</code>. Skip the leading divider when Clear is hidden.</dd>
+        <dt>Active-count strip</dt>
+        <dd>Stays the same — sits below the filter bar, names active filters + result count.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Delete every code path for the row-promotion behavior. Front-of-row Clear is also easier to thumb-reach with a left-hand grip. Don't put a fade gradient on the LEFT edge — the Clear chip is the affordance.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 6 — TESTIMONY CARD -->
+  <section class="item" data-screen-label="06 Testimony">
+    <p class="item-num">Item 06 · testimony card</p>
+    <h2 class="item-title">Confirmed sizes · testimony body slightly larger than prayer-request</h2>
+    <p class="item-ask"><strong>Ask:</strong> empty-state showed the segmented control + scripture header rendering OK; couldn't visually test card body. Re-spec the testimony-card sizes so CC has the numbers locked.</p>
+
+    <div class="row">
+      <div class="col-vis">
+        <p class="mini-label green" style="margin-bottom: 8px;">Testimony card · anatomy</p>
+        <div class="card-redline tm" style="width: 320px;">
+          <p class="loc" style="color: var(--green); font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;">Anonymous · East Africa</p>
+          <p class="body">"Three months ago we asked this wall for prayer over our pastor who was ill. He has fully recovered. We testify to the faithfulness of God."</p>
+          <div style="background: rgba(240,237,230,0.04); border-left: 1px solid var(--green); padding: 8px 10px; margin-bottom: 12px; font-size: 0.78rem; color: var(--muted); line-height: 1.5;"><em>Originally posted as:</em> "Our pastor has been ill for weeks…"</div>
+          <div class="meta-row-x">
+            <span class="tag green">Testimony</span>
+            <span class="heart" style="color: var(--amber);">🎉 23</span>
+            <span class="time">2d ago</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-spec spec-table">
+        <dl>
+          <dt>Card surface</dt>
+          <dd>Fill <code>rgba(91,173,122,0.06)</code> · outer border 0.5 pt <code>rgba(91,173,122,0.20)</code> · <strong>3 pt</strong> green left-border · radius 0 6 6 0 · padding <strong>14 × 16 pt</strong></dd>
+          <dt>Location line</dt>
+          <dd><strong>13 pt</strong> DM Mono 400 · letter-spacing 0.16em UPPERCASE · green</dd>
+          <dt>Body</dt>
+          <dd><span class="from">15 pt</span> → <strong>17 pt</strong> Cormorant italic 300 · line-height <strong>1.6</strong> · color <code>--text</code> <span class="delta">+2 pt vs prayer body</span> — testimonies tell longer stories, deserve a touch more presence</dd>
+          <dt>"Originally posted as:"</dt>
+          <dd><strong>13 pt</strong> DM Sans 300 · color <code>rgba(text, 0.45)</code> · italic intro · bg <code>rgba(text, 0.04)</code> · 1 pt green left-border · padding <strong>8 × 10 pt</strong> · radius 0 4 4 0</dd>
+          <dt>Testimony chip</dt>
+          <dd><strong>11 pt</strong> DM Mono 400 · letter-spacing 0.14em UPPERCASE · padding <strong>3 × 8 pt</strong> · radius 3 pt · bg <code>rgba(91,173,122,0.12)</code> · text green · always reads "Testimony", never a category</dd>
+          <dt>Celebrate (popper)</dt>
+          <dd><strong>16 pt</strong> SVG · inside 28 pt tap-hit-target · amber when pressed · count <strong>12 pt</strong> DM Mono mono right of icon · 4 pt gap</dd>
+          <dt>Time</dt>
+          <dd><strong>11 pt</strong> DM Mono · color <code>--muted</code> · letter-spacing 0.08em · right-aligned in meta row</dd>
+          <dt>Card gap</dt>
+          <dd><strong>10 pt</strong> between testimony cards (same as feed)</dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> Line-clamp on testimony body is <strong>4 lines</strong> (vs 3 on prayer requests). Long testimonies should still trail to … but a praise has earned an extra line.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 7 — RECEIVE INTERCESSION CTA COLOR -->
+  <section class="item" data-screen-label="07 Empty-state CTA">
+    <p class="item-num">Item 07 · empty-state CTA color</p>
+    <h2 class="item-title">Receive intercession ghost button · sky, not default text</h2>
+    <p class="item-ask"><strong>Ask:</strong> the ghost-bordered "Receive intercession →" button in the My-open-prayers empty state is rendering with the default text colour. Should be sky.</p>
+
+    <div class="empty-cta-row" style="margin: 8px 0 20px;">
+      <div>
+        <p class="empty-cta-label">Before</p>
+        <button class="empty-cta strike" style="color: var(--text); border-color: var(--hair);">Receive intercession →</button>
+      </div>
+      <div>
+        <p class="empty-cta-label">After</p>
+        <button class="empty-cta new">Receive intercession →</button>
+      </div>
+    </div>
+
+    <div class="spec-table">
+      <dl>
+        <dt>Border</dt>
+        <dd>0.5 pt <code>rgba(107,181,232,0.45)</code> (sky-mid)</dd>
+        <dt>Text colour</dt>
+        <dd><code>#6BB5E8</code> (sky)</dd>
+        <dt>Background</dt>
+        <dd>Transparent</dd>
+        <dt>Padding · radius</dt>
+        <dd><strong>12 × 24 pt</strong> · radius <strong>8 pt</strong> <em>(unchanged)</em></dd>
+        <dt>Type</dt>
+        <dd><strong>15 pt</strong> DM Sans 500 · letter-spacing 0.02em · sentence case</dd>
+        <dt>Tap behavior</dt>
+        <dd>Routes back to landing's Receive card. In v1 Receive is still locked, so the leader lands on the same Coming-soon alert (per Surface 02 contract).</dd>
+        <dt>Above the button</dt>
+        <dd>Centered italic serif sentence <em>"Your church has no open prayer requests yet."</em> · 17 pt Cormorant italic 300 · color <code>rgba(text, 0.65)</code> · 24 pt margin above the button</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> This is the same ghost-sky as the v4 Connect-to-this-church button when enabled — reuse that style token if you have one.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 8 NOTE -->
+  <section class="item" data-screen-label="08 Note">
+    <p class="item-num">Item 08 · logic note (no design change)</p>
+    <h2 class="item-title">Card header: <em>Church Name · Country</em> — no church type</h2>
+    <p class="item-ask"><strong>Note for the spec record:</strong> per the founder, card headers across the feed and testimonies should read <em>Church Name · Country</em>. Drop the parenthesised church type (House Church, Ministry, Church (Main Campus), etc.). Underground cards remain <em>Underground Church · &lt;Country&gt;</em>. This is a logic fix going to CC directly — no anatomy redline. The card-anatomy spec from v4 already says "loc = mono UPPERCASE green/sky/red", string content is the only change.</p>
+  </section>
+
+  <p class="footer-meta">Replant · Prayer Wall · v5 redlines · 24 May 2026 · device-pass corrections</p>
+
+</div>
+</body>
+</html>

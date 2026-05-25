@@ -83,18 +83,40 @@ export function IncenseIcon({ size = 24, color }: IconProps) {
   );
 }
 
-// Glass less than half full — vessel awaiting fullness. A footed cup with
-// a water-line drawn one-third up the inside.
-export function GlassIcon({ size = 24, color }: IconProps) {
+// Candle near its end — Receive intercession icon per v5 redlines.
+// Stubby wax stub with a single melted-wax drip down the left side,
+// sitting in a wide flat holder dish. Wick rises ~3 pt above; filled
+// flame teardrop at 0.85 opacity. Two postures of the wall: the
+// incense bowl rises (intercession ascending to God); the candle is
+// burning down (a leader at the end of themselves asking the Body to
+// stand with them). SVG geometry ported verbatim from the v5
+// redlines doc.
+export function CandleIcon({ size = 24, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* vessel outline */}
-      <Path d="M7 4 H17 L15.5 18 H8.5 Z" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} strokeLinejoin={JOINS} fill="none" />
-      {/* water line ~30% full */}
-      <Path d="M9 14 H15 L14.5 18 H9.5 Z" fill={color} opacity={0.5} stroke="none" />
-      {/* stem + base */}
-      <Line x1="12" y1="18" x2="12" y2="21" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} />
-      <Line x1="9" y1="21" x2="15" y2="21" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} />
+      {/* filled flame teardrop @ 0.85 opacity */}
+      <Path
+        d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4"
+        fill={color}
+        opacity={0.85}
+      />
+      {/* flame outline (over the fill for crispness on dark bg) */}
+      <Path
+        d="M12 4 Q10.8 6 11.6 8 Q12 9 12.4 8 Q13.2 6 12 4"
+        stroke={color}
+        strokeWidth={STROKE}
+        strokeLinecap={CAPS}
+        strokeLinejoin={JOINS}
+        fill="none"
+      />
+      {/* wick */}
+      <Line x1="12" y1="8" x2="12" y2="11" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} />
+      {/* stubby wax body */}
+      <Path d="M10 11 H14 V16 H10 Z" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} strokeLinejoin={JOINS} fill="none" />
+      {/* single melted-wax drip down the left */}
+      <Path d="M10 13 Q9.3 14 9.8 15" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} fill="none" />
+      {/* wide flat holder dish */}
+      <Path d="M5 16 H19 Q19 19 17 19 H7 Q5 19 5 16 Z" stroke={color} strokeWidth={STROKE} strokeLinecap={CAPS} strokeLinejoin={JOINS} fill="none" />
     </Svg>
   );
 }

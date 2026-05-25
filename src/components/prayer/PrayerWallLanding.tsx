@@ -42,7 +42,7 @@ import {
   getLocationLine,
   type TestimonyRow,
 } from './PrayerWallLogic';
-import { GlassIcon, IncenseIcon, LockIcon } from './PrayerIcons';
+import { CandleIcon, IncenseIcon, LockIcon } from './PrayerIcons';
 
 // Eph 6:18 (KJV) — locked in full. NEVER truncate.
 const EPH_6_18_KJV =
@@ -81,7 +81,7 @@ export default function PrayerWallLanding({
       <View style={styles.actionStack}>
         <ActionCard
           accent="sky"
-          icon={<IncenseIcon size={24} color={Colors.accent} />}
+          icon={<IncenseIcon size={30} color={Colors.accent} />}
           title="Make intercession"
           subtitle="Pray through the wall of requests from churches around the world."
           ctaLabel="Enter the prayer wall"
@@ -196,7 +196,7 @@ function ReceiveIntercessionCard({ isVerified }: { isVerified: boolean }) {
   return (
     <ActionCard
       accent="green"
-      icon={<GlassIcon size={24} color={Colors.green} />}
+      icon={<CandleIcon size={30} color={Colors.green} />}
       title="Receive intercession"
       subtitle="Let the body stand with your church in prayer."
       ctaLabel="Coming soon"
@@ -344,23 +344,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scriptureBlock: {
+    // v5 redlines item 02 (Option A — no divider under title) is honoured
+    // implicitly: this block is rendered directly under the topBar in
+    // PrayerWallScreen without any hairline rule between them.
     paddingTop: 16,
     paddingBottom: 24,
     paddingHorizontal: 28,
     alignItems: 'center',
   },
   scriptureText: {
+    // v5 item 03 — scripture body 16 → 18 pt, line-height 1.55,
+    // rgba(text, 0.65). Bundle has no Cormorant italic 300; using
+    // displayMediumItalic (500) — same fallback documented in the
+    // KAN-36 v2 DeactivationModal comment.
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 16,
-    color: Colors.textMuted,
+    fontSize: 18,
+    color: 'rgba(240, 237, 230, 0.65)',
     textAlign: 'center',
-    lineHeight: 25,
+    lineHeight: 28,
   },
   scriptureRef: {
+    // v5 item 03 — ref 11 → 12 pt, 0.18em UPPERCASE sky.
     marginTop: 10,
     fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 2.0,
+    fontSize: 12,
+    letterSpacing: 2.2,
     color: Colors.accent,
     textTransform: 'uppercase',
   },
@@ -369,7 +377,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionCard: {
-    padding: 20,
+    // v5 item 03 cc-note — if action cards grow too tall after the sub
+    // bump, drop vertical padding 20 → 18. Going to 18 proactively
+    // because the sub bumped 14 → 16 + a 3-line subtitle in the
+    // Receive card.
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     backgroundColor: Colors.surface,
@@ -381,24 +394,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    // v5 item 01 — circle 60 pt (was 44 in v2-era code; dispatch said
+    // "remains 60 pt" but build was actually 44; bumping to redline).
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardTitle: {
+    // v5 item 03 — title 30 pt Cormorant 500, line-height 1.1
+    // (dispatch said unchanged; build was 22; redline locks 30).
     fontFamily: Typography.displayMedium,
-    fontSize: 22,
+    fontSize: 30,
     color: Colors.text,
     letterSpacing: 0.3,
+    lineHeight: 33,
   },
   cardSubtitle: {
+    // v5 item 03 — sub 14 → 16 pt, line-height 1.55, rgba(text, 0.65).
+    // Bundle has no DM Sans 300; using Typography.body (400).
     fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.textMuted,
-    lineHeight: 22,
+    fontSize: 16,
+    color: 'rgba(240, 237, 230, 0.65)',
+    lineHeight: 25,
   },
   cardCta: {
     height: 48,
@@ -421,19 +441,23 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   cardCtaTextSolid: {
+    // v5 item 03 — CTA 14 → 15 pt, 0.04em (dispatch table bump).
     fontFamily: Typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
+    letterSpacing: 0.6,
     color: Colors.background,
   },
   cardCtaTextLocked: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
+    letterSpacing: 0.6,
     color: Colors.textMuted,
   },
   cardHint: {
+    // v5 item 03 — disabled-CTA hint 11 → 12 pt, 0.14em UPPERCASE.
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
+    fontSize: 12,
+    letterSpacing: 1.7,
     color: Colors.textMuted,
     textAlign: 'center',
     textTransform: 'uppercase',
@@ -447,22 +471,31 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212, 168, 85, 0.45)',
   },
   comingSoonText: {
+    // v5 item 03 — Coming Soon pill 11 pt 0.18em (dispatch said
+    // unchanged; build was 10; redline locks 11).
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    letterSpacing: 2.0,
     color: Colors.amber,
     textTransform: 'uppercase',
   },
   quickLink: {
-    paddingVertical: 16,
+    // v5 item 02 — link sits 16 pt below Receive card, horizontally
+    // centred. alignItems centre + alignSelf stretch achieves this
+    // without a separate flex wrapper.
+    marginTop: 16,
     paddingHorizontal: 28,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    alignSelf: 'stretch',
   },
   quickLinkText: {
+    // v5 item 03 — link 10 → 11 pt, DM Mono sky. 0.08em on 11 pt =
+    // ~0.9 pt letterSpacing.
     fontFamily: Typography.mono,
     fontSize: 11,
-    letterSpacing: 1.4,
+    letterSpacing: 0.9,
     color: Colors.accent,
+    textAlign: 'center',
   },
   rotatorWrap: {
     marginTop: 8,

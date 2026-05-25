@@ -481,11 +481,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyCopy: {
-    fontFamily: Typography.body,
-    fontSize: 13,
-    color: Colors.textMuted,
+    // v5 item 07 — copy above the empty-state CTA: 17 pt Cormorant
+    // italic 300, rgba(text, 0.65), 24 pt margin above the button.
+    // Bundle has no italic 300; using displayMediumItalic (500).
+    // The 24 pt gap is honoured via marginTop on backCta below
+    // (parent container's gap: 12 is overridden for this pair).
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 17,
+    color: 'rgba(240, 237, 230, 0.65)',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 27,
   },
   retryText: {
     fontFamily: Typography.mono,
@@ -495,17 +500,24 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   backCta: {
-    marginTop: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+    // v5 item 07 — ghost-sky button: 0.5 pt sky-mid border, sky text,
+    // transparent bg, padding 12 × 24, radius 8. 24 pt total margin
+    // between copy and button = the parent container's gap: 12 plus
+    // this 12. (RN's flex gap stacks with the child's marginTop.)
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 173, 122, 0.45)',
-    borderRadius: 6,
+    borderColor: 'rgba(107, 181, 232, 0.45)',
+    borderRadius: 8,
+    backgroundColor: Colors.transparent,
   },
   backCtaText: {
+    // v5 item 07 — 15 pt DM Sans 500, 0.02em (~0.3 pt on 15 pt), sky.
     fontFamily: Typography.bodyMedium,
-    fontSize: 13,
-    color: Colors.green,
+    fontSize: 15,
+    letterSpacing: 0.3,
+    color: Colors.accent,
   },
 
   // Card

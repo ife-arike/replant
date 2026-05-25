@@ -1,26 +1,33 @@
 // ─────────────────────────────────────────────
-// PrayerWallFilterBar — KAN-23 v2 (Ticket A, amended for multi-select)
+// PrayerWallFilterBar — KAN-23 v5 visual pass (Item 05)
 //
-// Two-axis filter strip: Urgent chip on the left, vertical divider,
-// then 8 category chips on the right. Category chips are multi-select
-// — tapping toggles a chip in/out of the selected Set. The Clear chip
-// pins to the right edge the moment any axis is non-default; one tap
-// restores defaults with no confirm.
+// Single horizontal scroll row, ALWAYS. The v4 2-row-stack promotion
+// (the selectedCategories.size >= 3 branch that split chips into
+// active vs idle rows) is removed entirely per the v5 redlines —
+// front-of-row Clear is the new affordance for narrowing many filters
+// and it doubles as a thumb-reachable single-tap reset.
 //
-// At 3+ active categories the chip strip promotes to a 2-row stack:
-// active categories on top, idle below. This branch is now reachable
-// under multi-select and is implemented as a conditional layout switch
-// (single horizontal scroll row vs two stacked horizontal scroll rows).
+// New row order (left → right):
+//   [× Clear] | [● Urgent] | [Healing] [Protection] ... [Laborers]
 //
-// Below the strip, an active-count strip animates in (height 0 → 36 pt)
-// naming the active filters + result count.
+// Clear chip renders only when ≥1 axis is non-default. When no chip is
+// active the row begins with the Urgent chip — no leading divider, no
+// Clear chip taking a visual slot.
 //
-// Filtering is server-side in v2 — this component is presentation-only.
-// The parent (PrayerWallScreen) observes onCategoryToggle /
-// onUrgencyChange / onClear and re-runs the RPC.
+// Dividers: 1 × 18 pt, rgba(text, 0.14). Two of them when Clear is
+// present (one after Clear, one after Urgent); one of them when Clear
+// is hidden (only after Urgent).
 //
-// Reduced motion: useReducedMotion() drops the height-grow animation
-// on the active-count strip to a 1-frame swap.
+// Right-edge fade stays (faked with stacked semi-transparent bands of
+// Colors.background — expo-linear-gradient not installed at MVP). No
+// left-edge fade because the Clear chip itself is the left affordance.
+//
+// Active-count strip (below the chips, names active filters + result
+// count) is unchanged.
+//
+// Reduced motion: the active-count strip's height-grow drops to a
+// 1-frame swap. The Clear-chip slide-out is layout-driven (the chip
+// just unmounts), so reduced motion doesn't need to suppress it.
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef } from 'react';
@@ -55,7 +62,6 @@ interface Props {
 
 const STRIP_HEIGHT = 36;
 const ANIM_MS = 200;
-const STACK_THRESHOLD = 3; // promote to 2-row stack when this many cats are active
 
 export default function PrayerWallFilterBar({
   selectedCategories,
@@ -67,9 +73,10 @@ export default function PrayerWallFilterBar({
 }: Props) {
   const reduced = useReducedMotion();
   const showActiveStrip = hasActiveFilter(selectedCategories, urgency);
-  const promoteToStack = selectedCategories.size >= STACK_THRESHOLD;
+  const urgentActive = urgency === 'Urgent';
 
-  // Active-count strip — animated height.
+  // Active-count strip — animated height. Reduced motion skips the
+  // ease-out and snaps to the target value in one frame.
   const stripHeight = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const target = showActiveStrip ? STRIP_HEIGHT : 0;
@@ -81,69 +88,50 @@ export default function PrayerWallFilterBar({
       toValue: target,
       duration: ANIM_MS,
       easing: Easing.out(Easing.ease),
-      useNativeDriver: false, // animating layout height
+      useNativeDriver: false,
     }).start();
   }, [showActiveStrip, reduced, stripHeight]);
-
-  const urgentActive = urgency === 'Urgent';
 
   const handleUrgentToggle = () => {
     onUrgencyChange(urgentActive ? 'All' : 'Urgent');
   };
 
-  // Split the 8 categories into active vs idle. Active preserves the
-  // dispatch order (the order in CATEGORIES), not tap order — keeps
-  // the stacked row reading consistently between toggles. Idle keeps
-  // the same dispatch order.
+  // Active categories computed once for the active-count label.
   const activeCats = CATEGORIES.filter((c) => selectedCategories.has(c));
-  const idleCats = CATEGORIES.filter((c) => !selectedCategories.has(c));
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.row}>
-        <UrgentChip active={urgentActive} onPress={handleUrgentToggle} />
-        <View style={styles.divider} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          style={styles.scroll}
+        >
+          {showActiveStrip ? (
+            <>
+              <ClearChip onPress={onClear} />
+              <Divider />
+            </>
+          ) : null}
 
-        <View style={styles.chipArea}>
-          {promoteToStack ? (
-            <View style={styles.stackColumn}>
-              <ChipRow
-                cats={activeCats}
-                selectedCategories={selectedCategories}
-                onToggle={onCategoryToggle}
-              />
-              <ChipRow
-                cats={idleCats}
-                selectedCategories={selectedCategories}
-                onToggle={onCategoryToggle}
-                style={styles.stackIdleRow}
-              />
-            </View>
-          ) : (
-            <ChipRow
-              cats={CATEGORIES as readonly PrayerCategory[]}
-              selectedCategories={selectedCategories}
-              onToggle={onCategoryToggle}
+          <UrgentChip active={urgentActive} onPress={handleUrgentToggle} />
+          <Divider />
+
+          {CATEGORIES.map((cat) => (
+            <CategoryChip
+              key={cat}
+              label={cat}
+              active={selectedCategories.has(cat)}
+              onPress={() => onCategoryToggle(cat)}
             />
-          )}
+          ))}
+        </ScrollView>
 
-          {/* Right-edge fade — fakes the gradient mask without
-              expo-linear-gradient (not installed). */}
-          <View pointerEvents="none" style={styles.fadeOuter} />
-          <View pointerEvents="none" style={styles.fadeInner} />
-        </View>
-
-        {showActiveStrip ? (
-          <Pressable
-            onPress={onClear}
-            style={styles.clearChip}
-            accessibilityRole="button"
-            accessibilityLabel="Clear all filters"
-            hitSlop={6}
-          >
-            <XIcon size={10} color={Colors.textMuted} />
-          </Pressable>
-        ) : null}
+        {/* Right-edge fade — fakes the gradient mask without
+            expo-linear-gradient (not installed). */}
+        <View pointerEvents="none" style={styles.fadeOuter} />
+        <View pointerEvents="none" style={styles.fadeInner} />
       </View>
 
       <Animated.View style={[styles.activeStrip, { height: stripHeight }]}>
@@ -170,34 +158,21 @@ function composeActiveLabel(
   return `${labels} — ${count} ${noun}`;
 }
 
-function ChipRow({
-  cats,
-  selectedCategories,
-  onToggle,
-  style,
-}: {
-  cats: readonly PrayerCategory[];
-  selectedCategories: SelectedCategories;
-  onToggle: (cat: PrayerCategory) => void;
-  style?: object;
-}) {
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
+function ClearChip({ onPress }: { onPress: () => void }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-      style={[styles.scroll, style]}
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Clear all filters"
+      hitSlop={6}
+      style={styles.clearChip}
     >
-      {cats.map((cat, i) => (
-        <CategoryChip
-          key={cat}
-          label={cat}
-          active={selectedCategories.has(cat)}
-          onPress={() => onToggle(cat)}
-          first={i === 0}
-        />
-      ))}
-    </ScrollView>
+      <XIcon size={14} color={Colors.red} />
+    </Pressable>
   );
 }
 
@@ -231,12 +206,10 @@ function CategoryChip({
   label,
   active,
   onPress,
-  first,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
-  first: boolean;
 }) {
   return (
     <Pressable
@@ -248,7 +221,7 @@ function CategoryChip({
       style={[
         styles.chip,
         active ? styles.chipCategoryActive : styles.chipIdle,
-        !first && styles.chipGap,
+        styles.chipGap,
       ]}
     >
       <Text
@@ -273,27 +246,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  divider: {
-    width: 1,
-    height: 16,
-    backgroundColor: 'rgba(240, 237, 230, 0.10)',
-    marginHorizontal: 12,
-  },
-  chipArea: {
-    flex: 1,
-  },
   scroll: {
     flexGrow: 0,
+    flex: 1,
   },
   scrollContent: {
     alignItems: 'center',
     paddingRight: 14,
   },
-  stackColumn: {
-    gap: 6,
-  },
-  stackIdleRow: {
-    opacity: 0.85,
+  divider: {
+    width: 1,
+    height: 18,
+    backgroundColor: 'rgba(240, 237, 230, 0.14)',
+    marginHorizontal: 12,
   },
   chip: {
     height: 32,
@@ -336,14 +301,14 @@ const styles = StyleSheet.create({
     fontFamily: Typography.bodyMedium,
   },
   clearChip: {
-    width: 28,
-    height: 28,
-    marginLeft: 6,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
+    borderColor: 'rgba(224, 85, 85, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.transparent,
   },
   fadeOuter: {
     position: 'absolute',
