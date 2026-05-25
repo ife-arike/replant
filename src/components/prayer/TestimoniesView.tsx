@@ -53,6 +53,18 @@ interface Props {
    *  sheet is open. */
   selectedTestimony: TestimonyRow | null;
   onSelectTestimony: (row: TestimonyRow | null) => void;
+  /** v7 Fix 09 — testimony rows hoisted to PrayerWallScreen so the
+   *  optimistic Rejoice state survives view switches AND tab blur
+   *  (this view unmounts on segmented-control switch; the screen
+   *  doesn't). Pull-to-refresh + initial fetch use setRows to
+   *  populate; the screen also passes a stable hasFetchedOnce ref
+   *  so we don't refetch on every re-mount. */
+  rows: TestimonyRow[];
+  setRows: React.Dispatch<React.SetStateAction<TestimonyRow[]>>;
+  hasFetchedOnce: React.MutableRefObject<boolean>;
+  /** v6 Fix G + v7 Fix 09 — onCelebratedChange propagation. Lives at
+   *  the screen so the row swap persists across view-switch unmounts. */
+  onCelebratedChange: (id: string, iCelebrated: boolean, count: number) => void;
 }
 
 export default function TestimoniesView({
@@ -60,14 +72,18 @@ export default function TestimoniesView({
   onDeepLinkConsumed,
   selectedTestimony,
   onSelectTestimony,
+  rows,
+  setRows,
+  hasFetchedOnce,
+  onCelebratedChange,
 }: Props) {
-  const [rows, setRows] = useState<TestimonyRow[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>('initial');
+  const [loadState, setLoadState] = useState<LoadState>(
+    hasFetchedOnce.current ? 'idle' : 'initial',
+  );
   const [hasMore, setHasMore] = useState(true);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [showFromLandingPill, setShowFromLandingPill] = useState(false);
   const listRef = useRef<FlatList<TestimonyRow> | null>(null);
-  const hasFetchedOnce = useRef(false);
   const pillFade = useRef(new Animated.Value(0)).current;
 
   const fetchPage = useCallback(async (offset: number) => {
@@ -89,7 +105,8 @@ export default function TestimoniesView({
     setRows(page);
     setHasMore(page.length === TESTIMONY_PAGE_SIZE);
     setLoadState('idle');
-  }, [fetchPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchPage, setRows, hasFetchedOnce]);
 
   const loadMore = useCallback(async () => {
     if (loadState !== 'idle' || !hasMore || rows.length === 0) return;
@@ -107,9 +124,16 @@ export default function TestimoniesView({
     setLoadState('idle');
   }, [fetchPage, hasMore, loadState, rows.length]);
 
+  // v7 Fix 09 — only fetch on first mount across the screen's
+  // lifetime. If the screen-level hasFetchedOnce ref is already true
+  // (we navigated away and back), reuse the rows + skip the network.
+  // This preserves optimistic Rejoice state across view switches.
   useEffect(() => {
-    void loadInitial();
-  }, [loadInitial]);
+    if (!hasFetchedOnce.current) {
+      void loadInitial();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Deep-link arrival — scroll the target testimony into view and
   // pulse-glow it for 1.6 s. The "From landing" pill fades out 2.0 s
@@ -148,23 +172,9 @@ export default function TestimoniesView({
     return () => clearTimeout(fadeT);
   }, [deepLinkTestimonyId, rows, onDeepLinkConsumed, pillFade]);
 
-  // v6 Fix G — onCelebratedChange propagation: mirror sheet-side
-  // optimistic celebrate toggle back to the matching list row so the
-  // card's passive celebrate display reflects the new state on next
-  // render. STUB until the celebrate RPC lands; next testimonies
-  // reload overwrites with server-truth.
-  const handleCelebratedChange = useCallback(
-    (id: string, iCelebrated: boolean, celebratedCount: number) => {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? { ...r, i_celebrated: iCelebrated, celebrated_count: celebratedCount }
-            : r,
-        ),
-      );
-    },
-    [],
-  );
+  // v7 Fix 09 — handleCelebratedChange now lives on PrayerWallScreen
+  // (passed in via onCelebratedChange prop) so the row swap persists
+  // across this view's mount/unmount cycles.
 
   return (
     <View style={styles.root}>
@@ -210,7 +220,7 @@ export default function TestimoniesView({
       <TestimonyDetailSheet
         row={selectedTestimony}
         onDismiss={() => onSelectTestimony(null)}
-        onCelebratedChange={handleCelebratedChange}
+        onCelebratedChange={onCelebratedChange}
       />
     </View>
   );
@@ -296,7 +306,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 15,
     color: Colors.textMuted,
     textAlign: 'center',

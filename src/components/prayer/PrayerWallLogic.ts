@@ -158,8 +158,23 @@ export function getLocationLine(churchName: string, country: string | null): str
 // Leader-line composer. Anonymous (null name on the wire) renders as
 // ANONYMOUS_LEADER_LABEL. Reused on both prayer cards and testimony
 // cards. Founder ruling 2026-05-24: do not omit the line.
-export function getLeaderLine(leaderDisplayName: string | null): string {
-  return leaderDisplayName ?? ANONYMOUS_LEADER_LABEL;
+//
+// v7 Item 05 — optional role argument: when provided AND the name is
+// non-null, the line renders as `${getRoleLabel(role)} ${name}` (e.g.
+// "Pastor Priya", "Minister Felipe"). A single space, no separator.
+// Anonymous + underground-masked posts (name = null) always render
+// "A fellow leader" with no role prefix, regardless of the role
+// value on the wire. Other callers (testimony surfaces, rotator)
+// can omit role and get the v6 behaviour: just the name.
+import { getRoleLabel } from '../../utils/displayHelpers';
+
+export function getLeaderLine(
+  leaderDisplayName: string | null,
+  leaderRole?: string | null,
+): string {
+  if (leaderDisplayName === null) return ANONYMOUS_LEADER_LABEL;
+  if (leaderRole === undefined) return leaderDisplayName;
+  return `${getRoleLabel(leaderRole)} ${leaderDisplayName}`;
 }
 
 // Relative-time format mirrors NetworkFeedLogic so the two surfaces

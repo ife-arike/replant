@@ -42,6 +42,31 @@ export function formatDistance(distanceKm: number, countryCode: string): string 
   return `${distanceKm.toFixed(1)} km away`;
 }
 
+// KAN-23 v7 Item 05 — getRoleLabel(role): label used as a prefix on
+// the feed card author line ("Pastor Priya", "Minister Felipe"). The
+// label set below is intentionally narrower than ROLES (which is the
+// onboarding role-picker enum, order-locked per SPEC Doc 01). Per
+// dispatch, any role NOT in this map (including 'other' and the
+// charismatic-role values like 'apostle' / 'prophet' / 'evangelist'),
+// plus null/undefined, falls back to "Minister" — the same fallback
+// as the `ministry_leader` entry. Add new entries here as Founder
+// expands the recognised set; keep ROLES untouched (its order is
+// locked).
+const PRAYER_WALL_ROLE_LABELS: Record<string, string> = {
+  ministry_leader: 'Minister',
+  pastor: 'Pastor',
+  elder: 'Elder',
+  deacon: 'Deacon',
+  missionary: 'Missionary',
+  youth_leader: 'Youth Leader',
+  worship_leader: 'Worship Leader',
+};
+
+export function getRoleLabel(role: string | null | undefined): string {
+  if (role === null || role === undefined) return 'Minister';
+  return PRAYER_WALL_ROLE_LABELS[role] ?? 'Minister';
+}
+
 // Role list — 12 items, order locked per SPEC Doc 01 Amendment
 export const ROLES = [
   { label: 'Pastor',          value: 'pastor' },

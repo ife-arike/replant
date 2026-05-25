@@ -483,10 +483,10 @@ const styles = StyleSheet.create({
   emptyCopy: {
     // v5 item 07 — copy above the empty-state CTA: 17 pt Cormorant
     // italic 300, rgba(text, 0.65), 24 pt margin above the button.
-    // Bundle has no italic 300; using displayMediumItalic (500).
+    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
     // The 24 pt gap is honoured via marginTop on backCta below
     // (parent container's gap: 12 is overridden for this pair).
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 17,
     color: 'rgba(240, 237, 230, 0.65)',
     textAlign: 'center',
@@ -588,13 +588,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   authorLine: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
+    // v7 Item 08 — DM Sans 400 (was DM Mono).
+    fontFamily: Typography.body,
+    fontSize: 11,
     color: Colors.textMuted,
   },
   timestamp: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
+    // v7 Item 08 — DM Sans 400, sentence case, no tracking.
+    fontFamily: Typography.body,
+    fontSize: 11,
     color: Colors.textMuted,
     marginLeft: 'auto',
   },
@@ -739,7 +741,7 @@ const styles = StyleSheet.create({
   },
   composerQuoteText: {
     marginTop: 4,
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 13,
     color: Colors.textMuted,
     lineHeight: 20,
@@ -751,7 +753,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 15,
     color: Colors.text,
     lineHeight: 22,

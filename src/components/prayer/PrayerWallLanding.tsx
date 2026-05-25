@@ -99,7 +99,7 @@ export default function PrayerWallLanding({
         <ActionCard
           accent="sky"
           icon={<IncenseIcon size={30} color={Colors.accent} />}
-          title="Make intercession"
+          title="Make Intercession"
           subtitle="Pray through the wall of requests from churches around the world."
           ctaLabel="Enter the prayer wall"
           ctaVariant="solid"
@@ -115,7 +115,7 @@ export default function PrayerWallLanding({
         hitSlop={6}
         style={styles.quickLink}
       >
-        <Text style={styles.quickLinkText}>View my open prayers →</Text>
+        <Text style={styles.quickLinkText}>View my open prayers</Text>
       </Pressable>
 
       {/* Testimony rotator (hidden when zero testimonies) */}
@@ -137,7 +137,6 @@ interface ActionCardProps {
   ctaLabel: string;
   ctaVariant: 'solid' | 'locked';
   onPress?: () => void;
-  cornerPill?: React.ReactNode;
   dimmed?: boolean;
   hintBelow?: string;
 }
@@ -150,19 +149,20 @@ function ActionCard({
   ctaLabel,
   ctaVariant,
   onPress,
-  cornerPill,
   dimmed,
   hintBelow,
 }: ActionCardProps) {
   const borderColor = accent === 'sky' ? Colors.borderAccent : 'rgba(91, 173, 122, 0.30)';
   const iconBg = accent === 'sky' ? 'rgba(107, 181, 232, 0.10)' : 'rgba(91, 173, 122, 0.10)';
-  const isLocked = ctaVariant === 'locked';
 
   // v6 fix C — icon-LEFT layout. Head row uses flex with alignItems
   // 'center' so the 60 pt circle vertically centres against the
-  // title+description stack. Title and description are LEFT-aligned;
-  // cornerPill (Coming soon) no longer lives next to the icon — it
-  // now centres above the locked CTA per v6 spec, below the head row.
+  // title+description stack. Title and description are LEFT-aligned.
+  //
+  // v7 Item 06 — amber "Coming soon" pill removed entirely. Card
+  // flow is now: head row → 14 pt (head's marginBottom) → CTA →
+  // 10 pt (hint's marginTop) → hint copy. The locked-state "Coming
+  // soon" text lives in the CTA label itself; the pill was redundant.
   return (
     <View style={[styles.actionCard, { borderColor, opacity: dimmed ? 0.55 : 1 }]}>
       <View style={styles.cardHeadRow}>
@@ -174,11 +174,6 @@ function ActionCard({
           <Text style={styles.cardSubtitle}>{subtitle}</Text>
         </View>
       </View>
-
-      {/* Coming soon pill — only on locked CTAs, centred above. */}
-      {isLocked && cornerPill ? (
-        <View style={styles.pillSlot}>{cornerPill}</View>
-      ) : null}
 
       {ctaVariant === 'solid' ? (
         <Pressable
@@ -217,11 +212,12 @@ function ActionCard({
 
 function ReceiveIntercessionCard({ isVerified }: { isVerified: boolean }) {
   const handlePress = () => {
-    // Coming-soon alert per dispatch — verified leaders only see this.
-    // The actual "receive intercession" surface is a follow-up ticket.
+    // v7 Item 10 — alert copy: action name "Receive Intercession" is
+    // title case (matches the card title); the remaining sentence
+    // copy stays sentence case.
     Alert.alert(
-      'Receive intercession',
-      'This is coming soon. For now, your church can request prayer by writing to us at connect@projectreplant.org.',
+      'Receive Intercession',
+      'Receive Intercession is coming soon. For now, your church can request prayer by writing to us at connect@projectreplant.org.',
     );
   };
 
@@ -229,23 +225,14 @@ function ReceiveIntercessionCard({ isVerified }: { isVerified: boolean }) {
     <ActionCard
       accent="green"
       icon={<CandleIcon size={30} color={Colors.green} />}
-      title="Receive intercession"
+      title="Receive Intercession"
       subtitle="Let the body stand with your church in prayer."
       ctaLabel="Coming soon"
       ctaVariant="locked"
       onPress={isVerified ? handlePress : undefined}
-      cornerPill={<ComingSoonPill />}
       dimmed={!isVerified}
       hintBelow={isVerified ? undefined : 'Available after your church is verified'}
     />
-  );
-}
-
-function ComingSoonPill() {
-  return (
-    <View style={styles.comingSoonPill}>
-      <Text style={styles.comingSoonText}>Coming soon</Text>
-    </View>
   );
 }
 
@@ -323,7 +310,7 @@ function TestimonyRotator({ onSeeAll, onOpenTestimony }: RotatorProps) {
       <View style={styles.rotatorLabelRow}>
         <Text style={styles.rotatorLabel}>Testimonies</Text>
         <Pressable onPress={onSeeAll} hitSlop={6} accessibilityRole="button">
-          <Text style={styles.rotatorSeeAll}>See all →</Text>
+          <Text style={styles.rotatorSeeAll}>See all</Text>
         </Pressable>
       </View>
       <Pressable
@@ -335,7 +322,7 @@ function TestimonyRotator({ onSeeAll, onOpenTestimony }: RotatorProps) {
       >
         <Animated.View style={[styles.rotatorCard, { opacity: fade }]}>
           <Text style={styles.rotatorLocation} numberOfLines={1}>
-            {location.toUpperCase()}
+            {location}
           </Text>
           <Text style={styles.rotatorLeader} numberOfLines={1}>
             {leader}
@@ -448,16 +435,10 @@ const styles = StyleSheet.create({
     lineHeight: 22, // 15 × 1.45
     textAlign: 'left',
   },
-  pillSlot: {
-    // v6 fix C — Coming Soon pill centred above locked CTA, 10 pt
-    // marginBottom from the pill (head row already gave 14 above).
-    alignItems: 'center',
-    marginBottom: 10,
-  },
   cardCta: {
     // v6 fix C — CTA padding 14 pt vertical, radius 10. Full card
     // width. No marginTop because the head row's marginBottom (14)
-    // or the pillSlot's marginBottom (10) already set the gap above.
+    // sets the gap above.
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -492,31 +473,16 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   cardHint: {
-    // v6 fix C — disabled hint centred below locked CTA, 11 pt mono
-    // caps muted, 10 pt margin above.
+    // v6 fix C — disabled hint centred below locked CTA, 11 pt caps
+    // muted, 10 pt margin above.
+    // v7 Item 08 — DM Sans 400 (was DM Mono), tracking + UPPERCASE
+    // preserved so it still reads as a label.
     marginTop: 10,
-    fontFamily: Typography.mono,
+    fontFamily: Typography.body,
     fontSize: 11,
-    letterSpacing: 1.5,
+    letterSpacing: 1.5, // ~0.14em on 11 pt
     color: Colors.textMuted,
     textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  comingSoonPill: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 3,
-    backgroundColor: 'rgba(212, 168, 85, 0.12)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(212, 168, 85, 0.45)',
-  },
-  comingSoonText: {
-    // v5 item 03 — Coming Soon pill 11 pt 0.18em (dispatch said
-    // unchanged; build was 10; redline locks 11).
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 2.0,
-    color: Colors.amber,
     textTransform: 'uppercase',
   },
   quickLink: {
@@ -529,11 +495,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   quickLinkText: {
-    // v5 item 03 — link 10 → 11 pt, DM Mono sky. 0.08em on 11 pt =
-    // ~0.9 pt letterSpacing.
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 0.9,
+    // v7 Item 08 — 15 pt DM Sans 400 (was 11 pt DM Mono). Sentence
+    // case, no arrow — reads as a quiet text link, not a callout.
+    fontFamily: Typography.body,
+    fontSize: 15,
     color: Colors.accent,
     textAlign: 'center',
   },
@@ -549,16 +514,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rotatorLabel: {
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 2.2,
+    // v7 Item 08 — 12 pt DM Sans 500 (was 11 pt mono), 0.18em
+    // UPPERCASE green. Still reads as a section header via tracking
+    // + caps without the keyboard-clack of mono.
+    fontFamily: Typography.bodyMedium,
+    fontSize: 12,
+    letterSpacing: 2.2, // 0.18em × 12
     color: Colors.green,
     textTransform: 'uppercase',
   },
   rotatorSeeAll: {
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.4,
+    // v7 Item 08 — 14 pt DM Sans 400 (was 11 pt mono). Sentence case,
+    // no arrow.
+    fontFamily: Typography.body,
+    fontSize: 14,
     color: Colors.green,
   },
   rotatorCard: {
@@ -575,9 +544,12 @@ const styles = StyleSheet.create({
     minHeight: 132,
   },
   rotatorLocation: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
+    // v7 Item 08 — DM Sans 400 sentence case (was mono UPPERCASE).
+    // 12 pt for the compact rotator card; the full testimony card
+    // uses 14 pt per spec.
+    fontFamily: Typography.body,
+    fontSize: 12,
+    letterSpacing: 0.24, // 0.02em × 12
     color: Colors.green,
   },
   rotatorLeader: {
@@ -588,7 +560,7 @@ const styles = StyleSheet.create({
   },
   rotatorText: {
     marginTop: 8,
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 14,
     color: Colors.text,
     lineHeight: 22,

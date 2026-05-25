@@ -4,6 +4,8 @@
 // ─────────────────────────────────────────────
 
 import {
+  CormorantGaramond_300Light,
+  CormorantGaramond_300Light_Italic,
   CormorantGaramond_400Regular,
   CormorantGaramond_500Medium,
   CormorantGaramond_500Medium_Italic,
@@ -11,6 +13,7 @@ import {
   CormorantGaramond_600SemiBold_Italic,
 } from "@expo-google-fonts/cormorant-garamond";
 import {
+  DMSans_300Light,
   DMSans_400Regular,
   DMSans_500Medium,
 } from "@expo-google-fonts/dm-sans";
@@ -45,11 +48,23 @@ export const Colors = {
 // to compile and the Android-asymmetric font fallback bug surfaces at build
 // time rather than as a silent visual fallback at runtime.
 export const fontModules = {
+  // KAN-23 v7 Item 00 — Cormorant 300 Light + 300 Light Italic added
+  // so scripture/prayer body can render at native 300 weight rather
+  // than falling back to 500 (v6 device pass flagged it as too heavy).
+  // The italic must be the native 300Light_Italic file — do NOT apply
+  // fontStyle:'italic' to the roman 300Light file (separate asset;
+  // synthetic italic causes Android rendering failures).
+  CormorantGaramond_300Light,
+  CormorantGaramond_300Light_Italic,
   CormorantGaramond_400Regular,
   CormorantGaramond_500Medium,
   CormorantGaramond_500Medium_Italic,
   CormorantGaramond_600SemiBold,
   CormorantGaramond_600SemiBold_Italic,
+  // KAN-23 v7 Item 00 — DM Sans 300 Light added for action card
+  // descriptions and other body-light copy that was previously
+  // falling back to 400.
+  DMSans_300Light,
   DMSans_400Regular,
   DMSans_500Medium,
   DMMono_400Regular,
@@ -67,10 +82,22 @@ export const Typography = {
   displayMedium: 'CormorantGaramond_500Medium',
   displayMediumItalic: 'CormorantGaramond_500Medium_Italic',
   displayRegular: 'CormorantGaramond_400Regular',
+  // KAN-23 v7 Item 00 — scripture + prayer/testimony body uses native
+  // 300 Light Italic (NOT fontStyle:'italic' on the roman 300 file —
+  // those are separate font assets and synthetic italic breaks
+  // Android rendering). Wire load via fontModules above.
+  scriptureItalic: 'CormorantGaramond_300Light_Italic',
+  scriptureLight: 'CormorantGaramond_300Light',
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
+  // KAN-23 v7 Item 00 — action card descriptions + other body-light
+  // sites that previously fell back to 400.
+  sansLight: 'DMSans_300Light',
   // DM Mono — identifier register (RPL-XXXXX codes, numbered eyebrows,
   // version stamps). Added for KAN-138 Settings on-brand pass.
+  // KAN-23 v7 Item 08 — kept ONLY for filter chips, feed card category/
+  // urgent tags, testimony chip. All other mono usages on the Prayer
+  // Wall swept to DM Sans.
   mono: 'DMMono_400Regular',
 } as const;
 

@@ -51,6 +51,7 @@ import PrayerWallDetailSheet from '../../components/prayer/PrayerWallDetailSheet
 import PrayerWallFilterBar from '../../components/prayer/PrayerWallFilterBar';
 import PrayerWallLanding from '../../components/prayer/PrayerWallLanding';
 import PrayerWallSegmentedControl from '../../components/prayer/PrayerWallSegmentedControl';
+import ScriptureBanner from '../../components/prayer/ScriptureBanner';
 import TestimoniesView from '../../components/prayer/TestimoniesView';
 import MyOpenPrayersView from '../../components/prayer/MyOpenPrayersView';
 import {
@@ -67,6 +68,15 @@ type PrayerWallView = 'landing' | 'feed' | 'testimonies' | 'my_open_prayers';
 type LoadState = 'initial' | 'refreshing' | 'paging' | 'idle' | 'error';
 
 const SKELETON_COUNT = 3;
+
+// v7 Fix 01 — Philippians 4:6 (KJV) rendered above the first prayer
+// card via the FlatList ListHeaderComponent. Floating (tone="none"),
+// 18 pt body per Item 11 (smaller than the 20 pt landing/testimonies
+// banners — the feed has cards directly below and shouldn't crowd
+// itself). NEVER truncated.
+const PHIL_4_6_KJV =
+  'Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.';
+const PHIL_4_6_REF = 'PHILIPPIANS 4:6 · KJV';
 
 async function fetchPage(
   offset: number,
@@ -97,6 +107,33 @@ export default function PrayerWallScreen() {
   const [detailRow, setDetailRow] = useState<PrayerRow | null>(null);
   const [deepLinkTestimonyId, setDeepLinkTestimonyId] = useState<string | null>(null);
   const [selectedTestimony, setSelectedTestimony] = useState<import('../../components/prayer/PrayerWallLogic').TestimonyRow | null>(null);
+  // v7 Fix 09 — testimony rows hoisted to the screen so optimistic
+  // Rejoice state survives view-switch unmounts of TestimoniesView.
+  // The screen-level hasFetchedOnce ref stops TestimoniesView from
+  // re-fetching on re-mount (which would clobber the optimistic
+  // state with server-truth that doesn't yet reflect the stub RPC).
+  const [testimonyRows, setTestimonyRows] = useState<
+    import('../../components/prayer/PrayerWallLogic').TestimonyRow[]
+  >([]);
+  const testimonyHasFetchedOnce = useRef(false);
+
+  const handleCelebratedChange = useCallback(
+    (id: string, iCelebrated: boolean, celebratedCount: number) => {
+      // v7 Fix 09 — same shape as the prayer-feed onPrayedChange
+      // handler (commit 1bc179b). Mirror sheet-side Rejoice toggle
+      // into the screen-level testimonyRows so the testimony list
+      // card reflects the new state on next render, AND so the
+      // state persists across view-switch unmounts.
+      setTestimonyRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, i_celebrated: iCelebrated, celebrated_count: celebratedCount }
+            : r,
+        ),
+      );
+    },
+    [],
+  );
   const hasFetchedOnce = useRef(false);
   const listRef = useRef<FlatList<PrayerRow> | null>(null);
 
@@ -325,6 +362,10 @@ export default function PrayerWallScreen() {
           onDeepLinkConsumed={() => setDeepLinkTestimonyId(null)}
           selectedTestimony={selectedTestimony}
           onSelectTestimony={setSelectedTestimony}
+          rows={testimonyRows}
+          setRows={setTestimonyRows}
+          hasFetchedOnce={testimonyHasFetchedOnce}
+          onCelebratedChange={handleCelebratedChange}
         />
       )}
 
@@ -417,6 +458,24 @@ function renderFeedBody(args: FeedBodyArgs) {
       renderItem={({ item }) => <PrayerWallCard row={item} onPress={onOpenDetail} />}
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
+      ListHeaderComponent={
+        // v7 Fix 01 — Phil 4:6 floating banner above the first card.
+        // Appears once on tab-enter; filter changes re-query cards
+        // below it, not the header. The wrapper supplies:
+        //   - 2 pt extra horizontal padding (list already has 14 pt;
+        //     dispatch wants 16 pt total for the banner width)
+        //   - marginBottom 14 — the 14 pt gap above the first card
+        // The 20 pt gap above the banner is the sum of FilterBar's
+        // paddingBottom (12) + listContent paddingTop (8).
+        <View style={styles.scriptureHeader}>
+          <ScriptureBanner
+            tone="none"
+            text={PHIL_4_6_KJV}
+            reference={PHIL_4_6_REF}
+            bodyFontSize={18}
+          />
+        </View>
+      }
       onEndReached={loadMore}
       onEndReachedThreshold={0.5}
       refreshControl={
@@ -475,6 +534,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   listContent: { paddingVertical: 8, paddingHorizontal: 14 },
+  scriptureHeader: {
+    // v7 Fix 01 — Phil 4:6 wrapper. paddingHorizontal: 2 brings the
+    // banner to 16 pt total (list already supplies 14). marginBottom:
+    // 14 sets the gap between banner and first card. 20 pt gap above
+    // the banner comes from FilterBar paddingBottom (12) + listContent
+    // paddingTop (8).
+    paddingHorizontal: 2,
+    marginBottom: 14,
+  },
   stateContainer: {
     flex: 1,
     alignItems: 'center',

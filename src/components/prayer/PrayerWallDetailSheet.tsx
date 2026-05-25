@@ -391,13 +391,15 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   body: {
-    // v6 fix F — body 16 → 19 pt Cormorant italic, line-height 1.65.
-    // Bundle has no italic 300; using displayMediumItalic (500).
+    // v6 fix F — body 16 → 19 pt Cormorant italic.
+    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
+    // v7 Item 11 — line-height 1.65 → 1.55 across italic-body surfaces
+    // now that native 300 Light loads (no more synthetic-italic 500 weight).
     marginTop: 16,
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.scriptureItalic,
     fontSize: 19,
     color: Colors.text,
-    lineHeight: 31, // 19 × 1.65
+    lineHeight: 29, // 19 × 1.55
   },
   metaRow: {
     flexDirection: 'row',
@@ -443,13 +445,15 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   heartCount: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
+    // v7 Item 08 — DM Sans 400 (was DM Mono).
+    fontFamily: Typography.body,
+    fontSize: 11,
     color: Colors.textMuted,
   },
   timestamp: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
+    // v7 Item 08 — DM Sans 400, sentence case, no tracking.
+    fontFamily: Typography.body,
+    fontSize: 11,
     color: Colors.textMuted,
     marginLeft: 'auto',
   },
