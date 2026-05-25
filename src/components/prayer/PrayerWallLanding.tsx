@@ -39,10 +39,10 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
-  getLeaderLine,
   getLocationLine,
   type TestimonyRow,
 } from './PrayerWallLogic';
+import { formatLeaderLine } from '../../utils/displayHelpers';
 import { CandleIcon, IncenseIcon, LockIcon } from './PrayerIcons';
 import ScriptureBanner from './ScriptureBanner';
 
@@ -81,13 +81,16 @@ export default function PrayerWallLanding({
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* v6 fix D — Eph 6:18 wrapped in a sky-tinted ScriptureBanner
-          matching the Rev 12:11 treatment on Testimonies. NEVER
-          truncates. 24 pt top + bottom margin enforced by the
-          banner's parent gaps. */}
+      {/* v8 Fix A — Eph 6:18 floats as tone="none" (no fill, no border).
+          The Feed's Phil 4:6 is the approved reference for this look;
+          Landing + Testimonies now match. Body 20 pt 300 Light Italic
+          rgba(text, 0.78); reference 11 pt DM Sans 0.18em sky-tinted.
+          NEVER truncates. Block padding 24/24/20 + 20 pt above (below
+          the top-bar hairline) + 24 pt below (above the first action
+          card) — set by styles.scriptureWrap. */}
       <View style={styles.scriptureWrap}>
         <ScriptureBanner
-          tone="sky"
+          tone="none"
           text={EPH_6_18_KJV}
           reference={EPH_6_18_REF}
         />
@@ -303,7 +306,16 @@ function TestimonyRotator({ onSeeAll, onOpenTestimony }: RotatorProps) {
 
   const current = rows[idx];
   const location = getLocationLine(current.church_name, current.country);
-  const leader = getLeaderLine(current.leader_display_name);
+  // v8 Fix B / H — attribution uses formatLeaderLine for consistency
+  // across rotator, full TestimonyCard, and both detail sheets.
+  // isAnonymous is derived from leader_display_name === null (server-
+  // side masking returns null for both anonymous + underground posts;
+  // there is no separate is_anonymous wire field today).
+  const leader = formatLeaderLine(
+    current.leader_role,
+    current.leader_display_name,
+    current.leader_display_name === null,
+  );
 
   return (
     <View style={styles.rotatorWrap}>
@@ -327,7 +339,7 @@ function TestimonyRotator({ onSeeAll, onOpenTestimony }: RotatorProps) {
           <Text style={styles.rotatorLeader} numberOfLines={1}>
             {leader}
           </Text>
-          <Text style={styles.rotatorText} numberOfLines={4}>
+          <Text style={styles.rotatorText} numberOfLines={3}>
             {current.testimony_text}
           </Text>
         </Animated.View>
@@ -371,11 +383,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   scriptureWrap: {
-    // v6 fix D — sky banner is full-width minus a 24 pt safe area,
-    // with 24 pt above (gap from top-bar hairline) and 24 pt below
-    // (gap above the first action card).
-    paddingHorizontal: 24,
-    marginTop: 24,
+    // v8 Fix A — banner now tone="none" and owns its own 24/20 block
+    // padding internally. Wrap only supplies the outer margins:
+    //   20 pt above (below the "Prayer Wall" title hairline)
+    //   24 pt below (above the first action card)
+    // No horizontal padding here — banner's 20 pt internal handles it.
+    marginTop: 20,
     marginBottom: 24,
   },
   actionStack: {
@@ -415,13 +428,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
-    // v6 fix C — title 30 → 26 pt Cormorant 500, lh 1.15, ls 0.01em,
-    // left-aligned. 0.01em × 26 pt ≈ 0.26 pt letterSpacing.
-    fontFamily: Typography.displayMedium,
-    fontSize: 26,
+    // v8 Fix C — title token bumps weight (displayMedium 500 →
+    // display 600 SemiBold) and size 26 → 25 pt. lh 1.15, ls 0.005em
+    // (0.005em × 25 ≈ 0.125 pt letterSpacing). Heavier weight at
+    // slightly smaller size reads sharper against the cards'
+    // lighter descriptions.
+    fontFamily: Typography.display,
+    fontSize: 25,
     color: Colors.text,
-    letterSpacing: 0.26,
-    lineHeight: 30, // 26 × 1.15
+    letterSpacing: 0.125,
+    lineHeight: 29, // 25 × 1.15
     textAlign: 'left',
   },
   cardSubtitle: {
@@ -544,26 +560,35 @@ const styles = StyleSheet.create({
     minHeight: 132,
   },
   rotatorLocation: {
-    // v7 Item 08 — DM Sans 400 sentence case (was mono UPPERCASE).
-    // 12 pt for the compact rotator card; the full testimony card
-    // uses 14 pt per spec.
+    // v8 Fix B — DM Sans 400 sentence case, 15 pt, lh 1.3, green.
+    // The rotator's mini preview cards now match the full testimony
+    // card's location size for visual consistency in the cluster.
     fontFamily: Typography.body,
-    fontSize: 12,
-    letterSpacing: 0.24, // 0.02em × 12
+    fontSize: 15,
+    lineHeight: 20, // 15 × 1.3 ≈ 19.5
     color: Colors.green,
   },
   rotatorLeader: {
+    // v8 Fix B — attribution 13 pt DM Sans 400, lh 1.3, muted-45%.
+    // Format is {RoleLabel} {Name} via formatLeaderLine — applied at
+    // the render site above.
     marginTop: 2,
     fontFamily: Typography.body,
-    fontSize: 11,
-    color: Colors.textMuted,
+    fontSize: 13,
+    lineHeight: 17, // 13 × 1.3
+    color: 'rgba(240, 237, 230, 0.45)',
   },
   rotatorText: {
     marginTop: 8,
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 14,
+    // v8 Fix B — rotator body 17 pt Cormorant 500 Medium Italic
+    // (displayMediumItalic), lh 1.50 (NOT scriptureItalic 300 — the
+    // rotator's compact card benefits from the slightly heavier
+    // weight to stay legible at the smaller card size). Color
+    // --text full white. numberOfLines: 3 (was 4).
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 17,
     color: Colors.text,
-    lineHeight: 22,
+    lineHeight: 26, // 17 × 1.50 ≈ 25.5
   },
   dotsRow: {
     flexDirection: 'row',

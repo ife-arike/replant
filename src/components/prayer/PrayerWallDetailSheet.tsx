@@ -45,12 +45,13 @@ import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
   formatRelativeTime,
-  getLeaderLine,
   getLocationLine,
   hasPrayedStateChanged,
   type PrayerRow,
 } from './PrayerWallLogic';
+import { formatLeaderLine } from '../../utils/displayHelpers';
 import { HeartIcon, XIcon } from './PrayerIcons';
+import { PRAYER_BODY_STYLE } from './PrayerWallCard';
 
 interface Props {
   row: PrayerRow | null;
@@ -226,10 +227,15 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
   // dispatch. Matches the same change in PrayerWallCard. Identity is
   // church name + country only.
   const locationLine = getLocationLine(row.church_name, row.country);
-  const leaderLine = getLeaderLine(row.leader_display_name);
-  const timestamp = formatRelativeTime(row.created_at, now);
+  // v8 Fix E — attribution now flows through the shared
+  // formatLeaderLine helper so the sheet matches the card's
+  // "{RoleLabel} {Name}" format. isAnonymous derived from null
+  // leader_display_name (server-side mask returns null for both
+  // anonymous + underground posts).
   const isUnderground = row.church_type === 'underground';
   const isAnonymous = row.leader_display_name === null;
+  const leaderLine = formatLeaderLine(row.leader_role, row.leader_display_name, isAnonymous);
+  const timestamp = formatRelativeTime(row.created_at, now);
   const connectDisabled = isUnderground || isAnonymous;
 
   return (
@@ -270,7 +276,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
         <Text style={styles.leaderLine}>{leaderLine}</Text>
 
         {/* Body — full prayer text, no clamp, Cormorant italic */}
-        <Text style={styles.body}>{row.prayer_text}</Text>
+        <Text style={[styles.body, PRAYER_BODY_STYLE]}>{row.prayer_text}</Text>
 
         {/* Meta chips + passive heart count */}
         <View style={styles.metaRow}>
@@ -385,21 +391,26 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   leaderLine: {
+    // v8 Fix E — attribution 15 pt DM Sans 400, lh 1.3, rgba(text, 0.45),
+    // 4 pt below the Church · Country header, 14 pt above the body
+    // (the body's marginTop:16 minus this marginBottom:2 would be off
+    // — but the body owns marginTop, so this marginBottom is only the
+    // local spacing inside the sheet content stack; the body's
+    // marginTop covers the 14 pt gap directly).
     marginTop: 4,
     fontFamily: Typography.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 15,
+    lineHeight: 20, // 15 × 1.3 ≈ 19.5
+    color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v6 fix F — body 16 → 19 pt Cormorant italic.
-    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
-    // v7 Item 11 — line-height 1.65 → 1.55 across italic-body surfaces
-    // now that native 300 Light loads (no more synthetic-italic 500 weight).
-    marginTop: 16,
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 19,
-    color: Colors.text,
-    lineHeight: 29, // 19 × 1.55
+    // v8 Fix D — type values (fontFamily / fontSize / lineHeight /
+    // color) are now sourced from the shared PRAYER_BODY_STYLE
+    // constant (imported from PrayerWallCard). This style block
+    // owns only the sheet-specific positioning.
+    // v8 Fix E — 14 pt gap above body (between leader attribution
+    // and prayer body) per dispatch.
+    marginTop: 14,
   },
   metaRow: {
     flexDirection: 'row',

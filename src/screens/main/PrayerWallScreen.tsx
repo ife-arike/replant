@@ -473,6 +473,14 @@ function renderFeedBody(args: FeedBodyArgs) {
             text={PHIL_4_6_KJV}
             reference={PHIL_4_6_REF}
             bodyFontSize={18}
+            // v8 Fix A — Feed banner is the approved reference and
+            // MUST NOT shift. Banner default padding is now 24/20
+            // for Landing + Testimonies parity; Feed overrides with
+            // 8 vert / 0 horiz so the v7 visual is preserved (the
+            // wrapping list contentContainerStyle already provides
+            // the 16 pt horizontal gutter).
+            paddingVertical={8}
+            paddingHorizontal={0}
           />
         </View>
       }

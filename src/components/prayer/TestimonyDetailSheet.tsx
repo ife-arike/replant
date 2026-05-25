@@ -34,12 +34,16 @@ import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
   formatRelativeTime,
-  getLeaderLine,
+  // v8 Fix H4 — getLeaderLine replaced by formatLeaderLine (from
+  // displayHelpers) so the sheet's role-prefixed attribution stays
+  // in lockstep with TestimonyCard.
   getLocationLine,
   hasPrayedStateChanged,
   type TestimonyRow,
 } from './PrayerWallLogic';
 import { CelebrateIcon, XIcon } from './PrayerIcons';
+import { formatLeaderLine } from '../../utils/displayHelpers';
+import { TESTIMONY_BODY_STYLE } from './TestimonyCard';
 
 interface Props {
   row: TestimonyRow | null;
@@ -220,7 +224,14 @@ export default function TestimonyDetailSheet({
   // same rule applies to the sheet header. Identity = name + country
   // only; underground collapses via getLocationLine's null branch.
   const locationLine = getLocationLine(row.church_name, row.country);
-  const leaderLine = getLeaderLine(row.leader_display_name);
+  // v8 Fix H4 — attribution via shared formatLeaderLine helper.
+  // isAnonymous derived from leader_display_name === null (server
+  // masks anonymous + underground posts to null at the RPC layer).
+  const leaderLine = formatLeaderLine(
+    row.leader_role,
+    row.leader_display_name,
+    row.leader_display_name === null,
+  );
   const timestamp = formatRelativeTime(row.created_at, now);
   const hasOriginal = row.original_request_id !== null && row.original_text;
 
@@ -264,7 +275,7 @@ export default function TestimonyDetailSheet({
         <Text style={styles.leaderLine}>{leaderLine}</Text>
 
         {/* Full testimony text — no clamp. */}
-        <Text style={styles.body}>{row.testimony_text}</Text>
+        <Text style={[styles.body, TESTIMONY_BODY_STYLE]}>{row.testimony_text}</Text>
 
         {/* Optional "Originally prayed as:" quote block. */}
         {hasOriginal ? (
@@ -357,20 +368,23 @@ const styles = StyleSheet.create({
     color: Colors.green,
   },
   leaderLine: {
+    // v8 Fix H4 — attribution 15 pt DM Sans 400, lh 1.3, muted-45%.
+    // 4 pt below the green Church · Country header; the body's
+    // marginTop:14 (below) provides the 14 pt gap to the testimony
+    // body, per dispatch.
     marginTop: 4,
     fontFamily: Typography.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 15,
+    lineHeight: 20, // 15 × 1.3 ≈ 19.5
+    color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v7 Item 11 — 19 pt Cormorant 300 Light Italic, lh 1.55 (v6 had
-    // 1.65 — v7 corrects to 1.55 across all italic-body surfaces now
-    // that native 300 Light loads).
-    marginTop: 16,
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 19,
-    color: Colors.text,
-    lineHeight: 29, // 19 × 1.55 ≈ 29.45
+    // v8 Fix G — type values sourced from the shared
+    // TESTIMONY_BODY_STYLE constant (imported from TestimonyCard).
+    // This style block owns only sheet-specific positioning.
+    // v8 Fix H4 — 14 pt gap above body (between leader attribution
+    // and testimony body) per dispatch.
+    marginTop: 14,
   },
   quote: {
     // Mirror of the testimony-card quote block: green left-border,
