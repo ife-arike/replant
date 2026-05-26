@@ -396,7 +396,7 @@ export async function seed() {
   const heartcryPlaintexts = [
     {
       plaintext: '[TEST] Three of our brothers were detained at the morning gathering. Urgent prayer needed.',
-      severity:  'active_persecution' as const,
+      severity:  'critical' as const,
       responded: false,
       church:    '[TEST] Living Stone Church'
     },

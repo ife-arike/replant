@@ -20,7 +20,12 @@ export interface AuthStatusResponse {
   recovery_path?: RecoveryPath;
 }
 
-export type DbVerificationStatus = "pending" | "verified" | "deactivated";
+// KAN-65 tidy-up (2026-05-26) — added 'rejected'. The live
+// verification_status_enum has had this value since KAN-110; the local type
+// was stale. resolveStatus below now branches explicitly on 'rejected' so
+// the new union member doesn't fall through to the pending branch (which
+// would have read the deadline and routed incorrectly).
+export type DbVerificationStatus = "pending" | "verified" | "rejected" | "deactivated";
 
 export interface UserStatusRow {
   id: string;
@@ -79,6 +84,17 @@ export function resolveStatus(
   nowISO: string,
 ): ResolvedStatus {
   if (row.verification_status === "verified") return { kind: "active" };
+
+  // KAN-65 tidy-up (2026-05-26) — explicit 'rejected' branch. A rejected
+  // leader cannot meaningfully renew a verification window (admin-controlled
+  // state); the only forward path is a human conversation, so route to the
+  // support_contact recovery surface — same destination as a NULL-deadline
+  // fail-closed pending row. Without this branch the row would fall through
+  // to the "pending" path below and be evaluated against a deadline, which
+  // is incorrect for rejected leaders.
+  if (row.verification_status === "rejected") {
+    return { kind: "deactivated", recovery_path: "support_contact" };
+  }
 
   if (row.verification_status === "deactivated") {
     // KAN-36 v2 (SEC c.14235 #2/#4, Founder c.14236, locked 2026-05-24) —

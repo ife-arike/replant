@@ -34,6 +34,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthProvider";
+import HeartcrySubmissionScreen from "../screens/main/HeartcrySubmissionScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
 import SetNewPasswordScreen from "../screens/onboarding/SetNewPasswordScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
@@ -51,6 +52,11 @@ export default function RootNavigator() {
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="Settings" component={SettingsScreenContainer} />
+          {/* KAN-64 — Heartcry submission form. Pushed from the
+              Persecuted tab; tab bar hidden while this is on top. The
+              screen itself self-gates on the verified DB literal at
+              submit time (the edge function enforces). */}
+          <Stack.Screen name="HeartcrySubmission" component={HeartcrySubmissionScreen} />
         </>
       )}
       {(branch === "unauthenticated" || branch === "loading") && (

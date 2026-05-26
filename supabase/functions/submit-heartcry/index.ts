@@ -134,7 +134,7 @@ function makeDeps(): Deps {
         id: data.id as string,
         church_id: data.church_id as string,
         verification_status:
-          data.verification_status as "pending" | "verified" | "deactivated",
+          data.verification_status as "pending" | "verified" | "rejected" | "deactivated",
       };
     },
 
@@ -153,6 +153,9 @@ function makeDeps(): Deps {
     async insertHeartcry(row: InsertHeartcryRow) {
       // status defaults to 'received' at the column level — omitted here so the
       // function can't accidentally override it. Same for id, created_at.
+      // feed_approved is admin-only (column default false handles the insert);
+      // it is intentionally absent from this payload so a forged client body
+      // can never bypass admin review.
       const { error } = await adminClient.from("heartcries").insert({
         church_id: row.church_id,
         user_id: row.user_id,
@@ -160,6 +163,7 @@ function makeDeps(): Deps {
         severity: row.severity,
         request_type: row.request_type,
         triage_lead_id: row.triage_lead_id,
+        post_to_feed: row.post_to_feed,
       });
       if (error) throw new Error(`heartcries insert failed: ${error.code ?? error.message}`);
     },
