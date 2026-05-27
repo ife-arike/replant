@@ -15,7 +15,9 @@ const { google } = require('googleapis');
 
 exports.handler = async function (event) {
   // Only process join-network submissions
-  const payload = JSON.parse(event.body);
+  // Netlify wraps form payloads: event.body = { payload: { form_name, data, ... } }
+  const body = JSON.parse(event.body);
+  const payload = body.payload || body;
   if (payload.form_name !== 'join-network') {
     console.log(`[submission-created] Skipping form: ${payload.form_name}`);
     return { statusCode: 200 };
