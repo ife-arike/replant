@@ -12,8 +12,11 @@
 
 // DB-level enum (verification_status_enum). API-layer translation
 // (verified → "active") is auth-status-check's lane only; send-message
-// checks the DB value directly per spec.
-export type DbVerificationStatus = "pending" | "verified" | "deactivated";
+// checks the DB value directly per spec. KAN-65 tidy-up (2026-05-26) added
+// 'rejected' — additive only; both isSenderVerified and
+// isRecipientAcceptable already gate on `=== "verified"`, so rejected
+// leaders correctly fall through as non-verified without further changes.
+export type DbVerificationStatus = "pending" | "verified" | "rejected" | "deactivated";
 
 export interface SenderRow {
   id: string; // public.users.id (FK target for messages.sender_id)

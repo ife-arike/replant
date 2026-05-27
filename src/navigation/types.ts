@@ -17,10 +17,13 @@ export type TabsParamList = {
   Connect: undefined;
 };
 
-// MainStackParamList = the active-branch native-stack: Tabs + Settings push.
+// MainStackParamList = the active-branch native-stack: Tabs + pushed screens.
+// HeartcrySubmission is the KAN-64 form pushed from the Persecuted tab's
+// "Share Your Heartcry" CTA; no tab bar visible while it's on top.
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabsParamList>;
   Settings: undefined;
+  HeartcrySubmission: undefined;
 };
 
 // RootStackParamList = the conditional union across all auth branches.

@@ -50,8 +50,11 @@ Deno.test("accepts content at exactly MAX_CONTENT_LENGTH", () => {
   assertEquals(r.ok, true);
 });
 
-Deno.test("rejects unknown severity", () => {
-  const r = validateBody({ content: "hi", severity: "critical" });
+Deno.test("rejects unknown severity (legacy active_persecution no longer accepted)", () => {
+  // active_persecution was renamed to critical in
+  // kan64_heartcries_feed_columns_v1 (applied 2026-05-25); the legacy
+  // literal must now be rejected.
+  const r = validateBody({ content: "hi", severity: "active_persecution" });
   assertEquals(r.ok, false);
 });
 
@@ -125,7 +128,7 @@ Deno.test("rejects non-array request_type", () => {
 Deno.test("accepts multiple request_type values", () => {
   const r = validateBody({
     content: "hi",
-    severity: "active_persecution",
+    severity: "critical",
     request_type: ["prayer", "practical_support", "guidance"],
   });
   if (!r.ok) throw new Error(r.detail);
@@ -136,4 +139,44 @@ Deno.test("treats omitted request_type as null", () => {
   const r = validateBody({ content: "hi", severity: "urgent" });
   if (!r.ok) throw new Error(r.detail);
   assertEquals(r.body.request_type, null);
+});
+
+// KAN-64 AC 10 — post_to_feed consent toggle. Defensive default: any value
+// that is not strictly boolean true coerces to false. Only literal `true`
+// opts the heartcry into the feed-review queue.
+
+Deno.test("defaults post_to_feed to false when omitted", () => {
+  const r = validateBody({ content: "hi", severity: "urgent" });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.post_to_feed, false);
+});
+
+Deno.test("accepts post_to_feed: true", () => {
+  const r = validateBody({ content: "hi", severity: "urgent", post_to_feed: true });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.post_to_feed, true);
+});
+
+Deno.test("accepts post_to_feed: false explicitly", () => {
+  const r = validateBody({ content: "hi", severity: "urgent", post_to_feed: false });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.post_to_feed, false);
+});
+
+Deno.test("coerces non-boolean post_to_feed to false (string)", () => {
+  const r = validateBody({ content: "hi", severity: "urgent", post_to_feed: "true" });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.post_to_feed, false);
+});
+
+Deno.test("coerces non-boolean post_to_feed to false (number)", () => {
+  const r = validateBody({ content: "hi", severity: "urgent", post_to_feed: 1 });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.post_to_feed, false);
+});
+
+Deno.test("coerces null post_to_feed to false", () => {
+  const r = validateBody({ content: "hi", severity: "urgent", post_to_feed: null });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.post_to_feed, false);
 });

@@ -3,8 +3,11 @@
 // lockstep with /types/heartcry.ts (the canonical FE source). Both derive from
 // the locked KAN-66 contract.
 
+// KAN-64 (2026-05-26) — severity enum aligned to live severity_level (post
+// migration kan64_heartcries_feed_columns_v1). 'active_persecution' renamed
+// to 'critical'; the four other values are unchanged.
 export type HeartcrySeverity =
-  | "active_persecution"
+  | "critical"
   | "urgent"
   | "serious"
   | "ongoing"
@@ -17,9 +20,10 @@ export type HeartcryRequestType =
   | "just_to_be_heard";
 
 // Severity enum values pulled from live DB recon (severity_level enum, KAN-66
-// HALT comment 11096). Order is the live enumsortorder.
+// HALT comment 11096; refreshed 2026-05-26 post kan64_heartcries_feed_columns_v1).
+// Order is the live enumsortorder.
 export const ALLOWED_SEVERITIES: ReadonlySet<HeartcrySeverity> = new Set([
-  "active_persecution",
+  "critical",
   "urgent",
   "serious",
   "ongoing",
@@ -35,8 +39,9 @@ export const ALLOWED_REQUEST_TYPES: ReadonlySet<HeartcryRequestType> = new Set([
 
 // DB-level enum values (verification_status_enum). The API-layer translation
 // (verified → "active") is auth-status-check's lane; this function only checks
-// the DB value directly.
-export type DbVerificationStatus = "pending" | "verified" | "deactivated";
+// the DB value directly. KAN-65 tidy-up (2026-05-26) added 'rejected' — the
+// live enum has had this value since KAN-110, but the local type was stale.
+export type DbVerificationStatus = "pending" | "verified" | "rejected" | "deactivated";
 
 export interface HeartcrySubmitterRow {
   id: string;
@@ -48,6 +53,10 @@ export interface ValidatedBody {
   content: string; // trimmed, non-empty
   severity: HeartcrySeverity;
   request_type: HeartcryRequestType[] | null;
+  // KAN-64 AC 10 — consent toggle. Default false when missing or invalid.
+  // feed_approved is NOT accepted from the client; the row default 'false'
+  // on the column is what insert() writes (admin-only flip later).
+  post_to_feed: boolean;
 }
 
 export type ValidationResult =
@@ -86,7 +95,7 @@ export function validateBody(input: unknown): ValidationResult {
     return {
       ok: false,
       detail:
-        "severity must be one of: active_persecution, urgent, serious, ongoing, informational.",
+        "severity must be one of: critical, urgent, serious, ongoing, informational.",
     };
   }
   const severity = obj.severity as HeartcrySeverity;
@@ -124,7 +133,12 @@ export function validateBody(input: unknown): ValidationResult {
     };
   }
 
-  return { ok: true, body: { content, severity, request_type } };
+  // KAN-64 AC 10 — post_to_feed consent. Defensive default: any value that
+  // is not strictly boolean true coerces to false. This includes missing,
+  // null, undefined, "true" strings, and 1 — only literal `true` opts in.
+  const post_to_feed = obj.post_to_feed === true;
+
+  return { ok: true, body: { content, severity, request_type, post_to_feed } };
 }
 
 export function isUserVerified(row: HeartcrySubmitterRow): boolean {

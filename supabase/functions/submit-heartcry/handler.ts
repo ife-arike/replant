@@ -31,6 +31,9 @@ export interface InsertHeartcryRow {
   severity: string;
   request_type: string[] | null;
   triage_lead_id: string;
+  // KAN-64 AC 10 — leader consent for "Heartcries from the Body" feed.
+  // feed_approved is NOT in this shape — admin-only column write.
+  post_to_feed: boolean;
 }
 
 export interface EmailLogRow {
@@ -114,6 +117,7 @@ export function createHandler(deps: Deps) {
         severity: body.severity,
         request_type: body.request_type,
         triage_lead_id: triageLeadId,
+        post_to_feed: body.post_to_feed,
       });
 
       // Triage notification — fire-and-forget per AC. Send failures must not
