@@ -46,6 +46,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
+import { useHamburger } from '../../contexts/HamburgerContext';
 import PrayerWallCard from '../../components/prayer/PrayerWallCard';
 import PrayerWallDetailSheet from '../../components/prayer/PrayerWallDetailSheet';
 import PrayerWallFilterBar from '../../components/prayer/PrayerWallFilterBar';
@@ -95,6 +96,7 @@ async function fetchPage(
 export default function PrayerWallScreen() {
   const { branch } = useAuth();
   const isVerified = branch === 'active';
+  const { open: openHamburger } = useHamburger();
 
   const [view, setView] = useState<PrayerWallView>('landing');
   const [rows, setRows] = useState<PrayerRow[]>([]);
@@ -261,6 +263,18 @@ export default function PrayerWallScreen() {
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.topBar}>
           <Text style={styles.title}>Prayer Wall</Text>
+          <Pressable
+            onPress={openHamburger}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
+            accessibilityState={{ expanded: false }}
+            hitSlop={10}
+            style={styles.hamburger}
+          >
+            <View style={styles.hamburgerBar} />
+            <View style={styles.hamburgerBar} />
+            <View style={styles.hamburgerBar} />
+          </Pressable>
         </View>
         {/* v6 fix B — Founder override of v5 Option A. Ship the
             0.5 pt hairline below the Prayer Wall title on the
@@ -533,6 +547,16 @@ const styles = StyleSheet.create({
   },
   topBarRightPlaceholder: {
     width: 24, // keep title centered when no right action
+  },
+  hamburger: {
+    gap: 4,
+    alignItems: 'flex-end',
+  },
+  hamburgerBar: {
+    width: 18,
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: Colors.text,
   },
   postCta: {
     fontFamily: Typography.mono,

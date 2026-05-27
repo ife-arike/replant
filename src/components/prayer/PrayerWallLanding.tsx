@@ -44,7 +44,6 @@ import {
 } from './PrayerWallLogic';
 import { formatLeaderLine } from '../../utils/displayHelpers';
 import { CandleIcon, IncenseIcon, LockIcon } from './PrayerIcons';
-import ScriptureBanner from './ScriptureBanner';
 
 // Eph 6:18 (KJV) — locked in full. NEVER truncate.
 const EPH_6_18_KJV =
@@ -81,21 +80,6 @@ export default function PrayerWallLanding({
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* v8 Fix A — Eph 6:18 floats as tone="none" (no fill, no border).
-          The Feed's Phil 4:6 is the approved reference for this look;
-          Landing + Testimonies now match. Body 20 pt 300 Light Italic
-          rgba(text, 0.78); reference 11 pt DM Sans 0.18em sky-tinted.
-          NEVER truncates. Block padding 24/24/20 + 20 pt above (below
-          the top-bar hairline) + 24 pt below (above the first action
-          card) — set by styles.scriptureWrap. */}
-      <View style={styles.scriptureWrap}>
-        <ScriptureBanner
-          tone="none"
-          text={EPH_6_18_KJV}
-          reference={EPH_6_18_REF}
-        />
-      </View>
-
       {/* Action cards — v6 fix C: icon-LEFT layout, 18 pt gap, title
           26 pt / sub 15 pt / CTA 16 pt. */}
       <View style={styles.actionStack}>
@@ -126,6 +110,15 @@ export default function PrayerWallLanding({
         onSeeAll={onSeeAllTestimonies}
         onOpenTestimony={onOpenTestimony}
       />
+
+      {/* Scripture footer — Eph 6:18, reverent anchor matching Persecuted tab pattern */}
+      <View style={styles.scriptureFooter}>
+        <View style={styles.scriptureRule} />
+        <View style={styles.scriptureFooterInner}>
+          <Text style={styles.scriptureVerse}>{EPH_6_18_KJV}</Text>
+          <Text style={styles.scriptureRef}>{EPH_6_18_REF}</Text>
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -382,14 +375,34 @@ const styles = StyleSheet.create({
     // tab bar at the bottom of the screen.
     paddingBottom: 40,
   },
-  scriptureWrap: {
-    // v8 Fix A — banner now tone="none" and owns its own 24/20 block
-    // padding internally. Wrap only supplies the outer margins:
-    //   20 pt above (below the "Prayer Wall" title hairline)
-    //   24 pt below (above the first action card)
-    // No horizontal padding here — banner's 20 pt internal handles it.
-    marginTop: 20,
-    marginBottom: 24,
+  scriptureFooter: {
+    marginTop: 10,
+    paddingHorizontal: 20,
+  },
+  scriptureRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(240, 237, 230, 0.08)',
+  },
+  scriptureFooterInner: {
+    paddingTop: 14,
+    paddingBottom: 6,
+    alignItems: 'center',
+  },
+  scriptureVerse: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 18,            // CD spec: 18pt
+    lineHeight: 27,          // 18 × 1.50 = 27
+    color: 'rgba(240, 237, 230, 0.60)',
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  scriptureRef: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 10.5,
+    letterSpacing: 1.89,     // 0.18em × 10.5
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
   actionStack: {
     paddingHorizontal: 24,
@@ -420,9 +433,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
@@ -434,10 +447,10 @@ const styles = StyleSheet.create({
     // slightly smaller size reads sharper against the cards'
     // lighter descriptions.
     fontFamily: Typography.display,
-    fontSize: 25,
+    fontSize: 19,
     color: Colors.text,
     letterSpacing: 0.125,
-    lineHeight: 29, // 25 × 1.15
+    lineHeight: 23, // 19 × 1.2 ≈ 22.8
     textAlign: 'left',
   },
   cardSubtitle: {
@@ -445,10 +458,10 @@ const styles = StyleSheet.create({
     // left-aligned, 4 pt below the title. Bundle has no DM Sans 300;
     // using Typography.body (400).
     marginTop: 4,
-    fontFamily: Typography.body,
-    fontSize: 15,
+    fontFamily: Typography.sansLight,
+    fontSize: 13,
     color: 'rgba(240, 237, 230, 0.65)',
-    lineHeight: 22, // 15 × 1.45
+    lineHeight: 20, // 13 × 1.5 = 19.5, round to 20
     textAlign: 'left',
   },
   cardCta: {
