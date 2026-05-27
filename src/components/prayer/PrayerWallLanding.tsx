@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.scriptureItalic,
     fontSize: 18,            // CD spec: 18pt
     lineHeight: 27,          // 18 × 1.50 = 27
-    color: Colors.text,
+    color: 'rgba(240, 237, 230, 0.60)',
     marginBottom: 8,
     maxWidth: 320,
     textAlign: 'center',
@@ -409,11 +409,12 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     letterSpacing: 1.89,     // 0.18em × 10.5
     textTransform: 'uppercase',
-    color: Colors.textMuted,
+    color: Colors.text,
     textAlign: 'center',
   },
   welcomeWrap: {
     paddingTop: 8,
+    paddingBottom: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
   },
