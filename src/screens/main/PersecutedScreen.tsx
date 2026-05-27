@@ -611,8 +611,8 @@ const styles = StyleSheet.create({
   },
   bannerBody: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 17,
-    lineHeight: 26, // 17 × 1.55 ≈ 26.35
+    fontSize: 19,
+    lineHeight: 29, // 19 × 1.55 ≈ 29.45
     color: Colors.text,
   },
 
@@ -832,8 +832,8 @@ const styles = StyleSheet.create({
   },
   scriptureVerse: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 14,
-    lineHeight: 22, // 14 × 1.55 ≈ 21.7
+    fontSize: 15,
+    lineHeight: 23, // 15 × 1.55 ≈ 23.25
     color: 'rgba(240, 237, 230, 0.60)',
     maxWidth: 320,
     textAlign: 'center',
