@@ -58,22 +58,28 @@ describe('SEVERITY_DISPLAY — feed card label + one-liner', () => {
   });
 });
 
-describe('trackerCopy — status tracker (KAN-65 AC 7)', () => {
-  it("received → \"Received — We're praying for you\"", () => {
-    expect(trackerCopy('received', null)).toBe("Received — We're praying for you");
+describe('trackerCopy — status tracker (KAN-65 AC 7, Founder-ratified 2026-05-26)', () => {
+  it('received → "Your heartcry has been received. We will be praying alongside you."', () => {
+    expect(trackerCopy('received', null)).toBe(
+      'Your heartcry has been received. We will be praying alongside you.',
+    );
   });
-  it('seen → "Your heartcry is being held in prayer"', () => {
-    expect(trackerCopy('seen', null)).toBe('Your heartcry is being held in prayer');
+  it('seen → "Your heartcry has been read and we are interceding for your case."', () => {
+    expect(trackerCopy('seen', null)).toBe(
+      'Your heartcry has been read and we are interceding for your case.',
+    );
   });
-  it('responded + non-null responded_at → "The Replant team has responded — check your inbox"', () => {
+  it('responded + non-null responded_at → "We have sent a word — please check your inbox."', () => {
     expect(trackerCopy('responded', '2026-05-26T00:00:00Z')).toBe(
-      'The Replant team has responded — check your inbox',
+      'We have sent a word — please check your inbox.',
     );
   });
   it('defensive — responded + null responded_at falls back to received copy', () => {
     // BE invariant — these should never coincide. Defensive fall-through
     // keeps the FE contract total without crashing.
-    expect(trackerCopy('responded', null)).toBe("Received — We're praying for you");
+    expect(trackerCopy('responded', null)).toBe(
+      'Your heartcry has been received. We will be praying alongside you.',
+    );
   });
 });
 

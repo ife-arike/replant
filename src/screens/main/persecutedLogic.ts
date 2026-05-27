@@ -30,23 +30,24 @@ export const SEVERITY_DISPLAY: Record<HeartcrySeverity, SeverityCopy> = {
 } as const;
 
 // ── Heartcry status tracker (KAN-65 AC 7) ─────────────────────────────────
-// DB enum: received · seen · responded. Tracker copy from content file +
-// SCAFFOLD A 2026-05-26 confirmation.
+// DB enum: received · seen · responded. Tracker copy ratified by Founder
+// 2026-05-26 (post device pass) — verbatim from content file §"Status
+// Tracker Copy". DO NOT paraphrase.
 
 export type HeartcryStatus = 'received' | 'seen' | 'responded';
 
 export function trackerCopy(status: HeartcryStatus, respondedAt: string | null): string {
   if (status === 'responded' && respondedAt !== null) {
-    return 'The Replant team has responded — check your inbox';
+    return 'We have sent a word — please check your inbox.';
   }
   if (status === 'seen') {
-    return 'Your heartcry is being held in prayer';
+    return 'Your heartcry has been read and we are interceding for your case.';
   }
   // 'received' (DB default on insert) — also the fall-through for the
   // anomalous 'responded' + null responded_at combination, which the BE
   // promises not to write but we defend against here to keep the FE
   // contract total.
-  return "Received — We're praying for you";
+  return 'Your heartcry has been received. We will be praying alongside you.';
 }
 
 // ── Request type chip options (KAN-64 AC 4) ───────────────────────────────
