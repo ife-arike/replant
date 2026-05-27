@@ -83,7 +83,7 @@ export default function PrayerWallLanding({
       {/* Pastoral one-liner — breathing room before action cards */}
       <View style={styles.welcomeWrap}>
         <Text style={styles.welcomeText}>
-          A place where the body lifts one another up in prayer.
+          The place where the body lifts one another up in prayer.
         </Text>
       </View>
 
@@ -133,7 +133,7 @@ export default function PrayerWallLanding({
 // ─── Action cards ─────────────────────────────────────────────────────
 
 interface ActionCardProps {
-  accent: 'sky' | 'green';
+  accent: 'sky' | 'green' | 'amber';
   icon: React.ReactNode;
   title: string;
   subtitle: string;
@@ -155,8 +155,14 @@ function ActionCard({
   dimmed,
   hintBelow,
 }: ActionCardProps) {
-  const borderColor = accent === 'sky' ? Colors.borderAccent : 'rgba(91, 173, 122, 0.30)';
-  const iconBg = accent === 'sky' ? 'rgba(107, 181, 232, 0.10)' : 'rgba(91, 173, 122, 0.10)';
+  const borderColor =
+    accent === 'sky' ? Colors.borderAccent
+    : accent === 'amber' ? 'rgba(212, 168, 85, 0.30)'
+    : 'rgba(91, 173, 122, 0.30)';
+  const iconBg =
+    accent === 'sky' ? 'rgba(107, 181, 232, 0.10)'
+    : accent === 'amber' ? 'rgba(212, 168, 85, 0.10)'
+    : 'rgba(91, 173, 122, 0.10)';
 
   // v6 fix C — icon-LEFT layout. Head row uses flex with alignItems
   // 'center' so the 60 pt circle vertically centres against the
@@ -226,8 +232,8 @@ function ReceiveIntercessionCard({ isVerified }: { isVerified: boolean }) {
 
   return (
     <ActionCard
-      accent="green"
-      icon={<CandleIcon size={30} color={Colors.green} />}
+      accent="amber"
+      icon={<CandleIcon size={30} color={Colors.amber} />}
       title="Receive Intercession"
       subtitle="Let the body stand with your church in prayer."
       ctaLabel="Coming soon"
@@ -413,7 +419,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   welcomeWrap: {
-    paddingTop: 8,
+    paddingTop: 14,
     paddingBottom: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
