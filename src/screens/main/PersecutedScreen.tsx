@@ -304,26 +304,29 @@ export default function PersecutedScreen() {
 // ──────────────────────────────────────────────────────────────────────
 
 // Item 5 — Nav bar: 52pt height, left title "The Persecuted Church" (red,
-// 20pt Cormorant), right hamburger (wired to global useHamburger panel).
+// 22pt Cormorant), right hamburger (wired to global useHamburger panel).
 // Used on Screen 14, 14B, and the loading shell so the chrome is stable
 // across gate states.
 function NavBar({ onHamburger }: { onHamburger: () => void }) {
   return (
-    <View style={styles.navBar}>
-      <Text style={styles.navTitle}>The Persecuted Church</Text>
-      <Pressable
-        onPress={onHamburger}
-        accessibilityRole="button"
-        accessibilityLabel="Open menu"
-        accessibilityState={{ expanded: false }}
-        hitSlop={10}
-        style={styles.hamburger}
-      >
-        <View style={styles.hamburgerBar} />
-        <View style={styles.hamburgerBar} />
-        <View style={styles.hamburgerBar} />
-      </Pressable>
-    </View>
+    <>
+      <View style={styles.navBar}>
+        <Text style={styles.navTitle}>The Persecuted Church</Text>
+        <Pressable
+          onPress={onHamburger}
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
+          accessibilityState={{ expanded: false }}
+          hitSlop={10}
+          style={styles.hamburger}
+        >
+          <View style={styles.hamburgerBar} />
+          <View style={styles.hamburgerBar} />
+          <View style={styles.hamburgerBar} />
+        </Pressable>
+      </View>
+      <View style={styles.navHairline} />
+    </>
   );
 }
 
@@ -491,10 +494,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
   },
+  navHairline: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(240, 237, 230, 0.08)',
+  },
   navTitle: {
     fontFamily: Typography.displayRegular,
-    fontSize: 20,
-    letterSpacing: 0.4, // 0.02em × 20
+    fontSize: 22,
+    letterSpacing: 0.44, // 0.02em × 22
     color: Colors.red,
   },
   hamburger: {
@@ -832,8 +839,8 @@ const styles = StyleSheet.create({
   },
   scriptureVerse: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 15,
-    lineHeight: 23, // 15 × 1.55 ≈ 23.25
+    fontSize: 18,
+    lineHeight: 27, // 18 × 1.50 = 27
     color: 'rgba(240, 237, 230, 0.60)',
     maxWidth: 320,
     textAlign: 'center',
