@@ -618,8 +618,8 @@ const styles = StyleSheet.create({
   },
   bannerBody: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 19,
-    lineHeight: 29, // 19 × 1.55 ≈ 29.45
+    fontSize: 17,
+    lineHeight: 26, // 17 × 1.55 ≈ 26.35
     color: Colors.text,
   },
 
