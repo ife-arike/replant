@@ -80,6 +80,13 @@ export default function PrayerWallLanding({
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* Pastoral one-liner — breathing room before action cards */}
+      <View style={styles.welcomeWrap}>
+        <Text style={styles.welcomeText}>
+          A place where the body lifts one another up in prayer.
+        </Text>
+      </View>
+
       {/* Action cards — v6 fix C: icon-LEFT layout, 18 pt gap, title
           26 pt / sub 15 pt / CTA 16 pt. */}
       <View style={styles.actionStack}>
@@ -392,7 +399,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.scriptureItalic,
     fontSize: 18,            // CD spec: 18pt
     lineHeight: 27,          // 18 × 1.50 = 27
-    color: 'rgba(240, 237, 230, 0.60)',
+    color: Colors.text,
+    marginBottom: 8,
     maxWidth: 320,
     textAlign: 'center',
   },
@@ -402,6 +410,19 @@ const styles = StyleSheet.create({
     letterSpacing: 1.89,     // 0.18em × 10.5
     textTransform: 'uppercase',
     color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  welcomeWrap: {
+    paddingTop: 8,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  welcomeText: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 16,
+    lineHeight: 24,            // 16 × 1.50
+    color: 'rgba(240, 237, 230, 0.60)',
+    maxWidth: 320,
     textAlign: 'center',
   },
   actionStack: {
