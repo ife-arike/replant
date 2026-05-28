@@ -32,6 +32,25 @@ export function getRagLabel(ragStatus: string): string {
   return map[ragStatus] ?? ragStatus;
 }
 
+// KAN-20 — Congregation size: API enum → display label (never raw enum).
+// Mirrors public.congregation_size_enum. `not_specified` and unknown
+// values return null so the caller can omit the row (or render its own
+// "Not specified" fallback).
+export function getCongregationSizeLabel(
+  value: string | null | undefined,
+): string | null {
+  if (value === null || value === undefined || value === 'not_specified') {
+    return null;
+  }
+  const map: Record<string, string> = {
+    under_50: 'Under 50',
+    '50_to_200': '50–200',
+    '200_to_500': '200–500',
+    over_500: '500+',
+  };
+  return map[value] ?? null;
+}
+
 // Distance: km float → locale-aware label
 export function formatDistance(distanceKm: number, countryCode: string): string {
   const useImperial = countryCode === 'US';
