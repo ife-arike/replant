@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// TheChurchScreen — CAL host (KAN-21 + KAN-22 + CAL chrome patch)
+// TheChurchScreen — CAML + CAL host (KAN-18 / KAN-19 / KAN-21 / KAN-22)
 //
 // Structure per CD (church-tab/app.jsx + styles.css, Founder-locked
 // 2026-05-28):
@@ -8,8 +8,8 @@
 //     ├── tc-title-row (title + subtitle, CAML/CAL variants)
 //     └── tc-pager (At My Location · horizon line · At Large)
 //
-//   tc-pages
-//     ├── page 0: CAML placeholder (separate ticket — switcher works)
+//   tc-pages — BOTH pages always mounted, hidden via display:none.
+//     ├── page 0: CamlView (KAN-18/19, Mapbox flat map + nearby list)
 //     └── page 1: CAL
 //           ├── GlobeView (Mapbox globe, dot rendering, rotation)
 //           ├── Count stats chip   (top-left of globe area)
@@ -23,8 +23,9 @@
 // receives the data as props — its KAN-21 corner pills were stripped
 // per CD chrome rule (KAN-21 c.14810, Founder ack 2026-05-28).
 //
-// CAML page is a placeholder for now per dispatch; horizon-line
-// switcher animates regardless so the leader can preview the swap.
+// Globe pause posture: forcePaused fires when ANY overlay is open OR the
+// leader is on CAML (page !== 1). The CAML map handles its own pause
+// implicitly — no rotation, no pulse, gated fetches via isActive.
 // ─────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
@@ -38,6 +39,7 @@ import GlobeView from '../../components/church/GlobeView';
 import ChurchProfileBottomSheet from '../../components/church/ChurchProfileBottomSheet';
 import PrayerWallPullUp from '../../components/church/PrayerWallPullUp';
 import RegionalPanel, { type ChurchRegion } from '../../components/church/RegionalPanel';
+import CamlView from '../../components/church/CamlView';
 
 type Page = 0 | 1; // 0 = CAML (placeholder), 1 = CAL (globe)
 
@@ -139,66 +141,75 @@ export default function TheChurchScreen() {
         </View>
       </View>
 
-      {/* tc-pages */}
+      {/* tc-pages — BOTH surfaces always mounted, hidden via display:none.
+          Mounting/unmounting Mapbox-backed views on every page swap is
+          expensive (token re-acquire, GL context teardown, location
+          listener churn). Keeping both alive lets the horizon switcher
+          feel instant; the inactive surface still pays render cost but
+          stops doing work (CAML fetches gate on isActive; GlobeView
+          pauses via forcePaused below when page !== 1). */}
       <View style={styles.pages}>
-        {page === 0 ? (
-          // CAML placeholder — separate ticket per dispatch.
-          <View style={styles.camlPlaceholder}>
-            <Text style={styles.placeholderEyebrow}>AT MY LOCATION</Text>
-            <Text style={styles.placeholderText}>
-              The local-map view lands in a separate ticket. Use the horizon switcher above to return to At Large.
+        {/* CAML — always mounted */}
+        <View style={[StyleSheet.absoluteFillObject, { display: page === 0 ? 'flex' : 'none' }]}>
+          <CamlView
+            isActive={page === 0}
+            ownChurchId={ownChurchId}
+            viewerVerified={viewerVerified}
+            onChurchSelect={setSelectedChurchId}
+          />
+        </View>
+
+        {/* CAL — always mounted */}
+        <View style={[styles.calStack, { display: page === 1 ? 'flex' : 'none' }]}>
+          <GlobeView
+            dots={dots}
+            ownChurchId={ownChurchId}
+            viewerCountry={viewerCountry}
+            loading={loading}
+            error={error}
+            onRetry={refetch}
+            onChurchSelect={setSelectedChurchId}
+            // KAN-18: also pause when the user is on the CAML page so the
+            // globe stops rotating + pulsing the moment they swap surfaces.
+            forcePaused={anyOverlayOpen || page !== 1}
+          />
+
+          {/* Count stats chip — top-left of globe area (CD app.jsx) */}
+          <View style={styles.countChip} pointerEvents="none">
+            <Text style={styles.countChipText}>
+              <Text style={styles.countSky}>{verifiedCount}</Text>
+              <Text style={styles.countMuted}> VERIFIED · </Text>
+              <Text style={styles.countRed}>{urgentCount}</Text>
+              <Text style={styles.countMuted}> URGENT · </Text>
+              <Text style={styles.countOffWhite}>+{undergroundCount}</Text>
+              <Text style={styles.countMuted}> HIDDEN</Text>
             </Text>
           </View>
-        ) : (
-          <View style={styles.calStack}>
-            <GlobeView
-              dots={dots}
-              ownChurchId={ownChurchId}
-              viewerCountry={viewerCountry}
-              loading={loading}
-              error={error}
-              onRetry={refetch}
-              onChurchSelect={setSelectedChurchId}
-              forcePaused={anyOverlayOpen}
-            />
 
-            {/* Count stats chip — top-left of globe area (CD app.jsx) */}
-            <View style={styles.countChip} pointerEvents="none">
-              <Text style={styles.countChipText}>
-                <Text style={styles.countSky}>{verifiedCount}</Text>
-                <Text style={styles.countMuted}> VERIFIED · </Text>
-                <Text style={styles.countRed}>{urgentCount}</Text>
-                <Text style={styles.countMuted}> URGENT · </Text>
-                <Text style={styles.countOffWhite}>+{undergroundCount}</Text>
-                <Text style={styles.countMuted}> HIDDEN</Text>
-              </Text>
-            </View>
+          {/* Regions button — top-right of globe area. STUB per Step 0
+              halt (KAN-21 c.14810) — opens the RegionalPanel shell. */}
+          <Pressable
+            onPress={handleRegionsPress}
+            style={styles.regionsBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Regions"
+          >
+            <View style={styles.regionsDot} />
+            <Text style={styles.regionsText}>REGIONS</Text>
+          </Pressable>
 
-            {/* Regions button — top-right of globe area. STUB per Step 0
-                halt (KAN-21 c.14810) — opens the RegionalPanel shell. */}
-            <Pressable
-              onPress={handleRegionsPress}
-              style={styles.regionsBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Regions"
-            >
-              <View style={styles.regionsDot} />
-              <Text style={styles.regionsText}>REGIONS</Text>
-            </Pressable>
+          {/* RegionalPanel — shell only; body pending DBA. */}
+          <RegionalPanel
+            open={regionalOpen}
+            region={regional}
+            onClose={() => setRegionalOpen(false)}
+          />
 
-            {/* RegionalPanel — shell only; body pending DBA. */}
-            <RegionalPanel
-              open={regionalOpen}
-              region={regional}
-              onClose={() => setRegionalOpen(false)}
-            />
-
-            {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
-                anyOverlayOpen gate so the globe pauses while the panel
-                is half or full (Fix A). */}
-            <PrayerWallPullUp onSnapChange={setPrayerWallSnap} />
-          </View>
-        )}
+          {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
+              anyOverlayOpen gate so the globe pauses while the panel
+              is half or full (Fix A). */}
+          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} />
+        </View>
       </View>
 
       {/* Dot-tap profile sheet — outside the page swap so dismiss state
@@ -282,27 +293,6 @@ const styles = StyleSheet.create({
 
   // tc-pages
   pages: { flex: 1 },
-
-  // CAML placeholder
-  camlPlaceholder: {
-    flex: 1,
-    alignItems: 'center', justifyContent: 'center',
-    padding: 32, gap: 10,
-  },
-  placeholderEyebrow: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 2.2,
-    color: Colors.accent,
-  },
-  placeholderText: {
-    fontFamily: Typography.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
 
   // CAL stack
   calStack: { flex: 1 },
