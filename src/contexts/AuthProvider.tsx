@@ -361,6 +361,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setDaysRemaining(null);
         return;
       }
+      // SIGNED_IN is a fresh credential presentation — the debounce does not
+      // apply. TOKEN_REFRESHED and other events keep their debounce intact.
+      // Without this reset, a leader who signs in within DEBOUNCE_MS of the
+      // initialize() check (very common — initialize fires on mount, login
+      // follows seconds later) trips the debounce inside
+      // callAuthStatusCheck, returns early without setBranch, and the
+      // RootNavigator never transitions off LoginScreen. Mirrors the same
+      // pattern the deactivated branch uses before its re-check.
+      if (event === "SIGNED_IN") {
+        lastCheckedAt.current = 0;
+      }
       void callAuthStatusCheck(newSession);
     });
     return () => sub.subscription.unsubscribe();
