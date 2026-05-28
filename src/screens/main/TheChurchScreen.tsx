@@ -62,6 +62,11 @@ export default function TheChurchScreen() {
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
   const [regionalOpen, setRegionalOpen] = useState(false);
   const [regional, setRegional] = useState<ChurchRegion | null>(null);
+  // Fix A (2026-05-28): host-side track of overlay state so we can pause
+  // the globe rotation + red-dot pulse whenever any overlay is visible.
+  const [prayerWallSnap, setPrayerWallSnap] = useState<'collapsed' | 'half' | 'full'>('collapsed');
+  const anyOverlayOpen =
+    selectedChurchId !== null || regionalOpen || prayerWallSnap !== 'collapsed';
 
   // Counts for the chrome.
   const verifiedCount = dots.length;
@@ -154,6 +159,7 @@ export default function TheChurchScreen() {
               error={error}
               onRetry={refetch}
               onChurchSelect={setSelectedChurchId}
+              forcePaused={anyOverlayOpen}
             />
 
             {/* Count stats chip — top-left of globe area (CD app.jsx) */}
@@ -187,8 +193,10 @@ export default function TheChurchScreen() {
               onClose={() => setRegionalOpen(false)}
             />
 
-            {/* KAN-22 — Prayer Wall pull-up. */}
-            <PrayerWallPullUp />
+            {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
+                anyOverlayOpen gate so the globe pauses while the panel
+                is half or full (Fix A). */}
+            <PrayerWallPullUp onSnapChange={setPrayerWallSnap} />
           </View>
         )}
       </View>

@@ -41,21 +41,27 @@ describe('PrayerWallPullUp watched invariants (KAN-22)', () => {
     expect(PULLUP).not.toMatch(/country\s*=\s*null/);
   });
 
-  it('does NOT introduce a parallel leader-name fallback — relies on PrayerWallCard + formatLeaderLine', () => {
-    // PrayerWallCard owns leader-line rendering via formatLeaderLine.
-    // The pull-up should not import getLeaderDisplayName or call
-    // formatLeaderLine itself (would mean the panel is touching identity).
+  it('does NOT introduce a parallel leader-name fallback — no identity rendering on this surface', () => {
+    // CD dispatch 2026-05-28 replaced PrayerWallCard with a CD-faithful
+    // PullUpInterCard that renders only loc + body + agree row — NO
+    // leader identity at all on this surface. So the pull-up MUST NOT
+    // touch any name-rendering helper.
     expect(PULLUP).not.toMatch(/getLeaderDisplayName/);
     expect(PULLUP).not.toMatch(/formatLeaderLine/);
-    // It MUST render via PrayerWallCard.
-    expect(PULLUP).toMatch(/PrayerWallCard/);
+    expect(PULLUP).not.toMatch(/leader_display_name/);
+    expect(PULLUP).not.toMatch(/leader_role/);
+    // It MUST render via the new PullUpInterCard subcomponent.
+    expect(PULLUP).toMatch(/PullUpInterCard/);
+    // And MUST NOT fall back to the old PrayerWallCard import.
+    expect(PULLUP).not.toMatch(/import\s+PrayerWallCard/);
   });
 
-  it('keys "Post a Request" visibility on useAuth().branch (not on the prayer-wall payload)', () => {
-    expect(PULLUP).toMatch(/branch\s*===\s*['"]active['"]/);
-    expect(PULLUP).toMatch(/viewerVerified\s*\?\s*\(/);
-    // Should NOT branch off any payload field for verification gating.
-    expect(PULLUP).not.toMatch(/row\.verification|row\.is_verified|payload\.verified/);
+  it('Post-a-Request affordance lives elsewhere, not on this pull-up', () => {
+    // CD dispatch 2026-05-28 — the pull-up is read + Agree-in-prayer
+    // only. Post lives in the Prayer Wall tab, not on the CAL pull-up.
+    expect(PULLUP).not.toMatch(/Post a Request/);
+    expect(PULLUP).not.toMatch(/PostPrayerRequestModal/);
+    expect(PULLUP).not.toMatch(/viewerVerified/);
   });
 
   it('does NOT use expo-blur for any overlay', () => {
@@ -63,23 +69,21 @@ describe('PrayerWallPullUp watched invariants (KAN-22)', () => {
     expect(MODAL).not.toMatch(/expo-blur|BlurView/);
   });
 
-  it('uses the canonical CATEGORIES constant, not a hardcoded 5-value list', () => {
-    // The original dispatch enumerated a stale 5-value list. The pull-up
-    // and modal must consume the canonical CATEGORIES tuple from
-    // PrayerWallLogic (Founder lock 2026-05-24).
-    expect(PULLUP).toMatch(/import\s*\{[^}]*\bCATEGORIES\b[^}]*\}\s*from\s*['"]\.\.\/prayer\/PrayerWallLogic['"]/);
-    expect(MODAL).toMatch(/import\s*\{[^}]*\bCATEGORIES\b[^}]*\}\s*from\s*['"]\.\.\/prayer\/PrayerWallLogic['"]/);
-    // Surface a regression if the dispatch's "Other" value (dropped from
-    // CATEGORIES + the RPC whitelist) creeps back in.
-    expect(PULLUP).not.toMatch(/['"]Other['"]/);
-    expect(MODAL).not.toMatch(/['"]Other['"]/);
-  });
-
-  it('modal calls create_prayer_request RPC (not a direct table insert)', () => {
+  it('the Post-a-Request MODAL (lives in the Prayer Wall tab) calls create_prayer_request RPC', () => {
+    // The modal itself is untouched by this pass — assert its existing
+    // create_prayer_request contract still holds.
     expect(MODAL).toMatch(/supabase\.rpc\(\s*['"]create_prayer_request['"]/);
-    // Defence-in-depth: never reach for prayer_requests.insert from the FE.
     expect(MODAL).not.toMatch(/from\(\s*['"]prayer_requests['"]\s*\)\.insert/);
     expect(PULLUP).not.toMatch(/from\(\s*['"]prayer_requests['"]\s*\)\.insert/);
+  });
+
+  it('PullUpInterCard uses the canonical stand_in_the_gap RPC (not a direct table write)', () => {
+    expect(PULLUP).toMatch(/supabase\.rpc\(\s*['"]stand_in_the_gap['"]/);
+  });
+
+  it('PullUpInterCard renders the full prayer_text in quotes (no length clamp on this surface)', () => {
+    expect(PULLUP).toMatch(/\$\{row\.prayer_text\}/);
+    expect(PULLUP).not.toMatch(/numberOfLines=\{3\}/); // no 3-line clamp on the inter card body
   });
 
   it('modal enforces the 300-char cap at the TextInput (blocks 301)', () => {
