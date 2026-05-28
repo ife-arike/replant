@@ -49,7 +49,7 @@ import Mapbox, {
 } from '@rnmapbox/maps';
 import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
-import { useChurchesGlobal } from '../../hooks/useChurchesGlobal';
+import type { ChurchDot } from '../../hooks/useChurchesGlobal';
 import { getCountryCentroid } from './countryCentroid';
 
 // ─── Mapbox token (module-level) ─────────────────────────────────────
@@ -64,8 +64,10 @@ const ROTATION_DEG_PER_TICK = 0.2;        // ≈6°/s @ 30 fps tick
 const ROTATION_TICK_MS = 33;
 const RESUME_DELAY_MS = 3500;             // dispatch: 3.5s stillness before resume
 const CUE_MS = 600;                       // dispatch: "Resuming" cue duration
-const ZOOMED_PILL_THRESHOLD = INITIAL_ZOOM + 0.5; // show "Back to world view"
-const REGIONAL_ZOOM = 5.0;                // dispatch: regional view density threshold
+const REGIONAL_ZOOM = 5.0;                // regional view density threshold
+                                          // (kept for the cluster-tap zoom cap;
+                                          // no UI pill — CD chrome owns the
+                                          // top-corner row, KAN-21 pills stripped)
 
 // Watched invariant — own-church coords come from the registered church
 // row, NEVER from expo-location / live GPS. The hook returns ownChurchId
@@ -74,24 +76,36 @@ const REGIONAL_ZOOM = 5.0;                // dispatch: regional view density thr
 const OWN_CHURCH_COORD_SOURCE = 'registered_church_lat_lng_NOT_live_gps' as const;
 
 interface Props {
+  /** Worldwide RAG dots — hoisted from the host via useChurchesGlobal. */
+  dots: ChurchDot[];
+  /** Viewer's own church id — sky-blue larger dot. Null = no highlight. */
+  ownChurchId: string | null;
+  /** Viewer's church country — drives initial camera centroid. */
+  viewerCountry: string | null;
+  /** Hook loading flag — drives the in-globe spinner overlay. */
+  loading: boolean;
+  /** Hook error message (if any) — drives the retry overlay. */
+  error: string | null;
+  /** Refetch callback for the retry overlay. */
+  onRetry: () => void;
   /** Fires when the leader taps a non-cluster church dot. */
   onChurchSelect: (churchId: string) => void;
   /** Optional override for the initial camera (mostly for tests/storybook). */
   initialCenterOverride?: [number, number];
 }
 
-export default function GlobeView({ onChurchSelect, initialCenterOverride }: Props) {
+export default function GlobeView({
+  dots,
+  ownChurchId,
+  viewerCountry,
+  loading,
+  error,
+  onRetry,
+  onChurchSelect,
+  initialCenterOverride,
+}: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const {
-    dots,
-    undergroundCount,
-    ownChurchId,
-    viewerCountry,
-    loading,
-    error,
-    refetch,
-  } = useChurchesGlobal();
 
   // ── Camera + rotation state ──
   const cameraRef = useRef<Camera>(null);
@@ -110,7 +124,11 @@ export default function GlobeView({ onChurchSelect, initialCenterOverride }: Pro
 
   const [paused, setPaused] = useState(false);
   const [resuming, setResuming] = useState(false);
-  const [zoom, setZoom] = useState(INITIAL_ZOOM);
+  // The current zoom is tracked on a ref (not state) — the CD-side top
+  // chrome doesn't render a zoom/percent readout, so we no longer need
+  // React renders on every onMapIdle. The ref is read inside the
+  // cluster-tap handler to clamp the next zoom level.
+  const currentZoomRef = useRef(INITIAL_ZOOM);
 
   // Whenever the viewer country resolves (post-hook-load), jump the
   // camera + reseat the rotation anchor so we don't start mid-Atlantic.
@@ -179,14 +197,14 @@ export default function GlobeView({ onChurchSelect, initialCenterOverride }: Pro
   }, [clearResumeCycle]);
 
   // onMapIdle is v10's "camera has stopped moving" signal. We use it to
-  // (a) capture the current zoom for the pills and (b) schedule the 3.5s
-  // resume timer only when the user (not us) caused the move. Typed
-  // loosely — MapState's `properties` shape is internal to @rnmapbox v10
-  // and not exported as a public type; we read the two fields we need.
+  // (a) capture the current zoom + center on refs and (b) schedule the
+  // 3.5s resume timer only when the user (not us) caused the move.
+  // Typed loosely — MapState's `properties` shape is internal to
+  // @rnmapbox v10 and not exported as a public type.
   const handleMapIdle = useCallback((state: unknown) => {
     const props = (state as { properties?: { zoom?: number; center?: [number, number] } } | null)?.properties;
     const z = props?.zoom;
-    if (typeof z === 'number' && Number.isFinite(z)) setZoom(z);
+    if (typeof z === 'number' && Number.isFinite(z)) currentZoomRef.current = z;
     const center = props?.center;
     if (Array.isArray(center) && center.length === 2) {
       // Keep the rotation anchor in sync with where the user left the
@@ -196,25 +214,6 @@ export default function GlobeView({ onChurchSelect, initialCenterOverride }: Pro
     }
     if (paused) scheduleResume();
   }, [paused, scheduleResume]);
-
-  // ── Reset / Back to world view ──
-  const resetCamera = useCallback(() => {
-    isProgrammaticRef.current = true;
-    const [lng, lat] = initialCenter;
-    currentLngRef.current = lng;
-    currentLatRef.current = lat;
-    cameraRef.current?.setCamera({
-      centerCoordinate: [lng, lat],
-      zoomLevel: INITIAL_ZOOM,
-      animationDuration: reduced ? 0 : 600,
-      animationMode: 'flyTo',
-    });
-    setZoom(INITIAL_ZOOM);
-    // Coming back to world view restarts the resume cycle so rotation
-    // kicks in after the usual 3.5s — feels intentional, not abrupt.
-    setPaused(true);
-    scheduleResume();
-  }, [initialCenter, reduced, scheduleResume]);
 
   // ── Shape source / GeoJSON ──
   const featureCollection = useMemo(() => ({
@@ -245,7 +244,7 @@ export default function GlobeView({ onChurchSelect, initialCenterOverride }: Pro
     if (props.cluster) {
       // Cluster tap — expand to a zoom where children separate.
       const coords = (f.geometry?.coordinates ?? null) as [number, number] | null;
-      let nextZoom = Math.min(REGIONAL_ZOOM + 1, zoom + 2);
+      let nextZoom = Math.min(REGIONAL_ZOOM + 1, currentZoomRef.current + 2);
       try {
         // @ts-expect-error — getClusterExpansionZoom accepts the feature in v10.
         const z = await shapeRef.current?.getClusterExpansionZoom(f);
@@ -265,11 +264,7 @@ export default function GlobeView({ onChurchSelect, initialCenterOverride }: Pro
       return;
     }
     if (typeof props.id === 'string') onChurchSelect(props.id);
-  }, [onChurchSelect, reduced, zoom]);
-
-  // ── Pill visibility ──
-  const showBackToWorld = zoom > ZOOMED_PILL_THRESHOLD;
-  const isRegional = zoom >= REGIONAL_ZOOM;
+  }, [onChurchSelect, reduced]);
 
   return (
     <View style={styles.root}>
@@ -381,53 +376,30 @@ export default function GlobeView({ onChurchSelect, initialCenterOverride }: Pro
       {error ? (
         <View style={[styles.overlay, styles.overlayError]}>
           <Text style={styles.errorText}>Couldn't load the global map right now.</Text>
-          <Pressable onPress={refetch} hitSlop={8} accessibilityRole="button">
+          <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
             <Text style={styles.retryText}>Tap to retry</Text>
           </Pressable>
         </View>
       ) : null}
 
-      {/* Top-left: "Back to world view" pill (when zoomed in) */}
-      {showBackToWorld ? (
-        <Pressable
-          onPress={resetCamera}
-          accessibilityRole="button"
-          accessibilityLabel="Back to world view"
-          style={[styles.backPill, { top: insets.top + 12 }]}
-        >
-          <Text style={styles.backPillText}>← Back to world view</Text>
-        </Pressable>
-      ) : null}
-
-      {/* Top-right: zoom % readout OR "Regional view · Reset" pill */}
-      {zoom > INITIAL_ZOOM + 0.15 ? (
-        <View style={[styles.zoomPill, { top: insets.top + 12 }]}>
-          {isRegional ? (
-            <>
-              <Text style={styles.zoomPillText}>Regional view</Text>
-              <Pressable onPress={resetCamera} hitSlop={6} accessibilityRole="button">
-                <Text style={styles.zoomPillReset}>· Reset</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Text style={styles.zoomPillText}>{Math.round((zoom / INITIAL_ZOOM) * 100)}%</Text>
-          )}
-        </View>
-      ) : null}
-
-      {/* "Resuming" cue — sky-tinted, bottom-centre */}
+      {/* "Resuming" cue — sky-tinted, bottom-centre. Motion-contract
+          piece (KAN-21 c.14801) — not a corner pill, kept under the CD
+          chrome strip rule. */}
       {resuming ? (
         <View style={[styles.resumeCue, { bottom: insets.bottom + 24 }]} pointerEvents="none">
           <Text style={styles.resumeCueText}>↻  Resuming</Text>
         </View>
       ) : null}
 
-      {/* "+N hidden" honor chip — bottom-right */}
-      {undergroundCount > 0 ? (
-        <View style={[styles.hiddenChip, { bottom: insets.bottom + 16 }]} pointerEvents="none">
-          <Text style={styles.hiddenChipText}>+{undergroundCount} hidden</Text>
-        </View>
-      ) : null}
+      {/* CD-chrome strip (2026-05-28, Founder ack): the KAN-21 corner
+          pills (Back to world view / Regional view · Reset) and the
+          bottom-right "+N hidden" chip are deliberately removed. The CD's
+          top-row chrome (count chip + Regions button) lives in the host
+          (TheChurchScreen), not here. The cluster-tap zoom interaction
+          still functions; only the explicit reset affordance is gone.
+          If Founder requests the reset affordance back during review,
+          re-add a top-left pill at insets.top + 56 to stay clear of the
+          new chrome row. */}
     </View>
   );
 }
@@ -452,37 +424,8 @@ const styles = StyleSheet.create({
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
 
-  // Top-left pill
-  backPill: {
-    position: 'absolute',
-    left: 14,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: 'rgba(8, 8, 8, 0.6)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.borderAccent,
-  },
-  backPillText: { fontFamily: Typography.bodyMedium, fontSize: 12, color: Colors.accent, letterSpacing: 0.2 },
-
-  // Top-right pill (zoom % / Regional view)
-  zoomPill: {
-    position: 'absolute',
-    right: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(8, 8, 8, 0.55)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-  },
-  zoomPillText: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1, color: Colors.textMuted },
-  zoomPillReset: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1, color: Colors.accent },
-
-  // Bottom-centre resume cue
+  // Bottom-centre resume cue — only chrome that stays inside GlobeView
+  // post CD strip (motion-contract piece, not a corner pill).
   resumeCue: {
     position: 'absolute',
     alignSelf: 'center',
@@ -494,17 +437,4 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderAccent,
   },
   resumeCueText: { fontFamily: Typography.bodyMedium, fontSize: 11, color: Colors.accent, letterSpacing: 0.4 },
-
-  // Bottom-right hidden-count honor chip
-  hiddenChip: {
-    position: 'absolute',
-    right: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: 'rgba(8, 8, 8, 0.6)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.borderAccent,
-  },
-  hiddenChipText: { fontFamily: Typography.mono, fontSize: 10, letterSpacing: 1.2, color: Colors.accent },
 });

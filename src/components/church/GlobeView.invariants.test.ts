@@ -63,4 +63,17 @@ describe('GlobeView watched invariants (KAN-21)', () => {
   it('does NOT use expo-blur for any overlay (project convention)', () => {
     expect(SRC).not.toMatch(/expo-blur|BlurView/);
   });
+
+  it('CD chrome strip (2026-05-28): KAN-21 corner pills removed', () => {
+    // Founder ack on KAN-21 c.14810 — the original KAN-21 corner pills
+    // (Back to world view, Regional view · Reset) and the bottom-right
+    // "+N hidden" chip are replaced by the CD's top-row chrome that
+    // lives in the host (TheChurchScreen), not in GlobeView. Asserting
+    // their absence in the component source so a future maintainer
+    // re-adding them gets a fast signal.
+    expect(SRC).not.toMatch(/Back to world view/);
+    expect(SRC).not.toMatch(/Regional view/);
+    expect(SRC).not.toMatch(/hidden chip|hiddenChip/);
+    expect(SRC).not.toMatch(/\+\$\{undergroundCount\}|\+\{undergroundCount\} hidden/);
+  });
 });
