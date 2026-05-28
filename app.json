@@ -17,7 +17,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "org.projectreplant.replant",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Replant uses your location to show verified churches nearby. Your position is never shared.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Replant uses your location to show verified churches nearby. Your position is never shared."
       }
     },
     "android": {
