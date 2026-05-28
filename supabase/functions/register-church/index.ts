@@ -54,6 +54,20 @@ function makeDeps(): Deps {
           // Finalization fix 7 — emergency preparedness columns.
           has_emergency_plan: row.has_emergency_plan,
           open_to_collaboration: row.open_to_collaboration,
+          // KAN-208 — enrichment. website_url/primary_language/
+          // denomination_affiliation are nullable text. congregation_size_range
+          // and show_contact_on_profile are NOT NULL DEFAULT, so they are
+          // OMITTED when null (below) — passing explicit null would violate
+          // NOT NULL rather than fall through to the column default.
+          website_url: row.website_url,
+          primary_language: row.primary_language,
+          denomination_affiliation: row.denomination_affiliation,
+          ...(row.congregation_size_range !== null
+            ? { congregation_size_range: row.congregation_size_range }
+            : {}),
+          ...(row.show_contact_on_profile !== null
+            ? { show_contact_on_profile: row.show_contact_on_profile }
+            : {}),
           verification_status: "pending",
           verification_deadline: verificationDeadline,
         })
