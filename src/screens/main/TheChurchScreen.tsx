@@ -23,6 +23,7 @@ import { Colors } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import GlobeView from '../../components/church/GlobeView';
 import ChurchProfileBottomSheet from '../../components/church/ChurchProfileBottomSheet';
+import PrayerWallPullUp from '../../components/church/PrayerWallPullUp';
 
 export default function TheChurchScreen() {
   const { branch } = useAuth();
@@ -38,6 +39,10 @@ export default function TheChurchScreen() {
         viewerVerified={viewerVerified}
         onDismiss={() => setSelectedChurchId(null)}
       />
+      {/* KAN-22 — Prayer Wall pull-up overlays the globe; owns its own
+          3-state snap + dim backdrop. Globe stays interactive when the
+          panel is collapsed. */}
+      <PrayerWallPullUp />
     </SafeAreaView>
   );
 }
