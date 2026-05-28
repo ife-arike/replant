@@ -85,14 +85,26 @@ export default function RegionalPanel({ open, region, onClose }: Props) {
 
   return (
     <Animated.View
-      style={[styles.panel, { paddingTop: insets.top + 14, transform: [{ translateX }] }]}
+      style={[styles.panel, { transform: [{ translateX }] }]}
       pointerEvents={open ? 'auto' : 'none'}
     >
-      {/* Head — close X, eyebrow, h3, RAG summary */}
-      <View style={styles.head}>
-        <Pressable onPress={onClose} hitSlop={8} style={styles.closeX} accessibilityRole="button" accessibilityLabel="Close regional panel">
-          <Text style={styles.closeXText}>×</Text>
-        </Pressable>
+      {/* Fix 6 (2026-05-28): closeX is positioned to the PANEL root and
+          aligned with the eyebrow's Y baseline (insets.top + 12) so the
+          top of the panel has no dead air. CD .regional-head has close
+          at top:18 of panel; we use insets.top + 12 to clear the safe
+          area and sit tight to the head content. */}
+      <Pressable
+        onPress={onClose}
+        hitSlop={8}
+        style={[styles.closeX, { top: insets.top + 12 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Close regional panel"
+      >
+        <Text style={styles.closeXText}>×</Text>
+      </Pressable>
+
+      {/* Head — eyebrow, h3, RAG summary */}
+      <View style={[styles.head, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.eyebrow}>REGION</Text>
         <Text style={styles.title}>{region?.name ?? '—'}</Text>
         <View style={styles.ragSummary}>
@@ -147,14 +159,18 @@ const styles = StyleSheet.create({
   head: {
     paddingHorizontal: 18,
     paddingBottom: 14,
+    // paddingRight reserves room for the absolute-positioned closeX so
+    // the title never collides with the × on narrow regions.
+    paddingRight: 50,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
   },
   closeX: {
     position: 'absolute',
-    top: 14, right: 14,
+    right: 14,
     width: 28, height: 28,
     alignItems: 'center', justifyContent: 'center',
+    zIndex: 2,
   },
   closeXText: { fontFamily: Typography.body, fontSize: 22, color: Colors.textMuted, lineHeight: 24 },
   eyebrow: {

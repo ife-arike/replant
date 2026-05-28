@@ -59,8 +59,15 @@ if (MAPBOX_TOKEN) {
 }
 
 const STYLE_URL = 'mapbox://styles/mapbox/dark-v11'; // globe-projection capable
-const INITIAL_ZOOM = 3.2;                 // continental
-const ROTATION_DEG_PER_TICK = 0.2;        // ≈6°/s @ 30 fps tick
+// Fix 4 (2026-05-28): open at full visible sphere, not flat-map. In
+// @rnmapbox/maps v10 globe projection, zoom ≈ 1.0 frames the whole
+// earth as a sphere on a phone-sized canvas.
+const INITIAL_ZOOM = 1.0;
+// Fix 4: rotation reduced to ~2°/s — felt frantic at 6°/s with the
+// fuller-globe view. 0.07°/tick @ 33ms (~30fps) = 2.1°/s, slower and
+// more deliberate than the CD prototype's 6°/s while preserving the
+// same pause/resume contract.
+const ROTATION_DEG_PER_TICK = 0.07;
 const ROTATION_TICK_MS = 33;
 const RESUME_DELAY_MS = 3500;             // dispatch: 3.5s stillness before resume
 const CUE_MS = 600;                       // dispatch: "Resuming" cue duration
@@ -118,7 +125,6 @@ export default function GlobeView({
 
   const currentLngRef = useRef(initialCenter[0]);
   const currentLatRef = useRef(initialCenter[1]);
-  const isProgrammaticRef = useRef(false);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -137,7 +143,6 @@ export default function GlobeView({
     const [lng, lat] = initialCenter;
     currentLngRef.current = lng;
     currentLatRef.current = lat;
-    isProgrammaticRef.current = true;
     cameraRef.current?.setCamera({
       centerCoordinate: [lng, lat],
       zoomLevel: INITIAL_ZOOM,
@@ -147,6 +152,11 @@ export default function GlobeView({
   }, [initialCenter, viewerCountry, initialCenterOverride, reduced]);
 
   // ── Rotation tick (active only while !paused && !resuming) ──
+  // Fix 3: drives camera longitude WITHOUT setting an isProgrammatic
+  // flag. The pause cycle is now driven by RN core onTouchStart/End on
+  // the MapView (see handleTouchStart / handleTouchEnd below) — those
+  // fire only on real user gestures, so there is no flag-state race
+  // between rotation ticks and user touches.
   useEffect(() => {
     if (paused || resuming || reduced) return;
     const iv = setInterval(() => {
@@ -154,7 +164,6 @@ export default function GlobeView({
       if (nextLng > 180) nextLng -= 360;
       if (nextLng < -180) nextLng += 360;
       currentLngRef.current = nextLng;
-      isProgrammaticRef.current = true;
       cameraRef.current?.setCamera({
         centerCoordinate: [nextLng, currentLatRef.current],
         animationDuration: 0,
@@ -183,37 +192,38 @@ export default function GlobeView({
 
   useEffect(() => () => clearResumeCycle(), [clearResumeCycle]);
 
-  // ── Mapbox camera-change events ──
-  // onRegionWillChange fires for both user gestures and programmatic
-  // setCamera. The isProgrammaticRef flag-and-reset keeps our own
-  // rotation ticks from self-triggering the pause cycle.
-  const handleRegionWillChange = useCallback(() => {
-    if (isProgrammaticRef.current) {
-      isProgrammaticRef.current = false;
-      return;
-    }
+  // ── Touch + Mapbox events ──
+  // Fix 3: pause/resume is driven by RN core onTouchStart/onTouchEnd on
+  // MapView. These fire only on real user touches (not on programmatic
+  // setCamera ticks), which removes the runaway-rotation + drag-glitch
+  // we saw with the prior isProgrammatic flag pattern.
+  //
+  // Contract per globe.jsx:
+  //   onPointerDown → pauseRotation (immediate, clears timers)
+  //   onPointerUp   → scheduleResume (3.5s → 600ms cue → resume)
+  const handleTouchStart = useCallback(() => {
     setPaused(true);
+    setResuming(false);
     clearResumeCycle();
   }, [clearResumeCycle]);
 
-  // onMapIdle is v10's "camera has stopped moving" signal. We use it to
-  // (a) capture the current zoom + center on refs and (b) schedule the
-  // 3.5s resume timer only when the user (not us) caused the move.
-  // Typed loosely — MapState's `properties` shape is internal to
-  // @rnmapbox v10 and not exported as a public type.
+  const handleTouchEnd = useCallback(() => {
+    scheduleResume();
+  }, [scheduleResume]);
+
+  // onMapIdle captures the user's final zoom/center for refs so the
+  // resumed rotation continues from where they left the map. No timer
+  // scheduling here — onTouchEnd owns the resume cycle.
   const handleMapIdle = useCallback((state: unknown) => {
     const props = (state as { properties?: { zoom?: number; center?: [number, number] } } | null)?.properties;
     const z = props?.zoom;
     if (typeof z === 'number' && Number.isFinite(z)) currentZoomRef.current = z;
     const center = props?.center;
     if (Array.isArray(center) && center.length === 2) {
-      // Keep the rotation anchor in sync with where the user left the
-      // map — resume continues from here, not from the country centroid.
       currentLngRef.current = center[0];
       currentLatRef.current = center[1];
     }
-    if (paused) scheduleResume();
-  }, [paused, scheduleResume]);
+  }, []);
 
   // ── Shape source / GeoJSON ──
   const featureCollection = useMemo(() => ({
@@ -253,7 +263,6 @@ export default function GlobeView({
         // Fall back to a conservative zoom-in if the call fails.
       }
       if (coords) {
-        isProgrammaticRef.current = true;
         cameraRef.current?.setCamera({
           centerCoordinate: coords,
           zoomLevel: nextZoom,
@@ -276,7 +285,10 @@ export default function GlobeView({
         logoEnabled={false}
         scaleBarEnabled={false}
         compassEnabled={false}
-        onRegionWillChange={handleRegionWillChange}
+        pitchEnabled={false}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         onMapIdle={handleMapIdle}
       >
         <Camera
