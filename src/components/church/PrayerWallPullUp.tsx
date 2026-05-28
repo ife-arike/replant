@@ -73,8 +73,14 @@ import { type PrayerRow } from '../prayer/PrayerWallLogic';
 // into the globe area. Panel bg goes transparent when collapsed (see
 // styles.panelCollapsed) so only the gradient-like fade of the three
 // labels is visible above the bottom.
-const PEEK_PX = 68;
-const HALF_RATIO = 0.50;
+// Fix B2 (2026-05-28): PEEK 68 → 88 — collapsed label was sitting too
+// close to the tab bar edge; +20pt buys it breathing room. HALF
+// 0.50 → 0.25 — half state felt cramped (top at 50% of container);
+// raising it to 25% from the top matches the visual height of
+// ChurchProfileBottomSheet (SHEET_RATIO = 0.65) so the two surfaces
+// feel like the same family.
+const PEEK_PX = 88;
+const HALF_RATIO = 0.25;
 const FULL_RATIO = 0.15;
 
 type Snap = 'collapsed' | 'half' | 'full';
