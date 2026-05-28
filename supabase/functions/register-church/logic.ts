@@ -27,6 +27,16 @@ export type ChurchType = (typeof CHURCH_TYPES)[number];
 export const RAG_STATUSES = ["green", "amber", "red"] as const;
 export type RagStatus = (typeof RAG_STATUSES)[number];
 
+// KAN-208 — mirrors public.congregation_size_enum.
+export const CONGREGATION_SIZES = [
+  "under_50",
+  "50_to_200",
+  "200_to_500",
+  "over_500",
+  "not_specified",
+] as const;
+export type CongregationSize = (typeof CONGREGATION_SIZES)[number];
+
 // ─── Payload + insert row types ───
 
 export interface RegisterChurchPayload {
@@ -61,6 +71,16 @@ export interface RegisterChurchPayload {
   // (migration 20260522000002_kan_churches_emergency_plan_v1).
   has_emergency_plan?: boolean | null;
   open_to_collaboration?: boolean | null;
+  // KAN-208 — church profile enrichment. All optional at registration;
+  // collected via the profile completion flow if omitted here. Maps to the
+  // new public.churches columns (migration 20260527000000_kan208_church_
+  // enrichment_v1). show_contact_on_profile stores false if omitted (DB
+  // default), gating contact_email/address exposure in get_church_profile.
+  website_url?: string | null;
+  primary_language?: string | null;
+  denomination_affiliation?: string | null;
+  congregation_size_range?: 'under_50' | '50_to_200' | '200_to_500' | 'over_500' | 'not_specified' | null;
+  show_contact_on_profile?: boolean | null;
 }
 
 // Shape passed to deps.insertChurch — has all the columns the BE writes.
@@ -86,6 +106,14 @@ export interface InsertChurchRow {
   // Finalization fix 7 — null when leader skipped the question.
   has_emergency_plan: boolean | null;
   open_to_collaboration: boolean | null;
+  // KAN-208 — enrichment columns. congregation_size_range omitted →
+  // null on the row; the DB default 'not_specified' fills it.
+  // show_contact_on_profile omitted → null → DB default false.
+  website_url: string | null;
+  primary_language: string | null;
+  denomination_affiliation: string | null;
+  congregation_size_range: 'under_50' | '50_to_200' | '200_to_500' | 'over_500' | 'not_specified' | null;
+  show_contact_on_profile: boolean | null;
 }
 
 export interface RegisterChurchSuccessBody {
@@ -109,6 +137,9 @@ const MAX_ADDRESS = 250;
 const MAX_EMAIL = 320; // RFC 5321 practical max
 const MAX_PHONE = 32;
 const MAX_DECLARATION = 4000;
+// KAN-208 — enrichment free-text + URL caps (500 each per ticket).
+const MAX_URL = 500;
+const MAX_FREETEXT = 500;
 
 // Basic email shape — single @, non-empty local part, non-empty domain with
 // at least one dot. Per c.10167: "basic regex, not exhaustive."
@@ -226,6 +257,38 @@ export function parsePayload(body: unknown): ParseResult {
     return { ok: false, error: "open_to_collaboration must be a boolean when provided" };
   }
 
+  // KAN-208 — enrichment fields. All optional. Free-text capped at 500.
+  // website_url, when present and non-empty, must be http(s) and ≤ 500.
+  if (!isOptionalString(p.website_url, MAX_URL)) {
+    return { ok: false, error: "website_url must be a string when provided" };
+  }
+  if (
+    typeof p.website_url === "string" &&
+    p.website_url.trim().length > 0 &&
+    !/^https?:\/\//i.test(p.website_url.trim())
+  ) {
+    return { ok: false, error: "website_url must start with http:// or https://" };
+  }
+  if (!isOptionalString(p.primary_language, MAX_FREETEXT)) {
+    return { ok: false, error: "primary_language must be a string when provided" };
+  }
+  if (!isOptionalString(p.denomination_affiliation, MAX_FREETEXT)) {
+    return { ok: false, error: "denomination_affiliation must be a string when provided" };
+  }
+  if (
+    p.congregation_size_range !== undefined &&
+    p.congregation_size_range !== null &&
+    !(CONGREGATION_SIZES as readonly string[]).includes(p.congregation_size_range as string)
+  ) {
+    return {
+      ok: false,
+      error: `congregation_size_range must be one of: ${CONGREGATION_SIZES.join(", ")}`,
+    };
+  }
+  if (!isOptionalBoolean(p.show_contact_on_profile)) {
+    return { ok: false, error: "show_contact_on_profile must be a boolean when provided" };
+  }
+
   // Optional needs[] — KAN-14. Absent / null → null. Present → must be an
   // array of strings; each entry is trimmed + empty-string-filtered as
   // defense-in-depth (the FE already does this, but if a bad client posts
@@ -291,6 +354,15 @@ export function parsePayload(body: unknown): ParseResult {
     resources,
     has_emergency_plan: typeof p.has_emergency_plan === "boolean" ? p.has_emergency_plan : null,
     open_to_collaboration: typeof p.open_to_collaboration === "boolean" ? p.open_to_collaboration : null,
+    // KAN-208 — enrichment. Empty strings → null (DB default fills
+    // congregation_size_range/show_contact_on_profile when null).
+    website_url: optStr(p.website_url),
+    primary_language: optStr(p.primary_language),
+    denomination_affiliation: optStr(p.denomination_affiliation),
+    congregation_size_range:
+      (p.congregation_size_range as CongregationSize | undefined) ?? null,
+    show_contact_on_profile:
+      typeof p.show_contact_on_profile === "boolean" ? p.show_contact_on_profile : null,
   };
 
   return { ok: true, row };
