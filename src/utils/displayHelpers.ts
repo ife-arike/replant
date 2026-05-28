@@ -82,6 +82,7 @@ export const PRAYER_WALL_ROLE_LABELS: Record<string, string> = {
   missionary: 'Missionary',
   youth_leader: 'Youth Leader',
   worship_leader: 'Worship Leader',
+  psalmist: 'Psalmist',
 };
 
 export function getRoleLabel(role: string | null | undefined): string {
