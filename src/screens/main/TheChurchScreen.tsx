@@ -208,10 +208,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
 
   // tc-header — CD styles.css .tc-header
+  // Fix 1 (2026-05-28): increased bottom padding so the switcher row
+  // has breathing room before the globe area starts.
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 20,
     // CD has a gradient fade to background. RN doesn't do CSS gradients
     // out-of-the-box; sticking to a solid near-black for now.
     backgroundColor: 'rgba(8, 8, 8, 0.92)',
@@ -293,10 +295,14 @@ const styles = StyleSheet.create({
   calStack: { flex: 1 },
 
   // Count chip — top-left of globe area (CD: top:16, left:16)
+  // Fix 1 (2026-05-28): bumped fontSize 8.5 → 10 and padding 7/11 → 9/13
+  // so the chip is legible on-device. CD CSS reads 8.5px for web; RN
+  // renders the same numeric size noticeably smaller, so a clean bump
+  // restores legibility without breaking the visual rhythm.
   countChip: {
     position: 'absolute',
     top: 16, left: 16,
-    paddingVertical: 7, paddingHorizontal: 11,
+    paddingVertical: 9, paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(8, 8, 8, 0.7)',
     borderWidth: StyleSheet.hairlineWidth,
@@ -305,8 +311,9 @@ const styles = StyleSheet.create({
   },
   countChipText: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.4, // ~0.16em × 8.5
+    fontSize: 10,
+    letterSpacing: 1.6, // ~0.16em × 10
+    lineHeight: 14,
   },
   countSky:      { color: Colors.accent },
   countRed:      { color: Colors.red },
@@ -317,8 +324,8 @@ const styles = StyleSheet.create({
   regionsBtn: {
     position: 'absolute',
     top: 16, right: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 7, paddingHorizontal: 11,
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    paddingVertical: 9, paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(8, 8, 8, 0.7)',
     borderWidth: StyleSheet.hairlineWidth,
@@ -326,14 +333,14 @@ const styles = StyleSheet.create({
     zIndex: 8,
   },
   regionsDot: {
-    width: 9, height: 9, borderRadius: 4.5,
+    width: 10, height: 10, borderRadius: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.textMuted,
   },
   regionsText: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.4,
+    fontSize: 10,
+    letterSpacing: 1.6,
     color: Colors.textMuted,
   },
 });

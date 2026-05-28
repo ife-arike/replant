@@ -45,7 +45,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Easing,
   FlatList,
   PanResponder,
@@ -71,22 +70,36 @@ import {
 import PrayerWallCard from '../prayer/PrayerWallCard';
 import PostPrayerRequestModal from './PostPrayerRequestModal';
 
-const { height: SCREEN_H } = Dimensions.get('window');
+// Fix 2 (2026-05-28): module-level Dimensions.get('window').height was
+// previously used to compute SNAP_COLLAPSED, which translated the panel
+// far below its actual parent (the pages container is ~681pt on iPhone
+// 16 Pro Max after subtracting safe-area top + tc-header + tab bar) —
+// the collapsed handle disappeared off-screen. Snap heights are now
+// computed from the panel's MEASURED parent height via onLayout, so the
+// math is always correct regardless of host layout.
+const PEEK_PX = 76;          // collapsed: handle + label peek above bottom
+const HALF_RATIO = 0.50;
+const FULL_RATIO = 0.15;
 
-// Snap heights — values are translateY of a full-screen panel container.
-// Collapsed: header peeks up ~76pt (handle + label + Post-row).
-const SNAP_COLLAPSED = SCREEN_H - 76;
-const SNAP_HALF      = Math.round(SCREEN_H * 0.50);
-const SNAP_FULL      = Math.round(SCREEN_H * 0.15);
-const SNAPS = [SNAP_COLLAPSED, SNAP_HALF, SNAP_FULL] as const;
+type Snap = 'collapsed' | 'half' | 'full';
 
 const ANIM_MS = 280;
 const TOAST_MS = 3000;
 
-function nearestSnap(value: number): number {
-  let best = SNAPS[0]; let bestDist = Math.abs(value - SNAPS[0]);
-  for (const s of SNAPS) {
-    const d = Math.abs(value - s);
+function snapToY(s: Snap, containerH: number): number {
+  switch (s) {
+    case 'collapsed': return Math.max(0, containerH - PEEK_PX);
+    case 'half':      return Math.round(containerH * HALF_RATIO);
+    case 'full':      return Math.round(containerH * FULL_RATIO);
+  }
+}
+
+function nearestSnap(value: number, containerH: number): Snap {
+  const candidates: Snap[] = ['collapsed', 'half', 'full'];
+  let best: Snap = 'collapsed';
+  let bestDist = Math.abs(value - snapToY('collapsed', containerH));
+  for (const s of candidates) {
+    const d = Math.abs(value - snapToY(s, containerH));
     if (d < bestDist) { bestDist = d; best = s; }
   }
   return best;
@@ -107,56 +120,84 @@ export default function PrayerWallPullUp() {
   } = usePrayerWall();
 
   // ── Snap state + animated translateY ──
-  const [snap, setSnap] = useState<typeof SNAPS[number]>(SNAP_COLLAPSED);
-  const translateY = useRef(new Animated.Value(SNAP_COLLAPSED)).current;
-  const dragStartY = useRef(SNAP_COLLAPSED);
-  // Backdrop opacity is derived from current translateY (0 at collapsed,
-  // 0.45 at full). Linear interp via Animated.interpolate.
-  const backdropOpacity = translateY.interpolate({
-    inputRange: [SNAP_FULL, SNAP_COLLAPSED],
-    outputRange: [0.45, 0],
-    extrapolate: 'clamp',
-  });
+  // Snap is the LOGICAL state (collapsed / half / full); the pixel
+  // value is derived dynamically from containerH (measured via the
+  // panel's onLayout below).
+  const [snap, setSnap] = useState<Snap>('collapsed');
+  const [containerH, setContainerH] = useState(0);
+  const translateY = useRef(new Animated.Value(9999)).current; // off-screen until measured
+  const dragStartY = useRef(0);
+  const containerHRef = useRef(0); // mirrored ref so PanResponder closures see fresh value
 
-  const snapTo = useCallback((target: typeof SNAPS[number]) => {
+  // Whenever the container's measured height changes (mount, rotation,
+  // layout shift), reseat translateY to the current snap's pixel value
+  // — without animation — so the panel never sits in a stale position.
+  useEffect(() => {
+    if (containerH <= 0) return;
+    containerHRef.current = containerH;
+    translateY.setValue(snapToY(snap, containerH));
+  }, [containerH, snap, translateY]);
+
+  // Backdrop opacity derives from translateY — linear interp between
+  // full-open (max dim 0.45) and collapsed (no dim). Uses the live
+  // container height so the interp range matches reality.
+  const backdropOpacity = containerH > 0
+    ? translateY.interpolate({
+        inputRange: [snapToY('full', containerH), snapToY('collapsed', containerH)],
+        outputRange: [0.45, 0],
+        extrapolate: 'clamp',
+      })
+    : new Animated.Value(0);
+
+  const snapTo = useCallback((target: Snap) => {
     setSnap(target);
+    const targetY = snapToY(target, containerHRef.current);
     if (reduced) {
-      translateY.setValue(target);
+      translateY.setValue(targetY);
     } else {
       Animated.timing(translateY, {
-        toValue: target,
+        toValue: targetY,
         duration: ANIM_MS,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     }
     // AC #2 — fire first fetch on the first time we leave collapsed.
-    if (target !== SNAP_COLLAPSED) open();
+    if (target !== 'collapsed') open();
   }, [translateY, reduced, open]);
 
   // Tap the collapsed header → expand to half.
   const handleHeaderTap = useCallback(() => {
-    if (snap === SNAP_COLLAPSED) snapTo(SNAP_HALF);
+    if (snap === 'collapsed') snapTo('half');
   }, [snap, snapTo]);
 
   // ── Drag responder — attached to the grip area only, so the FlatList
-  //    inside can still scroll independently when full-open.
+  //    inside can still scroll independently when full-open. Closures
+  //    read live container height from containerHRef so snap math stays
+  //    in lockstep with on-device layout.
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dy) > 4 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderGrant: () => {
-        dragStartY.current = snap;
+        dragStartY.current = snapToY(snap, containerHRef.current);
         translateY.stopAnimation();
       },
       onPanResponderMove: (_, g) => {
-        const next = Math.max(SNAP_FULL, Math.min(SNAP_COLLAPSED, dragStartY.current + g.dy));
+        const h = containerHRef.current;
+        if (h <= 0) return;
+        const minY = snapToY('full', h);
+        const maxY = snapToY('collapsed', h);
+        const next = Math.max(minY, Math.min(maxY, dragStartY.current + g.dy));
         translateY.setValue(next);
       },
       onPanResponderRelease: (_, g) => {
-        const end = Math.max(SNAP_FULL, Math.min(SNAP_COLLAPSED, dragStartY.current + g.dy));
-        const target = nearestSnap(end);
-        snapTo(target);
+        const h = containerHRef.current;
+        if (h <= 0) return;
+        const minY = snapToY('full', h);
+        const maxY = snapToY('collapsed', h);
+        const end = Math.max(minY, Math.min(maxY, dragStartY.current + g.dy));
+        snapTo(nearestSnap(end, h));
       },
     }),
   ).current;
@@ -190,7 +231,7 @@ export default function PrayerWallPullUp() {
   const keyExtractor = useCallback((r: PrayerRow) => r.id, []);
 
   const showSpinner = loadState === 'initial' && !hasFetchedOnce;
-  const isFullOrHalf = snap !== SNAP_COLLAPSED;
+  const isFullOrHalf = snap !== 'collapsed';
 
   return (
     <>
@@ -202,13 +243,22 @@ export default function PrayerWallPullUp() {
         pointerEvents={isFullOrHalf ? 'auto' : 'none'}
       >
         <Pressable
-          onPress={() => snapTo(SNAP_COLLAPSED)}
+          onPress={() => snapTo('collapsed')}
           style={StyleSheet.absoluteFill}
           accessibilityLabel="Dismiss Prayer Wall panel"
         />
       </Animated.View>
 
-      <Animated.View style={[styles.panel, { transform: [{ translateY }] }]}>
+      <Animated.View
+        style={[styles.panel, { transform: [{ translateY }] }]}
+        onLayout={(e) => {
+          // Fix 2: measure the panel's parent-allocated height so snap
+          // values match reality (host's pages container height, NOT the
+          // window height, which would put collapsed off-screen).
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && Math.abs(h - containerH) > 1) setContainerH(h);
+        }}
+      >
         {/* ── Grip + header (drag region) ── */}
         <View {...panResponder.panHandlers}>
           <Pressable onPress={handleHeaderTap} accessibilityRole="button" accessibilityLabel="Open Prayer Wall">

@@ -57,6 +57,7 @@ import {
   getRoleLabel,
 } from '../../utils/displayHelpers';
 import { XIcon, HeartIcon } from '../prayer/PrayerIcons';
+import ConnectConfirmModal from './ConnectConfirmModal';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -108,7 +109,11 @@ interface Props {
 }
 
 const { height: SCREEN_H } = Dimensions.get('window');
-const SHEET_RATIO = 0.62; // half-screen-ish; map stays visible above
+// Fix 5 (2026-05-28): snap height bumped 0.62 → 0.65 per dispatch
+// "60–70% of screen". CD CSS .profile-sheet is 86% of its phone frame;
+// the phone frame is itself ~75% of viewport height on the prototype,
+// so 0.65 maps to that same on-device experience.
+const SHEET_RATIO = 0.65;
 const SHEET_HEIGHT = SCREEN_H * SHEET_RATIO;
 const ANIM_MS = 320;
 const SWIPE_DISMISS_THRESHOLD = 80;
@@ -267,17 +272,17 @@ export default function ChurchProfileBottomSheet({
     return profile.name;
   })();
 
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+
   const handleConnect = () => {
     if (!profile) return;
-    Alert.alert(
-      'Send connection request',
-      `Send a connection request to ${connectTargetName} at ${profile.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send', onPress: () => showToast('Connection request sent') },
-      ],
-    );
+    setConnectModalOpen(true);
   };
+  const handleConnectConfirm = () => {
+    setConnectModalOpen(false);
+    showToast('Connection request sent');
+  };
+  const handleConnectCancel = () => setConnectModalOpen(false);
 
   const handlePray = () => {
     setPrayed(true);
@@ -370,11 +375,13 @@ export default function ChurchProfileBottomSheet({
                 contentContainerStyle={styles.bodyContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* ── Header ── */}
+                {/* ── Header (Fix 5: RAG pill colored per status per CD) ── */}
                 <View style={styles.ragRow}>
-                  <View style={styles.ragPill}>
+                  <View style={[styles.ragPill, { backgroundColor: ragSoftBg(profile.rag_status) }]}>
                     <View style={[styles.ragDot, { backgroundColor: ragColor(profile.rag_status) }]} />
-                    <Text style={styles.ragLabel}>{profile.rag_label}</Text>
+                    <Text style={[styles.ragLabel, { color: ragColor(profile.rag_status) }]}>
+                      {profile.rag_label}
+                    </Text>
                   </View>
                   {profile.network_id ? (
                     <Text style={styles.rplTag}>{profile.network_id}</Text>
@@ -544,6 +551,25 @@ export default function ChurchProfileBottomSheet({
           ) : null}
         </Animated.View>
       </View>
+
+      {/* Fix 7 (2026-05-28): CD-styled connect modal — replaces the
+          iOS Alert.alert. Target label per states.jsx ConnectModal:
+          named leader → "{Name} at {Church}"; anonymous → "the {Role}
+          at {Church}"; no leaders → "the leaders at {Church}". */}
+      {profile ? (
+        <ConnectConfirmModal
+          visible={connectModalOpen}
+          targetLabel={(() => {
+            const named = profile.leaders.find((l) => !l.anonymous && l.name);
+            if (named?.name) return `${named.name} at ${profile.name}`;
+            const any = profile.leaders[0];
+            if (any) return `the ${getRoleLabel(any.role)} at ${profile.name}`;
+            return `the leaders at ${profile.name}`;
+          })()}
+          onCancel={handleConnectCancel}
+          onConfirm={handleConnectConfirm}
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -611,6 +637,14 @@ function ragColor(rag: string): string {
   return Colors.textMuted; // pending / unknown
 }
 
+// Fix 5 — CD .rag-pill.{g,a,r} use the soft (~14% alpha) RAG tint as bg.
+function ragSoftBg(rag: string): string {
+  if (rag === 'green') return 'rgba(91, 173, 122, 0.14)';
+  if (rag === 'amber') return 'rgba(212, 168, 85, 0.14)';
+  if (rag === 'red')   return 'rgba(224, 85, 85, 0.14)';
+  return 'rgba(240, 237, 230, 0.06)'; // pending / unknown — neutral
+}
+
 // ── Local icons (react-native-svg, matching repo icon convention) ──
 
 function BookmarkIcon({ size = 15, color, filled = false }: { size?: number; color: string; filled?: boolean }) {
@@ -674,58 +708,81 @@ const styles = StyleSheet.create({
   bodyScroll: { flex: 1 },
   bodyContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
 
-  // Header
-  ragRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // Header — Fix 5 (2026-05-28): typography refactored to CD styles.css
+  // exact values. CD .rag-pill-row has the RAG pill on the left + RPL
+  // pill on the right with justify space-between; we honor that.
+  ragRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 36, // leave room for absolute close-X
+    marginBottom: 12,
+  },
   ragPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingLeft: 8, paddingRight: 10,
     borderRadius: 999,
+    // colored bg per CD (green-soft / amber-soft / red-soft) is applied
+    // inline at the render site based on rag_status.
     backgroundColor: 'rgba(240, 237, 230, 0.06)',
   },
   ragDot: { width: 7, height: 7, borderRadius: 3.5 },
-  ragLabel: { fontFamily: Typography.bodyMedium, fontSize: 11.5, color: Colors.text, letterSpacing: 0.2 },
+  ragLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.26, // 0.14em × 9
+    textTransform: 'uppercase',
+  },
   rplTag: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 9,
+    letterSpacing: 1.44, // 0.16em × 9
     color: Colors.textMuted,
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderRadius: 999,
+    paddingVertical: 4, paddingHorizontal: 9,
+    overflow: 'hidden',
   },
   churchName: {
-    marginTop: 12,
-    fontFamily: Typography.display,
+    fontFamily: Typography.displayRegular, // CD: serif weight 300 (closest token = 400)
     fontSize: 26,
     lineHeight: 30,
+    letterSpacing: 0.26, // 0.01em × 26
     color: Colors.text,
   },
   leadersStack: { marginTop: 10, gap: 6 },
   leaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rolePill: {
-    paddingVertical: 2,
+    paddingVertical: 3,
     paddingHorizontal: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(107, 181, 232, 0.12)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.borderAccent,
+    borderRadius: 3,
+    backgroundColor: 'rgba(107, 181, 232, 0.06)', // sky-faint per CD
   },
   rolePillText: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 10.5,
-    letterSpacing: 0.4,
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.52, // 0.16em × 9.5
+    textTransform: 'uppercase',
     color: Colors.accent,
+    lineHeight: 11,
   },
-  leaderName: { fontFamily: Typography.body, fontSize: 14, color: Colors.text },
+  leaderName: { fontFamily: Typography.body, fontSize: 13.5, color: Colors.text, flex: 1 },
   nameWithheld: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textMuted,
+    flex: 1,
   },
   locationLine: {
-    marginTop: 10,
+    marginTop: 8,
     fontFamily: Typography.body,
-    fontSize: 13,
+    fontSize: 12.5,
+    lineHeight: 19,
     color: Colors.textMuted,
   },
   ownEyebrow: {
@@ -741,53 +798,107 @@ const styles = StyleSheet.create({
   ownEyebrowText: {
     fontFamily: Typography.mono,
     fontSize: 9,
-    letterSpacing: 2,
+    letterSpacing: 1.8,
     color: Colors.accent,
   },
 
-  // Sections
+  // Sections — CD .section-h.eyebrow: 9.5px mono 0.24em sky
   sectionHeader: {
-    marginTop: 24,
-    marginBottom: 10,
+    marginTop: 22,
+    marginBottom: 12,
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 2,
-    color: Colors.textSubtle,
+    fontSize: 9.5,
+    letterSpacing: 2.28, // 0.24em × 9.5
+    color: Colors.accent,
   },
-  kvRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16, paddingVertical: 6 },
-  kvKey: { fontFamily: Typography.body, fontSize: 13, color: Colors.textMuted },
-  kvValue: { flex: 1, textAlign: 'right', fontFamily: Typography.body, fontSize: 13.5, color: Colors.text },
+  // CD .kv — 9.5px mono key (muted) / 13px sans value (right-aligned)
+  kvRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  kvKey: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.52,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    minWidth: 88,
+  },
+  kvValue: {
+    flex: 1,
+    textAlign: 'right',
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.text,
+  },
   linkValue: { color: Colors.accent },
 
-  freeform: { marginBottom: 14 },
-  freeformLabel: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 11,
-    letterSpacing: 0.6,
-    color: Colors.textMuted,
-    marginBottom: 4,
+  // CD .freeform — surface card with mono label + serif italic body
+  freeform: {
+    marginBottom: 8,
+    marginTop: 8,
+    padding: 12,
+    paddingHorizontal: 14,
+    backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderRadius: 8,
   },
-  freeformBody: { fontFamily: Typography.body, fontSize: 14, lineHeight: 21, color: Colors.text },
+  freeformLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.62, // 0.18em × 9
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginBottom: 6,
+  },
+  freeformBody: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: Colors.text,
+  },
   freeformEmpty: {
     fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
+    fontSize: 9,
+    letterSpacing: 1.62,
+    textTransform: 'uppercase',
     color: Colors.textSubtle,
   },
-  eapRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  // CD .eap-row
+  eapRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   eapChip: {
     flex: 1,
-    padding: 12,
-    borderRadius: 10,
+    padding: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     backgroundColor: Colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
   },
-  eapLabel: { fontFamily: Typography.body, fontSize: 11, color: Colors.textMuted, marginBottom: 8 },
-  eapPill: { alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999 },
+  eapLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.53, // 0.18em × 8.5
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginBottom: 4,
+  },
+  eapPill: { alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999 },
   eapPillYes: { backgroundColor: 'rgba(91, 173, 122, 0.14)' },
-  eapPillNo: { backgroundColor: 'rgba(240, 237, 230, 0.06)' },
-  eapPillText: { fontFamily: Typography.bodyMedium, fontSize: 11 },
+  eapPillNo: { backgroundColor: 'rgba(31, 31, 35, 1)' }, // CD --surface3 for "n" pill
+  eapPillText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.08, // 0.12em × 9
+    textTransform: 'uppercase',
+  },
   eapPillTextYes: { color: Colors.green },
   eapPillTextNo: { color: Colors.textMuted },
 
@@ -843,11 +954,31 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     backgroundColor: Colors.surfaceElevated,
   },
-  btn: { minHeight: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  // Fix 5 — CD .btn: 11px sans-medium 0.12em uppercase, padding 11/12
+  btn: {
+    minHeight: 44,
+    borderRadius: 6,
+    alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 11, paddingHorizontal: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+  },
   btnPrimary: { backgroundColor: Colors.accent },
-  btnPrimaryText: { fontFamily: Typography.bodyMedium, fontSize: 15, color: Colors.background },
-  btnGhost: { borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.borderAccent, backgroundColor: Colors.transparent },
-  btnGhostText: { fontFamily: Typography.bodyMedium, fontSize: 15, color: Colors.accent },
+  btnPrimaryText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 1.32, // 0.12em × 11
+    color: Colors.background,
+    textTransform: 'uppercase',
+  },
+  btnGhost: { borderColor: Colors.borderAccent, backgroundColor: Colors.transparent },
+  btnGhostText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 1.32,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+  },
   prayInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   btnIcon: {
     width: 48,
