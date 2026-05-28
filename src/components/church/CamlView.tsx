@@ -35,7 +35,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { useReducedMotion } from '../../utils/useReducedMotion';
-import { getChurchTypeLabel } from '../../utils/displayHelpers';
+import { getChurchTypeLabel, PRAYER_WALL_ROLE_LABELS } from '../../utils/displayHelpers';
 
 const STYLE_URL = 'mapbox://styles/mapbox/dark-v11';
 const INITIAL_ZOOM = 13;
@@ -78,6 +78,11 @@ interface CamlViewProps {
   ownChurchId: string | null;       // kept for parity though server flags is_own
   viewerVerified: boolean;
   onChurchSelect: (churchId: string) => void;
+  // Fix 6 — once data lands, CAML reports the resolved area city so the
+  // host header can render "The Church at <city>" dynamically. Prefer
+  // the nearest non-own church (it represents the surrounding area);
+  // fall back to whatever is first if no other church exists.
+  onCityResolved?: (city: string) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -108,20 +113,24 @@ function formatDistance(km: number, unit: 'mi' | 'km'): string {
   return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
 }
 
+// Fix 3 — role label sourced from the canonical map (Prayer Wall taxonomy)
+// with the same "Minister" fallback prayer-wall uses for unknown roles.
+// Name token is the first_name (matches CD caml.jsx leader line and the
+// pastoral register; surname-only read cold without context).
 function leaderLineText(leaders: Leader[]): string {
   if (!leaders.length) return '';
   return leaders.slice(0, 2).map((l) => {
-    const roleLabel = l.role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const roleLabel = PRAYER_WALL_ROLE_LABELS[l.role as keyof typeof PRAYER_WALL_ROLE_LABELS] ?? 'Minister';
     if (l.anon) return `${roleLabel} · Hidden`;
-    const last = l.last_name?.trim();
-    return last ? `${roleLabel} ${last}` : roleLabel;
+    const first = l.first_name?.trim();
+    return first ? `${roleLabel} ${first}` : roleLabel;
   }).join(' · ');
 }
 
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function CamlView({
-  isActive, ownChurchId, viewerVerified, onChurchSelect,
+  isActive, ownChurchId, viewerVerified, onChurchSelect, onCityResolved,
 }: CamlViewProps) {
   // ownChurchId is part of the dispatched contract for symmetry with the
   // CAL surface, but on CAML the server is authoritative — `is_own` is
@@ -144,6 +153,28 @@ export default function CamlView({
   const [error, setError] = useState<string | null>(null);
 
   const [ragFilter, setRagFilter] = useState<Record<Rag, boolean>>({ green: true, amber: true, red: true });
+
+  // Fix 2 — DRAG TO EXPLORE hint fades on the leader's first gesture
+  // (sheet pull, or map pan that crosses 0.5 km from home) and never
+  // returns. hasDraggedRef mirrors the state so the PanResponder
+  // closure (captured once in useRef) reads the current value without
+  // stale-closure bugs. Hoisted above distanceFromHomeKm so the map-pan
+  // trigger effect below can reference markDragged safely.
+  const [hasDragged, setHasDragged] = useState(false);
+  const hasDraggedRef = useRef(false);
+  const markDragged = useCallback(() => {
+    if (hasDraggedRef.current) return;
+    hasDraggedRef.current = true;
+    setHasDragged(true);
+  }, []);
+  const dragHintOpacity = useRef(new Animated.Value(1)).current;
+  const [dragHintMounted, setDragHintMounted] = useState(true);
+  useEffect(() => {
+    if (!hasDragged || !dragHintMounted) return;
+    Animated.timing(dragHintOpacity, {
+      toValue: 0, duration: 400, useNativeDriver: true,
+    }).start(({ finished }) => { if (finished) setDragHintMounted(false); });
+  }, [hasDragged, dragHintMounted, dragHintOpacity]);
 
   // Bumps re-run the location useEffect after the leader returns from
   // Settings with a fresh permission grant. Without this, locationDenied
@@ -250,17 +281,28 @@ export default function CamlView({
         return;
       }
       setData(resp);
+      // Fix 6 — resolve the area city from the closest non-own church
+      // (it represents the surrounding area better than the leader's
+      // own church name). Fall back to the first church if no others.
+      const areaChurch = resp.churches.find((c) => !c.is_own) ?? resp.churches[0];
+      if (areaChurch?.city) onCityResolved?.(areaChurch.city);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown');
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, onCityResolved]);
 
+  // Fix 1 — loading flicker (2026-05-28). viewerCoord changes on every
+  // GPS update from the listener, so without a data-exists guard this
+  // effect would re-fire continuously, blinking the list back to
+  // LOADING… on every fix. Only fetch once per session; AppState
+  // refresh / pull-to-refresh would be the future opt-in re-fetch
+  // surface if needed.
   useEffect(() => {
-    if (!isActive || !viewerCoord) return;
+    if (!isActive || !viewerCoord || data !== null) return;
     void fetchNearby(viewerCoord);
-  }, [isActive, viewerCoord, fetchNearby]);
+  }, [isActive, viewerCoord, data, fetchNearby]);
 
   // ── Distance unit detection: US → mi, else km. Read viewer country
   // from the most recent fetched row that includes country (server
@@ -275,6 +317,13 @@ export default function CamlView({
     if (!viewerCoord || !cameraCenter) return 0;
     return haversineKm(viewerCoord, cameraCenter);
   }, [viewerCoord, cameraCenter]);
+
+  // Fix 2 (map-pan path) — a meaningful map drag (past 0.5 km from
+  // home) also retires the DRAG TO EXPLORE hint. Without this, panning
+  // the map and panning back would show the hint again.
+  useEffect(() => {
+    if (distanceFromHomeKm >= 0.5) markDragged();
+  }, [distanceFromHomeKm, markDragged]);
 
   // ── Filtered GeoJSON ──
   const churches = data?.churches ?? [];
@@ -328,7 +377,11 @@ export default function CamlView({
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 2 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_, g) => {
+        const shouldClaim = Math.abs(g.dy) > 2 && Math.abs(g.dy) > Math.abs(g.dx);
+        if (shouldClaim) markDragged();
+        return shouldClaim;
+      },
       onPanResponderGrant: () => {
         dragStartY.current = yFor(sheetOpen);
         translateY.stopAnimation();
@@ -350,16 +403,20 @@ export default function CamlView({
     }),
   ).current;
 
-  // ── Recenter ──
+  // Fix 5 — recenter targets the leader's own church (the anchor for
+  // CAML), not the moving GPS fix. Hidden entirely below if ownChurch
+  // is missing or its coords aren't real numbers — never fly to
+  // [null, null]. INITIAL_ZOOM is held by Camera.defaultSettings; flyTo
+  // preserves zoom intentionally so a recenter from a zoomed-in pan
+  // doesn't snap the leader back to the wide view.
+  const ownChurchPinReady =
+    !!ownChurch &&
+    typeof ownChurch.lng === 'number' && !isNaN(ownChurch.lng) &&
+    typeof ownChurch.lat === 'number' && !isNaN(ownChurch.lat);
   const recenter = useCallback(() => {
-    if (!viewerCoord) return;
-    cameraRef.current?.setCamera({
-      centerCoordinate: viewerCoord,
-      zoomLevel: INITIAL_ZOOM,
-      animationDuration: reduced ? 0 : 400,
-      animationMode: 'easeTo',
-    });
-  }, [viewerCoord, reduced]);
+    if (!ownChurch) return;
+    cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], 1000);
+  }, [ownChurch]);
 
   // ── Location-denied empty state ──
   if (locationDenied) {
@@ -494,7 +551,7 @@ export default function CamlView({
 
       {/* Filter chips */}
       {camlReady ? (
-        <View style={[styles.filterRow, { top: insets.top + 14 }]} pointerEvents="box-none">
+        <View style={[styles.filterRow, { top: insets.top + 6 }]} pointerEvents="box-none">
           <View style={styles.filterGroup}>
             {(['green','amber','red'] as Rag[]).map((k) => {
               const on = ragFilter[k];
@@ -513,31 +570,45 @@ export default function CamlView({
               );
             })}
           </View>
-          <Pressable
-            onPress={recenter}
-            accessibilityRole="button"
-            accessibilityLabel="Recenter on my location"
-            style={[styles.chip, styles.chipActive]}
-          >
-            <Text style={[styles.chipText, styles.chipTextActive]}>⊙ MY LOCATION</Text>
-          </Pressable>
+          {ownChurchPinReady ? (
+            <Pressable
+              onPress={recenter}
+              accessibilityRole="button"
+              accessibilityLabel="Recenter on my church location"
+              style={[styles.chip, styles.chipActive]}
+            >
+              <Text style={[styles.chipText, styles.chipTextActive]}>⊙ MY CHURCH LOCATION</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
-      {/* Pan distance hint */}
-      {camlReady ? (
+      {/* Pan distance hint — DRAG TO EXPLORE fades on first gesture
+          (sheet drag or 0.5 km map pan) and unmounts; FROM HOME pill
+          stays a plain View, no animation. */}
+      {camlReady && dragHintMounted && distanceFromHomeKm < 0.5 ? (
+        <Animated.View
+          style={[
+            styles.panHint,
+            styles.panHintResting,
+            { bottom: (containerH > 0 ? Math.round(containerH * SHEET_HEIGHT_RATIO) - SHEET_PEEK_PX : 0) + 16,
+              opacity: dragHintOpacity },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.panHintText}>DRAG TO EXPLORE</Text>
+        </Animated.View>
+      ) : null}
+      {camlReady && distanceFromHomeKm >= 0.5 ? (
         <View
           style={[
             styles.panHint,
             { bottom: (containerH > 0 ? Math.round(containerH * SHEET_HEIGHT_RATIO) - SHEET_PEEK_PX : 0) + 16 },
-            distanceFromHomeKm < 0.5 && styles.panHintResting,
           ]}
           pointerEvents="none"
         >
           <Text style={styles.panHintText}>
-            {distanceFromHomeKm < 0.5
-              ? 'DRAG TO EXPLORE'
-              : `${formatDistance(distanceFromHomeKm, unit).toUpperCase()} FROM HOME`}
+            {`${formatDistance(distanceFromHomeKm, unit).toUpperCase()} FROM HOME`}
           </Text>
         </View>
       ) : null}
@@ -689,8 +760,10 @@ const styles = StyleSheet.create({
   },
   chipDot: { width: 6, height: 6, borderRadius: 3 },
   chipText: {
-    fontFamily: Typography.mono, fontSize: 8.5,
-    letterSpacing: 1.19, // 0.14em × 8.5
+    // Fix 4 — bumped 8.5 → 9 to match TheChurchScreen pagerLabel size.
+    // Letter-spacing recomputed against the chip's 0.14em design rule.
+    fontFamily: Typography.mono, fontSize: 9,
+    letterSpacing: 1.26, // 0.14em × 9
     color: Colors.textMuted, textTransform: 'uppercase',
   },
   chipTextActive: { color: Colors.text },

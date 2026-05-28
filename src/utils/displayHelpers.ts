@@ -71,7 +71,10 @@ export function formatDistance(distanceKm: number, countryCode: string): string 
 // as the `ministry_leader` entry. Add new entries here as Founder
 // expands the recognised set; keep ROLES untouched (its order is
 // locked).
-const PRAYER_WALL_ROLE_LABELS: Record<string, string> = {
+// Exported for CAML leader-line composition (KAN-18). getRoleLabel
+// stays as the convenience helper; CAML reaches for the raw map so it
+// can fall back to a custom default ("Minister") inline.
+export const PRAYER_WALL_ROLE_LABELS: Record<string, string> = {
   ministry_leader: 'Minister',
   pastor: 'Pastor',
   elder: 'Elder',

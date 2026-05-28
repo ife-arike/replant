@@ -62,6 +62,10 @@ export default function TheChurchScreen() {
 
   const [page, setPage] = useState<Page>(0);
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
+  // Fix 6 — area city reported by CamlView once nearby data lands.
+  // Falls back to the static "Loganville" until resolution. Header only
+  // substitutes on page 0 (CAML); page 1 (CAL) keeps its "at Large" copy.
+  const [camlCity, setCamlCity] = useState<string | null>(null);
   const [regionalOpen, setRegionalOpen] = useState(false);
   const [regional, setRegional] = useState<ChurchRegion | null>(null);
   // Fix A (2026-05-28): host-side track of overlay state so we can pause
@@ -119,7 +123,7 @@ export default function TheChurchScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.title}>
             {page === 0 ? (
-              <>The Church at <Text style={styles.titleEm}>Loganville</Text></>
+              <>The Church at <Text style={styles.titleEm}>{camlCity ?? 'Loganville'}</Text></>
             ) : (
               <>The Church <Text style={styles.titleEm}>at Large</Text></>
             )}
@@ -156,6 +160,7 @@ export default function TheChurchScreen() {
             ownChurchId={ownChurchId}
             viewerVerified={viewerVerified}
             onChurchSelect={setSelectedChurchId}
+            onCityResolved={setCamlCity}
           />
         </View>
 
