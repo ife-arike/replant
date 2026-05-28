@@ -62,9 +62,10 @@ export default function TheChurchScreen() {
 
   const [page, setPage] = useState<Page>(0);
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
-  // Fix 6 — area city reported by CamlView once nearby data lands.
-  // Falls back to the static "Loganville" until resolution. Header only
-  // substitutes on page 0 (CAML); page 1 (CAL) keeps its "at Large" copy.
+  // Fix 6 — city resolved by CamlView via Mapbox places reverse-geocode
+  // on the leader's GPS. Null until the first geocode response lands;
+  // the header renders bare "The Church" in the interim (no hardcoded
+  // fallback). Page 1 (CAL) keeps its "at Large" copy.
   const [camlCity, setCamlCity] = useState<string | null>(null);
   const [regionalOpen, setRegionalOpen] = useState(false);
   const [regional, setRegional] = useState<ChurchRegion | null>(null);
@@ -123,7 +124,18 @@ export default function TheChurchScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.title}>
             {page === 0 ? (
-              <>The Church at <Text style={styles.titleEm}>{camlCity ?? 'Loganville'}</Text></>
+              // Header tells the truth: no fabricated "at <city>" before
+              // the Mapbox reverse-geocode lands. useChurchesGlobal does
+              // not currently expose ownChurchCity (only ownChurchId and
+              // viewerCountry — country-grain, wrong for a city header),
+              // and the dispatch barred any hardcoded city string. So we
+              // render bare "The Church" until camlCity resolves
+              // (typically <1 s after the first GPS fix).
+              camlCity ? (
+                <>The Church at <Text style={styles.titleEm}>{camlCity}</Text></>
+              ) : (
+                <>The Church</>
+              )
             ) : (
               <>The Church <Text style={styles.titleEm}>at Large</Text></>
             )}

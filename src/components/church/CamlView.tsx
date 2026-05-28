@@ -127,6 +127,25 @@ function leaderLineText(leaders: Leader[]): string {
   }).join(' · ');
 }
 
+// Fix 6 (KAN-18) — Mapbox places reverse-geocode for the header city.
+// We use the actual user GPS rather than the nearest-church-city proxy
+// so the header tells the truth even when the leader is in an area with
+// no Replant churches yet. ?types=place restricts to the locality tier
+// (city/town/village) — what the leader expects to read in the header.
+// Silent on any failure (network, 4xx/5xx, malformed body); the caller
+// just keeps showing the fallback.
+async function resolveCity(lng: number, lat: number, token: string): Promise<string | null> {
+  try {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=place&access_token=${token}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json() as { features?: Array<{ text?: string }> };
+    return json.features?.[0]?.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function CamlView({
@@ -153,6 +172,21 @@ export default function CamlView({
   const [error, setError] = useState<string | null>(null);
 
   const [ragFilter, setRagFilter] = useState<Record<Rag, boolean>>({ green: true, amber: true, red: true });
+
+  // Fix 6 — reverse-geocode the leader's GPS into a place name and
+  // hand it to the host so the header reads "The Church at <city>".
+  // hasCityRef gates this to a single call per mount — viewerCoord
+  // updates on every GPS fix and we don't want to hammer Mapbox.
+  const hasCityRef = useRef(false);
+  useEffect(() => {
+    if (!viewerCoord || hasCityRef.current) return;
+    const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
+    if (!token) return;
+    hasCityRef.current = true;
+    void resolveCity(viewerCoord[0], viewerCoord[1], token).then((city) => {
+      if (city) onCityResolved?.(city);
+    });
+  }, [viewerCoord, onCityResolved]);
 
   // Fix 2 — DRAG TO EXPLORE hint fades on the leader's first gesture
   // (sheet pull, or map pan that crosses 0.5 km from home) and never
@@ -281,17 +315,16 @@ export default function CamlView({
         return;
       }
       setData(resp);
-      // Fix 6 — resolve the area city from the closest non-own church
-      // (it represents the surrounding area better than the leader's
-      // own church name). Fall back to the first church if no others.
-      const areaChurch = resp.churches.find((c) => !c.is_own) ?? resp.churches[0];
-      if (areaChurch?.city) onCityResolved?.(areaChurch.city);
+      // Fix 6 (2026-05-28 revision) — city resolution moved off the
+      // nearest-church proxy. The actual GPS coordinate is reverse-
+      // geocoded via Mapbox places in the useEffect above so the
+      // header tells the truth even when no nearby churches exist.
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown');
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token, onCityResolved]);
+  }, [session?.access_token]);
 
   // Fix 1 — loading flicker (2026-05-28). viewerCoord changes on every
   // GPS update from the listener, so without a data-exists guard this
