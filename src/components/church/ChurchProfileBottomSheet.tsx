@@ -359,7 +359,17 @@ export default function ChurchProfileBottomSheet({
           {/* Grip + close (grip area owns the swipe-down responder) */}
           <View {...panResponder.panHandlers}>
             <View style={styles.grabHandle} />
-            <Pressable onPress={onDismiss} hitSlop={10} style={styles.closeX} accessibilityRole="button" accessibilityLabel="Close">
+            {/* KAN-20 R4 — hitSlop bumped 10 → 12 on every edge so the
+                Pressable's touch target lands at 28 + 24 = 52 pt × 52 pt,
+                comfortably above Apple HIG / Material 44 pt minimum and
+                easier to find with the thumb at the top-right corner. */}
+            <Pressable
+              onPress={onDismiss}
+              hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+              style={styles.closeX}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
               <XIcon size={14} color={Colors.textMuted} />
             </Pressable>
           </View>

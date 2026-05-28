@@ -606,7 +606,13 @@ export default function CamlView({
                   <View style={styles.ownDot} />
                 </View>
                 <View style={styles.ownLabel} pointerEvents="none">
-                  <Text style={styles.ownLabelText}>YOUR CHURCH</Text>
+                  {/* KAN-18 R4 — numberOfLines={1} prevents the marker
+                      label from wrapping character-by-character when the
+                      MarkerView's native child measures narrow on the
+                      device. That wrap was rendering the dark pill as a
+                      vertical column of stacked letters extending
+                      downward from the GPS puck. */}
+                  <Text style={styles.ownLabelText} numberOfLines={1}>YOUR CHURCH</Text>
                 </View>
               </Pressable>
             </MarkerView>
@@ -681,14 +687,20 @@ export default function CamlView({
           right-anchored bottom math just above the sheet's peek tab,
           and zIndex: 3 so the sheet (zIndex 4+) covers it cleanly when
           it rises. */}
-      {camlReady && distanceFromHomeKm >= 0.5 ? (
+      {/* KAN-18 R4 — RE-CENTER ME pill: gated on !sheetOpen so it
+          yields the surface to the leader once they're reading the
+          list. Bottom anchored at SHEET_PEEK_PX + 8 — just above the
+          peek grip bar, regardless of containerH. The sheet's
+          zIndex: 10 (set on the sheet style below) covers any
+          half-state animation overlap definitively. */}
+      {camlReady && distanceFromHomeKm >= 0.5 && !sheetOpen ? (
         <Pressable
           onPress={recenterToGPS}
           accessibilityRole="button"
           accessibilityLabel="Recenter map to my GPS location"
           style={[
             styles.recenterPill,
-            { bottom: Math.round(containerH * (1 - SHEET_HEIGHT_RATIO)) + SHEET_PEEK_PX + 8 },
+            { bottom: SHEET_PEEK_PX + 8 },
           ]}
         >
           <Text style={styles.recenterPillText}>RE-CENTER ME</Text>
@@ -922,13 +934,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
   ownLabel: {
+    // KAN-18 R4 — explicit width: 80 so the label has deterministic
+    // dimensions regardless of how the MarkerView's native child
+    // container measures the Pressable. translateX(-40) re-centers
+    // against the new half-width. Combined with numberOfLines={1} on
+    // the Text, this eliminates the character-stacking that
+    // previously rendered the label as a dark vertical bar below the
+    // GPS puck on devices where the parent measured narrow.
     position: 'absolute',
     top: 28, left: '50%',
+    width: 80,
+    alignItems: 'center',
     paddingVertical: 2, paddingHorizontal: 7,
     backgroundColor: 'rgba(8,8,8,0.70)',
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(107,181,232,0.35)',
     borderRadius: 100,
-    transform: [{ translateX: -38 }],
+    transform: [{ translateX: -40 }],
   },
   ownLabelText: {
     fontFamily: Typography.mono, fontSize: 8.5,
@@ -937,6 +958,10 @@ const styles = StyleSheet.create({
   },
 
   // Sheet
+  // KAN-18 R4 — zIndex: 10 sits the sheet definitively above the
+  // RE-CENTER ME pill (zIndex 3) and the DRAG TO EXPLORE Animated.View
+  // (zIndex 4) regardless of render order; the pill is also gated on
+  // !sheetOpen at render time as a belt-and-suspenders.
   sheet: {
     position: 'absolute',
     left: 0, right: 0, bottom: 0,
@@ -946,6 +971,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22, borderTopRightRadius: 22,
     shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 50,
     shadowOffset: { width: 0, height: -16 },
+    zIndex: 10,
   },
   sheetGrip: {
     alignSelf: 'center',
