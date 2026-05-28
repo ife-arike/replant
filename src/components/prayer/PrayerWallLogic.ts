@@ -84,6 +84,15 @@ export interface PrayerRow {
   prayed_count: number;
   i_prayed: boolean;
   status: string;
+  // KAN-21 CD pull-up (2026-05-28) — added by migration
+  // 20260528000005_kan21_get_prayer_wall_rag_status.sql. Drives the
+  // PullUpInterCard's loc-row dot colour. NULL for underground rows
+  // (masked alongside church_name + country, consistent with the rest
+  // of the RPC's underground posture). Dispatch DBA-2
+  // ("viewer_has_prayed") was redundant with the pre-existing
+  // i_prayed field above — same EXISTS-on-prayer_request_prayed_by
+  // semantics — so only this one column was added.
+  rag_status: string | null;
 }
 
 // Wire shape covering both get_testimonies (with original-request join)
