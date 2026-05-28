@@ -1,0 +1,26 @@
+# KAN-18/19 — get-nearby-churches Edge Function config
+#
+# verify_jwt = false is the PLATFORM default for Supabase edge functions
+# (all functions in this project ship this way). The function itself
+# performs an AUTHENTICATED gate: it reads the Authorization header,
+# verifies it via admin.auth.getUser(), and returns 401 if the session
+# is missing or invalid. Different from search-churches, which is a
+# pre-auth onboarding surface.
+#
+# Defense-in-depth at the function layer:
+#   - POST + JSON only — every other method/body returns 400 / 405.
+#   - Manual JWT verification via the service-role admin client.
+#   - Caller's verification_status drives masking: unverified callers
+#     receive type-only rows (name omitted, leaders=[]). See
+#     caller_verified flag in the response.
+#   - Source view: public.churches_public (underground excluded at
+#     view level — KAN-211).
+#   - Two-pass radius (50km → 100km if <3 results) inside the function;
+#     the FE never knows about the expansion math, only the
+#     `expanded` boolean.
+#   - 30 req/hr per user_id via Upstash REST. Same fail-open posture as
+#     search-churches.
+#   - No write operations.
+#
+# Any change to verify_jwt requires a fresh SEC ruling.
+verify_jwt = false
