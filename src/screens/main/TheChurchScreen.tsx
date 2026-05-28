@@ -60,7 +60,7 @@ export default function TheChurchScreen() {
     dots, undergroundCount, ownChurchId, viewerCountry, loading, error, refetch,
   } = useChurchesGlobal();
 
-  const [page, setPage] = useState<Page>(1); // CAL is the live build today
+  const [page, setPage] = useState<Page>(0);
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
   const [regionalOpen, setRegionalOpen] = useState(false);
   const [regional, setRegional] = useState<ChurchRegion | null>(null);

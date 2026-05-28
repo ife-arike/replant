@@ -18,7 +18,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Easing, Linking, PanResponder,
+  ActivityIndicator, Animated, AppState, Easing, Linking, PanResponder,
   Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -145,6 +145,24 @@ export default function CamlView({
 
   const [ragFilter, setRagFilter] = useState<Record<Rag, boolean>>({ green: true, amber: true, red: true });
 
+  // Bumps re-run the location useEffect after the leader returns from
+  // Settings with a fresh permission grant. Without this, locationDenied
+  // stays true and the map never recovers without a full app restart.
+  const [locationRetry, setLocationRetry] = useState(0);
+
+  // AppState 'active' return — if we previously flipped to the denied
+  // UI, give the leader a fresh attempt now that they're back from
+  // (probably) toggling permission in Settings.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && locationDenied) {
+        setLocationDenied(false);
+        setLocationRetry((r) => r + 1);
+      }
+    });
+    return () => sub.remove();
+  }, [locationDenied]);
+
   // ── Location: LocationManager (no expo-location) ──
   useEffect(() => {
     let cancelled = false;
@@ -211,7 +229,9 @@ export default function CamlView({
       if (timeoutId) clearTimeout(timeoutId);
       if (listener) locationManager.removeListener(listener);
     };
-  }, []);
+    // locationRetry bumps re-run this effect after the leader grants
+    // permission in Settings and returns to the app.
+  }, [locationRetry]);
 
   // ── Fetch nearby on first location fix + when isActive becomes true ──
   const fetchNearby = useCallback(async (coord: [number, number]) => {
