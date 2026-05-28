@@ -153,13 +153,31 @@ export default function CamlView({
         await locationManager.start();
         const last = await locationManager.getLastKnownLocation();
         if (!cancelled && last?.coords) {
-          setViewerCoord([last.coords.longitude, last.coords.latitude]);
+          // Coordinate guard (2026-05-28): getLastKnownLocation can
+          // return a coords object whose .longitude/.latitude are
+          // undefined or NaN in certain GPS states (cold-cache, denied-
+          // but-cached, sim-without-location). camlReady = !!viewerCoord
+          // only tests array existence; without this guard Mapbox
+          // receives invalid coordinates and throws
+          // "coordinates must contain numbers."
+          const lng = last.coords.longitude;
+          const lat = last.coords.latitude;
+          if (typeof lng === 'number' && !isNaN(lng) && typeof lat === 'number' && !isNaN(lat)) {
+            setViewerCoord([lng, lat]);
+          }
         } else {
           // Wait for the first fix.
           locationManager.addListener((loc) => {
             if (cancelled) return;
             if (loc?.coords) {
-              setViewerCoord([loc.coords.longitude, loc.coords.latitude]);
+              // Same guard on the listener fallback path — first fixes
+              // can also arrive with NaN values during permission
+              // transitions.
+              const lng = loc.coords.longitude;
+              const lat = loc.coords.latitude;
+              if (typeof lng === 'number' && !isNaN(lng) && typeof lat === 'number' && !isNaN(lat)) {
+                setViewerCoord([lng, lat]);
+              }
             }
           });
         }
