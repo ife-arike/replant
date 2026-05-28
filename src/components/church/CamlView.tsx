@@ -62,6 +62,7 @@ interface NearbyChurch {
   lng:          number;
   rag_status:   string;
   distance_km:  number;
+  network_id?:  string | null; // KAN-18 R2 — RPL identifier; public, never masked
   leaders:      Leader[];
   is_own:       boolean;
 }
@@ -385,6 +386,10 @@ export default function CamlView({
   const [containerH, setContainerH] = useState(0);
   const containerHRef = useRef(0);
   const dragStartY = useRef(0);
+  // KAN-18 R2 — tracks ScrollView contentOffset.y so the PanResponder
+  // only claims downward gestures when the list is scrolled to the top.
+  // Upward gestures (sheet-pull from inside the list) always claim.
+  const scrollOffsetRef = useRef(0);
   const sheetH = containerH > 0 ? Math.round(containerH * SHEET_HEIGHT_RATIO) : 0;
 
   const openY  = 0;                                 // sheet fully visible
@@ -411,7 +416,16 @@ export default function CamlView({
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => {
-        const shouldClaim = Math.abs(g.dy) > 2 && Math.abs(g.dy) > Math.abs(g.dx);
+        // KAN-18 R2 — claim threshold bumped 2 → 6 (less twitchy);
+        // downward claims gated on the list being scrolled to the top
+        // so the user can scroll inside the open sheet without the
+        // PanResponder stealing the gesture and snapping the sheet
+        // closed. Upward gestures always claim (sheet-pull from peek).
+        const isDownward = g.dy > 0;
+        const atScrollTop = scrollOffsetRef.current <= 0;
+        const shouldClaim = Math.abs(g.dy) > 6
+          && Math.abs(g.dy) > Math.abs(g.dx)
+          && (isDownward ? atScrollTop : true);
         if (shouldClaim) markDragged();
         return shouldClaim;
       },
@@ -450,6 +464,15 @@ export default function CamlView({
     if (!ownChurch) return;
     cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], 1000);
   }, [ownChurch]);
+
+  // KAN-18 R2 — second recenter, targeting the leader's live GPS
+  // (viewerCoord) instead of their registered church. Surfaced as the
+  // pan-hint pill once they've panned past 0.5 km from home; gives
+  // them a one-tap way back to where they actually are.
+  const recenterToGPS = useCallback(() => {
+    if (!viewerCoord || !cameraRef.current) return;
+    cameraRef.current.flyTo(viewerCoord, 600);
+  }, [viewerCoord]);
 
   // ── Location-denied empty state ──
   if (locationDenied) {
@@ -582,9 +605,13 @@ export default function CamlView({
         </View>
       )}
 
-      {/* Filter chips */}
+      {/* Filter chips.
+          KAN-18 R2 — top: 8 (no insets.top). CamlView renders inside
+          TheChurchScreen's pages container, which sits below tc-header.
+          The SafeAreaView at the screen root already consumed the
+          device safe area; adding insets.top here double-counted it. */}
       {camlReady ? (
-        <View style={[styles.filterRow, { top: insets.top + 6 }]} pointerEvents="box-none">
+        <View style={[styles.filterRow, { top: 8 }]} pointerEvents="box-none">
           <View style={styles.filterGroup}>
             {(['green','amber','red'] as Rag[]).map((k) => {
               const on = ragFilter[k];
@@ -632,18 +659,22 @@ export default function CamlView({
           <Text style={styles.panHintText}>DRAG TO EXPLORE</Text>
         </Animated.View>
       ) : null}
+      {/* KAN-18 R2 — once the leader pans past 0.5 km, the pan-hint
+          pill becomes a tappable recenter-to-GPS control. Same bottom
+          calc as the DRAG TO EXPLORE branch. NOT pointerEvents="none"
+          anymore — that was blocking the tap before. */}
       {camlReady && distanceFromHomeKm >= 0.5 ? (
-        <View
+        <Pressable
+          onPress={recenterToGPS}
+          accessibilityRole="button"
+          accessibilityLabel="Recenter map to my GPS location"
           style={[
             styles.panHint,
             { bottom: (containerH > 0 ? Math.round(containerH * SHEET_HEIGHT_RATIO) - SHEET_PEEK_PX : 0) + 16 },
           ]}
-          pointerEvents="none"
         >
-          <Text style={styles.panHintText}>
-            {`${formatDistance(distanceFromHomeKm, unit).toUpperCase()} FROM HOME`}
-          </Text>
-        </View>
+          <Text style={styles.panHintText}>⊙ MY LOCATION</Text>
+        </Pressable>
       ) : null}
 
       {/* CAML sheet — peek ↔ open */}
@@ -673,6 +704,8 @@ export default function CamlView({
           <ScrollView
             style={styles.sheetBody}
             contentContainerStyle={{ paddingBottom: insets.bottom + 16, paddingTop: 4, paddingHorizontal: 16 }}
+            onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
+            scrollEventThrottle={16}
           >
             {showEmpty ? (
               <View style={styles.emptyPastoral}>
@@ -735,6 +768,10 @@ function CamlListRow({ church, unit, onPress, viewerVerified }: {
 }) {
   const typeLabel = getChurchTypeLabel(church.type);
   const masked = !viewerVerified && !church.name;
+  // KAN-18 R2 — CD CamlListRow row order: dot → name → leader → RPL → distance.
+  // The type label was here before; the CD slot is the RPL identifier
+  // (church_code in our schema). Masked rows still show VERIFY hint
+  // instead of leader / RPL — masking precedence is unchanged.
   return (
     <Pressable onPress={onPress} style={styles.listRow} accessibilityRole="button">
       <View style={[styles.listDot, { backgroundColor: ragColor(church.rag_status) }]} />
@@ -749,7 +786,9 @@ function CamlListRow({ church, unit, onPress, viewerVerified }: {
             <Text style={styles.listLeader} numberOfLines={1}>
               {leaderLineText(church.leaders)}
             </Text>
-            <Text style={styles.listType}>{typeLabel}</Text>
+            {church.network_id ? (
+              <Text style={styles.listRpl} numberOfLines={1}>{church.network_id}</Text>
+            ) : null}
           </>
         )}
       </View>
@@ -896,10 +935,15 @@ const styles = StyleSheet.create({
   listBody: { flex: 1, minWidth: 0 },
   listName: { fontFamily: Typography.displayRegular, fontSize: 17, color: Colors.text },
   listLeader: { marginTop: 3, fontFamily: Typography.body, fontSize: 11.5, color: Colors.textMuted },
-  listType: {
+  // KAN-18 R2 — RPL identifier row. Matches panHintText sizing per
+  // dispatch (CD .rpl class equivalent: mono ~8.5pt, letter-spacing
+  // ~0.18em, uppercase, muted). RPL identifiers like RPL-00001 are
+  // already uppercase in the DB, but textTransform makes the rule
+  // explicit and self-documenting.
+  listRpl: {
     marginTop: 5,
-    fontFamily: Typography.mono, fontSize: 9,
-    letterSpacing: 1.62, // 0.18em × 9
+    fontFamily: Typography.mono, fontSize: 8.5,
+    letterSpacing: 1.53, // 0.18em × 8.5
     color: Colors.textMuted, textTransform: 'uppercase',
   },
   listMaskedHint: {

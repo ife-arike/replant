@@ -55,6 +55,7 @@ interface NearbyRow {
   rag_status:          string;
   verification_status: string;
   distance_km:         number;
+  network_id:          string | null;
   leaders:             LeaderRow[] | null;
 }
 
@@ -68,6 +69,7 @@ interface ResponseChurch {
   lng:          number;
   rag_status:   string;
   distance_km:  number;
+  network_id?:  string | null;  // public network identifier (RPL-XXXXX); no masking
   leaders:      LeaderRow[];
   is_own:       boolean;
 }
@@ -147,6 +149,11 @@ function maskRow(row: NearbyRow, callerVerified: boolean, callerChurchId: string
     lng:         row.lng,
     rag_status:  row.rag_status,
     distance_km: row.distance_km,
+    // KAN-18 — church_code is a public network identifier (RPL-XXXXX),
+    // not PII. Surfaced for verified AND unverified callers — the
+    // identifier itself reveals nothing about leaders, location, or
+    // the church name (the name is what stays masked when unverified).
+    network_id:  row.network_id ?? null,
     is_own:      isOwn,
   };
   if (callerVerified) {

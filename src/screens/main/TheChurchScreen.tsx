@@ -153,7 +153,7 @@ export default function TheChurchScreen() {
             <View style={styles.horizonBase} />
             <Animated.View style={[styles.horizonBar, { width: horizonWidth, left: horizonLeft }]} />
           </Pressable>
-          <Text style={[styles.pagerLabel, page === 1 && styles.pagerLabelActive]}>AT LARGE</Text>
+          <Text style={[styles.pagerLabel, styles.pagerLabelRight, page === 1 && styles.pagerLabelActive]}>AT LARGE</Text>
         </View>
       </View>
 
@@ -282,12 +282,20 @@ const styles = StyleSheet.create({
 
   // tc-pager
   pager: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  // KAN-18 R2 — pager parity. "AT MY LOCATION" renders ~14 chars and
+  // "AT LARGE" ~8 chars; with horizonTrack flex: 1 between them, the
+  // bar visually shifts off-centre between pages. Equal minWidth on
+  // both labels + textAlign 'left' on the left label / 'right' on the
+  // right label keeps the track centred between equal-width boxes.
   pagerLabel: {
     fontFamily: Typography.mono,
     fontSize: 9,
     letterSpacing: 2,
     color: Colors.textMuted,
+    minWidth: 112,
+    textAlign: 'left',
   },
+  pagerLabelRight: { textAlign: 'right' },
   pagerLabelActive: { color: Colors.accent },
   horizonTrack: {
     flex: 1, height: 12,
