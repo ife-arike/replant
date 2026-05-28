@@ -110,10 +110,13 @@ interface Props {
 
 const { height: SCREEN_H } = Dimensions.get('window');
 // Fix 5 (2026-05-28): snap height bumped 0.62 → 0.65 per dispatch
-// "60–70% of screen". CD CSS .profile-sheet is 86% of its phone frame;
-// the phone frame is itself ~75% of viewport height on the prototype,
-// so 0.65 maps to that same on-device experience.
-const SHEET_RATIO = 0.65;
+// "60–70% of screen".
+// KAN-20 R3 (2026-05-28): bumped 0.65 → 0.86 to match CD
+// .profile-sheet { height: 86% } directly. With the sticky header
+// extracted from the scroller (R3 Fix 3c), the leader's identity stays
+// pinned at the top across the full sheet height — the longer body
+// can breathe.
+const SHEET_RATIO = 0.86;
 const SHEET_HEIGHT = SCREEN_H * SHEET_RATIO;
 const ANIM_MS = 320;
 const SWIPE_DISMISS_THRESHOLD = 80;
@@ -372,12 +375,11 @@ export default function ChurchProfileBottomSheet({
             </View>
           ) : profile ? (
             <>
-              <ScrollView
-                style={styles.bodyScroll}
-                contentContainerStyle={styles.bodyContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* ── Header (Fix 5: RAG pill colored per status per CD) ── */}
+              {/* KAN-20 R3 — Sticky head: lives OUTSIDE the ScrollView so
+                  RAG/RPL row, church name, leaders, and location stay
+                  pinned at the top while the body scrolls. Matches CD
+                  .profile-head (flex-shrink: 0, border-bottom hairline). */}
+              <View style={styles.profileHead}>
                 <View style={styles.ragRow}>
                   <View style={[styles.ragPill, { backgroundColor: ragSoftBg(profile.rag_status) }]}>
                     <View style={[styles.ragDot, { backgroundColor: ragColor(profile.rag_status) }]} />
@@ -421,7 +423,13 @@ export default function ChurchProfileBottomSheet({
                     <Text style={styles.ownEyebrowText}>THIS IS HOW OTHERS SEE YOU</Text>
                   </View>
                 ) : null}
+              </View>
 
+              <ScrollView
+                style={styles.bodyScroll}
+                contentContainerStyle={styles.bodyContent}
+                showsVerticalScrollIndicator={false}
+              >
                 {/* ── Identity ── */}
                 <SectionHeader>Identity</SectionHeader>
                 <KVRow k="Type" v={getChurchTypeLabel(profile.type)} />
@@ -686,13 +694,32 @@ function FlagIcon({ size = 15, color }: { size?: number; color: string }) {
 
 const styles = StyleSheet.create({
   sheet: {
+    // KAN-20 R3 — outer sheet bg switched from Colors.surfaceElevated
+    // (#181818) to Colors.background (#080808) to match CD
+    // .profile-sheet { background: var(--bg) #0b0b0c }. Hierarchy:
+    // outer dark → inner freeform / contact boxes use Colors.surface
+    // (lighter) for the layered chrome the CD calls for.
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: Colors.surfaceElevated,
+    backgroundColor: Colors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
+  },
+  // KAN-20 R3 — Sticky header (CD .profile-head). Lives OUTSIDE the
+  // ScrollView so name, RAG/RPL row, leaders stack, and location line
+  // stay pinned while the body scrolls. flexShrink: 0 keeps the head
+  // from being squeezed when the body has a lot of content. The
+  // hairline border below matches CD `border-bottom: 0.5px solid
+  // var(--faint)`.
+  profileHead: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+    flexShrink: 0,
   },
   grabHandle: {
     alignSelf: 'center',
@@ -713,7 +740,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bodyScroll: { flex: 1 },
-  bodyContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
+  // KAN-20 R3 — paddingTop dropped from 10 → 0. profileHead's
+  // paddingBottom 16 + the first SectionHeader's marginTop 22 already
+  // provide the breathing room; the extra 10 was double-counting.
+  bodyContent: { paddingHorizontal: 20, paddingTop: 0, paddingBottom: 20 },
 
   // Header — Fix 5 (2026-05-28): typography refactored to CD styles.css
   // exact values. CD .rag-pill-row has the RAG pill on the left + RPL

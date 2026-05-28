@@ -84,6 +84,11 @@ interface CamlViewProps {
   // the nearest non-own church (it represents the surrounding area);
   // fall back to whatever is first if no other church exists.
   onCityResolved?: (city: string) => void;
+  // KAN-18 R3 — total verified leaders within the API radius (sum of
+  // c.leaders.length across the response). Fires once per fetch.
+  // Masked rows contribute 0 — that's the truth the unverified caller
+  // sees today, and the only thing the host can faithfully render.
+  onLeaderCountResolved?: (count: number) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -150,7 +155,7 @@ async function resolveCity(lng: number, lat: number, token: string): Promise<str
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function CamlView({
-  isActive, ownChurchId, viewerVerified, onChurchSelect, onCityResolved,
+  isActive, ownChurchId, viewerVerified, onChurchSelect, onCityResolved, onLeaderCountResolved,
 }: CamlViewProps) {
   // ownChurchId is part of the dispatched contract for symmetry with the
   // CAL surface, but on CAML the server is authoritative — `is_own` is
@@ -320,12 +325,20 @@ export default function CamlView({
       // nearest-church proxy. The actual GPS coordinate is reverse-
       // geocoded via Mapbox places in the useEffect above so the
       // header tells the truth even when no nearby churches exist.
+
+      // KAN-18 R3 — total leaders within the API radius. Verified callers
+      // get real per-row leaders[]; unverified get [] (server-masked),
+      // which truthfully sums to 0 for them.
+      const totalLeaders = resp.churches.reduce(
+        (sum, c) => sum + (c.leaders?.length ?? 0), 0,
+      );
+      onLeaderCountResolved?.(totalLeaders);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown');
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, onLeaderCountResolved]);
 
   // Fix 1 — loading flicker (2026-05-28). viewerCoord changes on every
   // GPS update from the listener, so without a data-exists guard this
@@ -659,21 +672,26 @@ export default function CamlView({
           <Text style={styles.panHintText}>DRAG TO EXPLORE</Text>
         </Animated.View>
       ) : null}
-      {/* KAN-18 R2 — once the leader pans past 0.5 km, the pan-hint
-          pill becomes a tappable recenter-to-GPS control. Same bottom
-          calc as the DRAG TO EXPLORE branch. NOT pointerEvents="none"
-          anymore — that was blocking the tap before. */}
+      {/* KAN-18 R3 — RE-CENTER ME pill: bottom-right, BEHIND the pull-up
+          sheet. Reusing styles.panHint here previously produced a tall
+          horizontal-stretched bar (panHint has alignSelf: 'center' on
+          an absolutely-positioned element with no left/right and no
+          explicit width — RN ignores alignSelf for absolute children,
+          leaving width undetermined). Own style with explicit right: 14,
+          right-anchored bottom math just above the sheet's peek tab,
+          and zIndex: 3 so the sheet (zIndex 4+) covers it cleanly when
+          it rises. */}
       {camlReady && distanceFromHomeKm >= 0.5 ? (
         <Pressable
           onPress={recenterToGPS}
           accessibilityRole="button"
           accessibilityLabel="Recenter map to my GPS location"
           style={[
-            styles.panHint,
-            { bottom: (containerH > 0 ? Math.round(containerH * SHEET_HEIGHT_RATIO) - SHEET_PEEK_PX : 0) + 16 },
+            styles.recenterPill,
+            { bottom: Math.round(containerH * (1 - SHEET_HEIGHT_RATIO)) + SHEET_PEEK_PX + 8 },
           ]}
         >
-          <Text style={styles.panHintText}>⊙ MY LOCATION</Text>
+          <Text style={styles.recenterPillText}>RE-CENTER ME</Text>
         </Pressable>
       ) : null}
 
@@ -696,7 +714,7 @@ export default function CamlView({
                         ? 'NO CHURCHES NEARBY'
                         : data.expanded
                           ? `SHOWING CHURCHES WITHIN 100 KM · ${data.churches.length} FOUND`
-                          : `${data.churches.length} CHURCHES NEAR YOU · SORTED BY DISTANCE`}
+                          : `${data.churches.length} CHURCHES NEAR YOU · SWIPE TO SEE MORE`}
               </Text>
             </Pressable>
           </View>
@@ -852,6 +870,25 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   panHintResting: { opacity: 0.45 },
+
+  // KAN-18 R3 — RE-CENTER ME pill (own surface, NOT a panHint reuse).
+  // right-anchored, zIndex BELOW the sheet so it disappears under the
+  // sheet when it rises. Inline bottom is computed at render so the
+  // pill always sits just above the peek tab.
+  recenterPill: {
+    position: 'absolute',
+    right: 14,
+    paddingVertical: 6, paddingHorizontal: 12,
+    backgroundColor: 'rgba(8,8,8,0.82)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    borderRadius: 100,
+    zIndex: 3, // sheet sits at zIndex 4+ (implicit via render order)
+  },
+  recenterPillText: {
+    fontFamily: Typography.mono, fontSize: 8.5,
+    letterSpacing: 1.53, // 0.18em × 8.5
+    color: Colors.textMuted, textTransform: 'uppercase',
+  },
   panHintText: {
     fontFamily: Typography.mono, fontSize: 8.5,
     letterSpacing: 1.53, // 0.18em × 8.5
@@ -991,10 +1028,11 @@ const styles = StyleSheet.create({
     color: Colors.accent, textAlign: 'center',
   },
 
-  // Underground note
+  // Underground note — KAN-18 R3: centered (pastoral register).
   undergroundNote: {
     marginTop: 8, marginBottom: 16,
     padding: 14,
+    alignItems: 'center',
     backgroundColor: 'rgba(107,181,232,0.04)',
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(107,181,232,0.20)',
     borderRadius: 8,
@@ -1003,10 +1041,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono, fontSize: 9,
     letterSpacing: 1.98, color: Colors.accent,
     textTransform: 'uppercase', marginBottom: 6,
+    textAlign: 'center',
   },
   undergroundBody: {
     fontFamily: Typography.body, fontSize: 12,
     lineHeight: 20, color: Colors.textMuted,
+    textAlign: 'center',
   },
 
   // Location-denied

@@ -8,7 +8,9 @@
 //     ├── tc-title-row (title + subtitle, CAML/CAL variants)
 //     └── tc-pager (At My Location · horizon line · At Large)
 //
-//   tc-pages — BOTH pages always mounted, hidden via display:none.
+//   tc-pages — BOTH pages always mounted, opacity-crossfaded via
+//             horizonProgress (R3). pointerEvents discrete-gated on
+//             page so taps don't land mid-crossfade.
 //     ├── page 0: CamlView (KAN-18/19, Mapbox flat map + nearby list)
 //     └── page 1: CAL
 //           ├── GlobeView (Mapbox globe, dot rendering, rotation)
@@ -67,6 +69,10 @@ export default function TheChurchScreen() {
   // the header renders bare "The Church" in the interim (no hardcoded
   // fallback). Page 1 (CAL) keeps its "at Large" copy.
   const [camlCity, setCamlCity] = useState<string | null>(null);
+  // KAN-18 R3 — total verified-leader count within CAML's 50 km radius,
+  // reported by CamlView once the API call settles. Null until then;
+  // subtitle renders an em-dash placeholder.
+  const [camlLeaderCount, setCamlLeaderCount] = useState<number | null>(null);
   const [regionalOpen, setRegionalOpen] = useState(false);
   const [regional, setRegional] = useState<ChurchRegion | null>(null);
   // Fix A (2026-05-28): host-side track of overlay state so we can pause
@@ -143,7 +149,7 @@ export default function TheChurchScreen() {
         </View>
         <Text style={styles.subtitle} numberOfLines={1}>
           {page === 0
-            ? 'YOUR HOME · 6 LEADERS WITHIN 10 MILES'
+            ? `YOUR LOCATION · ${camlLeaderCount !== null ? camlLeaderCount : '—'} LEADERS WITHIN 50 KM`
             : `GLOBAL · ${verifiedCount} VERIFIED · +${undergroundCount} HIDDEN`}
         </Text>
         {/* tc-pager — horizon switcher */}
@@ -157,27 +163,47 @@ export default function TheChurchScreen() {
         </View>
       </View>
 
-      {/* tc-pages — BOTH surfaces always mounted, hidden via display:none.
-          Mounting/unmounting Mapbox-backed views on every page swap is
-          expensive (token re-acquire, GL context teardown, location
-          listener churn). Keeping both alive lets the horizon switcher
-          feel instant; the inactive surface still pays render cost but
-          stops doing work (CAML fetches gate on isActive; GlobeView
-          pauses via forcePaused below when page !== 1). */}
+      {/* tc-pages — BOTH surfaces always mounted; crossfade driven by
+          horizonProgress (KAN-18 R3). The previous display:none toggle
+          flashed; opacity interpolation now slides each container
+          opposite the other (CAML 1→0, CAL 0→1) over the same ~550 ms
+          horizon-bar animation. pointerEvents is gated on the DISCRETE
+          page state — never on the in-flight animation — so taps don't
+          land on the fading-out surface mid-crossfade. Mapbox-backed
+          views stay mounted across the swap: no GL teardown, no
+          location-listener churn. */}
       <View style={styles.pages}>
-        {/* CAML — always mounted */}
-        <View style={[StyleSheet.absoluteFillObject, { display: page === 0 ? 'flex' : 'none' }]}>
+        {/* CAML — always mounted, fades 1 → 0 as page goes 0 → 1 */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              opacity: horizonProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              pointerEvents: page === 0 ? 'auto' : 'none',
+            },
+          ]}
+        >
           <CamlView
             isActive={page === 0}
             ownChurchId={ownChurchId}
             viewerVerified={viewerVerified}
             onChurchSelect={setSelectedChurchId}
             onCityResolved={setCamlCity}
+            onLeaderCountResolved={setCamlLeaderCount}
           />
-        </View>
+        </Animated.View>
 
-        {/* CAL — always mounted */}
-        <View style={[styles.calStack, { display: page === 1 ? 'flex' : 'none' }]}>
+        {/* CAL — always mounted, fades 0 → 1 as page goes 0 → 1 */}
+        <Animated.View
+          style={[
+            styles.calStack,
+            StyleSheet.absoluteFillObject,
+            {
+              opacity: horizonProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
+              pointerEvents: page === 1 ? 'auto' : 'none',
+            },
+          ]}
+        >
           <GlobeView
             dots={dots}
             ownChurchId={ownChurchId}
@@ -226,7 +252,7 @@ export default function TheChurchScreen() {
               anyOverlayOpen gate so the globe pauses while the panel
               is half or full (Fix A). */}
           <PrayerWallPullUp onSnapChange={setPrayerWallSnap} />
-        </View>
+        </Animated.View>
       </View>
 
       {/* Dot-tap profile sheet — outside the page swap so dismiss state
