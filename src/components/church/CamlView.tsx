@@ -148,45 +148,69 @@ export default function CamlView({
   // ── Location: LocationManager (no expo-location) ──
   useEffect(() => {
     let cancelled = false;
+    // Hoisted listener ref so the cleanup closure can pass it to
+    // removeListener (Mapbox's API requires the function reference;
+    // there is no no-arg removeAll). Parameters<> derives the type
+    // without adding a new @rnmapbox/maps import.
+    let listener: Parameters<typeof locationManager.addListener>[0] | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const start = async () => {
       try {
         await locationManager.start();
+
+        // 12s safety net: if no valid fix arrives in time, flip to the
+        // location-denied UI so the leader has a clear action path
+        // instead of an infinite spinner. Covers the case where
+        // getLastKnownLocation resolves with NaN coords AND no live fix
+        // ever follows (sim-without-location, hard-denied permission).
+        timeoutId = setTimeout(() => {
+          if (!cancelled) setLocationDenied(true);
+        }, 12_000);
+
         const last = await locationManager.getLastKnownLocation();
         if (!cancelled && last?.coords) {
           // Coordinate guard (2026-05-28): getLastKnownLocation can
-          // return a coords object whose .longitude/.latitude are
+          // return a coords object whose .longitude / .latitude are
           // undefined or NaN in certain GPS states (cold-cache, denied-
           // but-cached, sim-without-location). camlReady = !!viewerCoord
           // only tests array existence; without this guard Mapbox
-          // receives invalid coordinates and throws
-          // "coordinates must contain numbers."
+          // throws "coordinates must contain numbers".
           const lng = last.coords.longitude;
           const lat = last.coords.latitude;
           if (typeof lng === 'number' && !isNaN(lng) && typeof lat === 'number' && !isNaN(lat)) {
             setViewerCoord([lng, lat]);
+            if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
           }
-        } else {
-          // Wait for the first fix.
-          locationManager.addListener((loc) => {
-            if (cancelled) return;
-            if (loc?.coords) {
-              // Same guard on the listener fallback path — first fixes
-              // can also arrive with NaN values during permission
-              // transitions.
-              const lng = loc.coords.longitude;
-              const lat = loc.coords.latitude;
-              if (typeof lng === 'number' && !isNaN(lng) && typeof lat === 'number' && !isNaN(lat)) {
-                setViewerCoord([lng, lat]);
-              }
-            }
-          });
         }
+
+        // Always register the listener — primary path when the cache
+        // returned nothing, live-update path after a cache hit. Critical
+        // recovery path when the guard above rejected a NaN cached
+        // coord: without this listener registered unconditionally, the
+        // map would never get a real fix.
+        listener = (loc) => {
+          if (cancelled) return;
+          if (loc?.coords) {
+            const lng = loc.coords.longitude;
+            const lat = loc.coords.latitude;
+            if (typeof lng === 'number' && !isNaN(lng) && typeof lat === 'number' && !isNaN(lat)) {
+              setViewerCoord([lng, lat]);
+              if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+            }
+          }
+        };
+        locationManager.addListener(listener);
       } catch {
         if (!cancelled) setLocationDenied(true);
       }
     };
     void start();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      if (listener) locationManager.removeListener(listener);
+    };
   }, []);
 
   // ── Fetch nearby on first location fix + when isActive becomes true ──
