@@ -55,9 +55,17 @@ describe('GlobeView watched invariants (KAN-21)', () => {
     expect(SRC).toMatch(/starIntensity/);
   });
 
-  it('does NOT pulse RAG dots on the globe (AC #14 — pulse scoped to local only)', () => {
-    // Any animated stroke/scale on rag-dots would smuggle a pulse in.
-    expect(SRC).not.toMatch(/pulse/i);
+  it('red-dot pulse halo is scoped to red only (supersedes old AC #14 per Founder dispatch 2026-05-28)', () => {
+    // Fix E (2026-05-28): the original AC #14 ("no RAG pulse on the
+    // globe") is superseded by the Founder dispatch — red dots NOW get
+    // a pulsing halo layer underneath. The invariant flips: the pulse
+    // layer must EXIST and must filter on rag_status === 'red'; it must
+    // NOT match green or amber dots.
+    expect(SRC).toMatch(/id="rag-dots-red-pulse"/);
+    // The pulse layer's filter must include a 'red' equality check.
+    expect(SRC).toMatch(/\[['"]==['"],\s*\[['"]get['"],\s*['"]rag_status['"]\],\s*['"]red['"]\]/);
+    // Defensive: no separate 'green' or 'amber' pulse layer ids slipped in.
+    expect(SRC).not.toMatch(/rag-dots-(green|amber)-pulse/);
   });
 
   it('does NOT use expo-blur for any overlay (project convention)', () => {

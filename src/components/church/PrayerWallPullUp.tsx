@@ -46,7 +46,6 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  FlatList,
   PanResponder,
   Pressable,
   RefreshControl,
@@ -57,18 +56,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
-import { useAuth } from '../../contexts/AuthProvider';
+import { supabase } from '../../lib/supabase';
 import { useReducedMotion } from '../../utils/useReducedMotion';
-import { useViewerChurch } from '../../hooks/useViewerChurch';
 import { usePrayerWall } from '../../hooks/usePrayerWall';
-import {
-  CATEGORIES,
-  URGENCY_FILTERS,
-  type PrayerCategory,
-  type PrayerRow,
-} from '../prayer/PrayerWallLogic';
-import PrayerWallCard from '../prayer/PrayerWallCard';
-import PostPrayerRequestModal from './PostPrayerRequestModal';
+import { type PrayerRow } from '../prayer/PrayerWallLogic';
+import { XIcon } from '../prayer/PrayerIcons';
 
 // Fix 2 (2026-05-28): module-level Dimensions.get('window').height was
 // previously used to compute SNAP_COLLAPSED, which translated the panel
@@ -84,7 +76,6 @@ const FULL_RATIO = 0.15;
 type Snap = 'collapsed' | 'half' | 'full';
 
 const ANIM_MS = 280;
-const TOAST_MS = 3000;
 
 function snapToY(s: Snap, containerH: number): number {
   switch (s) {
@@ -105,18 +96,22 @@ function nearestSnap(value: number, containerH: number): Snap {
   return best;
 }
 
-export default function PrayerWallPullUp() {
-  const { branch } = useAuth();
-  const viewerVerified = branch === 'active';
+interface Props {
+  /** Fix A (2026-05-28): fires whenever snap state changes so the host
+      (TheChurchScreen) can pause the globe rotation while the panel is
+      half- or full-open. Called AFTER setSnap inside snapTo, with the
+      target snap value. */
+  onSnapChange?: (snap: Snap) => void;
+}
+
+export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const { church } = useViewerChurch();
 
   const {
-    rows, loadState, hasFetchedOnce, hasMore,
-    selectedCategories, urgency,
-    toggleCategory, setUrgency, clearFilters,
-    open, refresh, loadMore,
+    rows, loadState, hasFetchedOnce,
+    clearFilters,
+    open, refresh,
   } = usePrayerWall();
 
   // ── Snap state + animated translateY ──
@@ -151,6 +146,8 @@ export default function PrayerWallPullUp() {
 
   const snapTo = useCallback((target: Snap) => {
     setSnap(target);
+    // Fix A: notify host so the globe can pause while we're up.
+    onSnapChange?.(target);
     const targetY = snapToY(target, containerHRef.current);
     if (reduced) {
       translateY.setValue(targetY);
@@ -163,8 +160,14 @@ export default function PrayerWallPullUp() {
       }).start();
     }
     // AC #2 — fire first fetch on the first time we leave collapsed.
-    if (target !== 'collapsed') open();
-  }, [translateY, reduced, open]);
+    // Fix B6: drop filters when leaving collapsed so the panel always
+    // shows the most-recent unfiltered feed (the pull-up is a quick
+    // intercession surface, not the full Prayer Wall tab).
+    if (target !== 'collapsed') {
+      open();
+      clearFilters();
+    }
+  }, [translateY, reduced, open, clearFilters, onSnapChange]);
 
   // Tap the collapsed header → expand to half.
   const handleHeaderTap = useCallback(() => {
@@ -202,36 +205,9 @@ export default function PrayerWallPullUp() {
     }),
   ).current;
 
-  // ── Post-a-Request modal + success toast ──
-  const [postOpen, setPostOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastOpacity = useRef(new Animated.Value(0)).current;
-
-  const flashToast = useCallback((msg: string) => {
-    setToast(msg);
-    Animated.timing(toastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-    setTimeout(() => {
-      Animated.timing(toastOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start(
-        () => setToast(null),
-      );
-    }, TOAST_MS);
-  }, [toastOpacity]);
-
-  const handlePostSuccess = useCallback(() => {
-    setPostOpen(false);
-    flashToast('Your request has been lifted to the wall.');
-    // AC #14 — new request appears after pull-to-refresh, not injected.
-  }, [flashToast]);
-
-  // ── Render helpers ──
-  const renderCard = useCallback(({ item }: { item: PrayerRow }) => (
-    <PrayerWallCard row={item} onPress={() => { /* tap-to-expand sheet is out of scope here */ }} />
-  ), []);
-
-  const keyExtractor = useCallback((r: PrayerRow) => r.id, []);
-
   const showSpinner = loadState === 'initial' && !hasFetchedOnce;
   const isFullOrHalf = snap !== 'collapsed';
+  const visibleRows = rows.slice(0, 10);
 
   return (
     <>
@@ -259,66 +235,34 @@ export default function PrayerWallPullUp() {
           if (h > 0 && Math.abs(h - containerH) > 1) setContainerH(h);
         }}
       >
-        {/* ── Grip + header (drag region) ── */}
+        {/* ── Head per CD .prayer-sheet .head ── */}
         <View {...panResponder.panHandlers}>
           <Pressable onPress={handleHeaderTap} accessibilityRole="button" accessibilityLabel="Open Prayer Wall">
             <View style={styles.grabHandle} />
-            <View style={styles.headerRow}>
-              <Text style={styles.headerTitle}>Prayer Wall</Text>
-              {viewerVerified ? (
+            {isFullOrHalf ? (
+              <View style={styles.head}>
+                <Text style={styles.eyebrow}>GLOBAL PRAYER WALL · LIVE</Text>
+                <Text style={styles.title}>The body, interceding</Text>
+                <Text style={styles.blurb}>
+                  Recent prayer requests from verified leaders across the network.{' '}
+                  Tap "Agree in prayer" to stand in the gap.
+                </Text>
+                {/* Close-X — CD positions at top:22 right:18 of head */}
                 <Pressable
-                  onPress={() => setPostOpen(true)}
+                  onPress={() => snapTo('collapsed')}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Post a prayer request"
-                  style={styles.postBtn}
+                  accessibilityLabel="Close Prayer Wall"
+                  style={styles.closeX}
                 >
-                  <Text style={styles.postBtnText}>+ Post a Request</Text>
+                  <XIcon size={14} color={Colors.textMuted} />
                 </Pressable>
-              ) : null}
-            </View>
-          </Pressable>
-
-          {/* Filter rows — category + urgency.  Hidden when collapsed
-              (no point showing chips that are 80pt below the fold). */}
-          {isFullOrHalf ? (
-            <View style={styles.filterBar}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRow}
-                keyboardShouldPersistTaps="handled"
-              >
-                <FilterPill
-                  label="All"
-                  active={selectedCategories.size === 0}
-                  onPress={() => clearFilters()}
-                />
-                {CATEGORIES.map((c) => (
-                  <FilterPill
-                    key={c}
-                    label={c}
-                    active={selectedCategories.has(c)}
-                    onPress={() => toggleCategory(c as PrayerCategory)}
-                  />
-                ))}
-              </ScrollView>
-
-              <View style={styles.urgencyRow}>
-                {URGENCY_FILTERS.map((u) => (
-                  <FilterPill
-                    key={u}
-                    label={u === 'Urgent' ? 'Urgent only' : u}
-                    active={urgency === u}
-                    onPress={() => setUrgency(u)}
-                  />
-                ))}
               </View>
-            </View>
-          ) : null}
+            ) : null}
+          </Pressable>
         </View>
 
-        {/* ── List body ── */}
+        {/* ── Body — ScrollView of at most 10 PullUpInterCards ── */}
         {isFullOrHalf ? (
           showSpinner ? (
             <View style={styles.stateBox}>
@@ -333,17 +277,12 @@ export default function PrayerWallPullUp() {
             </View>
           ) : rows.length === 0 && hasFetchedOnce ? (
             <View style={styles.stateBox}>
-              <Text style={styles.emptyText}>No prayer requests match this filter.</Text>
+              <Text style={styles.emptyText}>No prayer requests on the wall right now.</Text>
             </View>
           ) : (
-            <FlatList
-              data={rows}
-              renderItem={renderCard}
-              keyExtractor={keyExtractor}
-              contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 80 }]}
-              ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-              onEndReached={loadMore}
-              onEndReachedThreshold={0.5}
+            <ScrollView
+              style={styles.bodyScroll}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
               refreshControl={
                 <RefreshControl
                   refreshing={loadState === 'refreshing'}
@@ -351,56 +290,105 @@ export default function PrayerWallPullUp() {
                   tintColor={Colors.accent}
                 />
               }
-              ListFooterComponent={
-                loadState === 'paging' ? (
-                  <View style={styles.footerSpinner}>
-                    <ActivityIndicator color={Colors.accent} />
-                  </View>
-                ) : null
-              }
-            />
+            >
+              {visibleRows.map((row) => (
+                <PullUpInterCard key={row.id} row={row} />
+              ))}
+            </ScrollView>
           )
         ) : null}
       </Animated.View>
-
-      {/* Post-a-Request modal */}
-      <PostPrayerRequestModal
-        visible={postOpen}
-        churchName={church?.name ?? null}
-        isUnderground={!!church?.isUnderground}
-        onCancel={() => setPostOpen(false)}
-        onSuccess={handlePostSuccess}
-      />
-
-      {/* Toast */}
-      {toast ? (
-        <Animated.View
-          style={[styles.toast, { opacity: toastOpacity, bottom: insets.bottom + 88 }]}
-          pointerEvents="none"
-        >
-          <Text style={styles.toastText}>{toast}</Text>
-        </Animated.View>
-      ) : null}
     </>
   );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────
+// ─── PullUpInterCard — per CD .inter ─────────────────────────────────
+//
+// Loc row (dot + church · country · timeAgo, optional RPL tag if the
+// field ever lands on the RPC), quoted prayer body in serif italic, and
+// a meta row with the "Agree in prayer" / "✓ Standing" affordance plus
+// a live "{n} interceding" count. The agree action mirrors the
+// optimistic-flip pattern from PrayerWallDetailSheet.tsx:200–218 (KAN-23
+// canonical) — flip locally, fire stand_in_the_gap, roll back on error.
 
-function FilterPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  // Sky-blue underline on active chip per AC #6/#7. Inactive chips are
-  // text-only with muted color; active gets the sky underline + sky text.
+function ragDotColor(rag: string): string {
+  if (rag === 'green') return Colors.green;
+  if (rag === 'amber') return Colors.amber;
+  if (rag === 'red')   return Colors.red;
+  return Colors.textMuted; // pending / unknown
+}
+
+// timeAgo — clamp the timestamp into a one-shot mono label.
+// (Dispatch literal wrote "Xh ago" for both <60m and <24h; interpreted
+// to the obvious distinct units — minutes / hours / days.)
+function timeAgo(iso: string, now: Date = new Date()): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '';
+  const diffMs = Math.max(0, now.getTime() - t);
+  const m = Math.floor(diffMs / 60_000);
+  if (m < 60) return `${Math.max(1, m)}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function PullUpInterCard({ row }: { row: PrayerRow }) {
+  const [agreed, setAgreed] = useState<boolean>(!!row.i_prayed);
+  const [agreedCount, setAgreedCount] = useState<number>(row.prayed_count ?? 0);
+
+  const locText = [
+    row.church_name,
+    row.country ?? null,
+    timeAgo(row.created_at),
+  ].filter((s): s is string => !!s && s.length > 0).join(' · ');
+
+  const onAgree = async () => {
+    const prev = agreed;
+    const prevCount = agreedCount;
+    const next = !prev;
+    setAgreed(next);
+    setAgreedCount(prevCount + (next ? 1 : -1));
+    const { error } = await supabase.rpc('stand_in_the_gap', {
+      p_prayer_request_id: row.id,
+    });
+    if (error) {
+      setAgreed(prev);
+      setAgreedCount(prevCount);
+    }
+  };
+
   return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      style={styles.filterPill}
-    >
-      <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>{label}</Text>
-      <View style={[styles.filterUnderline, active && styles.filterUnderlineActive]} />
-    </Pressable>
+    <View style={styles.interCard}>
+      {/* LOC row */}
+      <View style={styles.interLoc}>
+        {/* Dispatch B4 maps the dot color to the church's rag_status,
+            but PrayerRow does not carry rag_status — get_prayer_wall
+            returns church_type + urgency only, not the source church's
+            RAG. Per dispatch fallback ('else → Colors.textMuted') the
+            dot renders neutral here. TODO(DBA): add rag_status to
+            get_prayer_wall so the dot can carry meaning on this
+            surface; until then we don't fabricate a colour. */}
+        <View style={[styles.ragDot, { backgroundColor: ragDotColor('') }]} />
+        <Text style={styles.interLocText} numberOfLines={1}>{locText}</Text>
+        {/* RPL tag intentionally omitted — get_prayer_wall does not
+            return rpl/network_id today. Per dispatch B4: do not
+            fabricate. Add the field once the RPC supplies it. */}
+      </View>
+
+      {/* TEXT row */}
+      <Text style={styles.interText}>{`"${row.prayer_text}"`}</Text>
+
+      {/* META row */}
+      <View style={styles.interMeta}>
+        <Pressable onPress={onAgree} hitSlop={6} accessibilityRole="button" accessibilityLabel={agreed ? 'You are standing in the gap' : 'Agree in prayer'}>
+          <Text style={[styles.agreeText, agreed && styles.agreeTextActive]}>
+            {agreed ? '✓ Standing' : '+ Agree in prayer'}
+          </Text>
+        </Pressable>
+        <Text style={styles.intercedingText}>{agreedCount} interceding</Text>
+      </View>
+    </View>
   );
 }
 
@@ -414,13 +402,17 @@ const styles = StyleSheet.create({
   panel: {
     position: 'absolute',
     left: 0, right: 0, top: 0, bottom: 0,
-    backgroundColor: Colors.surfaceElevated,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    // Fix B1 (2026-05-28): CD .prayer-sheet bg is var(--bg) — the dark
+    // base — not the elevated surface.
+    backgroundColor: Colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.borderAccent, // CD: sky-mid border-top
+    borderTopLeftRadius: 22, // CD: 22px corners
+    borderTopRightRadius: 22,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -20 },
+    shadowOpacity: 0.7,
+    shadowRadius: 60,
     elevation: 12,
   },
   grabHandle: {
@@ -432,51 +424,98 @@ const styles = StyleSheet.create({
     marginTop: 9,
     marginBottom: 10,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  // Head per CD .prayer-sheet .head (with dispatch overrides on h3 size
+  // 20 + blurb 12pt). Close-X positioned absolute to the head.
+  head: {
+    paddingTop: 4, paddingBottom: 12,
     paddingHorizontal: 18,
-    paddingBottom: 8,
-  },
-  headerTitle: { fontFamily: Typography.display, fontSize: 20, color: Colors.text },
-  postBtn: {
-    paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999,
-    backgroundColor: 'rgba(107,181,232,0.14)',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.borderAccent,
-  },
-  postBtnText: { fontFamily: Typography.bodyMedium, fontSize: 12, color: Colors.accent, letterSpacing: 0.3 },
-
-  filterBar: {
-    paddingTop: 4, paddingBottom: 8,
+    paddingRight: 50, // room for absolute closeX
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
+    position: 'relative',
   },
-  filterRow: { paddingHorizontal: 14, gap: 4, alignItems: 'center' },
-  urgencyRow: {
-    flexDirection: 'row', gap: 6, alignItems: 'center',
-    paddingHorizontal: 18, paddingTop: 6,
+  eyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 2, // ~0.22em × 9
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
-  filterPill: { paddingHorizontal: 8, paddingVertical: 6, alignItems: 'center' },
-  filterPillText: { fontFamily: Typography.body, fontSize: 13, color: Colors.textMuted },
-  filterPillTextActive: { color: Colors.accent, fontFamily: Typography.bodyMedium },
-  filterUnderline: { marginTop: 3, height: 2, width: '100%', backgroundColor: 'transparent', borderRadius: 1 },
-  filterUnderlineActive: { backgroundColor: Colors.accent },
+  title: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: 0.4, // 0.02em × 20
+    color: Colors.text,
+  },
+  blurb: {
+    marginTop: 6,
+    fontFamily: Typography.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.textMuted,
+  },
+  closeX: {
+    position: 'absolute',
+    top: 22, right: 18,
+    width: 28, height: 28,
+    alignItems: 'center', justifyContent: 'center',
+  },
 
-  listContent: { paddingHorizontal: 14, paddingTop: 14 },
-
+  // State boxes
+  bodyScroll: { flex: 1 },
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   emptyText: { fontFamily: Typography.body, fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
-  footerSpinner: { paddingVertical: 16, alignItems: 'center' },
 
-  toast: {
-    position: 'absolute',
-    alignSelf: 'center',
-    paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999,
-    backgroundColor: 'rgba(8,8,8,0.92)',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+  // Intercession card per CD .inter (dispatch B4 row paddings)
+  interCard: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
   },
-  toastText: { fontFamily: Typography.bodyMedium, fontSize: 13, color: Colors.text },
+  interLoc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+  },
+  ragDot: { width: 7, height: 7, borderRadius: 3.5 },
+  interLocText: {
+    flex: 1,
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  interText: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 6,
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: Colors.text,
+  },
+  interMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+  },
+  agreeText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 12,
+    color: Colors.accent,
+  },
+  agreeTextActive: { color: Colors.green },
+  intercedingText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.26, // 0.14em × 9
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
 });

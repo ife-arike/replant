@@ -99,6 +99,12 @@ interface Props {
   onChurchSelect: (churchId: string) => void;
   /** Optional override for the initial camera (mostly for tests/storybook). */
   initialCenterOverride?: [number, number];
+  /** Fix A (2026-05-28): read-only host-level gate that suspends both
+      the rotation tick AND the red-dot pulse while any overlay (profile
+      sheet, regional panel, prayer wall pull-up half/full) is open.
+      Does NOT participate in the setPaused/scheduleResume state machine
+      — it gates the effects directly. */
+  forcePaused?: boolean;
 }
 
 export default function GlobeView({
@@ -110,6 +116,7 @@ export default function GlobeView({
   onRetry,
   onChurchSelect,
   initialCenterOverride,
+  forcePaused = false,
 }: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -135,6 +142,10 @@ export default function GlobeView({
   // React renders on every onMapIdle. The ref is read inside the
   // cluster-tap handler to clamp the next zoom level.
   const currentZoomRef = useRef(INITIAL_ZOOM);
+  // Fix E (2026-05-28): red-dot pulse halo. Two-step opacity flip every
+  // 700ms drives the circleOpacity on the rag-dots-red-pulse layer.
+  // Paused/forcePaused/reduced suspend it (rotation effect dep mirrors).
+  const [pulseOpacity, setPulseOpacity] = useState(0.32);
 
   // Whenever the viewer country resolves (post-hook-load), jump the
   // camera + reseat the rotation anchor so we don't start mid-Atlantic.
@@ -158,7 +169,7 @@ export default function GlobeView({
   // fire only on real user gestures, so there is no flag-state race
   // between rotation ticks and user touches.
   useEffect(() => {
-    if (paused || resuming || reduced) return;
+    if (paused || forcePaused || resuming || reduced) return;
     const iv = setInterval(() => {
       let nextLng = currentLngRef.current + ROTATION_DEG_PER_TICK;
       if (nextLng > 180) nextLng -= 360;
@@ -171,7 +182,16 @@ export default function GlobeView({
       });
     }, ROTATION_TICK_MS);
     return () => clearInterval(iv);
-  }, [paused, resuming, reduced]);
+  }, [paused, forcePaused, resuming, reduced]);
+
+  // ── Fix E: red-dot pulse interval (700ms two-step flip) ──
+  useEffect(() => {
+    if (paused || forcePaused || reduced) return;
+    const iv = setInterval(() => {
+      setPulseOpacity((p) => (p > 0.15 ? 0.06 : 0.32));
+    }, 700);
+    return () => clearInterval(iv);
+  }, [paused, forcePaused, reduced]);
 
   const clearResumeCycle = useCallback(() => {
     if (resumeTimerRef.current) { clearTimeout(resumeTimerRef.current); resumeTimerRef.current = null; }
@@ -358,6 +378,26 @@ export default function GlobeView({
               circleRadius: 7,
               circleStrokeColor: Colors.background,
               circleStrokeWidth: 2,
+            }}
+          />
+          {/* Fix E (2026-05-28): pulsing halo under each red dot.
+              Renders BEFORE rag-dots so the solid 5px circle sits on
+              top of this 11px translucent halo. circleOpacity is
+              animated by the JS pulse interval (700ms two-step flip
+              0.32 ↔ 0.06). Layer order in Mapbox = paint order, so
+              this layer's circles draw beneath the rag-dots layer. */}
+          <CircleLayer
+            id="rag-dots-red-pulse"
+            filter={['all',
+              ['!', ['has', 'point_count']],
+              ['!=', ['get', 'isOwn'], true],
+              ['==', ['get', 'rag_status'], 'red'],
+            ]}
+            style={{
+              circleColor: Colors.red,
+              circleRadius: 11,
+              circleOpacity: pulseOpacity,
+              circleStrokeWidth: 0,
             }}
           />
           <CircleLayer

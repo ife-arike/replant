@@ -285,8 +285,10 @@ export default function ChurchProfileBottomSheet({
   const handleConnectCancel = () => setConnectModalOpen(false);
 
   const handlePray = () => {
-    setPrayed(true);
-    showToast('Added to your intercession list');
+    // Fix D (2026-05-28): toggle. On-add → toast; on-remove → silent.
+    const next = !prayed;
+    setPrayed(next);
+    if (next) showToast('Added to your intercession list');
     // MVP: write-only, no backend. TODO: wire intercession list.
   };
 
@@ -560,6 +562,11 @@ export default function ChurchProfileBottomSheet({
         <ConnectConfirmModal
           visible={connectModalOpen}
           targetLabel={(() => {
+            // Fix C (2026-05-28): with 2+ leaders, address the team
+            // collectively to avoid the request feeling targeted at one
+            // when both serve. Single named leader → name. Single
+            // anonymous → role. Empty → collective fallback.
+            if (profile.leaders.length >= 2) return `the leaders at ${profile.name}`;
             const named = profile.leaders.find((l) => !l.anonymous && l.name);
             if (named?.name) return `${named.name} at ${profile.name}`;
             const any = profile.leaders[0];
