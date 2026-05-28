@@ -206,6 +206,11 @@ export default function TheChurchScreen() {
       <ChurchProfileBottomSheet
         churchId={selectedChurchId}
         viewerVerified={viewerVerified}
+        // Fix A (2026-05-28): own-church pin → My Church variant.
+        // ownChurchId is sourced from useChurchesGlobal (registered
+        // church id from users.church_id, NOT live GPS — the watched
+        // invariant).
+        isOwnChurch={selectedChurchId !== null && selectedChurchId === ownChurchId}
         onDismiss={() => setSelectedChurchId(null)}
       />
     </SafeAreaView>

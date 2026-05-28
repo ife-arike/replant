@@ -60,7 +60,6 @@ import { supabase } from '../../lib/supabase';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import { usePrayerWall } from '../../hooks/usePrayerWall';
 import { type PrayerRow } from '../prayer/PrayerWallLogic';
-import { XIcon } from '../prayer/PrayerIcons';
 
 // Fix 2 (2026-05-28): module-level Dimensions.get('window').height was
 // previously used to compute SNAP_COLLAPSED, which translated the panel
@@ -69,7 +68,12 @@ import { XIcon } from '../prayer/PrayerIcons';
 // the collapsed handle disappeared off-screen. Snap heights are now
 // computed from the panel's MEASURED parent height via onLayout, so the
 // math is always correct regardless of host layout.
-const PEEK_PX = 76;          // collapsed: handle + label peek above bottom
+// Fix B1 (2026-05-28): collapsed peek = 68pt to fit grab bar (~4pt) +
+// mono label + scripture quote without the panel's surface bleeding up
+// into the globe area. Panel bg goes transparent when collapsed (see
+// styles.panelCollapsed) so only the gradient-like fade of the three
+// labels is visible above the bottom.
+const PEEK_PX = 68;
 const HALF_RATIO = 0.50;
 const FULL_RATIO = 0.15;
 
@@ -180,8 +184,9 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
   //    in lockstep with on-device layout.
   const panResponder = useRef(
     PanResponder.create({
+      // Fix B4 (2026-05-28): threshold 4 → 2 so light drags register.
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dy) > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+        Math.abs(g.dy) > 2 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderGrant: () => {
         dragStartY.current = snapToY(snap, containerHRef.current);
         translateY.stopAnimation();
@@ -226,7 +231,14 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
       </Animated.View>
 
       <Animated.View
-        style={[styles.panel, { transform: [{ translateY }] }]}
+        style={[
+          styles.panel,
+          // Fix B1: collapsed state shows only the grab bar + GLOBAL
+          // PRAYER WALL label + scripture quote — no panel surface
+          // bleeds up into the globe area.
+          snap === 'collapsed' && styles.panelCollapsed,
+          { transform: [{ translateY }] },
+        ]}
         onLayout={(e) => {
           // Fix 2: measure the panel's parent-allocated height so snap
           // values match reality (host's pages container height, NOT the
@@ -235,32 +247,38 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
           if (h > 0 && Math.abs(h - containerH) > 1) setContainerH(h);
         }}
       >
-        {/* ── Head per CD .prayer-sheet .head ── */}
-        <View {...panResponder.panHandlers}>
-          <Pressable onPress={handleHeaderTap} accessibilityRole="button" accessibilityLabel="Open Prayer Wall">
+        {/* ── Head ──
+            Fix B4 (2026-05-28): collapsed state uses a SIBLING Pressable
+            (tap-to-open) instead of a wrapping Pressable around the
+            PanResponder. This stops the Pressable from swallowing the
+            upward-drag PanResponder gestures. Open state uses the
+            panHandlers View for grip + drag. */}
+        {snap === 'collapsed' ? (
+          <Pressable
+            onPress={handleHeaderTap}
+            accessibilityRole="button"
+            accessibilityLabel="Open Prayer Wall"
+            style={styles.collapsedTab}
+          >
             <View style={styles.grabHandle} />
-            {isFullOrHalf ? (
-              <View style={styles.head}>
-                <Text style={styles.eyebrow}>GLOBAL PRAYER WALL · LIVE</Text>
-                <Text style={styles.title}>The body, interceding</Text>
-                <Text style={styles.blurb}>
-                  Recent prayer requests from verified leaders across the network.{' '}
-                  Tap "Agree in prayer" to stand in the gap.
-                </Text>
-                {/* Close-X — CD positions at top:22 right:18 of head */}
-                <Pressable
-                  onPress={() => snapTo('collapsed')}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close Prayer Wall"
-                  style={styles.closeX}
-                >
-                  <XIcon size={14} color={Colors.textMuted} />
-                </Pressable>
-              </View>
-            ) : null}
+            <Text style={styles.collapsedLabel}>GLOBAL PRAYER WALL</Text>
+            <Text style={styles.collapsedScripture}>"That they all may be one…"</Text>
           </Pressable>
-        </View>
+        ) : (
+          <View {...panResponder.panHandlers}>
+            <View style={styles.grabHandle} />
+            <View style={styles.head}>
+              <Text style={styles.eyebrow}>GLOBAL PRAYER WALL · LIVE</Text>
+              <Text style={styles.title}>The body, interceding</Text>
+              <Text style={styles.blurb}>
+                Recent prayer requests from verified leaders across the network.{' '}
+                Tap "Agree in prayer" to stand in the gap.
+              </Text>
+              {/* Close-X removed per Founder ruling 2026-05-28 — drag-down
+                  to collapse is the close gesture. */}
+            </View>
+          </View>
+        )}
 
         {/* ── Body — ScrollView of at most 10 PullUpInterCards ── */}
         {isFullOrHalf ? (
@@ -282,7 +300,10 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
           ) : (
             <ScrollView
               style={styles.bodyScroll}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+              // Fix B5 (2026-05-28): CD .prayer-sheet .body padding
+              // 8 16 24. Gap is implemented per-card via marginTop on
+              // each card after the first (RN ScrollView has no `gap`).
+              contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + 80 }]}
               refreshControl={
                 <RefreshControl
                   refreshing={loadState === 'refreshing'}
@@ -291,8 +312,10 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
                 />
               }
             >
-              {visibleRows.map((row) => (
-                <PullUpInterCard key={row.id} row={row} />
+              {visibleRows.map((row, i) => (
+                <View key={row.id} style={i > 0 ? styles.interGap : undefined}>
+                  <PullUpInterCard row={row} />
+                </View>
               ))}
             </ScrollView>
           )
@@ -360,20 +383,15 @@ function PullUpInterCard({ row }: { row: PrayerRow }) {
 
   return (
     <View style={styles.interCard}>
-      {/* LOC row */}
+      {/* LOC row — DBA migration 20260528000005 now delivers
+          row.rag_status for non-underground rows; underground rows are
+          masked to NULL upstream (matches the underground masking
+          posture on church_name + country). RPL tag still omitted —
+          get_prayer_wall does not return rpl/network_id; dispatch B6
+          says do not fabricate. */}
       <View style={styles.interLoc}>
-        {/* Dispatch B4 maps the dot color to the church's rag_status,
-            but PrayerRow does not carry rag_status — get_prayer_wall
-            returns church_type + urgency only, not the source church's
-            RAG. Per dispatch fallback ('else → Colors.textMuted') the
-            dot renders neutral here. TODO(DBA): add rag_status to
-            get_prayer_wall so the dot can carry meaning on this
-            surface; until then we don't fabricate a colour. */}
-        <View style={[styles.ragDot, { backgroundColor: ragDotColor('') }]} />
+        <View style={[styles.ragDot, { backgroundColor: ragDotColor(row.rag_status ?? '') }]} />
         <Text style={styles.interLocText} numberOfLines={1}>{locText}</Text>
-        {/* RPL tag intentionally omitted — get_prayer_wall does not
-            return rpl/network_id today. Per dispatch B4: do not
-            fabricate. Add the field once the RPC supplies it. */}
       </View>
 
       {/* TEXT row */}
@@ -402,12 +420,10 @@ const styles = StyleSheet.create({
   panel: {
     position: 'absolute',
     left: 0, right: 0, top: 0, bottom: 0,
-    // Fix B1 (2026-05-28): CD .prayer-sheet bg is var(--bg) — the dark
-    // base — not the elevated surface.
     backgroundColor: Colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.borderAccent, // CD: sky-mid border-top
-    borderTopLeftRadius: 22, // CD: 22px corners
+    borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -20 },
@@ -415,99 +431,153 @@ const styles = StyleSheet.create({
     shadowRadius: 60,
     elevation: 12,
   },
+  // Fix B1: collapsed state strips the panel surface entirely so only
+  // the grab bar + label + scripture float over the bottom of the globe.
+  panelCollapsed: {
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  // Collapsed pull-tab (CD .prayer-pulltab)
+  collapsedTab: {
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  collapsedLabel: {
+    marginTop: 8,
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 2.09, // 0.22em × 9.5
+    textTransform: 'uppercase',
+    color: Colors.accent,
+  },
+  collapsedScripture: {
+    marginTop: 6,
+    fontFamily: Typography.scriptureLight,
+    fontStyle: 'italic',
+    fontSize: 13.5,
+    color: Colors.text,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+
   grabHandle: {
     alignSelf: 'center',
-    width: 36,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(240,237,230,0.22)',
+    width: 38,           // CD .grip width
+    height: 4,           // CD .grip height
+    borderRadius: 100,
+    // Collapsed CD .prayer-pulltab .bar uses sky-mid (rgba(107,181,232,0.35));
+    // open CD .prayer-sheet .head .grip uses faint-2 (rgba(240,237,230,0.14)).
+    // The bar's parent (collapsedTab vs panResponder head) overrides via
+    // colour at the parent level — keeping the JSX simple. Default here
+    // matches the open state; the collapsed render passes its own colour
+    // via collapsedTab's children. (RN doesn't cascade text colour into
+    // a child View bg, so this default is the open-state choice.)
+    backgroundColor: 'rgba(240,237,230,0.14)',
     marginTop: 9,
     marginBottom: 10,
   },
-  // Head per CD .prayer-sheet .head (with dispatch overrides on h3 size
-  // 20 + blurb 12pt). Close-X positioned absolute to the head.
+  // Head per CD .prayer-sheet .head — close-X removed (Founder ruling).
   head: {
-    paddingTop: 4, paddingBottom: 12,
+    paddingTop: 4,
+    paddingBottom: 12,
     paddingHorizontal: 18,
-    paddingRight: 50, // room for absolute closeX
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
-    position: 'relative',
   },
   eyebrow: {
     fontFamily: Typography.mono,
     fontSize: 9,
-    letterSpacing: 2, // ~0.22em × 9
+    letterSpacing: 1.98, // 0.22em × 9
     color: Colors.accent,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
+  // Fix B3: h3 uses Cormorant 300 Light (scriptureLight token), 22pt
+  // per CD .prayer-sheet .head h3 — not displayRegular (400).
   title: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 20,
-    lineHeight: 24,
-    letterSpacing: 0.4, // 0.02em × 20
+    fontFamily: Typography.scriptureLight,
+    fontSize: 22,
+    lineHeight: 26,
+    letterSpacing: 0.44, // 0.02em × 22
     color: Colors.text,
   },
   blurb: {
     marginTop: 6,
     fontFamily: Typography.body,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 17, // 1.5 × 11.5 ≈ 17
     color: Colors.textMuted,
   },
-  closeX: {
-    position: 'absolute',
-    top: 22, right: 18,
-    width: 28, height: 28,
-    alignItems: 'center', justifyContent: 'center',
-  },
 
-  // State boxes
+  // State boxes + body container
   bodyScroll: { flex: 1 },
+  bodyContent: {
+    // Fix B5: CD .prayer-sheet .body padding 8 16 24 (h-padding owned
+    // by ScrollView's contentContainerStyle).
+    paddingTop: 8,
+    paddingHorizontal: 16,
+  },
+  interGap: {
+    // CD body has gap: 10pt between intercession items.
+    marginTop: 10,
+  },
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   emptyText: { fontFamily: Typography.body, fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
 
-  // Intercession card per CD .inter (dispatch B4 row paddings)
+  // Fix B6 — intercession card per CD .inter
+  //   bg surface, faint border all sides, 2pt sky LEFT border,
+  //   radius 0 / 8 / 8 / 0, padding 12 / 14.
   interCard: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.accent,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   interLoc: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    gap: 7,
+    flexWrap: 'wrap',
+    marginBottom: 6,
   },
-  ragDot: { width: 7, height: 7, borderRadius: 3.5 },
+  ragDot: { width: 6, height: 6, borderRadius: 3 }, // CD: 6×6
   interLocText: {
     flex: 1,
-    fontFamily: Typography.body,
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.62, // 0.18em × 9 (per dispatch B6 override)
+    textTransform: 'uppercase',
+    color: Colors.accent,
   },
   interText: {
-    paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 6,
     fontFamily: Typography.scriptureItalic,
-    fontSize: 14.5,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 21, // 1.4 × 15
     color: Colors.text,
   },
   interMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingBottom: 14,
+    marginTop: 10,
   },
   agreeText: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 12,
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.19, // 0.14em × 8.5
+    textTransform: 'uppercase',
     color: Colors.accent,
   },
   agreeTextActive: { color: Colors.green },
