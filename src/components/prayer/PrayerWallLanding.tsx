@@ -897,12 +897,14 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
   receiveActiveTitle: {
+    // KAN-23 — marginTop removed. The hero title sits directly under
+    // its TONIGHT · LIVE eyebrow with no extra gap; the receive card
+    // now matches so the give/receive pair reads as the same rhythm.
     fontFamily: Typography.displayRegular,
     fontSize: 22,
     lineHeight: 26.4,
     color: OFFWHITE,
     letterSpacing: 0.22,
-    marginTop: 10,
     marginBottom: 8,
   },
   receiveActiveSub: {
