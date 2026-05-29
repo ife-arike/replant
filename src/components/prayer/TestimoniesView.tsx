@@ -200,11 +200,11 @@ export default function TestimoniesView({
         ListFooterComponent={
           loadState === 'paging' ? (
             <View style={styles.footerSpinner}>
-              <ActivityIndicator color={Colors.green} />
+              <ActivityIndicator color={Colors.accent} />
             </View>
           ) : loadState === 'initial' && !hasFetchedOnce.current ? (
             <View style={styles.footerSpinner}>
-              <ActivityIndicator color={Colors.green} />
+              <ActivityIndicator color={Colors.accent} />
             </View>
           ) : null
         }
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
   footerSpinner: {
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 1.6,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
 });

@@ -683,13 +683,16 @@ const styles = StyleSheet.create({
 
   // ── Hero card
   hero: {
+    // KAN-23 R3 — surface bg restored. The sky border (0.5 / 0.35
+    // alpha) is what reads as "kin to the receive card"; the tint was
+    // crowding the testimony carousel's accent. Border stays sky.
     marginTop: 8,
     marginBottom: 20,
     paddingTop: 24,
     paddingRight: 22,
     paddingBottom: 24,
     paddingLeft: 22,
-    backgroundColor: 'rgba(107,181,232,0.04)',
+    backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(107,181,232,0.35)',
     borderRadius: 10,
@@ -871,16 +874,16 @@ const styles = StyleSheet.create({
 
   // ── Receive active
   receiveActive: {
-    // KAN-23 R2 — sky tint to read as kin to the hero card. Same
-    // rgba(107,181,232,0.04) the hero uses; the pair now feels like
-    // one breath of intercession (give + receive) rather than two
-    // different surface materials.
+    // KAN-23 R3 — surface bg restored (same revert as the hero). The
+    // sky border keeps the give+receive pair visually linked; the tint
+    // was reading too close to the testimony carousel's accent chrome.
+    // Border stays sky.
     marginBottom: 14,
     paddingTop: 22,
     paddingRight: 22,
     paddingBottom: 18,
     paddingLeft: 22,
-    backgroundColor: 'rgba(107,181,232,0.04)',
+    backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(107,181,232,0.35)',
     borderRadius: 10,

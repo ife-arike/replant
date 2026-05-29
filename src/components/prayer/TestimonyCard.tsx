@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(91, 173, 122, 0.06)',
     borderLeftWidth: 3,
-    borderLeftColor: Colors.green,
+    borderLeftColor: Colors.accent,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91, 173, 122, 0.20)',
     borderTopLeftRadius: 0,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 14,
     letterSpacing: 0.28,
-    color: Colors.green,
+    color: Colors.accent,
   },
   leader: {
     // v8 Fix H3 — attribution 14 pt DM Sans 400, lh 1.3, muted-45%.
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: 'rgba(240, 237, 230, 0.04)',
     borderLeftWidth: 1,
-    borderLeftColor: Colors.green,
+    borderLeftColor: Colors.accent,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 4,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 11,
     letterSpacing: 1.5,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
   celebrateWrap: {
