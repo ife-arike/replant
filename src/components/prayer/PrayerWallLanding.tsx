@@ -84,7 +84,10 @@ const RECEIVE_ACTIVE_EMPTY_BODY = 'Share what your church is carrying.';
 const RECEIVE_ACTIVE_CTA = 'SHARE A NEED';
 
 const JOURNAL_TITLE = 'Your intercession journal';
-const JOURNAL_SUB = 'MY OPEN PRAYERS →';
+// KAN-23 R2 (2026-05-28): JOURNAL_SUB removed. Until there's a live
+// "N holding · M returned with answer" count to surface here, silence
+// is more honest than a stub. journalLinkSub style kept (harmless) in
+// case the live count lands later and we re-introduce the sub line.
 
 const SECTION_HEADING = 'Testimonies from the wall';
 const SEE_ALL_LABEL = 'SEE ALL';
@@ -489,7 +492,6 @@ function JournalLinkRow({ onPress }: { onPress: () => void }) {
       </View>
       <View style={styles.journalLinkBody}>
         <Text style={styles.journalLinkTitle}>{JOURNAL_TITLE}</Text>
-        <Text style={styles.journalLinkSub}>{JOURNAL_SUB}</Text>
       </View>
       <ChevronRight size={13} color={Colors.accent} strokeWidth={1.4} />
     </Pressable>
@@ -508,6 +510,29 @@ function TestimonyCarousel({
   onOpenTestimony: (id: string) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const reduced = useReducedMotion();
+  // dragging mirrors onScrollBeginDrag/EndDrag so the auto-advance tick
+  // can short-circuit while the leader is actively swiping — never
+  // yank a card out from under their finger.
+  const dragging = useRef(false);
+
+  // KAN-23 R2 — auto-advance restored at 5 s, skipped when reduced
+  // motion is on or there's only one card. Scrolls smoothly to the
+  // next snap position via the imperative ref + scrollTo({ animated }).
+  useEffect(() => {
+    if (reduced || rows.length < 2) return;
+    const timer = setInterval(() => {
+      if (dragging.current) return;
+      const next = (activeIndex + 1) % rows.length;
+      scrollRef.current?.scrollTo({
+        x: next * (TESTIMONY_CARD_WIDTH + 14),
+        animated: true,
+      });
+      setActiveIndex(next);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeIndex, rows.length, reduced]);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
@@ -529,6 +554,7 @@ function TestimonyCarousel({
   return (
     <View style={styles.carouselOuter}>
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
@@ -536,6 +562,8 @@ function TestimonyCarousel({
         snapToAlignment="center"
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        onScrollBeginDrag={() => { dragging.current = true; }}
+        onScrollEndDrag={() => { dragging.current = false; }}
         contentContainerStyle={styles.carouselContent}
       >
         {cards}
@@ -756,10 +784,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   heroStatTextMuted: {
+    // KAN-23 R2 — uppercase so the surrounding mono numerals and the
+    // muted suffix read as a single tracked-caps stats line, not
+    // sentence-case body copy fragments.
     fontFamily: Typography.mono,
     fontSize: 9.5,
     letterSpacing: 1.52,
     color: Colors.textMuted,
+    textTransform: 'uppercase',
   },
   heroStatDot: {
     fontFamily: Typography.mono,
@@ -839,12 +871,16 @@ const styles = StyleSheet.create({
 
   // ── Receive active
   receiveActive: {
+    // KAN-23 R2 — sky tint to read as kin to the hero card. Same
+    // rgba(107,181,232,0.04) the hero uses; the pair now feels like
+    // one breath of intercession (give + receive) rather than two
+    // different surface materials.
     marginBottom: 14,
     paddingTop: 22,
     paddingRight: 22,
     paddingBottom: 18,
     paddingLeft: 22,
-    backgroundColor: Colors.surface,
+    backgroundColor: 'rgba(107,181,232,0.04)',
     borderWidth: 0.5,
     borderColor: 'rgba(107,181,232,0.35)',
     borderRadius: 10,
