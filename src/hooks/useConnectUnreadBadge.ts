@@ -128,7 +128,15 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
       .subscribe();
     return () => {
       if (timer) clearTimeout(timer);
-      void supabase.removeChannel(channel);
+      // Crash fix (KAN-68 follow-up): React effect cleanup runs
+      // synchronously, but `supabase.removeChannel` is async. If the
+      // effect re-fires before removal completes, the next iteration
+      // calls `.on()` on a channel that is still registered as
+      // subscribed → Supabase throws "cannot add postgres_changes
+      // callbacks after subscribe()". Explicit `unsubscribe()` first
+      // tears down the channel's server-side state before the new
+      // subscribe call races in.
+      void channel.unsubscribe().then(() => supabase.removeChannel(channel));
     };
   }, [eligible, session?.user?.id, refresh]);
 

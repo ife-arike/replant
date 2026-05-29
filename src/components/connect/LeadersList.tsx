@@ -232,38 +232,37 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
     const role: string | null = r.other_role ?? null;
     const rawChurchName: string = r.other_church_name ?? '';
     const roleLabel = role ? getRoleLabel(role) : '';
-    // Name line per §6.1 (Fix 2): just the leader's full name (or
-    // role label when anonymous). No "· church" suffix — church
-    // renders on its own line.
+    // Name line per data.jsx leaderName() canonical rule. In the
+    // CD prototype `fullName` already starts with the role ("Pastor
+    // Wangari Mwangi"). Our schema stores `full_name` without the
+    // prefix, so we compose `${RoleLabel} ${fullName}` to match the
+    // prototype's rendering.
     let displayName: string;
     if (isSecure) {
       displayName = 'Replant Team';
     } else if (anonymous) {
+      // Anonymous stays role-only — protects identity.
       displayName = roleLabel || 'Leader';
     } else {
-      displayName = fullName;
+      displayName = roleLabel ? `${roleLabel} ${fullName}`.trim() : fullName;
     }
-    // Church line per Fix 2: "ChurchName · RoleLabel" for identified
-    // leaders; "ChurchName" alone for anonymous (role already on
-    // line 1); "Underground Church" alone for underground (role
-    // omitted per dispatch). Secure thread uses the literal
-    // "Replant · system-managed".
+    // Church line — just the church name. No role suffix here; the
+    // role is now baked into the name line above.
     let churchLabel: string;
     if (isSecure) {
       churchLabel = 'Replant · system-managed';
     } else if (underground) {
       churchLabel = 'Underground Church';
-    } else if (anonymous) {
-      churchLabel = rawChurchName;
     } else {
-      churchLabel = roleLabel
-        ? `${rawChurchName} · ${roleLabel}`
-        : rawChurchName;
+      churchLabel = rawChurchName;
     }
-    // Monogram initial = first letter of the leader's actual full
-    // name (not the role label). Anonymous + underground both render
-    // the muted figure glyph instead — see ThreadRow's branch.
-    const monogramInitial = fullName.trim().charAt(0).toUpperCase() || '·';
+    // Monogram initial follows data.jsx monogramInitial(): first char
+    // of leaderName(). leaderName() yields the role-prefixed name in
+    // the prototype, so the initial is the role's first letter ("P"
+    // for "Pastor Ruth James"). We mirror by taking `roleLabel ||
+    // fullName`'s first char. Anonymous + underground render the
+    // muted figure glyph instead — see ThreadRow's branch.
+    const monogramInitial = (roleLabel || fullName).trim().charAt(0).toUpperCase() || '·';
     const lastAt = r.last_message_at ? new Date(r.last_message_at) : null;
     return {
       conversationId: r.conversation_id,
