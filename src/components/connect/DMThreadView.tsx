@@ -30,7 +30,6 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -45,15 +44,26 @@ import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
-import { getLeaderDisplayName } from '../../utils/getLeaderDisplayName';
 import { getRoleLabel } from '../../utils/displayHelpers';
 import CovenantStrip from './CovenantStrip';
 import CovenantNotice from './CovenantNotice';
+import AttachmentPopover from './AttachmentPopover';
 
 interface Props {
   // Either threadId (existing conversation) or recipientUserId (lazy thread).
   conversationId: string | null;
   recipientUserId: string | null;
+  // Fix 1 (KAN-68 CD-alignment pass): the row-list already resolved the
+  // other party's identity via get_leader_thread_list — accept that
+  // snapshot here so the header renders correctly on the very first
+  // frame, before the async profile-resolution useEffect lands. When
+  // absent (e.g. KAN-65 deep link via the routing primitive) we fall
+  // back to the existing profile-load path.
+  initialProfile?: {
+    fullName: string;
+    churchName: string;
+    isSecure: boolean;
+  };
   callerUserId: string | null;
   covenantAcknowledged: boolean;
   onAcknowledgeCovenant: () => Promise<void>;
@@ -82,11 +92,11 @@ interface OtherParty {
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
 const MAX_COMPOSER_HEIGHT = 124;
-// B4 (device pass): tighten the composer floor. The KAN-70 ship value
-// (42pt) felt oversized in device testing; 36pt restores breathing room
-// without losing tap-target generosity on the send affordance. Multi-
-// line auto-grow up to MAX_COMPOSER_HEIGHT is preserved.
-const MIN_COMPOSER_HEIGHT = 36;
+// Fix 4 (KAN-68 CD-alignment pass): the earlier B4 tightening
+// (36pt) was rolled back. HANDOFF §6.3 calls for min 42pt, radius
+// 21, send 42×42 — the spec wins. Container padding restored to
+// `10px 14px 28px` (28pt = home-indicator inset on Pro Max).
+const MIN_COMPOSER_HEIGHT = 42;
 
 // ── inline icons ──────────────────────────────────────────────────────
 function BackIcon() {
@@ -268,6 +278,7 @@ function LazyEmpty() {
 export default function DMThreadView({
   conversationId: initialConversationId,
   recipientUserId,
+  initialProfile,
   callerUserId,
   covenantAcknowledged,
   onAcknowledgeCovenant,
@@ -276,13 +287,34 @@ export default function DMThreadView({
 }: Props) {
   const { session } = useAuth();
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
-  const [other, setOther] = useState<OtherParty | null>(null);
+  // Seed `other` from the initial profile snapshot (Fix 1) so the
+  // header renders cleanly on first frame. The header-only church
+  // line shows just the church name per §6.3 (no role suffix —
+  // that's a §6.1 row-only treatment).
+  const [other, setOther] = useState<OtherParty | null>(() => {
+    if (!initialProfile) return null;
+    return {
+      userId: initialConversationId ?? recipientUserId ?? '',
+      displayName: initialProfile.isSecure
+        ? 'Replant Team — Secure Message'
+        : initialProfile.fullName,
+      churchLabel: initialProfile.isSecure
+        ? 'Replant · system-managed'
+        : initialProfile.churchName,
+      isSecure: initialProfile.isSecure,
+    };
+  });
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [draft, setDraft] = useState('');
   const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
+  // Fix 8 (KAN-68 §15.3): paperclip → anticipatory popover (NOT a
+  // toast / alert). Visible flag is toggled by the paperclip tap;
+  // backdrop tap closes; a non-empty draft also closes (the user is
+  // typing, so the affordance is no longer the focus).
+  const [attachPopoverVisible, setAttachPopoverVisible] = useState(false);
   const [showCovenant, setShowCovenant] = useState(false);
   const pendingTextRef = useRef<string>('');
   // Refs for messages + conversationId so the Realtime callback always
@@ -295,69 +327,51 @@ export default function DMThreadView({
   const isSecure = other?.isSecure ?? false;
 
   // ── Resolve other party identity ───────────────────────────────────
+  // Header rendering per §6.3: name (serif 18px) + church (mono 9.5px
+  // upper) on SEPARATE lines. Name = full_name (or role label when
+  // anonymous); never the combined "Name · Church" output of
+  // getLeaderDisplayName. The combined helper is for surfaces that
+  // stack name+church onto a single line (admin lists etc.).
+  //
+  // Initial render uses the caller-provided initialProfile snapshot
+  // (Fix 1). The resolver below is a defense-in-depth refresh:
+  //   - If a deep link landed here without an initialProfile (e.g.
+  //     KAN-65 routing primitive to a secure thread), pull the row
+  //     from get_leader_thread_list. RLS-safe because the RPC is
+  //     SECURITY DEFINER and only returns the caller's own threads.
+  //   - For a lazy-created thread (recipientUserId, no
+  //     conversationId yet), the row hasn't been written so the
+  //     RPC won't return anything until first-send completes; we
+  //     accept the initialProfile (set on tap from LeaderSearch
+  //     pick) or leave the header in its skeleton state.
   useEffect(() => {
+    if (initialProfile) return;
+    if (!conversationId) return;
     let cancelled = false;
     (async () => {
-      // Path A: existing conversation — fetch the other user from the row.
-      if (conversationId) {
-        const { data: conv } = await supabase
-          .from('conversations')
-          .select('participant_a, participant_b, is_secure_replant_thread')
-          .eq('id', conversationId).maybeSingle();
-        if (!conv || cancelled) return;
-        const otherId = conv.participant_a === callerUserId ? conv.participant_b : conv.participant_a;
-        const { data: u } = await supabase
-          .from('users')
-          .select('id, full_name, role, anonymous, churches:church_id(name, type)')
-          .eq('id', otherId).maybeSingle() as any;
-        if (cancelled) return;
-        const ch = u?.churches;
-        const underground = ch?.type === 'underground';
-        const churchName = underground ? 'Underground Church' : (ch?.name ?? '');
-        const [first = '', ...rest] = (u?.full_name ?? '').split(' ');
-        setOther({
-          userId: otherId,
-          displayName: conv.is_secure_replant_thread
-            ? 'Replant Team — Secure Message'
-            : getLeaderDisplayName({
-              firstName: first,
-              lastName: rest.join(' '),
-              roleLabel: getRoleLabel(u?.role),
-              churchName,
-              anonymous: !!u?.anonymous,
-            }),
-          churchLabel: conv.is_secure_replant_thread ? 'Replant · system-managed' : churchName,
-          isSecure: !!conv.is_secure_replant_thread,
-        });
-        return;
-      }
-      // Path B: lazy thread — fetch the recipient only; no conversation row yet.
-      if (recipientUserId) {
-        const { data: u } = await supabase
-          .from('users')
-          .select('id, full_name, role, anonymous, churches:church_id(name, type)')
-          .eq('id', recipientUserId).maybeSingle() as any;
-        if (cancelled) return;
-        const ch = u?.churches;
-        const underground = ch?.type === 'underground';
-        const churchName = underground ? 'Underground Church' : (ch?.name ?? '');
-        const [first = '', ...rest] = (u?.full_name ?? '').split(' ');
-        setOther({
-          userId: recipientUserId,
-          displayName: getLeaderDisplayName({
-            firstName: first,
-            lastName: rest.join(' '),
-            roleLabel: getRoleLabel(u?.role),
-            churchName,
-            anonymous: !!u?.anonymous,
-          }),
-          churchLabel: churchName,
-          isSecure: false,
-        });
-      }
+      const { data, error } = await supabase.rpc('get_leader_thread_list');
+      if (cancelled || error || !Array.isArray(data)) return;
+      const row = (data as any[]).find(
+        (r) => r.conversation_id === conversationId,
+      );
+      if (!row) return;
+      const isSec = !!row.is_secure_replant_thread;
+      const anon = !!row.other_anonymous;
+      const fullName: string = row.other_full_name ?? '';
+      const churchName: string = isSec
+        ? 'Replant · system-managed'
+        : (row.other_church_name ?? '');
+      setOther({
+        userId: row.other_user_id,
+        displayName: isSec
+          ? 'Replant Team — Secure Message'
+          : (anon ? getRoleLabel(row.other_role) : fullName),
+        churchLabel: churchName,
+        isSecure: isSec,
+      });
     })();
     return () => { cancelled = true; };
-  }, [conversationId, recipientUserId, callerUserId]);
+  }, [conversationId, initialProfile]);
 
   // ── Load initial page ──────────────────────────────────────────────
   useEffect(() => {
@@ -631,11 +645,15 @@ export default function DMThreadView({
   }, [session?.access_token, recipientUserId, onConversationCreated]);
 
   const handleAttach = () => {
-    Alert.alert(
-      '',
-      'Attachments are coming soon. Sharing files will require consent and must follow the Replant community standard.',
-    );
+    setAttachPopoverVisible((v) => !v);
   };
+
+  // Auto-dismiss the popover the moment the leader starts typing.
+  useEffect(() => {
+    if (attachPopoverVisible && draft.length > 0) {
+      setAttachPopoverVisible(false);
+    }
+  }, [draft, attachPopoverVisible]);
 
   // ── Render (inverted FlatList: newest at bottom) ──────────────────
   // Each frame on the inverted list takes [newest...oldest]; we keep
@@ -739,15 +757,22 @@ export default function DMThreadView({
         <CovenantStrip />
 
         <View style={styles.composer}>
-          <Pressable
-            onPress={handleAttach}
-            hitSlop={6}
-            style={styles.attach}
-            accessibilityRole="button"
-            accessibilityLabel="Attachment (coming soon)"
-          >
-            <ClipIcon />
-          </Pressable>
+          <View style={styles.attachWrap}>
+            <AttachmentPopover
+              visible={attachPopoverVisible}
+              onRequestClose={() => setAttachPopoverVisible(false)}
+            />
+            <Pressable
+              onPress={handleAttach}
+              hitSlop={6}
+              style={styles.attach}
+              accessibilityRole="button"
+              accessibilityLabel="Attachments — coming soon"
+              accessibilityState={{ expanded: attachPopoverVisible }}
+            >
+              <ClipIcon />
+            </Pressable>
+          </View>
           <TextInput
             style={[styles.field, { height: composerHeight }]}
             value={draft}
@@ -916,11 +941,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   loaderBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // ── composer ── (B4: tightened)
+  // ── composer ── (Fix 4: restored to HANDOFF §6.3 spec)
   composer: {
-    paddingTop: 8,
+    paddingTop: 10,
     paddingHorizontal: 14,
-    paddingBottom: 24,
+    paddingBottom: 28,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
@@ -931,21 +956,28 @@ const styles = StyleSheet.create({
     width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT,
     alignItems: 'center', justifyContent: 'center',
   },
+  // Fix 8: the attach Pressable's parent. Position-relative anchor
+  // for the AttachmentPopover's absolute positioning. We don't size
+  // it explicitly — it adopts the Pressable's intrinsic size. The
+  // popover renders at bottom:50 left:-8 relative to this wrap.
+  attachWrap: {
+    position: 'relative',
+  },
   field: {
     flex: 1,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 8,
+    borderRadius: 21,
+    paddingHorizontal: 16,
+    paddingTop: 11,
+    paddingBottom: 11,
     fontFamily: Typography.body,
     fontSize: 14.5,
     color: Colors.text,
   },
   send: {
-    width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT, borderRadius: 18,
+    width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT, borderRadius: 21,
     alignItems: 'center', justifyContent: 'center',
   },
   sendActive: { backgroundColor: Colors.accent },
