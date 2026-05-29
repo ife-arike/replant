@@ -59,10 +59,19 @@ export default function TabNavigator() {
         component={TheChurchScreen}
         options={{ tabBarIcon: ({ color }) => <TheChurchIcon color={color} /> }}
       />
+      {/* KAN-65 R2 — the Persecuted tab uses Colors.red for its active
+          tint instead of Colors.accent. Per-screen override; all other
+          tabs continue to inherit the navigator-level
+          tabBarActiveTintColor (Colors.accent). The icon's color prop
+          comes from this tint, so PersecutedIcon's stroke flips to red
+          when the tab is focused. */}
       <Tab.Screen
         name="Persecuted"
         component={PersecutedScreen}
-        options={{ tabBarIcon: ({ color }) => <PersecutedIcon color={color} /> }}
+        options={{
+          tabBarIcon: ({ color }) => <PersecutedIcon color={color} />,
+          tabBarActiveTintColor: Colors.red,
+        }}
       />
       <Tab.Screen
         name="Prayer Wall"
