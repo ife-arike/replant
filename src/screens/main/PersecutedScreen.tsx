@@ -241,31 +241,19 @@ export default function PersecutedScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <NavBar onHamburger={openHamburger} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <ThresholdPreamble />
+        <ThresholdPreamble
+          onOpenHeartcries={() => {
+            // TODO(KAN-TBD): navigate to Open Heartcries screen when
+            // that surface ships. Until then this is a deliberate no-op
+            // — the tap target signals the path exists without firing
+            // an empty Alert.
+          }}
+        />
 
         <View style={styles.bodyPad}>
           <PersecutedActionCard
             onPress={() => navigation.navigate('HeartcrySubmission')}
           />
-
-          {/* KAN-65 R2 — "My open heartcries" stub. The Open Heartcries
-              screen isn't built yet (ticket TBD); for now this is a
-              quiet, muted, no-arrow tap-target that signals the path
-              exists. Placed below the action card so it doesn't
-              compete with "SHARE MY HEARTCRY" for the leader's eye. */}
-          <Pressable
-            onPress={() => {
-              // TODO(KAN-TBD): navigate to Open Heartcries screen
-              // when that surface ships. Until then this is a no-op
-              // tap; deliberately silent so the leader doesn't get an
-              // empty Alert. */
-            }}
-            style={styles.openHeartcriesLink}
-            accessibilityRole="button"
-            accessibilityLabel="My open heartcries"
-          >
-            <Text style={styles.openHeartcriesLabel}>My open heartcries</Text>
-          </Pressable>
 
           {/* Section header */}
           <View style={styles.sectionHeaderRow}>
@@ -342,18 +330,34 @@ function NavBar({ onHamburger }: { onHamburger: () => void }) {
 // ThresholdPreamble — CD .threshold
 // ─────────────────────────────────────────────────────────────────────
 
-function ThresholdPreamble() {
+// KAN-65 R3 — ThresholdPreamble now exposes an onOpenHeartcries prop.
+// The meta row is restructured: existing safety chips (ENCRYPTED · NO
+// LOCATION SHARED · REGION ONLY) sit left in a flex: 1 chip container;
+// "My open HC" sits right as a sky mono tap-target on the same baseline.
+// The chip container wraps if the device is narrow; the right link
+// keeps its single-line position.
+function ThresholdPreamble({ onOpenHeartcries }: { onOpenHeartcries: () => void }) {
   return (
     <View style={styles.threshold}>
       <Text style={styles.thresholdEyebrow}>{THRESHOLD_EYEBROW}</Text>
       <Text style={styles.thresholdBody}>{THRESHOLD_BODY}</Text>
-      <View style={styles.thresholdMeta}>
-        <ThresholdLock />
-        <Text style={[styles.thresholdMetaText, styles.thresholdMetaSky]}>ENCRYPTED</Text>
-        <Text style={styles.thresholdMetaDot}>·</Text>
-        <Text style={styles.thresholdMetaText}>NO LOCATION SHARED</Text>
-        <Text style={styles.thresholdMetaDot}>·</Text>
-        <Text style={styles.thresholdMetaText}>REGION ONLY</Text>
+      <View style={styles.thresholdMetaRow}>
+        <View style={styles.thresholdMetaChips}>
+          <ThresholdLock />
+          <Text style={[styles.thresholdMetaText, styles.thresholdMetaSky]}>ENCRYPTED</Text>
+          <Text style={styles.thresholdMetaDot}>·</Text>
+          <Text style={styles.thresholdMetaText}>NO LOCATION SHARED</Text>
+          <Text style={styles.thresholdMetaDot}>·</Text>
+          <Text style={styles.thresholdMetaText}>REGION ONLY</Text>
+        </View>
+        <Pressable
+          onPress={onOpenHeartcries}
+          accessibilityRole="button"
+          accessibilityLabel="My open heartcries"
+          hitSlop={6}
+        >
+          <Text style={styles.openHcLabel}>My open HC</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -611,12 +615,29 @@ const styles = StyleSheet.create({
     color: CREAM,
     letterSpacing: 0.17,
   },
-  thresholdMeta: {
+  // KAN-65 R3 — two-column meta row: safety chips left, "My open HC"
+  // right. Chips flex: 1 so they take available width and wrap if
+  // narrow; the right tap-target keeps its single-line position.
+  thresholdMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+  },
+  thresholdMetaChips: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 14,
+    flex: 1,
+  },
+  openHcLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 8,
+    letterSpacing: 1.44, // 0.18em × 8 — matches the chip register
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    paddingLeft: 12,
   },
   thresholdMetaText: {
     fontFamily: Typography.mono,
@@ -675,25 +696,6 @@ const styles = StyleSheet.create({
     color: Colors.red,
   },
 
-  // KAN-65 R2 — "My open heartcries" stub link. Quiet, centered,
-  // breathing room above and below so it doesn't pull weight from
-  // the action card. No chevron — the dispatch is explicit that
-  // anything decorative crowds out the action. Sentence-case DM Sans
-  // 12 muted reads as a soft text link, not a CTA. Generous hitSlop
-  // so the small text is still thumb-findable.
-  openHeartcriesLink: {
-    marginTop: 18,
-    marginBottom: 10,
-    alignSelf: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  openHeartcriesLabel: {
-    fontFamily: Typography.body,
-    fontSize: 12,
-    color: Colors.textMuted,
-    letterSpacing: 0.12,
-  },
 
   // Section heading
   sectionHeaderRow: {
