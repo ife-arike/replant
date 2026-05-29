@@ -18,10 +18,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, AppState, Easing, Linking, PanResponder,
+  Animated, AppState, Easing, Linking, PanResponder,
   Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 import Mapbox, {
   Camera,
   CircleLayer,
@@ -340,6 +341,17 @@ export default function CamlView({
     }
   }, [session?.access_token, onLeaderCountResolved]);
 
+  // KAN-XXX (church-tab-states) — retry the nearby fetch after a CamlErrorView
+  // tap. Clears the error so the overlay unmounts immediately on retry, then
+  // re-fires fetchNearby with the current GPS coord. Held by the host (this
+  // component) since error/setError/viewerCoord/fetchNearby all live here.
+  const handleRetry = useCallback(() => {
+    if (viewerCoord) {
+      setError(null);
+      void fetchNearby(viewerCoord);
+    }
+  }, [viewerCoord, fetchNearby]);
+
   // Fix 1 — loading flicker (2026-05-28). viewerCoord changes on every
   // GPS update from the listener, so without a data-exists guard this
   // effect would re-fire continuously, blinking the list back to
@@ -619,9 +631,7 @@ export default function CamlView({
           ) : null}
         </MapView>
       ) : (
-        <View style={[styles.map, styles.mapLoading]}>
-          <ActivityIndicator color={Colors.accent} />
-        </View>
+        <CamlLoadingView />
       )}
 
       {/* Filter chips.
@@ -784,9 +794,118 @@ export default function CamlView({
           </ScrollView>
         </Animated.View>
       ) : null}
+
+      {/* KAN-XXX — fetch-failure overlay. Sits at zIndex 12 above map +
+          sheet + recenter pill, below the host-level UnverifiedGate (z 20).
+          Clears + re-fires the RPC on retry. */}
+      {error ? <CamlErrorView onRetry={handleRetry} /> : null}
     </View>
   );
 }
+
+// ─── Loading + error overlays ────────────────────────────────────────
+
+// CamlLoadingView — CD states.jsx LoadingState
+// Full-height skeleton shown while GPS / map not yet ready (!camlReady).
+// Static non-animated blocks (no Animated.loop — accessible, honours
+// useReducedMotion implicitly). Own loadingStyles so the placeholder
+// blocks don't pollute the main styles object.
+function CamlLoadingView() {
+  return (
+    <View style={loadingStyles.root}>
+      <View style={loadingStyles.inner}>
+        <View style={loadingStyles.skelMap} />
+        <View style={loadingStyles.skelLabel} />
+        <View style={loadingStyles.skelRow} />
+        <View style={loadingStyles.skelRow} />
+        <View style={loadingStyles.skelRow} />
+      </View>
+      <View style={loadingStyles.footer}>
+        <Text style={loadingStyles.footerText}>Loading the network…</Text>
+      </View>
+    </View>
+  );
+}
+const loadingStyles = StyleSheet.create({
+  root:       { flex: 1, backgroundColor: Colors.background },
+  inner:      { padding: 16, paddingTop: 60 },
+  skelMap:    { height: 240, borderRadius: 6, backgroundColor: Colors.surface, marginBottom: 16 },
+  skelLabel:  { height: 14,  width: '40%', borderRadius: 6, backgroundColor: Colors.surface, marginBottom: 8 },
+  skelRow:    { height: 60,  borderRadius: 6, backgroundColor: Colors.surface, marginBottom: 8 },
+  footer:     { position: 'absolute', bottom: 100, left: 0, right: 0, alignItems: 'center' },
+  footerText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.7,
+    textTransform: 'uppercase',
+    color: Colors.accent,
+  },
+});
+
+// CamlErrorView — CD states.jsx ErrorState
+// Absolute overlay (zIndex 12) covering map + sheet on fetch failure.
+// "The body is still gathered" — the network is the leader's connection,
+// not the body itself.
+function CamlErrorView({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={errorStyles.root}>
+      <Svg width={48} height={48} viewBox="0 0 48 48" style={errorStyles.glyph}>
+        <Circle cx={24} cy={24} r={22} fill="none" stroke="rgba(224,85,85,0.4)" strokeWidth={0.8} strokeDasharray="3 3" />
+        <Path d="M16 16l16 16M32 16L16 32" stroke={Colors.red} strokeWidth={1.2} />
+      </Svg>
+      <Text style={errorStyles.title}>We couldn't reach the network.</Text>
+      <Text style={errorStyles.body}>
+        Could be our servers, could be your connection. Try again in a moment — the body is still gathered.
+      </Text>
+      <Pressable onPress={onRetry} style={errorStyles.retryBtn} accessibilityRole="button">
+        <Text style={errorStyles.retryText}>RETRY</Text>
+      </Pressable>
+    </View>
+  );
+}
+const errorStyles = StyleSheet.create({
+  root: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 12,
+    backgroundColor: 'rgba(8,8,8,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  glyph: { marginBottom: 20 },
+  title: {
+    fontFamily: Typography.scriptureLight,
+    fontSize: 20,
+    letterSpacing: 0.4,
+    color: Colors.text,
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 10,
+    maxWidth: 260,
+  },
+  body: {
+    fontFamily: Typography.body,
+    fontSize: 12.5,
+    color: Colors.textMuted,
+    lineHeight: 20,
+    textAlign: 'center',
+    maxWidth: 260,
+    marginBottom: 22,
+  },
+  retryBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+  },
+  retryText: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    letterSpacing: 1.7,
+    color: Colors.textMuted,
+  },
+});
 
 // ─── List row ────────────────────────────────────────────────────────
 
@@ -837,7 +956,6 @@ if (MAPBOX_TOKEN) Mapbox.setAccessToken(MAPBOX_TOKEN);
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   map: { flex: 1 },
-  mapLoading: { alignItems: 'center', justifyContent: 'center' },
 
   // Filter chips
   filterRow: {
