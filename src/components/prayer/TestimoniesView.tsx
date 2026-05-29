@@ -200,11 +200,11 @@ export default function TestimoniesView({
         ListFooterComponent={
           loadState === 'paging' ? (
             <View style={styles.footerSpinner}>
-              <ActivityIndicator color={Colors.green} />
+              <ActivityIndicator color={Colors.accent} />
             </View>
           ) : loadState === 'initial' && !hasFetchedOnce.current ? (
             <View style={styles.footerSpinner}>
-              <ActivityIndicator color={Colors.green} />
+              <ActivityIndicator color={Colors.accent} />
             </View>
           ) : null
         }
@@ -246,7 +246,7 @@ function ScriptureHeader({
         tone="none"
         text={REV_12_11_KJV}
         reference={REV_12_11_REF}
-        referenceColor="rgba(91, 173, 122, 0.70)"
+        referenceColor="rgba(107, 181, 232, 0.70)"
       >
         {pillVisible ? (
           <Animated.View style={[styles.fromLandingPill, { opacity: pillOpacity }]}>
@@ -295,15 +295,15 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 8,
     borderRadius: 3,
-    backgroundColor: 'rgba(91, 173, 122, 0.18)',
+    backgroundColor: 'rgba(107, 181, 232, 0.18)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 173, 122, 0.45)',
+    borderColor: 'rgba(107, 181, 232, 0.45)',
   },
   fromLandingPillText: {
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
   footerSpinner: {
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 1.6,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
 });
