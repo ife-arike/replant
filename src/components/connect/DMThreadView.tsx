@@ -59,7 +59,14 @@ interface Props {
   // frame, before the async profile-resolution useEffect lands. When
   // absent (e.g. KAN-65 deep link via the routing primitive) we fall
   // back to the existing profile-load path.
+  //
+  // `displayName` is the pre-composed header label (e.g. "Pastor
+  // Ruth James" for identified, "Pastor" for anonymous, "Replant
+  // Team — Secure Message" rendered locally for secure). Computed in
+  // LeadersList.fetchThreadList per the data.jsx leaderName() rule
+  // so the header matches the row name exactly.
   initialProfile?: {
+    displayName: string;
     fullName: string;
     churchName: string;
     isSecure: boolean;
@@ -297,7 +304,7 @@ export default function DMThreadView({
       userId: initialConversationId ?? recipientUserId ?? '',
       displayName: initialProfile.isSecure
         ? 'Replant Team — Secure Message'
-        : initialProfile.fullName,
+        : initialProfile.displayName,
       churchLabel: initialProfile.isSecure
         ? 'Replant · system-managed'
         : initialProfile.churchName,

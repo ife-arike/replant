@@ -66,6 +66,11 @@ export type SubTab = 'ministries' | 'leaders';
 // substitution and the "Replant Team" secure-thread label before
 // handing the snapshot to the view.
 export interface InitialThreadProfile {
+  // Pre-composed display name for the DM thread view header — matches
+  // the row's name line exactly (e.g. "Pastor Ruth James" for
+  // identified, role label for anonymous). Computed in LeadersList
+  // per the data.jsx leaderName() rule.
+  displayName: string;
   fullName: string;
   churchName: string;
   isSecure: boolean;
@@ -307,8 +312,12 @@ export default function ConnectScreen() {
               recipientUserId: null,
               // Snapshot the already-resolved profile so the DM view
               // header doesn't render a "·" placeholder while it
-              // re-fetches the same data (Fix 1).
+              // re-fetches the same data (Fix 1). `displayName` is
+              // the pre-composed header label from LeadersList
+              // (data.jsx leaderName() rule — "Pastor Ruth James"
+              // for identified, role-only for anonymous).
               initialProfile: {
+                displayName: thread.displayName,
                 fullName: thread.fullName,
                 churchName: thread.churchName,
                 isSecure: thread.isSecure,
