@@ -270,6 +270,47 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast }:
 
   useEffect(() => { void load(); }, [load]);
 
+  // Realtime list refresh — Fix 3 (KAN-68 fix pass). Mirrors the
+  // Leaders pattern with the right published-table targets for
+  // Ministries:
+  //   - `branches` UPDATE: fires when send-branch-message bumps
+  //     `last_message_at` (preview + unread refresh) and when the
+  //     RPC pipeline transitions a branch `forming` → `active`.
+  //   - `branch_members` *: fires when a member's consent_status
+  //     flips (Joined / Declined badges in the forming banner +
+  //     members sheet) and when the host removes a ministry via
+  //     remove_ministry_from_branch.
+  //
+  // Both tables ARE in the supabase_realtime publication (KAN-214
+  // Migration 3). RLS on each scopes events to the caller's
+  // branches via the branch_members membership join. 250ms
+  // debounce coalesces bursts (e.g. a host activating + a member
+  // joining within the same tick).
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const queueRefresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { void load(); }, 250);
+    };
+    const channel = supabase
+      .channel('ministries-list-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'branches' },
+        queueRefresh,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'branch_members' },
+        queueRefresh,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [load]);
+
   const respondToInvite = useCallback(async (branchId: string, response: 'joined' | 'declined') => {
     setBusyByBranchId((p) => ({ ...p, [branchId]: true }));
     try {
