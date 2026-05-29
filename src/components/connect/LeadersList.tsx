@@ -6,11 +6,19 @@
 //
 // Data model:
 //   public.conversations  — participant_a, participant_b (sorted),
-//                           is_secure_replant_thread, last_message_at.
+//                           is_secure_replant_thread, last_message_at,
+//                           last_read_at_a / last_read_at_b (KAN-214
+//                           follow-up migration 20260529000003).
 //   public.messages       — for the last-message preview + timestamp.
 //   public.users          — the OTHER participant's identity.
 //   public.churches       — the OTHER participant's church name + type
 //                           (underground → label "Underground Church").
+//
+// Unread tracking (KAN-214 follow-up): the badge is present iff
+// last_message_at > caller's last_read_at_<x>. This is the MVP shape
+// — a present/absent badge, not a precise count. A precise count
+// would require a per-conversation messages count subquery, which is
+// the right shape for a future get_leader_thread_list RPC.
 //
 // No dedicated RPC exists for this list yet. The query joins via PostgREST
 // embeds + parallel last-message fetches. BA follow-up: a SECURITY
@@ -53,8 +61,10 @@ export interface LeaderThread {
   underground: boolean;
   preview: string;
   lastAt: Date | null;
-  // Unread tracking is not in this schema yet (no last_read_at on
-  // conversations). Hardcoded to 0; follow-up ticket adds read receipts.
+  // Per-caller unread badge. MVP semantic: 0 = nothing newer than the
+  // caller's last_read_at_<x>; 1 = at least one newer message. A
+  // precise count would require a messages-count subquery — deferred
+  // to a future get_leader_thread_list RPC (BA follow-up).
   unread: number;
 }
 
@@ -194,10 +204,12 @@ function ThreadRow({
 // ── data loader (inline; extract to a hook in a follow-up) ────────────
 async function fetchThreadPage(callerUserId: string, offset: number, limit: number): Promise<LeaderThread[]> {
   // 1. Conversations — RLS scopes to caller's threads (participant_a/_b
-  //    SELECT policies on public.conversations).
+  //    SELECT policies on public.conversations). Pull both last_read_at
+  //    columns; we'll pick whichever matches the caller's participant
+  //    slot when computing the per-conversation unread badge.
   const { data: convs, error: convErr } = await supabase
     .from('conversations')
-    .select('id, participant_a, participant_b, is_secure_replant_thread, last_message_at, created_at')
+    .select('id, participant_a, participant_b, is_secure_replant_thread, last_message_at, last_read_at_a, last_read_at_b, created_at')
     .order('is_secure_replant_thread', { ascending: false }) // secure pinned
     .order('last_message_at', { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);
@@ -259,6 +271,25 @@ async function fetchThreadPage(callerUserId: string, offset: number, limit: numb
         });
     const monogramInitial = firstName.charAt(0).toUpperCase() || '·';
     const lastMsg = lastMsgByConv.get(c.id);
+    // Per-caller unread badge: present iff last_message_at > caller's
+    // last_read_at_<x>. Picks _a or _b based on which participant slot
+    // the caller occupies. A NULL last_read_at means the caller has
+    // never opened the thread; any existing message is unread. A
+    // conversation with no messages at all has nothing to read.
+    const callerLastRead = c.participant_a === callerUserId
+      ? c.last_read_at_a
+      : c.last_read_at_b;
+    const lastAtIso = lastMsg
+      ? lastMsg.created_at
+      : (c.last_message_at ?? null);
+    let unread = 0;
+    if (lastAtIso) {
+      if (!callerLastRead) {
+        unread = 1;
+      } else if (new Date(lastAtIso).getTime() > new Date(callerLastRead).getTime()) {
+        unread = 1;
+      }
+    }
     return {
       conversationId: c.id,
       otherUserId: otherId,
@@ -271,7 +302,7 @@ async function fetchThreadPage(callerUserId: string, offset: number, limit: numb
       preview: lastMsg ? truncate(lastMsg.content, PREVIEW_MAX) : '',
       lastAt: lastMsg ? new Date(lastMsg.created_at)
         : (c.last_message_at ? new Date(c.last_message_at) : null),
-      unread: 0,
+      unread,
     };
   });
 

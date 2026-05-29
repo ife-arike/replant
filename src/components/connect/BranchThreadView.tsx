@@ -447,6 +447,16 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
       setMessages(assignGroupLabels(ordered));
       setExhausted(ordered.length < PAGE_SIZE);
       setLoadingMessages(false);
+      // Mark the branch read on initial open. Fire-and-forget — a
+      // mark-read failure must NEVER block the thread render. The
+      // RPC raises 'not_authorized' if the caller isn't a member
+      // (e.g. opening a forming branch as an 'invited' member who
+      // hasn't joined yet). We swallow it because the surface still
+      // renders fine for non-joined members; they just won't have
+      // a last_read_at cursor written, which is correct — they
+      // aren't reading anything yet.
+      void supabase.rpc('mark_branch_read', { p_branch_id: branchId })
+        .then(() => undefined, () => undefined);
     })();
     return () => { cancelled = true; };
   }, [branchId, callerUserId]);
@@ -479,6 +489,14 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
             (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
           );
           setMessages(assignGroupLabels(next));
+          // Caller is actively viewing this branch when an inbound
+          // message lands — bump branch_members.last_read_at so the
+          // badge clears on the next get_branch_list snapshot. Skip
+          // own-message echoes (no read state change). Fire-and-forget.
+          if (!incoming.mine) {
+            void supabase.rpc('mark_branch_read', { p_branch_id: branchId })
+              .then(() => undefined, () => undefined);
+          }
         },
       )
       .subscribe();

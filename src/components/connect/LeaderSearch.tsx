@@ -2,11 +2,17 @@
 //
 // Push screen over the Leaders list. Autofocused search field, ~250ms
 // debounce, results at 2+ chars. Matches **name + church only** — no
-// location, no country, no region (HANDOFF §6.2). Underground churches
-// are excluded from the corpus server-side (churches_public view drops
-// type='underground' rows); their real name is never searchable.
-// Underground leaders DO appear (their `users` row exists), but their
-// church renders as "Underground Church".
+// location, no country, no region (HANDOFF §6.2).
+//
+// SEC: the underground-name-masking invariant is enforced SERVER-SIDE
+// by the search_leaders SECURITY DEFINER RPC (KAN-214 follow-up
+// migration 20260529000003). The RPC:
+//   - excludes underground real names from the predicate; only the
+//     literal "Underground Church" label is searchable;
+//   - returns church_name pre-masked for underground rows;
+//   - excludes the caller from results;
+//   - gates verified+active leaders + verified+active churches.
+// The FE never sees an unmasked underground name.
 //
 // Tap flow:
 //   - Inactive leader → toast (not implemented at this layer — bubbles
@@ -14,12 +20,6 @@
 //   - Existing conversation (caller, picked) → open it.
 //   - No existing → open a lazily-created thread (server INSERT happens
 //     on first send via send-message, KAN-71).
-//
-// BA FOLLOW-UP: a SECURITY DEFINER search_leaders RPC would let the BE
-// own the underground-name-elision invariant + give us pagination +
-// leader-name matching (PostgREST doesn't ilike across a joined column
-// efficiently). For MVP we query churches_public + users separately
-// and join in-memory.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -48,6 +48,9 @@ export interface SearchedLeader {
 }
 
 interface Props {
+  // callerUserId retained for parent-side existing-thread lookup; this
+  // component no longer uses it for filtering (the RPC excludes the
+  // caller server-side via auth.uid()).
   callerUserId: string | null;
   onBack: () => void;
   onPick: (leader: SearchedLeader) => void;
@@ -91,73 +94,32 @@ function AnonGlyph() {
   );
 }
 
-async function searchLeaders(query: string, excludeUserId: string | null): Promise<SearchedLeader[]> {
+async function searchLeaders(query: string): Promise<SearchedLeader[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  // Two parallel queries — church-name match + leader-name match.
-  // Underground churches are absent from churches_public by construction.
-  const churchSearch = supabase
-    .from('churches_public')
-    .select('id, name, type')
-    .ilike('name', `%${q}%`)
-    .eq('is_active', true)
-    .limit(20);
-  const nameSearch = supabase
-    .from('users')
-    .select('id, full_name, role, anonymous, churches:church_id(id, name, type, is_active)')
-    .ilike('full_name', `%${q}%`)
-    .eq('is_active', true)
-    .eq('verification_status', 'verified')
-    .limit(20);
-  const [churchesRes, namesRes] = await Promise.all([churchSearch, nameSearch]);
-
-  // For each matched church, fetch verified leaders.
-  const churchIds = (churchesRes.data ?? []).map((c: any) => c.id);
-  let churchLeaders: any[] = [];
-  if (churchIds.length > 0) {
-    const { data } = await supabase
-      .from('users')
-      .select('id, full_name, role, anonymous, churches:church_id(id, name, type, is_active)')
-      .in('church_id', churchIds)
-      .eq('is_active', true)
-      .eq('verification_status', 'verified')
-      .limit(40);
-    churchLeaders = data ?? [];
-  }
-
-  // Merge + dedupe.
-  const byId = new Map<string, any>();
-  for (const u of [...(namesRes.data ?? []), ...churchLeaders]) {
-    if (excludeUserId && u.id === excludeUserId) continue;
-    byId.set(u.id, u);
-  }
-
-  // Compose SearchedLeader rows.
-  const results: SearchedLeader[] = [];
-  byId.forEach((u: any) => {
-    const church = u.churches;
-    // SAFETY: underground leaders surface here (their user row exists),
-    // but their church renders ONLY as 'Underground Church' — the real
-    // name is never used in row text and is absent from churches_public.
-    const underground = church?.type === 'underground';
-    const churchName = underground ? 'Underground Church' : (church?.name ?? '');
-    const initial = (u.full_name ?? '').trim().charAt(0).toUpperCase() || '·';
-    results.push({
-      userId: u.id,
-      fullName: u.full_name ?? '',
-      role: u.role ?? null,
-      anonymous: !!u.anonymous,
-      underground,
-      churchName,
+  // Server-side search via search_leaders SECURITY DEFINER RPC.
+  // The RPC enforces underground-name masking, caller exclusion, and
+  // verified+active gating — the FE never sees raw church/user rows
+  // here and cannot accidentally surface an unmasked underground name.
+  // Server already orders by full_name and caps at 30 results.
+  const { data, error } = await supabase.rpc('search_leaders', { p_query: q });
+  if (error || !data) return [];
+  return (data as any[]).map((r) => {
+    const fullName: string = r.full_name ?? '';
+    const initial = fullName.trim().charAt(0).toUpperCase() || '·';
+    return {
+      userId: r.user_id,
+      fullName,
+      role: r.role ?? null,
+      anonymous: !!r.anonymous,
+      underground: !!r.underground,
+      churchName: r.church_name ?? '',
       monogramInitial: initial,
-    });
+    };
   });
-  // Stable sort: name asc.
-  results.sort((a, b) => a.fullName.localeCompare(b.fullName));
-  return results;
 }
 
-export default function LeaderSearch({ callerUserId, onBack, onPick }: Props) {
+export default function LeaderSearch({ onBack, onPick }: Props) {
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
   const [results, setResults] = useState<SearchedLeader[]>([]);
@@ -186,12 +148,12 @@ export default function LeaderSearch({ callerUserId, onBack, onPick }: Props) {
     }
     let cancelled = false;
     setLoading(true);
-    searchLeaders(term, callerUserId)
+    searchLeaders(term)
       .then((r) => { if (!cancelled) setResults(r); })
       .catch(() => { if (!cancelled) setResults([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [debounced, callerUserId]);
+  }, [debounced]);
 
   const active = debounced.trim().length >= 2;
 
