@@ -7,9 +7,16 @@
 // SecureStore under key 'covenant_ack' and the notice is never shown
 // again on this account.
 //
-// COPY STATUS: prototype copy per HANDOFF §6.4 — final wording is owned
-// by Content + Founder. Container shape (sky shield + serif heading +
-// body + pull-quote + primary CTA) is the CD deliverable here.
+// COPY (C2 device pass — Founder-ratified replacement of prototype copy):
+//   Eyebrow:  "A WORD BEFORE YOU WRITE"
+//   Heading:  "Connect is a room of trust."
+//   Body:     "These letters travel between verified leaders for the
+//              work of the kingdom. Replant reviews messages that are
+//              flagged."
+//   Quote:    "Let your speech be always with grace, seasoned with salt."
+//   Citation: "— COLOSSIANS 4:6 · KJV"
+// The earlier prototype lines ("nothing here is hidden from God…" and
+// "Behave as you would before your King") have been removed.
 
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -51,13 +58,12 @@ export default function CovenantNotice({ visible, onAccept }: Props) {
           <Text style={styles.heading}>Connect is a room of trust.</Text>
           <Text style={styles.body}>
             These letters travel between verified leaders for the work of
-            the kingdom. Replant reviews messages that are flagged —
-            nothing here is hidden from God, and little is hidden from
-            us.{'\n\n'}
-            <Text style={styles.bodyItalic}>
-              "Behave as you would before your King."
-            </Text>
+            the kingdom. Replant reviews messages that are flagged.
           </Text>
+          <Text style={styles.quote}>
+            "Let your speech be always with grace, seasoned with salt."
+          </Text>
+          <Text style={styles.quoteRef}>— COLOSSIANS 4:6 · KJV</Text>
           <Pressable
             style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
             onPress={onAccept}
@@ -123,11 +129,27 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: Colors.textMuted,
     textAlign: 'center',
-    marginBottom: 22,
+    marginBottom: 18,
   },
-  bodyItalic: {
+  // C2: quote + citation pair, styled to match the scripture-block
+  // pattern used by MinistriesEmpty (italic serif verse + mono caps
+  // citation in subtle ink).
+  quote: {
     fontFamily: Typography.scriptureItalic,
+    fontSize: 15,
+    lineHeight: 24,
     color: Colors.text,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
+  quoteRef: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.8, // 0.2em × 9pt
+    color: Colors.textSubtle,
+    marginTop: 8,
+    marginBottom: 22,
+    textAlign: 'center',
   },
   btn: {
     minWidth: 200,

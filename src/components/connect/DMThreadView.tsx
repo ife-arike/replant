@@ -32,6 +32,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -81,6 +82,11 @@ interface OtherParty {
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
 const MAX_COMPOSER_HEIGHT = 124;
+// B4 (device pass): tighten the composer floor. The KAN-70 ship value
+// (42pt) felt oversized in device testing; 36pt restores breathing room
+// without losing tap-target generosity on the send affordance. Multi-
+// line auto-grow up to MAX_COMPOSER_HEIGHT is preserved.
+const MIN_COMPOSER_HEIGHT = 36;
 
 // ── inline icons ──────────────────────────────────────────────────────
 function BackIcon() {
@@ -239,11 +245,18 @@ function Bubble({
 }
 
 // ── empty (lazy thread) ───────────────────────────────────────────────
+// C1 (device pass): scripture-led opener replacing "A new, private
+// letter." Matches the verse + citation pattern used by
+// MinistriesEmpty (Cormorant Garamond italic for the verse, mono small
+// caps for the citation). Sub-text retained.
 function LazyEmpty() {
   return (
     <View style={styles.lazyEmpty}>
       <View style={styles.lazyGlyph}><LockIcon size={22} /></View>
-      <Text style={styles.lazyLine}>A new, private letter.</Text>
+      <Text style={styles.lazyLine}>
+        "Where two or three are gathered in my name, there am I also."
+      </Text>
+      <Text style={styles.lazyRef}>MATTHEW 18:20 · KJV</Text>
       <Text style={styles.lazySub}>
         Say what is on your heart to begin. Only the two of you will read it.
       </Text>
@@ -269,7 +282,7 @@ export default function DMThreadView({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [draft, setDraft] = useState('');
-  const [composerHeight, setComposerHeight] = useState(42);
+  const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   const [showCovenant, setShowCovenant] = useState(false);
   const pendingTextRef = useRef<string>('');
   // Refs for messages + conversationId so the Realtime callback always
@@ -549,7 +562,13 @@ export default function DMThreadView({
       return;
     }
     setDraft('');
-    setComposerHeight(42);
+    setComposerHeight(MIN_COMPOSER_HEIGHT);
+    // B3 (device pass): dismiss the keyboard the moment the message
+    // leaves the composer. The optimistic bubble takes over the
+    // visual feedback; staying keyboard-up makes the leader feel like
+    // the send didn't land. NOT done on the retry path (failed-send
+    // bubbles stay tappable while the keyboard remains visible).
+    Keyboard.dismiss();
     void sendNow(text);
   }, [draft, covenantAcknowledged, sendNow]);
 
@@ -560,7 +579,9 @@ export default function DMThreadView({
     pendingTextRef.current = '';
     if (text) {
       setDraft('');
-      setComposerHeight(42);
+      setComposerHeight(MIN_COMPOSER_HEIGHT);
+      // Same B3 dismiss on the covenant-gated first-send path.
+      Keyboard.dismiss();
       void sendNow(text);
     }
   }, [onAcknowledgeCovenant, sendNow]);
@@ -630,20 +651,33 @@ export default function DMThreadView({
           <BackIcon />
         </Pressable>
         <View style={styles.who}>
-          <View style={styles.whoNameRow}>
-            {isSecure && <LockIcon color={Colors.accent} size={12} />}
-            <Text
-              style={[styles.whoName, isSecure && styles.whoNameSecure]}
-              numberOfLines={1}
-            >
-              {other?.displayName ?? '…'}
-            </Text>
-          </View>
-          {other?.churchLabel ? (
-            <Text style={styles.whoChurch} numberOfLines={1}>
-              {other.churchLabel.toUpperCase()}
-            </Text>
-          ) : null}
+          {/* B2 (device pass): never render a partial header. While the
+              other party's profile is still resolving (lazy thread, race
+              between mount and the users+churches join), render a
+              skeleton instead of placeholder text or an empty string. */}
+          {other ? (
+            <>
+              <View style={styles.whoNameRow}>
+                {isSecure && <LockIcon color={Colors.accent} size={12} />}
+                <Text
+                  style={[styles.whoName, isSecure && styles.whoNameSecure]}
+                  numberOfLines={1}
+                >
+                  {other.displayName}
+                </Text>
+              </View>
+              {other.churchLabel ? (
+                <Text style={styles.whoChurch} numberOfLines={1}>
+                  {other.churchLabel.toUpperCase()}
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            <View accessibilityLabel="Loading conversation">
+              <View style={styles.whoNameSkel} />
+              <View style={styles.whoChurchSkel} />
+            </View>
+          )}
         </View>
         <View style={{ width: 20 }} />
       </View>
@@ -723,7 +757,10 @@ export default function DMThreadView({
             multiline
             scrollEnabled
             onContentSizeChange={(e) => {
-              const h = Math.min(MAX_COMPOSER_HEIGHT, Math.max(42, e.nativeEvent.contentSize.height + 12));
+              const h = Math.min(
+                MAX_COMPOSER_HEIGHT,
+                Math.max(MIN_COMPOSER_HEIGHT, e.nativeEvent.contentSize.height + 12),
+              );
               setComposerHeight(h);
             }}
           />
@@ -776,6 +813,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1.14, // 0.12em × 9.5
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  // B2 skeletons — same approximate dimensions as the real name + church
+  // lines so the header doesn't reflow when the profile resolves.
+  whoNameSkel: {
+    width: 140,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: Colors.surface,
+  },
+  whoChurchSkel: {
+    width: 90,
+    height: 10,
+    borderRadius: 4,
+    backgroundColor: Colors.surface,
+    marginTop: 6,
   },
   body: { flex: 1 },
   // ── list ──
@@ -864,11 +916,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   loaderBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // ── composer ──
+  // ── composer ── (B4: tightened)
   composer: {
-    paddingTop: 10,
+    paddingTop: 8,
     paddingHorizontal: 14,
-    paddingBottom: 28,
+    paddingBottom: 24,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
@@ -876,7 +928,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   attach: {
-    width: 42, height: 42,
+    width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT,
     alignItems: 'center', justifyContent: 'center',
   },
   field: {
@@ -884,16 +936,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
-    borderRadius: 21,
-    paddingHorizontal: 16,
-    paddingTop: 11,
-    paddingBottom: 11,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
     fontFamily: Typography.body,
     fontSize: 14.5,
     color: Colors.text,
   },
   send: {
-    width: 42, height: 42, borderRadius: 21,
+    width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
   sendActive: { backgroundColor: Colors.accent },
@@ -909,9 +961,18 @@ const styles = StyleSheet.create({
   lazyGlyph: { marginBottom: 6 },
   lazyLine: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 19,
+    fontSize: 18,
+    lineHeight: 26,
     color: Colors.text,
     textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  lazyRef: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.8, // 0.2em × 9pt — matches MinistriesEmpty.verseRef
+    color: Colors.textSubtle,
+    marginTop: 10,
   },
   lazySub: {
     fontFamily: Typography.body,
@@ -919,5 +980,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.textMuted,
     textAlign: 'center',
+    marginTop: 16,
   },
 });

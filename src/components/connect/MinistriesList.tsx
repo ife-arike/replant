@@ -565,13 +565,18 @@ const styles = StyleSheet.create({
     color: Colors.red,
     letterSpacing: 0.3,
   },
-  // ── empty ──
+  // ── empty ── (B5 device pass: bottom padding bumped from 22 → 100pt
+  // so the "Start a branch" button, the John 15:5 verse block, and the
+  // post-note all clear the bottom tab bar (≈84pt) + the CovenantFooter
+  // / CovenantStrip area that sits at the bottom of the Ministries
+  // sub-tab. Without this the button could be clipped on smaller
+  // device heights.)
   emptyBox: {
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: 30,
     paddingTop: 56,
-    paddingBottom: 22,
+    paddingBottom: 100,
     gap: 14,
   },
   emptySeal: {
