@@ -275,11 +275,15 @@ export default function BranchCreate({
             </View>
             <View style={styles.search}>
               <SearchIcon />
+              {/* B7 (device pass): placeholder mentions RPL Network ID.
+                  LABEL CHANGE ONLY — get_invite_candidates RPC doesn't
+                  match against church_code yet; that's a separate DBA
+                  ticket. No client-side church_code filtering here. */}
               <TextInput
                 style={styles.searchInput}
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search ministries"
+                placeholder="Search by name or RPL Network ID"
                 placeholderTextColor={Colors.textSubtle}
                 autoCapitalize="words"
                 autoCorrect={false}

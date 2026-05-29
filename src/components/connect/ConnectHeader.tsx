@@ -1,9 +1,12 @@
 // ConnectHeader — KAN-68/69 §5.1 (HANDOFF.md).
 //
-// Eyebrow ("Tab 5 · In Confidence") + serif title ("Connect") + subtitle
-// ("Ministry to ministry · Held in confidence" on Ministries OR
-// "Leader to leader · Held in confidence" on Leaders) + compose
-// affordance at top-right.
+// Serif title ("Connect") + subtitle ("Ministry to ministry · Held in
+// confidence" on Ministries OR "Leader to leader · Held in confidence"
+// on Leaders) + compose affordance at top-right.
+//
+// B6 (device pass): the "Tab 5 · In Confidence" eyebrow that lived
+// above the title was a CD-prototype development artifact for the
+// design handoff and is not part of the final product. Removed.
 //
 // Compose icon swaps based on sub-tab: + (Ministries → start a branch),
 // pencil (Leaders → new DM). Hidden when view.kind !== 'list' so the
@@ -49,7 +52,6 @@ export default function ConnectHeader({ subTab, showCompose, onCompose }: Props)
   return (
     <View style={styles.root}>
       <View style={styles.copy}>
-        <Text style={styles.eyebrow}>TAB 5 · IN CONFIDENCE</Text>
         <Text style={styles.title}>Connect</Text>
         <Text style={styles.subtitle}>{subtitle.toUpperCase()}</Text>
       </View>
@@ -78,13 +80,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   copy: { flex: 1, minWidth: 0 },
-  eyebrow: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 2.34, // 0.26em × 9pt
-    color: Colors.textSubtle,
-    marginBottom: 6,
-  },
+  // B6: eyebrow style removed alongside the JSX element.
   title: {
     fontFamily: Typography.displayRegular,
     fontSize: 30,

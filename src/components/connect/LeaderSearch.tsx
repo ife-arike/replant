@@ -220,8 +220,12 @@ export default function LeaderSearch({ onBack, onPick }: Props) {
 
       {!active && (
         <View style={styles.hintBox}>
+          {/* B7 (device pass): hint copy updated to mention RPL Network
+              ID. LABEL CHANGE ONLY — search_leaders RPC does not match
+              against church_code yet; that's a separate DBA ticket. No
+              client-side church_code filtering is added here. */}
           <Text style={styles.hint}>
-            Search the network by a leader's name{'\n'}or the name of their church.
+            Search the network by a leader's name, church name, or RPL Network ID.
           </Text>
         </View>
       )}

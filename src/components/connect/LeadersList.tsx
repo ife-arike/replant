@@ -412,6 +412,40 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
 
   useEffect(() => { void loadInitial(); }, [loadInitial]);
 
+  // Realtime list refresh — KAN-68 device pass B1.
+  // Subscribe to the caller's conversations row stream. send-message +
+  // send-branch-message both bump `last_message_at` on the row after a
+  // successful insert (UPDATE event), and a lazy-created thread shows
+  // up as a fresh row on the recipient side (INSERT event). RLS on
+  // conversations gates these events to the caller's own threads, so
+  // no cross-leader leakage. Debounced to coalesce bursts (e.g. a
+  // sender firing several messages quickly).
+  //
+  // We refetch the first page rather than mutating a single row in
+  // place — the page query already joins users + churches + last
+  // message preview, and an in-place update would need to repeat
+  // most of that fetch anyway. For ≤25 rows the cost is negligible.
+  useEffect(() => {
+    if (!callerUserId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const queueRefresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { void loadInitial(); }, 250);
+    };
+    const channel = supabase
+      .channel(`leaders-list-${callerUserId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        queueRefresh,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [callerUserId, loadInitial]);
+
   // Filter on name + church only (NEVER preview). Local 2-char gate
   // mirrors the search semantic in HANDOFF §6.1.
   const filtered = useMemo(() => {
