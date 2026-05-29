@@ -1,0 +1,20 @@
+# KAN-214 — send-branch-message edge function config.
+#
+# verify_jwt = true is LOAD-BEARING per SEC. Any change here requires a
+# fresh SEC ruling before deploy. Mirrors send-message (KAN-71).
+#
+# DELIVER-ALWAYS (D-45 clause 3) is load-bearing: keyword match writes
+# `flagged` + `flag_reason` columns ONLY. It does NOT gate the INSERT
+# into public.messages, the Realtime broadcast (the messages table is
+# in supabase_realtime — KAN-71 + KAN-214 publication), or the 200
+# response. A HOLD requires explicit admin action — never automatic
+# here.
+#
+# NOTE: Supabase CLI 2.95.4 has a known quirk where per-function
+# config.toml verify_jwt is ignored on deploy via the platform —
+# verify_jwt must be passed explicitly to deploy_edge_function. The
+# canonical fix is CLI ≥ 2.100.1 OR --no-verify-jwt-suppression at
+# deploy time (we do NOT suppress here). See feedback memory
+# `feedback_supabase_cli_verify_jwt`.
+
+verify_jwt = true
