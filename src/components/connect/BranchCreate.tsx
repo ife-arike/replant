@@ -4,19 +4,27 @@
 // (caller's ministry, locked) + searchable ministry pick list (cap 6
 // invitees = 7 ministries total per HANDOFF). On send: invokes the
 // SECURITY DEFINER create_branch(p_name, p_invited_user_ids[]) RPC
-// (KAN-214 Migration 2) which validates the cap server-side, writes
-// branches + branch_members rows, and emits branch_created (plus
-// branch_activated if the branch was created with no invitees).
+// (KAN-214 Migration 2 + follow-up amendment) which validates the
+// ministry cap server-side (counts DISTINCT church_ids across invited
+// users, not raw user count), writes branches + branch_members rows,
+// and emits branch_created (plus branch_activated if the branch was
+// created with no invitees).
 //
 // "Invited user IDs" semantic: the RPC takes USER ids, not ministry ids
 // — selecting a ministry brings ALL of its verified active leaders into
 // the invitee list. Each leader becomes their own branch_members row
 // with consent_status='invited'.
 //
-// BA FOLLOW-UP: a get_invite_candidates SECURITY DEFINER RPC would
-// collapse the per-ministry leader query + apply the
-// underground-name-elision invariant server-side. For MVP we query
-// churches_public + users separately and merge.
+// SEC: the ministry corpus is loaded via get_invite_candidates
+// SECURITY DEFINER RPC (KAN-214 follow-up migration 20260529000003).
+// The RPC enforces:
+//   - underground-name masking (real names absent from predicate AND
+//     return value; only "Underground Church" is searchable);
+//   - caller's own church excluded;
+//   - verified+active leaders only;
+//   - city/country elided for underground rows;
+//   - leader_count + leaders[] bundled so submit doesn't need a
+//     second round-trip to expand a ministry into user_ids.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -93,82 +101,34 @@ function AnonGlyph() {
   );
 }
 
-// Load all selectable ministries — caller's own church excluded.
-// Underground rows are NOT in churches_public; they're added by a
-// separate query that returns only the count + masked label.
-async function loadMinistries(excludeChurchId: string | null): Promise<MinistryRow[]> {
-  const [publicRes, undergroundRes] = await Promise.all([
-    supabase
-      .from('churches_public')
-      .select('id, name, type, city, country')
-      .eq('is_active', true)
-      .limit(500),
-    // Underground churches are NOT in churches_public. We can read them
-    // from churches itself but the schema may RLS-gate that — the result
-    // is allowed to be empty without breaking the flow. Underground rows
-    // are surfaced with name='Underground Church' (no real name leak).
-    supabase
-      .from('churches')
-      .select('id, type')
-      .eq('type', 'underground')
-      .eq('is_active', true)
-      .limit(200),
-  ]);
-
-  const churchRows: Array<{ id: string; name: string; underground: boolean; city: string | null; country: string | null }> = [];
-  (publicRes.data ?? []).forEach((c: any) => {
-    if (c.id === excludeChurchId) return;
-    churchRows.push({
-      id: c.id,
-      name: c.name,
-      underground: false,
-      city: c.city ?? null,
-      country: c.country ?? null,
-    });
+// Load selectable ministries via the get_invite_candidates SECURITY
+// DEFINER RPC. The RPC excludes the caller's own church + the verified+
+// active leader gate + the underground-name masking + the empty-
+// ministry HAVING filter — the FE just maps the rows into pick shape.
+// `query` is optional; the RPC supports server-side filtering on
+// ministry name (with the underground label masking).
+async function loadMinistries(query: string | null): Promise<MinistryRow[]> {
+  const args: Record<string, unknown> = {};
+  if (query && query.trim().length > 0) args.p_query = query.trim();
+  const { data, error } = await supabase.rpc('get_invite_candidates', args);
+  if (error || !data) return [];
+  return (data as any[]).map((r) => {
+    const leaders = Array.isArray(r.leaders) ? r.leaders : [];
+    const leaderIds = leaders
+      .map((l: any) => l?.user_id)
+      .filter((id: unknown): id is string => typeof id === 'string');
+    return {
+      ministryId: r.ministry_id,
+      name: r.ministry_name,
+      underground: !!r.underground,
+      leaderIds,
+      leaderCount: typeof r.leader_count === 'number'
+        ? r.leader_count
+        : leaderIds.length,
+      city: r.city ?? null,
+      country: r.country ?? null,
+    };
   });
-  (undergroundRes.data ?? []).forEach((c: any) => {
-    if (c.id === excludeChurchId) return;
-    churchRows.push({
-      id: c.id,
-      name: 'Underground Church',
-      underground: true,
-      city: null,
-      country: null,
-    });
-  });
-
-  // Fetch active verified leaders per church in one query.
-  const churchIds = churchRows.map((c) => c.id);
-  if (churchIds.length === 0) return [];
-  const { data: leaders } = await supabase
-    .from('users')
-    .select('id, church_id')
-    .in('church_id', churchIds)
-    .eq('is_active', true)
-    .eq('verification_status', 'verified');
-
-  const leadersByChurch = new Map<string, string[]>();
-  (leaders ?? []).forEach((u: any) => {
-    if (!leadersByChurch.has(u.church_id)) leadersByChurch.set(u.church_id, []);
-    leadersByChurch.get(u.church_id)!.push(u.id);
-  });
-
-  return churchRows
-    .map((c) => {
-      const ids = leadersByChurch.get(c.id) ?? [];
-      return {
-        ministryId: c.id,
-        name: c.name,
-        underground: c.underground,
-        leaderIds: ids,
-        leaderCount: ids.length,
-        city: c.city,
-        country: c.country,
-      };
-    })
-    // Hide ministries with zero verified active leaders — there's no one to invite.
-    .filter((m) => m.leaderCount > 0)
-    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export default function BranchCreate({
@@ -186,20 +146,26 @@ export default function BranchCreate({
   const [loadingMinistries, setLoadingMinistries] = useState(true);
   const [sending, setSending] = useState(false);
 
+  // Initial corpus load — no query filter.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoadingMinistries(true);
       try {
-        const rows = await loadMinistries(callerChurchId);
+        const rows = await loadMinistries(null);
         if (!cancelled) setMinistries(rows);
       } finally {
         if (!cancelled) setLoadingMinistries(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [callerChurchId]);
+  }, []);
 
+  // Client-side filter on the loaded corpus. The RPC already capped at
+  // 50 rows; client-side filter is the right shape for the picker UX
+  // (no per-keystroke network call). If the corpus grows past 50 in
+  // practice, switching to server-side filtering is a one-liner here
+  // (call loadMinistries(query) on debounced query change).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return ministries;
@@ -234,14 +200,10 @@ export default function BranchCreate({
     ministries.forEach((m) => {
       if (picked.has(m.ministryId)) inviteeIds.push(...m.leaderIds);
     });
-    // Belt-and-suspenders: client-side cap on TOTAL invited users (each
-    // ministry brings 1-2 leaders → 6 ministries × 2 = up to 12). The
-    // SERVER cap in create_branch is "≤ 6 invited USER ids" — meaning
-    // up to 6 leaders, not 6 ministries. This is a known divergence
-    // from FE shape; for MVP, if a leader picks 4+ ministries with 2
-    // leaders each, the RPC will reject with 'branch_cap_exceeded'.
-    // Surface it as a toast and let them deselect. BA follow-up: align
-    // server cap to "≤ 6 invited MINISTRIES" via a wrapping RPC.
+    // Server cap is "≤ 6 distinct MINISTRIES" (KAN-214 follow-up
+    // migration 20260529000003 fixed the original USER-count cap).
+    // The FE cap of 6 ministry selections + this cap match exactly,
+    // so a legitimately-sized branch never trips branch_cap_exceeded.
     setSending(true);
     try {
       const { data, error } = await supabase.rpc('create_branch', {

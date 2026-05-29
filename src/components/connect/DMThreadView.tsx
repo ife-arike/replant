@@ -381,6 +381,12 @@ export default function DMThreadView({
       setMessages(assignGroupLabels(ordered));
       setExhausted(data.length < PAGE_SIZE);
       setLoading(false);
+      // Mark the thread read on initial open. Fire-and-forget — a
+      // mark-read failure must NEVER block the thread render. The
+      // caller may not yet be at-the-bottom of the inverted list, but
+      // the open-the-thread intent is what last_read_at tracks.
+      void supabase.rpc('mark_conversation_read', { p_conversation_id: conversationId })
+        .then(() => undefined, () => undefined);
     })();
     return () => { cancelled = true; };
   }, [conversationId, callerUserId]);
@@ -417,6 +423,14 @@ export default function DMThreadView({
             (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
           );
           setMessages(assignGroupLabels(next));
+          // Caller is actively viewing this thread when an inbound
+          // message lands — bump last_read_at_<x> so the badge clears
+          // on the next get_*list snapshot. Skip on own-message echoes
+          // (no read state change). Fire-and-forget.
+          if (!incoming.mine) {
+            void supabase.rpc('mark_conversation_read', { p_conversation_id: conversationId })
+              .then(() => undefined, () => undefined);
+          }
         },
       )
       .subscribe();
