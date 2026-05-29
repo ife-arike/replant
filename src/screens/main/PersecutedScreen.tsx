@@ -96,14 +96,14 @@ const THRESHOLD_EYEBROW = 'A HELD SPACE';
 const THRESHOLD_BODY =
   'For churches under imprisonment, prohibition of fellowship, violence, and active hunting for the faith. Handle with prayer and sobriety.';
 
-const ACTION_PROMPT = 'Are you currently under persecution for the name of Jesus?';
+const ACTION_PROMPT = 'Are you currently suffering persecution for the name of Jesus?';
 const ACTION_SUB =
-  'Your account is verified and your identity is held. This is a held space for your voice.';
+  'Your account is verified and your identity is held. This is a safe space for your voice.';
 const ACTION_CTA = 'SHARE MY HEARTCRY';
 
 const EMPTY_TITLE = 'Quiet here, for now.';
 const EMPTY_BODY =
-  'This space is held in prayer until someone speaks. If you are persecuted tonight, you can share here.';
+  'This space is held in prayer until someone speaks. If you are experiencing any form of persecution, you can share here.';
 
 const SECTION_HEADING = 'Heartcries from the body';
 
@@ -248,6 +248,25 @@ export default function PersecutedScreen() {
             onPress={() => navigation.navigate('HeartcrySubmission')}
           />
 
+          {/* KAN-65 R2 — "My open heartcries" stub. The Open Heartcries
+              screen isn't built yet (ticket TBD); for now this is a
+              quiet, muted, no-arrow tap-target that signals the path
+              exists. Placed below the action card so it doesn't
+              compete with "SHARE MY HEARTCRY" for the leader's eye. */}
+          <Pressable
+            onPress={() => {
+              // TODO(KAN-TBD): navigate to Open Heartcries screen
+              // when that surface ships. Until then this is a no-op
+              // tap; deliberately silent so the leader doesn't get an
+              // empty Alert. */
+            }}
+            style={styles.openHeartcriesLink}
+            accessibilityRole="button"
+            accessibilityLabel="My open heartcries"
+          >
+            <Text style={styles.openHeartcriesLabel}>My open heartcries</Text>
+          </Pressable>
+
           {/* Section header */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeader}>{SECTION_HEADING}</Text>
@@ -332,7 +351,7 @@ function ThresholdPreamble() {
         <ThresholdLock />
         <Text style={[styles.thresholdMetaText, styles.thresholdMetaSky]}>ENCRYPTED</Text>
         <Text style={styles.thresholdMetaDot}>·</Text>
-        <Text style={styles.thresholdMetaText}>NO LOCATION STORED</Text>
+        <Text style={styles.thresholdMetaText}>NO LOCATION SHARED</Text>
         <Text style={styles.thresholdMetaDot}>·</Text>
         <Text style={styles.thresholdMetaText}>REGION ONLY</Text>
       </View>
@@ -571,19 +590,26 @@ const styles = StyleSheet.create({
     borderBottomColor: FAINT,
   },
   thresholdEyebrow: {
+    // KAN-65 R2 — size bump 9.5 → 11; letter-spacing recomputed
+    // proportionally against the 0.28em rule (was 2.66, now 3.08).
+    // The eyebrow needs to read as a label on first arrival, not as
+    // small print near the body.
     fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.66, // 0.28em × 9.5
+    fontSize: 11,
+    letterSpacing: 3.08, // 0.28em × 11
     textTransform: 'uppercase',
     color: Colors.red,
     marginBottom: 10,
   },
   thresholdBody: {
+    // KAN-65 R2 — size bump 15 → 17; lineHeight 23 → 26 (same ~1.53
+    // ratio); letterSpacing 0.15 → 0.17 (same 0.01em rule). The body
+    // needs to land like a hand on the shoulder, not a footnote.
     fontFamily: Typography.scriptureItalic,
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 26,
     color: CREAM,
-    letterSpacing: 0.15,
+    letterSpacing: 0.17,
   },
   thresholdMeta: {
     flexDirection: 'row',
@@ -647,6 +673,26 @@ const styles = StyleSheet.create({
     letterSpacing: 1.61, // 0.14em × 11.5
     textTransform: 'uppercase',
     color: Colors.red,
+  },
+
+  // KAN-65 R2 — "My open heartcries" stub link. Quiet, centered,
+  // breathing room above and below so it doesn't pull weight from
+  // the action card. No chevron — the dispatch is explicit that
+  // anything decorative crowds out the action. Sentence-case DM Sans
+  // 12 muted reads as a soft text link, not a CTA. Generous hitSlop
+  // so the small text is still thumb-findable.
+  openHeartcriesLink: {
+    marginTop: 18,
+    marginBottom: 10,
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  openHeartcriesLabel: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    letterSpacing: 0.12,
   },
 
   // Section heading
