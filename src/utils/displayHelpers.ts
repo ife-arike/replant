@@ -62,27 +62,30 @@ export function formatDistance(distanceKm: number, countryCode: string): string 
 }
 
 // KAN-23 v7 Item 05 — getRoleLabel(role): label used as a prefix on
-// the feed card author line ("Pastor Priya", "Minister Felipe"). The
-// label set below is intentionally narrower than ROLES (which is the
-// onboarding role-picker enum, order-locked per SPEC Doc 01). Per
-// dispatch, any role NOT in this map (including 'other' and the
-// charismatic-role values like 'apostle' / 'prophet' / 'evangelist'),
-// plus null/undefined, falls back to "Minister" — the same fallback
-// as the `ministry_leader` entry. Add new entries here as Founder
-// expands the recognised set; keep ROLES untouched (its order is
-// locked).
+// the feed card author line ("Pastor Priya", "Apostle Felipe").
+// Full ROLES enum coverage. Fallback 'Minister' is a last resort for
+// unknown future values only.
 // Exported for CAML leader-line composition (KAN-18). getRoleLabel
 // stays as the convenience helper; CAML reaches for the raw map so it
 // can fall back to a custom default ("Minister") inline.
 export const PRAYER_WALL_ROLE_LABELS: Record<string, string> = {
-  ministry_leader: 'Minister',
-  pastor: 'Pastor',
-  elder: 'Elder',
-  deacon: 'Deacon',
-  missionary: 'Missionary',
-  youth_leader: 'Youth Leader',
-  worship_leader: 'Worship Leader',
-  psalmist: 'Psalmist',
+  ministry_leader:  'Minister',
+  pastor:           'Pastor',
+  elder:            'Elder',
+  deacon:           'Deacon',
+  missionary:       'Missionary',
+  youth_leader:     'Youth Leader',
+  worship_leader:   'Worship Leader',
+  psalmist:         'Psalmist',
+  // Added — full ROLES enum coverage (fix/role-label-gap)
+  apostle:          'Apostle',
+  prophet:          'Prophet',
+  evangelist:       'Evangelist',
+  teacher:          'Teacher',
+  bishop:           'Bishop',
+  reverend:         'Reverend',
+  intercessor:      'Intercessor',
+  other:            'Leader',        // 'other' self-ID → 'Leader' is more pastoral than 'Minister'
 };
 
 export function getRoleLabel(role: string | null | undefined): string {
