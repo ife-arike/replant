@@ -19,7 +19,7 @@ import HomeScreen from "../screens/main/HomeScreen";
 import TheChurchScreen from "../screens/main/TheChurchScreen";
 import PersecutedScreen from "../screens/main/PersecutedScreen";
 import PrayerWallScreen from "../screens/main/PrayerWallScreen";
-import ConnectPlaceholderScreen from "../screens/main/ConnectPlaceholderScreen";
+import ConnectScreen from "../screens/main/ConnectScreen";
 import type { TabsParamList } from "./types";
 
 const Tab = createBottomTabNavigator<TabsParamList>();
@@ -80,7 +80,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="Connect"
-        component={ConnectPlaceholderScreen}
+        component={ConnectScreen}
         options={{ tabBarIcon: ({ color }) => <ConnectIcon color={color} /> }}
       />
     </Tab.Navigator>
