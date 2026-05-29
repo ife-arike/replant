@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.6,
     lineHeight: 16,
-    color: Colors.green,
+    color: Colors.accent,
   },
   leaderLine: {
     // v8 Fix H4 — attribution 15 pt DM Sans 400, lh 1.3, muted-45%.
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: 'rgba(240, 237, 230, 0.04)',
     borderLeftWidth: 1,
-    borderLeftColor: Colors.green,
+    borderLeftColor: Colors.accent,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 4,
