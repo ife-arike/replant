@@ -33,6 +33,7 @@
 import React, { useMemo, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useReducedMotion } from '../../utils/useReducedMotion';
@@ -50,6 +51,37 @@ type Page = 0 | 1; // 0 = CAML (placeholder), 1 = CAL (globe)
 // stays inside the track. Same easing as the CD: cubic-bezier(.22, .61,
 // .36, 1) over 550ms.
 const HORIZON_MS = 550;
+
+// ── UnverifiedGateView ──────────────────────────────────────────────
+// Sits at the top of TheChurchScreen's stacking context (zIndex 20)
+// when the viewer is not yet verified, covering globe + CAML + sheet
+// + tab chrome with a near-opaque sky scrim. Pastoral copy + the CD
+// .glyph-cross + Philippians 1:6. The Mapbox surfaces below remain
+// mounted but are visually held until the leader's church is
+// confirmed by a Replant team member.
+function UnverifiedGateView() {
+  return (
+    <View style={styles.unverifiedGate}>
+      {/* Sky cross glyph — CD .glyph-cross, 36×36 */}
+      <Svg width={36} height={36} viewBox="0 0 36 36" style={styles.gateCrossGlyph}>
+        <Line x1="18" y1="5"  x2="18" y2="31" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
+        <Line x1="9"  y1="15" x2="27" y2="15" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
+      </Svg>
+      <Text style={styles.gateTitle}>Your account is being verified.</Text>
+      <Text style={styles.gateBody}>
+        Once your church is confirmed by a Replant team member, you'll unlock The Church
+        tab — and be able to see, and be seen by, every verified leader on the network.
+      </Text>
+      <Text style={styles.gateTiny}>Most verifications complete in 24–72 hours.</Text>
+      <View style={styles.gateScripture}>
+        <Text style={styles.gateScriptureText}>
+          "He which hath begun a good work in you will perform it…"
+        </Text>
+        <Text style={styles.gateScriptureRef}>PHILIPPIANS 1:6</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function TheChurchScreen() {
   const { branch } = useAuth();
@@ -267,6 +299,12 @@ export default function TheChurchScreen() {
         isOwnChurch={selectedChurchId !== null && selectedChurchId === ownChurchId}
         onDismiss={() => setSelectedChurchId(null)}
       />
+
+      {/* Unverified-leader gate — overlays the entire surface (zIndex
+          20). Mapbox surfaces stay mounted below but are visually held
+          until the leader's church is confirmed by a Replant team
+          member. */}
+      {!viewerVerified ? <UnverifiedGateView /> : null}
     </SafeAreaView>
   );
 }
@@ -396,5 +434,69 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     color: Colors.textMuted,
+  },
+
+  // ── Unverified gate (UnverifiedGateView) ──
+  unverifiedGate: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    backgroundColor: 'rgba(8,8,8,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 60,
+  },
+  gateCrossGlyph: { marginBottom: 24 },
+  gateTitle: {
+    fontFamily: Typography.scriptureLight,
+    fontSize: 23,
+    letterSpacing: 0.46, // 0.02em × 23
+    color: Colors.text,
+    textAlign: 'center',
+    lineHeight: 29,
+    marginBottom: 12,
+    maxWidth: 280,
+  },
+  gateBody: {
+    fontFamily: Typography.body,
+    fontSize: 12.5,
+    color: Colors.textMuted,
+    lineHeight: 20.5,
+    textAlign: 'center',
+    maxWidth: 280,
+    marginBottom: 8,
+  },
+  gateTiny: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.7,
+    textTransform: 'uppercase',
+    color: Colors.accent,
+    marginBottom: 28,
+  },
+  gateScripture: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(107,181,232,0.06)',
+    borderWidth: 0.5,
+    borderColor: Colors.borderAccent,
+    borderRadius: 8,
+    maxWidth: 300,
+    alignItems: 'center',
+  },
+  gateScriptureText: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 13.5,
+    color: Colors.text,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  gateScriptureRef: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.98, // 0.22em × 9
+    textTransform: 'uppercase',
+    color: Colors.accent,
   },
 });
