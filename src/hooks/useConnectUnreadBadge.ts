@@ -21,7 +21,7 @@
 // All refetches are debounced 350ms so a flurry of sends in either
 // tab coalesces to one round-trip.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthProvider';
 import { supabase } from '../lib/supabase';
 import { useNotifBadgeEnabled } from '../lib/connect-prefs';
@@ -98,6 +98,16 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
     void refresh();
   }, [refresh]);
 
+  // Stable ref to the latest refresh callback. The subscription effect
+  // below reads through this ref instead of depending on `refresh`
+  // directly — if it depended on `refresh`, the effect would tear down
+  // and re-subscribe every time `eligible` flips during session
+  // hydration, racing the previous channel's async cleanup and
+  // producing "cannot add postgres_changes callbacks after
+  // subscribe()" (Change 1, KAN-68 follow-up).
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; });
+
   // Realtime subscriptions — debounced refetch. Same publication-aware
   // pattern as LeadersList / MinistriesList: messages (INSERT), branches
   // (UPDATE), branch_members (*).
@@ -106,10 +116,21 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { void refresh(); }, REFRESH_DEBOUNCE_MS);
+      // Read through refreshRef — see the ref's definition for why we
+      // can't close over `refresh` directly here.
+      timer = setTimeout(() => { void refreshRef.current(); }, REFRESH_DEBOUNCE_MS);
     };
+    // Change 2 (KAN-68 follow-up): unique channel name per effect run.
+    // `supabase.channel(name)` returns the EXISTING channel if a channel
+    // with that name is already subscribed; calling `.on()` on it after
+    // its prior `.subscribe()` throws "cannot add postgres_changes
+    // callbacks after subscribe()". A random suffix per run guarantees
+    // a fresh, unsubscribed channel even if the previous channel's
+    // async cleanup is mid-flight. The cleanup closes over `channel`
+    // by reference, so we still remove the correct one.
+    const channelName = `connect-badge-${session?.user?.id ?? 'anon'}-${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase
-      .channel(`connect-badge-${session?.user?.id ?? 'anon'}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -135,10 +156,14 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
       // subscribed → Supabase throws "cannot add postgres_changes
       // callbacks after subscribe()". Explicit `unsubscribe()` first
       // tears down the channel's server-side state before the new
-      // subscribe call races in.
+      // subscribe call races in. The Change 2 unique channel name is
+      // a belt; this is the suspenders.
       void channel.unsubscribe().then(() => supabase.removeChannel(channel));
     };
-  }, [eligible, session?.user?.id, refresh]);
+    // `refresh` is intentionally NOT a dependency — it's accessed via
+    // refreshRef so an `eligible` flip during hydration doesn't tear
+    // down and re-subscribe the channel inside the same render cycle.
+  }, [eligible, session?.user?.id]);
 
   const shown = enabled && eligible && count > 0;
   return {
