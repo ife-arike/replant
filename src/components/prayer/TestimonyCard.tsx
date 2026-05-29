@@ -157,7 +157,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
         >
           <CelebrateIcon
             size={16}
-            color={row.i_celebrated ? Colors.amber : Colors.textMuted}
+            color={row.i_celebrated ? Colors.green : Colors.textMuted}
           />
           <Text
             style={[
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   celebrateCountActive: {
-    color: Colors.amber,
+    color: Colors.green,
   },
   timestamp: {
     // v7 Item 08 — 11 pt DM Sans 400, sentence case, no tracking
