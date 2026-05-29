@@ -12,10 +12,11 @@
 //   - Double-hairline fix: destructive footer no longer has borderTop
 //     (Connect block's borderBottom is the single divider)
 //
-// Layout order (unchanged from v2.2):
+// Layout order (KAN-68 CD-alignment pass insert: new 05 Notifications;
+// About renumbers to 06):
 //   Header (fixed) → Epigraph + rule → 01 Account → 02 Privacy →
-//   03 Church → 04 Language → 05 About → Connect block →
-//   inline writeError (if any) → Destructive footer →
+//   03 Church → 04 Language → 05 Notifications → 06 About →
+//   Connect block → inline writeError (if any) → Destructive footer →
 //   Foundation block (scripture + ref + version stamp, NO rp-mark)
 // ─────────────────────────────────────────────
 
@@ -39,6 +40,10 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
 import { ROLES } from '../../utils/displayHelpers';
 import RpMark from '../../components/icons/RpMark';
+import {
+  setNotifBadgeEnabled,
+  useNotifBadgeEnabled,
+} from '../../lib/connect-prefs';
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -165,6 +170,14 @@ export default function SettingsScreen({
   const [ragStatusState, setRagStatusState] = useState<RagStatus | null>(ragStatus);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [churchIdCopied, setChurchIdCopied] = useState<boolean>(false);
+  // 05 Notifications — single preference at MVP. Source of truth is
+  // connect-prefs (SecureStore-backed, local-only until DBA lands the
+  // BE column). Optimistic toggle UX matches the Anonymous-mode row.
+  const notifBadgeState = useNotifBadgeEnabled();
+  const handleNotifBadgeToggle = (next: boolean) => {
+    // No optimistic-revert needed — setNotifBadgeEnabled never throws.
+    void setNotifBadgeEnabled(next);
+  };
 
   // "Saved" flash — sets the section name for 1.5s after a successful write,
   // then clears. Sequential writes replace each other (clearTimeout below).
@@ -341,6 +354,8 @@ export default function SettingsScreen({
   const REFERENCE = 'JOHN 17 · 21 · KJV';
   const ANONYMOUS_HELPER =
     'When on, others see your role and church only — never your name.';
+  const NOTIF_BADGE_HELPER =
+    'Shows a count on the Connect tab when you have unread messages.';
   const EPIGRAPH = 'your account, your church.';
   const TEAM_EMAIL = 'connect@projectreplant.org';
   const version =
@@ -614,8 +629,29 @@ export default function SettingsScreen({
           </View>
         </View>
 
-        {/* ── 05 ABOUT ── */}
-        <SectionHeader number="05" title="About" />
+        {/* ── 05 NOTIFICATIONS — HANDOFF §15.2 ── */}
+        {/* First notification preference in the app. On by default.
+            The PATCH /users/me write to users.notif_message_badge is
+            HELD per dispatch: that column doesn't exist in live yet.
+            Preference is persisted to SecureStore (per-device today)
+            via setNotifBadgeEnabled; when DBA lands the column + a
+            write RPC, the swap is a single helper in connect-prefs. */}
+        <SectionHeader number="05" title="Notifications" />
+
+        <View style={styles.rowLast}>
+          <Text style={styles.rowLabel}>New message badge</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.rowValue}>{notifBadgeState ? 'On' : 'Off'}</Text>
+            <ToggleSwitch
+              value={notifBadgeState}
+              onValueChange={handleNotifBadgeToggle}
+            />
+          </View>
+          <Text style={styles.rowHelper}>{NOTIF_BADGE_HELPER}</Text>
+        </View>
+
+        {/* ── 06 ABOUT ── */}
+        <SectionHeader number="06" title="About" />
 
         <TouchableOpacity
           style={styles.row}

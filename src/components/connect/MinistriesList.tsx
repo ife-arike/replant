@@ -97,6 +97,12 @@ function BranchRow({ row, onPress }: { row: BranchListRow; onPress: () => void }
           </View>
         )}
       </View>
+      {/* Fix 5 (KAN-68 CD-alignment pass): 0.5px hairline inset to
+          left:72 (22 left pad + 36 seal + 14 gap = 72). Same pattern
+          as Leaders thread row but the branch seal is 36 wide, not
+          40. Inside the row so it appears on every row including
+          the last. */}
+      <View style={styles.rowHairline} pointerEvents="none" />
     </Pressable>
   );
 }
@@ -156,7 +162,7 @@ function InviteCard({
         <Pressable
           onPress={onJoin}
           disabled={inFlight}
-          style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.btnPrimary, styles.btnPrimaryRow, pressed && { opacity: 0.85 }]}
         >
           {inFlight ? <ActivityIndicator color="#07232f" />
             : <Text style={styles.btnPrimaryText}>Join the branch</Text>}
@@ -413,6 +419,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 22,
   },
+  rowHairline: {
+    position: 'absolute',
+    left: 72, // 22 (left pad) + 36 (branch seal) + 14 (gap)
+    right: 22,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.border,
+  },
   branchSeal: {
     width: 36, height: 36,
     borderRadius: 10,
@@ -543,14 +557,23 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: 0.3,
   },
+  // Fix 3 (KAN-68 CD-alignment pass): `flex: 1.4` was leaking from the
+  // InviteCard row context (where it sits next to a `flex: 1` ghost
+  // button) into the MinistriesEmpty standalone usage. In a column
+  // container `flex: 1.4` blows the button to ~200pt vertical height
+  // and pushes the text out of the visible region — leaving a blank
+  // sky rectangle. Base style now has no flex; the InviteCard usage
+  // adds `flex: 1.4` inline.
   btnPrimary: {
-    flex: 1.4,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 22,
     borderRadius: 999,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  btnPrimaryRow: {
+    flex: 1.4,
   },
   btnPrimaryText: {
     fontFamily: Typography.bodyMedium,

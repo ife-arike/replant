@@ -58,10 +58,19 @@ export interface LeaderThread {
   // messages stream where sender_id <> caller AND created_at > my
   // last_read_at_<x>).
   unread: number;
+  // Raw fields passed to the DM thread view as initial nav params
+  // (Fix 1, KAN-68 CD-alignment pass). The thread view can render
+  // its header immediately from these without waiting on its own
+  // async profile resolution — no more "·" placeholder header.
+  // Underground masking and the "Replant Team" secure-thread label
+  // are already applied to these values by get_leader_thread_list.
+  fullName: string;
+  role: string | null;
+  churchName: string;
 }
 
 interface Props {
-  onOpenThread: (conversationId: string, otherUserId: string) => void;
+  onOpenThread: (thread: LeaderThread) => void;
   onFindLeader: () => void;
 }
 
@@ -185,6 +194,11 @@ function ThreadRow({
           </View>
         )}
       </View>
+      {/* Fix 5 (KAN-68 CD-alignment pass): 0.5px bottom hairline inset
+          to left:76 (40 seal + 14 gap + 22 left pad). Inside the row
+          so it appears on every row including the last (no
+          ItemSeparator skips). */}
+      <View style={styles.rowHairline} pointerEvents="none" />
     </Pressable>
   );
 }
@@ -215,24 +229,41 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
     const anonymous = !!r.other_anonymous;
     const underground = !!r.other_underground;
     const fullName: string = r.other_full_name ?? '';
-    // Name line per §6.1: just the leader's full name (or role label
-    // when anonymous). No "· church" suffix — the church renders on
-    // its own line below.
+    const role: string | null = r.other_role ?? null;
+    const rawChurchName: string = r.other_church_name ?? '';
+    const roleLabel = role ? getRoleLabel(role) : '';
+    // Name line per §6.1 (Fix 2): just the leader's full name (or
+    // role label when anonymous). No "· church" suffix — church
+    // renders on its own line.
     let displayName: string;
     if (isSecure) {
       displayName = 'Replant Team';
     } else if (anonymous) {
-      displayName = getRoleLabel(r.other_role);
+      displayName = roleLabel || 'Leader';
     } else {
       displayName = fullName;
+    }
+    // Church line per Fix 2: "ChurchName · RoleLabel" for identified
+    // leaders; "ChurchName" alone for anonymous (role already on
+    // line 1); "Underground Church" alone for underground (role
+    // omitted per dispatch). Secure thread uses the literal
+    // "Replant · system-managed".
+    let churchLabel: string;
+    if (isSecure) {
+      churchLabel = 'Replant · system-managed';
+    } else if (underground) {
+      churchLabel = 'Underground Church';
+    } else if (anonymous) {
+      churchLabel = rawChurchName;
+    } else {
+      churchLabel = roleLabel
+        ? `${rawChurchName} · ${roleLabel}`
+        : rawChurchName;
     }
     // Monogram initial = first letter of the leader's actual full
     // name (not the role label). Anonymous + underground both render
     // the muted figure glyph instead — see ThreadRow's branch.
     const monogramInitial = fullName.trim().charAt(0).toUpperCase() || '·';
-    const churchLabel = isSecure
-      ? 'Replant · system-managed'
-      : (r.other_church_name ?? '');
     const lastAt = r.last_message_at ? new Date(r.last_message_at) : null;
     return {
       conversationId: r.conversation_id,
@@ -246,6 +277,12 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
       preview: r.last_message_preview ?? '',
       lastAt,
       unread: Number(r.unread_count) || 0,
+      fullName,
+      role,
+      // Raw church name for the DM-thread-view header (Fix 1). The
+      // header does NOT include the role; only the row church line
+      // does (per §6.3 vs §6.1 distinction).
+      churchName: isSecure ? 'Replant · system-managed' : (underground ? 'Underground Church' : rawChurchName),
     };
   });
 }
@@ -419,7 +456,7 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
           renderItem={({ item }) => (
             <ThreadRow
               thread={item}
-              onPress={() => onOpenThread(item.conversationId, item.otherUserId)}
+              onPress={() => onOpenThread(item)}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -476,6 +513,14 @@ const styles = StyleSheet.create({
   },
   rowPressed: { backgroundColor: 'rgba(240,237,230,0.02)' },
   rowSecure: { backgroundColor: 'rgba(107,181,232,0.04)' },
+  rowHairline: {
+    position: 'absolute',
+    left: 76, // 22 (left pad) + 40 (seal) + 14 (gap)
+    right: 22,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.border,
+  },
   secureRail: {
     position: 'absolute',
     left: 0, top: 0, bottom: 0, width: 2,

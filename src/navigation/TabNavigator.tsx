@@ -8,12 +8,12 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import {
-  ConnectIcon,
   HomeIcon,
   PersecutedIcon,
   PrayerWallIcon,
   TheChurchIcon,
 } from "../components/icons/TabIcons";
+import ConnectTabIcon from "../components/connect/ConnectTabIcon";
 import { Colors, Typography } from "../constants/theme";
 import HomeScreen from "../screens/main/HomeScreen";
 import TheChurchScreen from "../screens/main/TheChurchScreen";
@@ -81,7 +81,14 @@ export default function TabNavigator() {
       <Tab.Screen
         name="Connect"
         component={ConnectScreen}
-        options={{ tabBarIcon: ({ color }) => <ConnectIcon color={color} /> }}
+        options={{
+          // Custom icon wraps ConnectIcon + an unread-count badge per
+          // HANDOFF §15.1. The badge is gated by §15.2's
+          // "New message badge" preference (per-device today via
+          // SecureStore; BE write held pending users.notif_message_badge
+          // column).
+          tabBarIcon: ({ color }) => <ConnectTabIcon color={color} />,
+        }}
       />
     </Tab.Navigator>
   );

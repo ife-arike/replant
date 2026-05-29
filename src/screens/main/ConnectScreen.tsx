@@ -59,13 +59,30 @@ import BranchThreadView from '../../components/connect/BranchThreadView';
 
 export type SubTab = 'ministries' | 'leaders';
 
+// Optional initial profile snapshot passed into the DM thread view so
+// its header renders immediately without waiting on the async profile
+// resolution (Fix 1, KAN-68 CD-alignment pass). Already RPC-masked:
+// the row-list source applies the underground "Underground Church"
+// substitution and the "Replant Team" secure-thread label before
+// handing the snapshot to the view.
+export interface InitialThreadProfile {
+  fullName: string;
+  churchName: string;
+  isSecure: boolean;
+}
+
 // ConnectView — the single source of truth for which surface is active.
 // `list` is the host (Leaders or Ministries list, driven by subTab).
 // The other kinds are push screens that overlay the list.
 export type ConnectView =
   | { kind: 'list' }
   | { kind: 'search' }
-  | { kind: 'thread'; conversationId: string | null; recipientUserId: string | null }
+  | {
+      kind: 'thread';
+      conversationId: string | null;
+      recipientUserId: string | null;
+      initialProfile?: InitialThreadProfile;
+    }
   | { kind: 'branch'; branchId: string }
   | { kind: 'create' };
 
@@ -283,8 +300,20 @@ export default function ConnectScreen() {
     if (subTab === 'leaders') {
       return (
         <LeadersList
-          onOpenThread={(conversationId) =>
-            goTo({ kind: 'thread', conversationId, recipientUserId: null })}
+          onOpenThread={(thread) =>
+            goTo({
+              kind: 'thread',
+              conversationId: thread.conversationId,
+              recipientUserId: null,
+              // Snapshot the already-resolved profile so the DM view
+              // header doesn't render a "·" placeholder while it
+              // re-fetches the same data (Fix 1).
+              initialProfile: {
+                fullName: thread.fullName,
+                churchName: thread.churchName,
+                isSecure: thread.isSecure,
+              },
+            })}
           onFindLeader={() => goTo({ kind: 'search' })}
         />
       );
@@ -315,6 +344,7 @@ export default function ConnectScreen() {
           <DMThreadView
             conversationId={pushVisible.conversationId}
             recipientUserId={pushVisible.recipientUserId}
+            initialProfile={pushVisible.initialProfile}
             callerUserId={callerUserId}
             covenantAcknowledged={covenantAck}
             onAcknowledgeCovenant={acknowledgeCovenant}

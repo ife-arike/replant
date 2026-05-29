@@ -53,6 +53,7 @@ import {
   formatMessageTime,
 } from './DMThreadView';
 import CovenantStrip from './CovenantStrip';
+import AttachmentPopover from './AttachmentPopover';
 
 interface Props {
   branchId: string;
@@ -352,6 +353,13 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
   const [composerHeight, setComposerHeight] = useState(42);
   const [showMembers, setShowMembers] = useState(false);
   const [resolvedDecline, setResolvedDecline] = useState(false);
+  // Fix 8 (KAN-68 §15.3) — same anticipatory popover as DMThreadView.
+  const [attachPopoverVisible, setAttachPopoverVisible] = useState(false);
+  useEffect(() => {
+    if (attachPopoverVisible && draft.length > 0) {
+      setAttachPopoverVisible(false);
+    }
+  }, [draft, attachPopoverVisible]);
   const messagesRef = useRef<BranchMessage[]>(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -630,10 +638,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
   }, [session?.access_token, branchId]);
 
   const handleAttach = () => {
-    Alert.alert(
-      '',
-      'Attachments are coming soon. Sharing files will require consent and must follow the Replant community standard.',
-    );
+    setAttachPopoverVisible((v) => !v);
   };
 
   const continueWithout = useCallback(async () => {
@@ -777,15 +782,22 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
           </View>
         ) : (
           <View style={styles.composer}>
-            <Pressable
-              onPress={handleAttach}
-              hitSlop={6}
-              style={styles.attach}
-              accessibilityRole="button"
-              accessibilityLabel="Attachment (coming soon)"
-            >
-              <ClipIcon />
-            </Pressable>
+            <View style={styles.attachWrap}>
+              <AttachmentPopover
+                visible={attachPopoverVisible}
+                onRequestClose={() => setAttachPopoverVisible(false)}
+              />
+              <Pressable
+                onPress={handleAttach}
+                hitSlop={6}
+                style={styles.attach}
+                accessibilityRole="button"
+                accessibilityLabel="Attachments — coming soon"
+                accessibilityState={{ expanded: attachPopoverVisible }}
+              >
+                <ClipIcon />
+              </Pressable>
+            </View>
             <TextInput
               style={[styles.field, { height: composerHeight }]}
               value={draft}
@@ -1016,6 +1028,7 @@ const styles = StyleSheet.create({
   },
   composerLocked: { alignItems: 'center' },
   attach: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  attachWrap: { position: 'relative' },
   field: {
     flex: 1,
     backgroundColor: Colors.surface,
