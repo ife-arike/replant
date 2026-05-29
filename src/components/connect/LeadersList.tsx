@@ -1,39 +1,33 @@
 // LeadersList — KAN-68 §6.1 / HANDOFF §6.1.
 //
-// The Leaders sub-tab thread list. The Replant Team secure thread (system-
-// managed, conversations.is_secure_replant_thread = true) is pinned at
-// the top above the recency-sorted peer DMs.
+// The Leaders sub-tab thread list. The Replant Team secure thread
+// (system-managed, conversations.is_secure_replant_thread = true) is
+// pinned at the top above the recency-sorted peer DMs.
 //
-// Data model:
-//   public.conversations  — participant_a, participant_b (sorted),
-//                           is_secure_replant_thread, last_message_at,
-//                           last_read_at_a / last_read_at_b (KAN-214
-//                           follow-up migration 20260529000003).
-//   public.messages       — for the last-message preview + timestamp.
-//   public.users          — the OTHER participant's identity.
-//   public.churches       — the OTHER participant's church name + type
-//                           (underground → label "Underground Church").
+// Data source: public.get_leader_thread_list() — a SECURITY DEFINER
+// RPC that bypasses the per-row users RLS (which only exposes the
+// caller's own row) and returns the other participant's identity
+// fields directly, with the underground-name masking applied
+// server-side. The RPC also computes a precise per-caller unread
+// count from the messages stream.
 //
-// Unread tracking (KAN-214 follow-up): the badge is present iff
-// last_message_at > caller's last_read_at_<x>. This is the MVP shape
-// — a present/absent badge, not a precise count. A precise count
-// would require a per-conversation messages count subquery, which is
-// the right shape for a future get_leader_thread_list RPC.
-//
-// No dedicated RPC exists for this list yet. The query joins via PostgREST
-// embeds + parallel last-message fetches. BA follow-up: a SECURITY
-// DEFINER get_leader_thread_list RPC would collapse the round-trips
-// and let the BE own the underground-name-elision invariant rather
-// than the FE — file in a future ticket.
+// Why an RPC: public.users RLS is `auth.uid() = auth_id` — a leader
+// can only read their own row. A PostgREST-direct fetch on the other
+// participants' rows returns empty, leaving the name + church lines
+// blank. Earlier device testing under a super_admin account masked
+// the bug because the `users_admin_select` policy lifts the gate for
+// that role.
 //
 // Search: activates at 2+ chars; matches display name + church only,
-// NEVER message content (HANDOFF §6.1 + §10).
+// NEVER message content (HANDOFF §6.1 + §10). Client-side filter
+// against pre-resolved row text — the RPC returns the full corpus.
 //
 // Pagination: 25 threads on mount, scroll-to-end loads next 25.
+// Locally paginated because the RPC returns the caller's full thread
+// set; for MVP this is fine (a leader's thread count is small).
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -45,7 +39,6 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
-import { getLeaderDisplayName } from '../../utils/getLeaderDisplayName';
 import { getRoleLabel } from '../../utils/displayHelpers';
 import CovenantFooter from './CovenantFooter';
 
@@ -61,10 +54,9 @@ export interface LeaderThread {
   underground: boolean;
   preview: string;
   lastAt: Date | null;
-  // Per-caller unread badge. MVP semantic: 0 = nothing newer than the
-  // caller's last_read_at_<x>; 1 = at least one newer message. A
-  // precise count would require a messages-count subquery — deferred
-  // to a future get_leader_thread_list RPC (BA follow-up).
+  // Per-caller precise unread count (computed by the RPC from the
+  // messages stream where sender_id <> caller AND created_at > my
+  // last_read_at_<x>).
   unread: number;
 }
 
@@ -74,7 +66,8 @@ interface Props {
 }
 
 const PAGE_SIZE = 25;
-const PREVIEW_MAX = 60;
+// Preview is pre-truncated to 60 chars by get_leader_thread_list (LEFT
+// (content, 60) — HANDOFF §6.1).
 
 // ── inline icons ──────────────────────────────────────────────────────
 function SearchIcon() {
@@ -131,11 +124,6 @@ export function formatThreadTime(date: Date | null): string {
   if (dayDiff === 1) return 'Yesterday';
   if (dayDiff < 7) return `${dayDiff}d ago`;
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return text.slice(0, max - 1).trimEnd() + '…';
 }
 
 // ── thread row ────────────────────────────────────────────────────────
@@ -201,112 +189,65 @@ function ThreadRow({
   );
 }
 
-// ── data loader (inline; extract to a hook in a follow-up) ────────────
-async function fetchThreadPage(callerUserId: string, offset: number, limit: number): Promise<LeaderThread[]> {
-  // 1. Conversations — RLS scopes to caller's threads (participant_a/_b
-  //    SELECT policies on public.conversations). Pull both last_read_at
-  //    columns; we'll pick whichever matches the caller's participant
-  //    slot when computing the per-conversation unread badge.
-  const { data: convs, error: convErr } = await supabase
-    .from('conversations')
-    .select('id, participant_a, participant_b, is_secure_replant_thread, last_message_at, last_read_at_a, last_read_at_b, created_at')
-    .order('is_secure_replant_thread', { ascending: false }) // secure pinned
-    .order('last_message_at', { ascending: false, nullsFirst: false })
-    .range(offset, offset + limit - 1);
-  if (convErr || !convs || convs.length === 0) return [];
-
-  // Other-participant + last-message resolution happens in parallel.
-  const otherIds = convs.map((c) =>
-    c.participant_a === callerUserId ? c.participant_b : c.participant_a,
-  );
-
-  const [usersRes, msgsRes] = await Promise.all([
-    // Load each "other" user's identity + church name + church type.
-    // RLS on users + churches gates this — anything not viewable
-    // returns an empty embed.
-    supabase
-      .from('users')
-      .select('id, full_name, role, anonymous, churches:church_id(id, name, type)')
-      .in('id', otherIds),
-    // Last-message preview + timestamp per conversation. ORDER + LIMIT
-    // would require one query per conversation; instead grab the
-    // latest 50 across all conversations and pick the head per id.
-    supabase
-      .from('messages')
-      .select('id, conversation_id, content, created_at, sender_id')
-      .in('conversation_id', convs.map((c) => c.id))
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(convs.length * 10),
-  ]);
-
-  const usersById = new Map<string, any>();
-  (usersRes.data ?? []).forEach((u: any) => usersById.set(u.id, u));
-
-  // First message per conversation_id (already ordered desc by created_at).
-  const lastMsgByConv = new Map<string, { content: string; created_at: string }>();
-  (msgsRes.data ?? []).forEach((m: any) => {
-    if (!lastMsgByConv.has(m.conversation_id)) {
-      lastMsgByConv.set(m.conversation_id, { content: m.content, created_at: m.created_at });
+// ── data loader ───────────────────────────────────────────────────────
+// Single SECURITY DEFINER RPC call. The RPC has already:
+//   - resolved each conversation's "other" participant (no
+//     participant_a/_b math here);
+//   - applied the underground-name mask (other_church_name returns
+//     "Underground Church" for type='underground' rows);
+//   - substituted "Replant Team" for the secure system thread's name;
+//   - sorted secure-pinned-first, then by last_message_at DESC;
+//   - computed a precise per-caller unread_count from the messages
+//     stream gated on last_read_at_<x>.
+//
+// HANDOFF §6.1 row anatomy — TWO separate lines:
+//   Name line  : full_name (or RoleLabel when anonymous=true)
+//   Church line: other_church_name
+// This file used to compose the combined "FullName · ChurchName"
+// string from getLeaderDisplayName and put it on the name line; that
+// duplicated the church between name + church lines. Row now renders
+// the two fields cleanly separated.
+async function fetchThreadList(): Promise<LeaderThread[]> {
+  const { data, error } = await supabase.rpc('get_leader_thread_list');
+  if (error || !data) return [];
+  return (data as any[]).map((r): LeaderThread => {
+    const isSecure = !!r.is_secure_replant_thread;
+    const anonymous = !!r.other_anonymous;
+    const underground = !!r.other_underground;
+    const fullName: string = r.other_full_name ?? '';
+    // Name line per §6.1: just the leader's full name (or role label
+    // when anonymous). No "· church" suffix — the church renders on
+    // its own line below.
+    let displayName: string;
+    if (isSecure) {
+      displayName = 'Replant Team';
+    } else if (anonymous) {
+      displayName = getRoleLabel(r.other_role);
+    } else {
+      displayName = fullName;
     }
-  });
-
-  const threads: LeaderThread[] = convs.map((c) => {
-    const otherId = c.participant_a === callerUserId ? c.participant_b : c.participant_a;
-    const u = usersById.get(otherId);
-    const church = u?.churches;
-    const underground = church?.type === 'underground';
-    const churchName = underground ? 'Underground Church' : (church?.name ?? '');
-    const fullName: string = u?.full_name ?? '';
-    const [firstName = '', ...rest] = fullName.split(' ');
-    const lastName = rest.join(' ');
-    const displayName = c.is_secure_replant_thread
-      ? 'Replant Team'
-      : getLeaderDisplayName({
-          firstName,
-          lastName,
-          roleLabel: getRoleLabel(u?.role),
-          churchName,
-          anonymous: !!u?.anonymous,
-        });
-    const monogramInitial = firstName.charAt(0).toUpperCase() || '·';
-    const lastMsg = lastMsgByConv.get(c.id);
-    // Per-caller unread badge: present iff last_message_at > caller's
-    // last_read_at_<x>. Picks _a or _b based on which participant slot
-    // the caller occupies. A NULL last_read_at means the caller has
-    // never opened the thread; any existing message is unread. A
-    // conversation with no messages at all has nothing to read.
-    const callerLastRead = c.participant_a === callerUserId
-      ? c.last_read_at_a
-      : c.last_read_at_b;
-    const lastAtIso = lastMsg
-      ? lastMsg.created_at
-      : (c.last_message_at ?? null);
-    let unread = 0;
-    if (lastAtIso) {
-      if (!callerLastRead) {
-        unread = 1;
-      } else if (new Date(lastAtIso).getTime() > new Date(callerLastRead).getTime()) {
-        unread = 1;
-      }
-    }
+    // Monogram initial = first letter of the leader's actual full
+    // name (not the role label). Anonymous + underground both render
+    // the muted figure glyph instead — see ThreadRow's branch.
+    const monogramInitial = fullName.trim().charAt(0).toUpperCase() || '·';
+    const churchLabel = isSecure
+      ? 'Replant · system-managed'
+      : (r.other_church_name ?? '');
+    const lastAt = r.last_message_at ? new Date(r.last_message_at) : null;
     return {
-      conversationId: c.id,
-      otherUserId: otherId,
-      isSecure: !!c.is_secure_replant_thread,
+      conversationId: r.conversation_id,
+      otherUserId: r.other_user_id,
+      isSecure,
       displayName,
       monogramInitial,
-      churchLabel: c.is_secure_replant_thread ? 'Replant · system-managed' : churchName,
-      anonymous: !!u?.anonymous,
+      churchLabel,
+      anonymous,
       underground,
-      preview: lastMsg ? truncate(lastMsg.content, PREVIEW_MAX) : '',
-      lastAt: lastMsg ? new Date(lastMsg.created_at)
-        : (c.last_message_at ? new Date(c.last_message_at) : null),
-      unread,
+      preview: r.last_message_preview ?? '',
+      lastAt,
+      unread: Number(r.unread_count) || 0,
     };
   });
-
-  return threads;
 }
 
 // ── skeleton, error, empty ────────────────────────────────────────────
@@ -359,84 +300,65 @@ function EmptyView({ onFind }: { onFind: () => void }) {
 // ── main ──────────────────────────────────────────────────────────────
 export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   const { session } = useAuth();
-  const [callerUserId, setCallerUserId] = useState<string | null>(null);
-  const [threads, setThreads] = useState<LeaderThread[]>([]);
+  const [allThreads, setAllThreads] = useState<LeaderThread[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [exhausted, setExhausted] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
-
-  // Resolve caller's public.users.id once per session.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const authUid = session?.user?.id;
-      if (!authUid) return;
-      const { data } = await supabase
-        .from('users').select('id').eq('auth_id', authUid).maybeSingle();
-      if (!cancelled && data?.id) setCallerUserId(data.id);
-    })();
-    return () => { cancelled = true; };
-  }, [session?.user?.id]);
+  // sessionReady gates the initial load on session.user.id being non-null.
+  // The RPC resolves the caller server-side via auth.uid(), so the FE
+  // doesn't need callerUserId for the fetch — but we wait until the
+  // session is hydrated to avoid firing an unauthenticated RPC call.
+  const sessionReady = !!session?.user?.id;
 
   const loadInitial = useCallback(async () => {
-    if (!callerUserId) return;
+    if (!sessionReady) return;
     setLoading(true);
     setError(null);
     try {
-      const page = await fetchThreadPage(callerUserId, 0, PAGE_SIZE);
-      setThreads(page);
-      setExhausted(page.length < PAGE_SIZE);
+      const list = await fetchThreadList();
+      setAllThreads(list);
     } catch (e) {
       setError(e as Error);
     } finally {
       setLoading(false);
     }
-  }, [callerUserId]);
+  }, [sessionReady]);
 
-  const loadMore = useCallback(async () => {
-    if (!callerUserId || loadingMore || exhausted) return;
-    setLoadingMore(true);
-    try {
-      const next = await fetchThreadPage(callerUserId, threads.length, PAGE_SIZE);
-      setThreads((prev) => [...prev, ...next]);
-      if (next.length < PAGE_SIZE) setExhausted(true);
-    } catch {
-      // soft-fail on page; keep what we have.
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [callerUserId, threads.length, loadingMore, exhausted]);
+  const loadMore = useCallback(() => {
+    setVisibleCount((c) => Math.min(c + PAGE_SIZE, allThreads.length));
+  }, [allThreads.length]);
 
   useEffect(() => { void loadInitial(); }, [loadInitial]);
 
-  // Realtime list refresh — KAN-68 device pass B1.
-  // Subscribe to the caller's conversations row stream. send-message +
-  // send-branch-message both bump `last_message_at` on the row after a
-  // successful insert (UPDATE event), and a lazy-created thread shows
-  // up as a fresh row on the recipient side (INSERT event). RLS on
-  // conversations gates these events to the caller's own threads, so
-  // no cross-leader leakage. Debounced to coalesce bursts (e.g. a
-  // sender firing several messages quickly).
+  // Realtime list refresh — Fix 2 (KAN-68 fix pass).
   //
-  // We refetch the first page rather than mutating a single row in
-  // place — the page query already joins users + churches + last
-  // message preview, and an in-place update would need to repeat
-  // most of that fetch anyway. For ≤25 rows the cost is negligible.
+  // Root cause of the original bd68eb3 subscription failing silently:
+  // public.conversations is NOT in the supabase_realtime publication.
+  // Only `messages`, `branches`, and `branch_members` are published
+  // (see pg_publication_tables). Subscribing to a non-published table
+  // produces no events.
+  //
+  // Fix: subscribe to `messages` INSERT events. send-message inserts a
+  // row on every successful 1:1 DM send, which is the trigger we
+  // want. RLS on messages gates events to messages the caller can
+  // see (i.e. messages in their own threads), so there's no
+  // cross-leader leakage. Debounced 250ms to coalesce bursts.
+  //
+  // Refetch is a single RPC call, cheap.
   useEffect(() => {
-    if (!callerUserId) return;
+    if (!sessionReady) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => { void loadInitial(); }, 250);
     };
     const channel = supabase
-      .channel(`leaders-list-${callerUserId}`)
+      .channel(`leaders-list-realtime-${session?.user?.id ?? 'anon'}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'conversations' },
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         queueRefresh,
       )
       .subscribe();
@@ -444,18 +366,25 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
       if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
-  }, [callerUserId, loadInitial]);
+  }, [sessionReady, session?.user?.id, loadInitial]);
 
   // Filter on name + church only (NEVER preview). Local 2-char gate
   // mirrors the search semantic in HANDOFF §6.1.
+  //
+  // When the user is NOT searching, we show the paginated slice of
+  // allThreads (visibleCount grows on scroll-to-end). When searching,
+  // we filter the WHOLE list so a match isn't hidden below the
+  // pagination cursor.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q.length < 2) return threads;
-    return threads.filter((t) =>
+    if (q.length < 2) return allThreads.slice(0, visibleCount);
+    return allThreads.filter((t) =>
       t.displayName.toLowerCase().includes(q) ||
       (t.churchLabel && t.churchLabel.toLowerCase().includes(q))
     );
-  }, [threads, query]);
+  }, [allThreads, visibleCount, query]);
+
+  const hasMore = visibleCount < allThreads.length;
 
   return (
     <View style={styles.root}>
@@ -494,7 +423,7 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
             />
           )}
           contentContainerStyle={styles.listContent}
-          onEndReached={loadMore}
+          onEndReached={hasMore ? loadMore : undefined}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             <View style={styles.noMatch}>
@@ -504,16 +433,7 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
               </Text>
             </View>
           }
-          ListFooterComponent={
-            <>
-              {loadingMore && (
-                <View style={styles.loadMore}>
-                  <ActivityIndicator color={Colors.textSubtle} />
-                </View>
-              )}
-              <CovenantFooter />
-            </>
-          }
+          ListFooterComponent={<CovenantFooter />}
         />
       )}
     </View>
@@ -743,5 +663,4 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  loadMore: { paddingVertical: 16, alignItems: 'center' },
 });
