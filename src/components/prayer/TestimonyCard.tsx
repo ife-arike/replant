@@ -157,7 +157,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
         >
           <CelebrateIcon
             size={16}
-            color={row.i_celebrated ? Colors.amber : Colors.textMuted}
+            color={row.i_celebrated ? Colors.green : Colors.textMuted}
           />
           <Text
             style={[
@@ -176,11 +176,11 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(91, 173, 122, 0.06)',
+    backgroundColor: 'rgba(107, 181, 232, 0.06)',
     borderLeftWidth: 3,
-    borderLeftColor: Colors.green,
+    borderLeftColor: Colors.accent,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 173, 122, 0.20)',
+    borderColor: 'rgba(107, 181, 232, 0.20)',
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 6,
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(91, 173, 122, 0.55)',
+    backgroundColor: 'rgba(107, 181, 232, 0.55)',
   },
   location: {
     // v7 Item 08 — 14 pt DM Sans 400 sentence case (was 13 pt mono
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 14,
     letterSpacing: 0.28,
-    color: Colors.green,
+    color: Colors.accent,
   },
   leader: {
     // v8 Fix H3 — attribution 14 pt DM Sans 400, lh 1.3, muted-45%.
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: 'rgba(240, 237, 230, 0.04)',
     borderLeftWidth: 1,
-    borderLeftColor: Colors.green,
+    borderLeftColor: Colors.accent,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 4,
@@ -271,16 +271,16 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 3,
-    backgroundColor: 'rgba(91, 173, 122, 0.12)',
+    backgroundColor: 'rgba(107, 181, 232, 0.12)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 173, 122, 0.35)',
+    borderColor: 'rgba(107, 181, 232, 0.35)',
   },
   testimonyChipText: {
     // v5 item 06 — 11 pt DM Mono 400, 0.14em UPPERCASE green.
     fontFamily: Typography.mono,
     fontSize: 11,
     letterSpacing: 1.5,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
   celebrateWrap: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   celebrateCountActive: {
-    color: Colors.amber,
+    color: Colors.green,
   },
   timestamp: {
     // v7 Item 08 — 11 pt DM Sans 400, sentence case, no tracking

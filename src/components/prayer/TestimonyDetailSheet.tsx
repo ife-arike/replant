@@ -311,7 +311,7 @@ export default function TestimonyDetailSheet({
             <Animated.View style={{ transform: [{ scale: burstScale }] }}>
               <CelebrateIcon
                 size={20}
-                color={iCelebrated ? Colors.amber : Colors.textMuted}
+                color={iCelebrated ? Colors.green : Colors.textMuted}
               />
             </Animated.View>
             <Text
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.6,
     lineHeight: 16,
-    color: Colors.green,
+    color: Colors.accent,
   },
   leaderLine: {
     // v8 Fix H4 — attribution 15 pt DM Sans 400, lh 1.3, muted-45%.
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: 'rgba(240, 237, 230, 0.04)',
     borderLeftWidth: 1,
-    borderLeftColor: Colors.green,
+    borderLeftColor: Colors.accent,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 4,
@@ -440,16 +440,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(212, 168, 85, 0.45)',
-    backgroundColor: 'rgba(212, 168, 85, 0.08)',
+    borderColor: 'rgba(91, 173, 122, 0.45)',
+    backgroundColor: 'rgba(91, 173, 122, 0.08)',
   },
   celebrateLabel: {
     fontFamily: Typography.bodyMedium,
     fontSize: 14,
-    color: Colors.amber,
+    color: Colors.green,
   },
   celebrateLabelActive: {
-    color: Colors.amber,
+    color: Colors.green,
   },
   celebrateCount: {
     fontFamily: Typography.mono,
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   celebrateCountActive: {
-    color: Colors.amber,
+    color: Colors.green,
   },
   timestamp: {
     // v7 Item 08 — 13 pt DM Sans 400, sentence case, no tracking

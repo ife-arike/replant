@@ -200,11 +200,11 @@ export default function TestimoniesView({
         ListFooterComponent={
           loadState === 'paging' ? (
             <View style={styles.footerSpinner}>
-              <ActivityIndicator color={Colors.green} />
+              <ActivityIndicator color={Colors.accent} />
             </View>
           ) : loadState === 'initial' && !hasFetchedOnce.current ? (
             <View style={styles.footerSpinner}>
-              <ActivityIndicator color={Colors.green} />
+              <ActivityIndicator color={Colors.accent} />
             </View>
           ) : null
         }
@@ -233,27 +233,35 @@ function ScriptureHeader({
   pillVisible: boolean;
   pillOpacity: Animated.Value;
 }) {
+  // KAN-23 R3 — props retained for call-site parity (TestimoniesView
+  // still computes and passes them so the scroll-to-testimony deep-
+  // link state stays intact), but the pill render is gone. void-
+  // reference both so the unused-param read doesn't trip lint and
+  // future re-introduction stays a one-line edit.
+  void pillVisible; void pillOpacity;
   // v8 Fix A — Rev 12:11 flips to tone="none" (no fill, no border).
   // Body 20 pt 300 Light Italic rgba(text, 0.78); reference 11 pt
   // DM Sans 0.18em GREEN-tinted (rgba(green, 0.70)). NEVER truncates.
   // Block padding 24/24/20 + margin above 16 (below segmented
   // control) + margin below 20 (above first testimony card) — set
-  // by styles.headerWrap. From-landing pill still sits inside the
-  // banner via the children slot.
+  // by styles.headerWrap.
+  //
+  // KAN-23 R3 — "From landing" pill removed from render. The
+  // pillVisible / pillOpacity props stay on this component (and the
+  // showFromLandingPill state + pillFade Animated.Value + setTimeout
+  // fade cycle stay in TestimoniesView) so the deep-link scroll-into-
+  // view + glow path remains intact — the fade just no longer paints
+  // anything. The pill itself was carrying no information the leader
+  // needed: arriving from the landing was already obvious from the
+  // testimony being glowed and scrolled into view.
   return (
     <View style={styles.headerWrap}>
       <ScriptureBanner
         tone="none"
         text={REV_12_11_KJV}
         reference={REV_12_11_REF}
-        referenceColor="rgba(91, 173, 122, 0.70)"
-      >
-        {pillVisible ? (
-          <Animated.View style={[styles.fromLandingPill, { opacity: pillOpacity }]}>
-            <Text style={styles.fromLandingPillText}>From landing</Text>
-          </Animated.View>
-        ) : null}
-      </ScriptureBanner>
+        referenceColor="rgba(107, 181, 232, 0.70)"
+      />
     </View>
   );
 }
@@ -290,22 +298,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
-  fromLandingPill: {
-    marginTop: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 3,
-    backgroundColor: 'rgba(91, 173, 122, 0.18)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 173, 122, 0.45)',
-  },
-  fromLandingPillText: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: Colors.green,
-    textTransform: 'uppercase',
-  },
+  // KAN-23 R3 — fromLandingPill + fromLandingPillText styles removed
+  // alongside the pill render. The scroll-to-testimony + glow deep-link
+  // path still fires; only the "From landing" pill chrome is gone.
   footerSpinner: {
     paddingVertical: 18,
     alignItems: 'center',
@@ -332,7 +327,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 1.6,
-    color: Colors.green,
+    color: Colors.accent,
     textTransform: 'uppercase',
   },
 });
