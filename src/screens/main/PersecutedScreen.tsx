@@ -1,44 +1,52 @@
-// PersecutedScreen — KAN-65.
+// PersecutedScreen — KAN-65 v2 (Persecuted Tab rebuild, 2026-05-28).
 //
-// Tab visible to all authenticated leaders (per AC 1). The screen self-
-// gates on users.verification_status:
-//   verified  → Screen 14 (banner, confirmation card with CTA, status
-//               tracker if a heartcry exists, feed, encrypted footer,
-//               Hebrews 13:3)
-//   anything  → Screen 14B (lock glyph + two lines of copy, no CTA)
-//   else      → null while loading (parent SafeAreaView still mounts)
+// Tab visible to all authenticated leaders. The screen self-gates on
+// users.verification_status:
+//   verified  → Held-space surface: threshold preamble, action card,
+//               Heartcries-from-the-body section with region filter +
+//               cards, Hebrews 13:3 scripture footer.
+//   anything  → Screen 14B gate (lock glyph + two lines of copy, no CTA).
+//   loading   → small spinner above the gate body.
 //
-// Per dispatch the gate queries the DB value directly (not the
-// AuthProvider 'branch' translation): canonical value for full access is
-// 'verified'. KAN-206 anchor work locked this; AC 2 mirrors it.
+// What R2 removes vs the prior v1 build (per KAN-65 R2 dispatch):
+//   • RecentHeartcry interface + status tracker block ("YOUR HEARTCRY · …").
+//   • LAST_SEEN_KEY_PREFIX + every AsyncStorage read/write call —
+//     no more per-user last-seen status tracking, no more
+//     "New update on your heartcry" sky chip.
+//   • FeedCard (replaced by HeartcryCard).
+//   • The heartcry_own_status_read fetch entirely (RLS still allows it
+//     when we re-introduce a tracker later, but the FE no longer runs it).
 //
-// Feed data via SECURITY DEFINER RPC get_heartcry_feed. The RPC returns
-// continent server-side — invariant: no client-side country→continent map.
-// feed_content is returned by the RPC for rows where post_to_feed AND
-// feed_approved are both true; encryption-at-rest is handled in the DB,
-// the client never sees ciphertext (per SEC c.14512 / KAN-66 lineage).
+// What R2 keeps:
+//   • Submission flow stays as navigation.navigate('HeartcrySubmission').
+//   • The gate check is still the first thing the screen runs.
+//   • useFocusEffect refreshes ONLY the feed on focus (no tracker).
 //
-// Status tracker reads the most recent heartcry for the current leader
-// via RLS (heartcry_own_status_read). If none exists, no tracker is
-// rendered (AC 8 — absence-as-empty-state). When the leader has > 1
-// row, a "1 of N" subtle indicator is shown next to the recent state.
+// What R2 adds:
+//   • ThresholdPreamble — quiet "A held space" intro, lock icon row.
+//   • PersecutedActionCard — italic prompt + "SHARE MY HEARTCRY" CTA.
+//   • RegionFilterBar — horizontal chips: All / Middle East / Central
+//     Asia / North Africa / East Asia / South Asia / Southeast Asia.
+//     Selection drives the p_region parameter on get_heartcry_feed.
+//   • HeartcryCard — sky-tinted when "held"; per-row hold toggle held
+//     entirely in-memory (heldIds Set).
+//   • HeartcryEmpty — dashed circle + exclamation glyph + "Quiet here,
+//     for now." pastoral copy.
+//   • Scripture footer (Hebrews 13:3) rebuilt to match the CD spec
+//     (PRAY WITH US eyebrow, centered verse, ref).
 //
-// "New update on your heartcry" chip — top of the scroll area, sky pill.
-// Compares current status to a per-user value stashed in AsyncStorage
-// (KAN-64 Items 1a/1b only restrict heartcry CONTENT — the status enum
-// is non-sensitive metadata so plain AsyncStorage is fine here). Dismiss
-// is tap-only and updates the stored value; first appearance seeds
-// silently so the chip never shows for a brand-new heartcry.
-//
-// Refresh-on-focus: useFocusEffect re-fetches verification status,
-// recent heartcry + count, and feed so the tracker updates after a
-// leader returns from the submission screen.
+// RPC contract (KAN-65 R2, migration 20260528000008):
+//   get_heartcry_feed(p_limit int, p_offset int, p_region text)
+//   → { id, severity, created_at, feed_content, continent, region }
+// Region filter is server-side; the FE never filters rows it didn't ask
+// for. region is the new column; continent is kept for parity / future
+// use (HeartcryFeedRow keeps both).
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -46,96 +54,94 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useHamburger } from '../../contexts/HamburgerContext';
 import LockIcon from '../../components/icons/LockIcon';
 import type { RootStackParamList } from '../../navigation/types';
-import {
-  SEVERITY_DISPLAY,
-  formatRelativeTime,
-  trackerCopy,
-  truncateExcerpt,
-  type HeartcrySeverity,
-  type HeartcryStatus,
-} from './persecutedLogic';
+import { formatRelativeTime } from './persecutedLogic';
 
-interface FeedRow {
+// ── Types ────────────────────────────────────────────────────────────
+
+interface HeartcryFeedRow {
   id: string;
+  feed_content: string | null;
+  continent: string | null;  // kept — parity with v1, useful as fallback
+  region: string | null;     // KAN-65 R2 — server-derived from country list
   severity: string;
   created_at: string;
-  feed_content: string | null;
-  continent: string | null;
-}
-
-interface RecentHeartcry {
-  id: string;
-  status: HeartcryStatus;
-  responded_at: string | null;
-  totalCount: number;
 }
 
 type GateState = 'loading' | 'verified' | 'gated' | 'error';
 
 const FEED_PAGE_SIZE = 20;
 
-// AC 6 — empty-state copy (verbatim from content file).
-const EMPTY_FEED_COPY = 'Quiet here for now. Pray while you wait.';
+// ── Region taxonomy (mirrors the migration's CASE block) ─────────────
+// id === label since we filter the RPC by the exact region string.
 
-// AC 3 — encrypted footer copy (verbatim from content file).
-const ENCRYPTED_FOOTER =
-  '🔒 This section is encrypted. What is shared here stays within the Replant network. Your safety is our responsibility.';
+const HEARTCRY_REGIONS: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'all',            label: 'All' },
+  { id: 'Middle East',    label: 'Middle East' },
+  { id: 'Central Asia',   label: 'Central Asia' },
+  { id: 'North Africa',   label: 'North Africa' },
+  { id: 'East Asia',      label: 'East Asia' },
+  { id: 'South Asia',     label: 'South Asia' },
+  { id: 'Southeast Asia', label: 'Southeast Asia' },
+];
 
-// AC 3 — banner + question copy (verbatim).
-const BANNER_COPY =
-  'This section is for churches facing severe persecution — imprisonment, prohibition of fellowship, violence, and active hunting for the faith. Handle with prayer and sobriety.';
-const CONFIRMATION_Q =
-  'Are you currently undergoing persecution for the name of Jesus?';
+// ── Static copy ──────────────────────────────────────────────────────
 
-// AC 2 — Screen 14B gate copy (verbatim).
+const THRESHOLD_EYEBROW = 'A HELD SPACE';
+const THRESHOLD_BODY =
+  'For churches under imprisonment, prohibition of fellowship, violence, and active hunting for the faith. Handle with prayer and sobriety.';
+
+const ACTION_PROMPT = 'Are you currently under persecution for the name of Jesus?';
+const ACTION_SUB =
+  'Your account is verified and your identity is held. This is a held space for your voice.';
+const ACTION_CTA = 'SHARE MY HEARTCRY';
+
+const EMPTY_TITLE = 'Quiet here, for now.';
+const EMPTY_BODY =
+  'This space is held in prayer until someone speaks. If you are persecuted tonight, you can share here.';
+
+const SECTION_HEADING = 'Heartcries from the body';
+
+const HEB_13_3 =
+  'Remember those who are in prison, as though in prison with them, and those who are mistreated, since you also are in the body.';
+const HEB_13_3_REF = 'HEBREWS 13:3';
+
+// KAN-65 AC 2 — gate copy (Screen 14B) — verbatim from content file.
 const GATE_LINE_1 = 'This section is for verified leaders in the Replant network.';
 const GATE_LINE_2 = "Once your church is verified, you'll have full access.";
 
-// Item 9 — Hebrews 13:3 verbatim (content file §7, 2026-05-26 ratified).
-const HEB_13_3 =
-  'Remember those who are in prison, as though in prison with them, and those who are mistreated, since you also are in the body.';
-const HEB_13_3_REF = 'Hebrews 13:3';
-
-// Item 3 — update chip copy + AsyncStorage namespace.
-const UPDATE_CHIP_COPY = 'New update on your heartcry';
-// Key shape: `replant.heartcry.lastSeenStatus.<auth_uid>`. Scoped by
-// auth_uid so a sign-out / different-account sign-in cannot cross-pollute.
-const LAST_SEEN_KEY_PREFIX = 'replant.heartcry.lastSeenStatus.';
-
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
+
+// ─────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────
 
 export default function PersecutedScreen() {
   const navigation = useNavigation<NavProp>();
   const { open: openHamburger } = useHamburger();
-  const [gateState, setGateState] = useState<GateState>('loading');
-  const [recent, setRecent] = useState<RecentHeartcry | null>(null);
-  const [feedRows, setFeedRows] = useState<FeedRow[]>([]);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [showUpdateChip, setShowUpdateChip] = useState(false);
-  // Holds the active leader's auth uid so chip-dismiss can write the
-  // current status against the same per-user key the read used.
-  const authUidRef = useRef<string | null>(null);
 
-  const loadVerificationAndTracker = useCallback(async () => {
+  const [gateState, setGateState] = useState<GateState>('loading');
+  const [feedRows, setFeedRows] = useState<HeartcryFeedRow[]>([]);
+  const [feedLoading, setFeedLoading] = useState(false);
+
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [heldIds, setHeldIds] = useState<Set<string>>(new Set());
+
+  // ── Gate check ──
+  const loadVerification = useCallback(async () => {
     const { data: userData } = await supabase.auth.getUser();
     const authId = userData.user?.id;
     if (!authId) {
-      // No session — RootNavigator would have routed us to Onboarding
-      // before this tab could mount. Defensive fall-through to gated.
       setGateState('gated');
-      authUidRef.current = null;
       return;
     }
-    authUidRef.current = authId;
-
     // KAN-65 AC 2 — canonical DB literal 'verified' (NOT the API-layer
-    // 'active' translation used elsewhere in the app via AuthProvider).
+    // 'active' translation used elsewhere via AuthProvider).
     const { data: userRow, error: userErr } = await supabase
       .from('users')
       .select('verification_status')
@@ -147,99 +153,59 @@ export default function PersecutedScreen() {
     }
     if (userRow.verification_status !== 'verified') {
       setGateState('gated');
-      setRecent(null);
       return;
     }
     setGateState('verified');
-
-    // Most recent own heartcry + total count for the "1 of N" indicator.
-    // RLS (heartcry_own_status_read) gates this to the current leader's
-    // rows; { count: 'exact' } returns the total row count alongside the
-    // limited rows in the response.
-    const { data: tracker, count, error: trackerErr } = await supabase
-      .from('heartcries')
-      .select('id, status, responded_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (trackerErr) {
-      // Tracker failure shouldn't gate the rest of the screen — leave
-      // recent at null and the rest of the verified surface renders.
-      setRecent(null);
-      setShowUpdateChip(false);
-      return;
-    }
-    if (tracker && tracker.length > 0) {
-      const row = tracker[0] as { id: string; status: HeartcryStatus; responded_at: string | null };
-      const total = count ?? tracker.length;
-      setRecent({ id: row.id, status: row.status, responded_at: row.responded_at, totalCount: total });
-
-      // Item 3 — chip transition check. Read last-seen status for THIS
-      // auth_uid; show the chip iff a stored value exists and differs
-      // from the current one. First-time appearance (no stored value)
-      // seeds the storage silently so the chip never fires on initial
-      // submission.
-      const key = LAST_SEEN_KEY_PREFIX + authId;
-      try {
-        const lastSeen = await AsyncStorage.getItem(key);
-        if (lastSeen === null) {
-          await AsyncStorage.setItem(key, row.status);
-          setShowUpdateChip(false);
-        } else if (lastSeen !== row.status) {
-          setShowUpdateChip(true);
-        } else {
-          setShowUpdateChip(false);
-        }
-      } catch {
-        // AsyncStorage failures are non-fatal — quietly suppress the
-        // chip rather than risk surfacing it on every focus.
-        setShowUpdateChip(false);
-      }
-    } else {
-      setRecent(null);
-      setShowUpdateChip(false);
-    }
   }, []);
 
-  const loadFeed = useCallback(async () => {
+  // ── Feed fetch ──
+  const loadFeed = useCallback(async (regionId: string) => {
     setFeedLoading(true);
     const { data, error } = await supabase.rpc('get_heartcry_feed', {
       p_limit: FEED_PAGE_SIZE,
       p_offset: 0,
+      // 'all' → null (no filter); any other id is the literal region string
+      // and matches one of the CASE branches in the migration.
+      p_region: regionId === 'all' ? null : regionId,
     });
     if (error) {
       setFeedRows([]);
     } else {
-      setFeedRows((data ?? []) as FeedRow[]);
+      setFeedRows((data ?? []) as HeartcryFeedRow[]);
     }
     setFeedLoading(false);
   }, []);
 
-  // Refresh on focus — covers initial mount AND return-from-submission
-  // (modal "Done" goBack lands here and re-runs both fetches).
+  // Refresh on focus — gate first, then feed (gate failure short-circuits
+  // the feed call, but we still keep the feed at [] for safe rendering).
   useFocusEffect(
     useCallback(() => {
-      void loadVerificationAndTracker().then(() => {
-        void loadFeed();
+      void loadVerification().then(() => {
+        void loadFeed(selectedRegion);
       });
-    }, [loadVerificationAndTracker, loadFeed]),
+    }, [loadVerification, loadFeed, selectedRegion]),
   );
 
-  // Item 3 — dismiss handler. Writes the current status as the new
-  // last-seen so the chip won't fire again until the next transition.
-  const dismissUpdateChip = useCallback(async () => {
-    setShowUpdateChip(false);
-    const authId = authUidRef.current;
-    const currentStatus = recent?.status;
-    if (!authId || !currentStatus) return;
-    try {
-      await AsyncStorage.setItem(LAST_SEEN_KEY_PREFIX + authId, currentStatus);
-    } catch {
-      // Silent — chip is already dismissed in-memory. Worst case the
-      // chip re-appears on next focus; user can dismiss again.
-    }
-  }, [recent?.status]);
+  // ── Region selection ──
+  const handleRegionSelect = useCallback(
+    (id: string) => {
+      setSelectedRegion(id);
+      void loadFeed(id);
+    },
+    [loadFeed],
+  );
 
-  // ── Screen 14B — gate ────────────────────────────────────────────────
+  // ── Hold toggle (in-memory only — persistence is a future ticket) ──
+  const handleToggleHold = useCallback((id: string) => {
+    setHeldIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // ── Screen 14B — gated / error ─────────────────────────────────────
   if (gateState === 'gated' || gateState === 'error') {
     return (
       <SafeAreaView style={styles.gateRoot} edges={['top']}>
@@ -258,7 +224,7 @@ export default function PersecutedScreen() {
     );
   }
 
-  // ── Loading shell ────────────────────────────────────────────────────
+  // ── Loading shell ──
   if (gateState === 'loading') {
     return (
       <SafeAreaView style={styles.gateRoot} edges={['top']}>
@@ -270,43 +236,66 @@ export default function PersecutedScreen() {
     );
   }
 
-  // ── Screen 14 — verified landing ─────────────────────────────────────
+  // ── Verified surface ───────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <NavBar onHamburger={openHamburger} />
-      <FlatList
-        data={feedRows}
-        keyExtractor={(r) => r.id}
-        renderItem={({ item }) => <FeedCard row={item} />}
-        ItemSeparatorComponent={FeedSeparator}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <ListHeader
-            recent={recent}
-            showUpdateChip={showUpdateChip}
-            onDismissChip={() => { void dismissUpdateChip(); }}
-            onShareHeartcry={() => navigation.navigate('HeartcrySubmission')}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThresholdPreamble />
+
+        <View style={styles.bodyPad}>
+          <PersecutedActionCard
+            onPress={() => navigation.navigate('HeartcrySubmission')}
           />
-        }
-        ListEmptyComponent={
-          !feedLoading ? <EmptyFeed /> : null
-        }
-        ListFooterComponent={
-          <FeedFooter loading={feedLoading} />
-        }
-      />
+
+          {/* Section header */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeader}>{SECTION_HEADING}</Text>
+            <View style={styles.sectionRule} />
+          </View>
+
+          {/* Region filter — only when there is something to filter */}
+          {feedRows.length > 0 ? (
+            <>
+              <RegionFilterBar
+                selectedId={selectedRegion}
+                onSelect={handleRegionSelect}
+              />
+              <View style={{ height: 14 }} />
+            </>
+          ) : null}
+
+          {feedLoading ? (
+            <View style={styles.feedSpinner}>
+              <ActivityIndicator color={Colors.red} />
+            </View>
+          ) : feedRows.length > 0 ? (
+            <View style={styles.cardStack}>
+              {feedRows.map((row) => (
+                <HeartcryCard
+                  key={row.id}
+                  row={row}
+                  held={heldIds.has(row.id)}
+                  onToggleHold={() => handleToggleHold(row.id)}
+                />
+              ))}
+            </View>
+          ) : (
+            <HeartcryEmpty />
+          )}
+        </View>
+
+        <ScriptureFooter />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────
-// Pieces
-// ──────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// NavBar — identical to v1, kept verbatim so the chrome stays stable
+// across the verified / gated / loading branches.
+// ─────────────────────────────────────────────────────────────────────
 
-// Item 5 — Nav bar: 52pt height, left title "The Persecuted Church" (red,
-// 22pt Cormorant), right hamburger (wired to global useHamburger panel).
-// Used on Screen 14, 14B, and the loading shell so the chrome is stable
-// across gate states.
 function NavBar({ onHamburger }: { onHamburger: () => void }) {
   return (
     <>
@@ -330,163 +319,202 @@ function NavBar({ onHamburger }: { onHamburger: () => void }) {
   );
 }
 
-interface ListHeaderProps {
-  recent: RecentHeartcry | null;
-  showUpdateChip: boolean;
-  onDismissChip: () => void;
-  onShareHeartcry: () => void;
-}
+// ─────────────────────────────────────────────────────────────────────
+// ThresholdPreamble — CD .threshold
+// ─────────────────────────────────────────────────────────────────────
 
-function ListHeader({ recent, showUpdateChip, onDismissChip, onShareHeartcry }: ListHeaderProps) {
+function ThresholdPreamble() {
   return (
-    <View style={styles.headerStack}>
-      {/* Item 3 — "New update on your heartcry" chip. Sits above the
-          banner. Tap-to-dismiss (the whole pill OR the × glyph). */}
-      {showUpdateChip ? (
-        <Pressable
-          onPress={onDismissChip}
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss heartcry update notification"
-          style={styles.updateChip}
-        >
-          <Text style={styles.updateChipText}>{UPDATE_CHIP_COPY}</Text>
-          <View style={styles.updateChipDismiss}>
-            <Text style={styles.updateChipDismissGlyph}>×</Text>
-          </View>
-        </Pressable>
-      ) : null}
-
-      {/* Banner */}
-      <View style={styles.banner}>
-        <Text style={styles.bannerEyebrow}>SET APART</Text>
-        <Text style={styles.bannerBody}>{BANNER_COPY}</Text>
-      </View>
-
-      {/* Item 1 — status tracker. Guarded: only renders when recent !==
-          null (i.e., the leader has ≥1 own heartcry). When totalCount > 1
-          a subtle "1 of N" indicator sits inline with the label. */}
-      {recent !== null ? (
-        <View style={styles.trackerBlock}>
-          <View style={styles.trackerLabelRow}>
-            <Text style={styles.trackerLabel}>YOUR HEARTCRY</Text>
-            {recent.totalCount > 1 ? (
-              <Text style={styles.trackerCount}>1 of {recent.totalCount}</Text>
-            ) : null}
-          </View>
-          <Text style={styles.trackerCopy}>
-            {trackerCopy(recent.status, recent.responded_at)}
-          </Text>
-        </View>
-      ) : null}
-
-      {/* Confirmation question + CTA */}
-      <View style={styles.confirmCard}>
-        <Text style={styles.confirmQuestion}>{CONFIRMATION_Q}</Text>
-        <Pressable
-          onPress={onShareHeartcry}
-          accessibilityRole="button"
-          accessibilityLabel="Share your heartcry"
-          style={({ pressed }) => [styles.primaryCta, pressed && styles.primaryCtaPressed]}
-        >
-          <Text style={styles.primaryCtaLabel}>Share Your Heartcry</Text>
-        </Pressable>
-      </View>
-
-      {/* Section header */}
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionHeader}>Heartcries from the Body</Text>
-        <View style={styles.sectionRule} />
+    <View style={styles.threshold}>
+      <Text style={styles.thresholdEyebrow}>{THRESHOLD_EYEBROW}</Text>
+      <Text style={styles.thresholdBody}>{THRESHOLD_BODY}</Text>
+      <View style={styles.thresholdMeta}>
+        <ThresholdLock />
+        <Text style={[styles.thresholdMetaText, styles.thresholdMetaSky]}>ENCRYPTED</Text>
+        <Text style={styles.thresholdMetaDot}>·</Text>
+        <Text style={styles.thresholdMetaText}>NO LOCATION STORED</Text>
+        <Text style={styles.thresholdMetaDot}>·</Text>
+        <Text style={styles.thresholdMetaText}>REGION ONLY</Text>
       </View>
     </View>
   );
 }
 
-function FeedCard({ row }: { row: FeedRow }) {
-  // Defensive — if severity is somehow a value not in our map (e.g., a new
-  // DB enum value the FE hasn't shipped a label for yet), fall through to
-  // a clean degraded display rather than crash.
-  const sev = SEVERITY_DISPLAY[row.severity as HeartcrySeverity] ?? null;
-  // Continent comes from the RPC server-side mapping (UN M.49). The
-  // fallback is rare (data anomaly) — kept in the same lexicon as the
-  // rest of the surface so leaders don't see "region" alongside
-  // "continent" copy elsewhere.
-  const continent = row.continent ?? 'Unknown continent';
-  const excerpt = truncateExcerpt(row.feed_content);
+// CD inline SVG: 9 × 11, sky stroke, shackle + body — matches caml /
+// other in-repo sky lock glyphs.
+function ThresholdLock() {
+  return (
+    <Svg width={9} height={11} viewBox="0 0 10 12">
+      <Rect x={1.5} y={5} width={7} height={6} rx={1} fill="none" stroke={Colors.accent} strokeWidth={1} />
+      <Path d="M3 5V3.5a2 2 0 0 1 4 0V5" fill="none" stroke={Colors.accent} strokeWidth={1} />
+    </Svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PersecutedActionCard — CD .action-card
+// ─────────────────────────────────────────────────────────────────────
+
+function PersecutedActionCard({ onPress }: { onPress: () => void }) {
+  return (
+    <View style={styles.actionCard}>
+      <Text style={styles.actionPrompt}>{ACTION_PROMPT}</Text>
+      <Text style={styles.actionSub}>{ACTION_SUB}</Text>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel="Share my heartcry"
+        style={({ pressed }) => [styles.actionCta, pressed && styles.actionCtaPressed]}
+      >
+        <Text style={styles.actionCtaLabel}>{ACTION_CTA}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// RegionFilterBar — CD .region-bar
+// ─────────────────────────────────────────────────────────────────────
+
+function RegionFilterBar({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.regionBarContent}
+    >
+      {HEARTCRY_REGIONS.map((r) => {
+        const active = r.id === selectedId;
+        return (
+          <Pressable
+            key={r.id}
+            onPress={() => onSelect(r.id)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            style={[styles.regionChip, active && styles.regionChipActive]}
+          >
+            <Text style={[styles.regionChipLabel, active && styles.regionChipLabelActive]}>
+              {r.label.toUpperCase()}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// HeartcryCard — CD .heartcry (red-left-accent surface card)
+// ─────────────────────────────────────────────────────────────────────
+
+function HeartcryCard({
+  row,
+  held,
+  onToggleHold,
+}: {
+  row: HeartcryFeedRow;
+  held: boolean;
+  onToggleHold: () => void;
+}) {
+  const regionLabel = row.region ?? row.continent ?? '';
   const timestamp = formatRelativeTime(row.created_at);
-
   return (
-    <View style={styles.feedCard}>
-      <View style={styles.feedCardTopRow}>
-        <Text style={styles.feedCardAuthor}>Anonymous · {continent}</Text>
-        {timestamp ? <Text style={styles.feedCardTs}>{timestamp}</Text> : null}
+    <View style={[styles.heartcry, held && styles.heartcryHeld]}>
+      <View style={styles.heartcryLocRow}>
+        <View style={styles.heartcryDot} />
+        <Text style={styles.heartcryVoice}>A VOICE</Text>
+        {regionLabel ? (
+          <>
+            <Text style={styles.heartcryVoice}> · </Text>
+            <Text style={styles.heartcryRegion}>{regionLabel.toUpperCase()}</Text>
+          </>
+        ) : null}
+        {timestamp ? <Text style={styles.heartcryTime}>{timestamp}</Text> : null}
       </View>
-      {excerpt ? (
-        <Text style={styles.feedCardExcerpt} numberOfLines={3}>
-          {excerpt}
-        </Text>
-      ) : null}
-      {sev ? (
-        <View style={styles.severityBadge}>
-          <View style={styles.severityDot} />
-          <Text style={styles.severityBadgeText}>
-            {sev.label} — {sev.oneLiner}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function FeedSeparator() {
-  return <View style={{ height: 12 }} />;
-}
-
-function EmptyFeed() {
-  return (
-    <View style={styles.emptyBlock}>
-      <Text style={styles.emptyText}>{EMPTY_FEED_COPY}</Text>
-    </View>
-  );
-}
-
-function FeedFooter({ loading }: { loading: boolean }) {
-  return (
-    <View style={styles.footerStack}>
-      {loading ? (
-        <View style={styles.footerSpinner}>
-          <ActivityIndicator color={Colors.red} />
-        </View>
-      ) : null}
-      <View style={styles.encryptedStrip}>
-        <Text style={styles.encryptedStripText}>{ENCRYPTED_FOOTER}</Text>
-      </View>
-
-      {/* Item 9 — Hebrews 13:3 reverent footer. Top hairline divider +
-          centered Cormorant verse + DM Sans tracked reference. Per
-          wireframe v2 .scripture-block. */}
-      <View style={styles.scriptureBlock}>
-        <View style={styles.scriptureDivider} />
-        <Text style={styles.scriptureVerse}>{HEB_13_3}</Text>
-        <Text style={styles.scriptureRef}>{HEB_13_3_REF}</Text>
+      <Text style={styles.heartcryText}>{row.feed_content ?? ''}</Text>
+      <View style={styles.heartcryMetaRow}>
+        <Pressable
+          onPress={onToggleHold}
+          accessibilityRole="button"
+          accessibilityState={{ selected: held }}
+          accessibilityLabel={held ? 'Stop holding this heartcry in prayer' : 'Hold this heartcry in prayer'}
+          style={styles.holdToggle}
+          hitSlop={6}
+        >
+          {held ? (
+            <>
+              <CheckGlyph color={Colors.text} />
+              <Text style={[styles.holdLabel, styles.holdLabelHeld]}>KEEP HOLDING</Text>
+            </>
+          ) : (
+            <Text style={[styles.holdLabel, styles.holdLabelIdle]}>+ HOLD IN PRAYER</Text>
+          )}
+        </Pressable>
       </View>
     </View>
   );
 }
+
+function CheckGlyph({ color }: { color: string }) {
+  return (
+    <Svg width={10} height={10} viewBox="0 0 12 12">
+      <Path d="M2 6l3 3 5-6" stroke={color} strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// HeartcryEmpty — CD .empty-quiet
+// ─────────────────────────────────────────────────────────────────────
+
+function HeartcryEmpty() {
+  return (
+    <View style={styles.empty}>
+      <Svg width={36} height={36} viewBox="0 0 36 36" style={styles.emptyGlyph}>
+        <Circle cx={18} cy={18} r={16} fill="none" stroke="rgba(217,89,79,0.3)" strokeWidth={0.8} strokeDasharray="2 3" />
+        <Path d="M18 11v8M18 23v.5" stroke="rgba(217,89,79,0.6)" strokeWidth={1.4} strokeLinecap="round" />
+      </Svg>
+      <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
+      <Text style={styles.emptyBody}>{EMPTY_BODY}</Text>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ScriptureFooter — CD .scripture-foot (Hebrews 13:3)
+// ─────────────────────────────────────────────────────────────────────
+
+function ScriptureFooter() {
+  return (
+    <View style={styles.scriptureFoot}>
+      <Text style={styles.scriptureEyebrow}>PRAY WITH US</Text>
+      <Text style={styles.scriptureVerse}>{HEB_13_3}</Text>
+      <Text style={styles.scriptureRef}>{HEB_13_3_REF}</Text>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────────────
+
+// Cream token used for the held-space copy — matches CD --cream
+// (`#E6E1D5`). Slightly softer than Colors.text on the dark surfaces,
+// keeps the body legible while reading less like UI chrome.
+const CREAM = '#E6E1D5';
+const FAINT = 'rgba(240,237,230,0.08)';
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  gateRoot: {
-    flex: 1,
-    backgroundColor: '#080808',
-  },
+  root: { flex: 1, backgroundColor: Colors.background },
+  gateRoot: { flex: 1, backgroundColor: '#080808' },
 
-  // Item 5 — Nav bar: 52pt height, left title + right hamburger. No
-  // bottom border on the verified surface (wireframe v2 .nav-bar has
-  // no border-bottom — the border only appears on the pushed-screen
-  // variant used by KAN-64).
+  // NavBar
   navBar: {
     height: 52,
     flexDirection: 'row',
@@ -494,54 +522,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
   },
-  navHairline: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(240, 237, 230, 0.08)',
-  },
+  navHairline: { height: StyleSheet.hairlineWidth, backgroundColor: FAINT },
   navTitle: {
     fontFamily: Typography.displayRegular,
     fontSize: 22,
-    letterSpacing: 0.44, // 0.02em × 22
+    letterSpacing: 0.44,
     color: Colors.red,
   },
-  hamburger: {
-    gap: 4,
-    alignItems: 'flex-end',
-  },
-  hamburgerBar: {
-    width: 22,
-    height: 2,
-    backgroundColor: Colors.text,
-    borderRadius: 1,
-  },
+  hamburger: { gap: 4, alignItems: 'flex-end' },
+  hamburgerBar: { width: 22, height: 2, backgroundColor: Colors.text, borderRadius: 1 },
 
-  // Item 7 — Screen 14B gate
-  gateBody: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 28,
-  },
-  gateGlyph: {
-    marginTop: 230,
-    width: 60,
-    height: 60,
-  },
+  // Screen 14B gate
+  gateBody: { flex: 1, alignItems: 'center', paddingHorizontal: 28 },
+  gateGlyph: { marginTop: 230, width: 60, height: 60 },
   gateRule: {
     marginTop: 28,
     width: 26,
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(240, 237, 230, 0.16)',
   },
-  gateCopyBlock: {
-    marginTop: 28,
-    maxWidth: 330,
-    gap: 12,
-  },
+  gateCopyBlock: { marginTop: 28, maxWidth: 330, gap: 12 },
   gateLine1: {
     fontFamily: Typography.displayRegular,
     fontSize: 20,
-    lineHeight: 28, // 20 × 1.4
-    letterSpacing: 0.2, // 0.01em × 20
+    lineHeight: 28,
+    letterSpacing: 0.2,
     color: Colors.text,
     textAlign: 'center',
   },
@@ -553,304 +558,260 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Screen 14 — list
-  listContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  headerStack: {
-    gap: 18,
-    marginBottom: 18,
-  },
+  // Scroll
+  scrollContent: { paddingBottom: 28 },
+  bodyPad: { paddingHorizontal: 22 },
 
-  // Item 3 — update chip (sky pill, full-width, dismiss-only)
-  updateChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingTop: 10,
-    paddingRight: 14,
-    paddingBottom: 10,
-    paddingLeft: 16,
-    backgroundColor: 'rgba(107, 181, 232, 0.10)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(107, 181, 232, 0.35)',
-    borderRadius: 999,
+  // Threshold preamble (CD .threshold)
+  threshold: {
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 22,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: FAINT,
   },
-  updateChipText: {
-    flex: 1,
-    fontFamily: Typography.bodyMedium,
-    fontSize: 13,
-    letterSpacing: 0.13, // 0.01em × 13
-    color: Colors.accent,
-  },
-  updateChipDismiss: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.7,
-  },
-  updateChipDismissGlyph: {
-    fontFamily: Typography.body,
-    fontSize: 16,
-    lineHeight: 18,
-    color: Colors.accent,
-  },
-
-  // Item 6 — Banner
-  banner: {
-    backgroundColor: 'rgba(224, 85, 85, 0.06)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(224, 85, 85, 0.28)',
-    borderRadius: 12,
-    padding: 16,
-    paddingBottom: 18,
-  },
-  bannerEyebrow: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 11,
-    letterSpacing: 3.52, // 0.32em × 11
-    color: Colors.red,
+  thresholdEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 2.66, // 0.28em × 9.5
     textTransform: 'uppercase',
+    color: Colors.red,
     marginBottom: 10,
   },
-  bannerBody: {
+  thresholdBody: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 17,
-    lineHeight: 26, // 17 × 1.55 ≈ 26.35
-    color: Colors.text,
+    fontSize: 15,
+    lineHeight: 23,
+    color: CREAM,
+    letterSpacing: 0.15,
   },
-
-  // Item 1 + Item 6 — Status tracker
-  trackerBlock: {
-    backgroundColor: Colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.accent,
-    borderRadius: 10,
-    paddingTop: 14,
-    paddingRight: 16,
-    paddingBottom: 16,
-    paddingLeft: 16,
-    gap: 6,
-  },
-  trackerLabelRow: {
+  thresholdMeta: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  trackerLabel: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 11,
-    letterSpacing: 3.08, // 0.28em × 11
-    color: Colors.accent,
-    textTransform: 'uppercase',
-  },
-  trackerCount: {
-    // Subtle "1 of N" indicator — mono register for an identifier feel,
-    // muted-2 color so it doesn't compete with the sky label.
-    fontFamily: Typography.mono,
-    fontSize: 10.5,
-    letterSpacing: 0.63,
-    color: 'rgba(240, 237, 230, 0.60)',
-  },
-  trackerCopy: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 17,
-    lineHeight: 24, // 17 × 1.4 ≈ 23.8
-    color: Colors.text,
-  },
-
-  // Confirmation card + CTA
-  confirmCard: {
-    backgroundColor: Colors.surfaceElevated,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    padding: 18,
-    paddingBottom: 16,
-    gap: 14,
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 14,
   },
-  confirmQuestion: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 19,
-    lineHeight: 26,
+  thresholdMetaText: {
+    fontFamily: Typography.mono,
+    fontSize: 8,
+    letterSpacing: 1.44, // 0.18em × 8
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
+  thresholdMetaSky: { color: Colors.accent, marginLeft: 4 },
+  thresholdMetaDot: { color: 'rgba(240,237,230,0.32)' },
+
+  // Action card (CD .action-card)
+  actionCard: {
+    marginVertical: 22,
+    paddingTop: 22,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: FAINT,
+    borderRadius: 10,
+  },
+  actionPrompt: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 20,
+    lineHeight: 27,
     color: Colors.text,
+    letterSpacing: 0.2,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  primaryCta: {
+  actionSub: {
+    fontFamily: Typography.body,
+    fontSize: 12.5,
+    color: Colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 18,
+    textAlign: 'center',
+  },
+  actionCta: {
     width: '100%',
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: Colors.red,
+    borderWidth: 0.5,
+    borderColor: 'rgba(217,89,79,0.30)',
+    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryCtaPressed: {
-    opacity: 0.85,
-  },
-  primaryCtaLabel: {
+  actionCtaPressed: { opacity: 0.7 },
+  actionCtaLabel: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 15,
-    color: '#0A0A0A',
-    letterSpacing: 0.6,
+    fontSize: 11.5,
+    letterSpacing: 1.61, // 0.14em × 11.5
+    textTransform: 'uppercase',
+    color: Colors.red,
   },
 
-  // Item 6 — Section header (kept at 18; already matched dispatch)
+  // Section heading
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 4,
+    gap: 14,
+    marginTop: 28,
+    marginBottom: 14,
   },
   sectionHeader: {
     fontFamily: Typography.displayRegular,
-    fontSize: 18,
+    fontSize: 19,
+    letterSpacing: 0.19, // 0.01em × 19
     color: Colors.text,
-    letterSpacing: 0.36, // 0.02em × 18
   },
-  sectionRule: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(240, 237, 230, 0.16)',
-  },
+  sectionRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: FAINT },
 
-  // Feed card
-  feedCard: {
+  // Region filter bar
+  regionBarContent: { gap: 6, paddingVertical: 4, paddingBottom: 8 },
+  regionChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 100,
+    borderWidth: 0.5,
+    borderColor: FAINT,
+    backgroundColor: 'transparent',
+  },
+  regionChipActive: { borderColor: 'rgba(240,237,230,0.14)', backgroundColor: '#18181b' },
+  regionChipLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.53, // 0.18em × 8.5
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
+  regionChipLabelActive: { color: Colors.text },
+
+  // Heartcry card (CD .heartcry)
+  cardStack: { gap: 12 },
+  heartcry: {
     backgroundColor: Colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
+    borderWidth: 0.5,
+    borderColor: FAINT,
     borderLeftWidth: 2,
     borderLeftColor: Colors.red,
-    borderRadius: 10,
-    padding: 14,
-    gap: 8,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
   },
-  feedCardTopRow: {
+  heartcryHeld: { backgroundColor: 'rgba(107,181,232,0.04)' },
+  heartcryLocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 10,
+  },
+  heartcryDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: Colors.red,
+    flexShrink: 0,
+  },
+  heartcryVoice: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.62, // 0.18em × 9
+    textTransform: 'uppercase',
+    color: Colors.red,
+  },
+  heartcryRegion: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.62,
+    textTransform: 'uppercase',
+    color: Colors.text,
+  },
+  heartcryTime: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.26, // 0.14em × 9
+    color: Colors.textMuted,
+    marginLeft: 'auto',
+  },
+  heartcryText: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 16,
+    lineHeight: 25,
+    color: CREAM,
+    letterSpacing: 0.08,
+  },
+  heartcryMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 14,
   },
-  feedCardAuthor: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 11,
-    letterSpacing: 1.76, // 0.16em × 11
-    color: Colors.red,
-    textTransform: 'uppercase',
-  },
-  feedCardTs: {
+  holdToggle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  holdLabel: {
     fontFamily: Typography.mono,
-    fontSize: 10.5,
-    letterSpacing: 0.63,
-    color: 'rgba(240, 237, 230, 0.45)',
-  },
-  feedCardExcerpt: {
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 16,
-    lineHeight: 24,
-    color: Colors.text,
-  },
-  severityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(224, 85, 85, 0.10)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(224, 85, 85, 0.28)',
-  },
-  severityDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.red,
-  },
-  severityBadgeText: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: Colors.red,
+    fontSize: 8.5,
+    letterSpacing: 1.02, // 0.12em × 8.5
     textTransform: 'uppercase',
   },
+  holdLabelIdle: { color: Colors.accent },
+  holdLabelHeld: { color: Colors.text },
 
-  // Empty feed + footer
-  emptyBlock: {
-    paddingVertical: 28,
-    paddingHorizontal: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(240, 237, 230, 0.16)',
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyText: {
+  // Empty
+  empty: { paddingVertical: 40, paddingHorizontal: 24, alignItems: 'center' },
+  emptyGlyph: { marginBottom: 18, opacity: 0.6 },
+  emptyTitle: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 16,
-    lineHeight: 24,
-    color: 'rgba(240, 237, 230, 0.60)',
+    fontSize: 19,
+    lineHeight: 26,
+    color: Colors.text,
+    letterSpacing: 0.19,
+    marginBottom: 10,
     textAlign: 'center',
   },
-  footerStack: {
-    gap: 16,
-    marginTop: 16,
-  },
-  footerSpinner: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  encryptedStrip: {
-    backgroundColor: 'rgba(107, 181, 232, 0.10)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(107, 181, 232, 0.35)',
-    borderRadius: 8,
-    padding: 12,
-    paddingHorizontal: 14,
-  },
-  encryptedStripText: {
+  emptyBody: {
     fontFamily: Typography.body,
-    fontSize: 12,
-    lineHeight: 19,
-    color: Colors.accent,
+    fontSize: 12.5,
+    lineHeight: 21,
+    color: Colors.textMuted,
+    maxWidth: 280,
+    textAlign: 'center',
   },
 
-  // Item 9 — Hebrews 13:3 footer scripture block
-  scriptureBlock: {
-    marginTop: 16,
-    paddingTop: 20,
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+  // Inline feed spinner (gates the cardStack while the RPC is in-flight)
+  feedSpinner: { paddingVertical: 28, alignItems: 'center' },
+
+  // Scripture footer
+  scriptureFoot: {
+    marginTop: 40,
+    marginHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 28,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: FAINT,
     alignItems: 'center',
-    gap: 8,
   },
-  scriptureDivider: {
-    width: '100%',
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
-    marginBottom: 8,
+  scriptureEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 2.16, // 0.24em × 9
+    textTransform: 'uppercase',
+    color: Colors.accent,
+    marginBottom: 14,
   },
   scriptureVerse: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 18,
-    lineHeight: 27, // 18 × 1.50 = 27
-    color: 'rgba(240, 237, 230, 0.60)',
+    fontSize: 17,
+    lineHeight: 26,
+    color: CREAM,
+    letterSpacing: 0.17,
     maxWidth: 320,
     textAlign: 'center',
+    marginBottom: 12,
   },
   scriptureRef: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 10.5,
-    letterSpacing: 2.94, // 0.28em × 10.5
-    color: 'rgba(240, 237, 230, 0.45)',
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 2.09, // 0.22em × 9.5
     textTransform: 'uppercase',
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
 });
-
