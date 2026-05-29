@@ -1,0 +1,21 @@
+# update-church — authenticated church edit endpoint (KAN-207).
+#
+# verify_jwt = true: caller must be a signed-in leader with a valid JWT.
+# Unlike register-church (which runs pre-auth, verify_jwt=false), this
+# function modifies an existing record — ownership verification is
+# mandatory. The handler additionally checks that the caller's
+# public.users row links to the target church_id with is_active = true
+# before any UPDATE fires.
+#
+# SEC posture (locked KAN-207, 2026-05-29):
+#   - JWT enforced at the platform.
+#   - Server-side ownership check (BE-side ACL, not RLS) before any write.
+#   - No audit_log writes (matches register-church; admins observe queue
+#     changes directly).
+#   - No Vault accessors, no Resend, no SECURITY DEFINER RPC calls.
+#   - Underground city/lat/lng strip enforced in logic.ts, identical to
+#     register-church c.10167 invariant ("absent for underground — not
+#     sent, not written").
+#
+# Any change to verify_jwt requires a fresh SEC ruling.
+verify_jwt = true

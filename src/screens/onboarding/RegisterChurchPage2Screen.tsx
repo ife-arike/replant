@@ -30,7 +30,7 @@ import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { RAG_OPTIONS } from '../../utils/displayHelpers';
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
+import { supabase, SUPABASE_ANON_KEY, SUPABASE_URL } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'RegisterChurchPage2'>;
 
@@ -40,6 +40,11 @@ const STATE_DECLARATION_AFFIRMATION =
   'I affirm the Replant Declaration of Faith — Jesus Christ as Lord and Saviour, the Holy Bible as our only source of truth.';
 
 const REGISTER_CHURCH_URL = `${SUPABASE_URL}/functions/v1/register-church`;
+// KAN-207 — separate endpoint for the edit path. register-church always
+// INSERTs; routing edits through it created duplicate church rows. The
+// edit endpoint requires JWT (verify_jwt=true) and verifies caller
+// ownership of the church_id server-side before updating.
+const UPDATE_CHURCH_URL = `${SUPABASE_URL}/functions/v1/update-church`;
 
 interface RegisterChurchSuccessResponse {
   success: true;
@@ -163,15 +168,42 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
     if (openToCollaboration !== null) payload.open_to_collaboration = openToCollaboration;
 
     try {
-      const response = await fetch(REGISTER_CHURCH_URL, {
-        method: 'POST',
-        headers: {
+      // KAN-207 — branch on isEditMode. The bug: register-church always
+      // INSERTs, so an edit submitted to it created a second church row
+      // and the leader's church_id from route.params.editChurch.churchId
+      // never reached the backend. The edit path now targets update-church
+      // (verify_jwt=true) with the church_id appended and a Bearer token.
+      // The success response shape is identical for both branches —
+      // result.church_id comes back in the same key.
+      let url: string;
+      let headers: Record<string, string>;
+      let body: Record<string, unknown>;
+
+      const editChurchId = route.params?.editChurch?.churchId;
+      if (isEditMode && editChurchId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        url = UPDATE_CHURCH_URL;
+        headers = {
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        };
+        body = { ...payload, church_id: editChurchId };
+      } else {
+        url = REGISTER_CHURCH_URL;
+        headers = {
           // No Authorization header — verify_jwt=false on register-church.
           // apikey is required for the Supabase gateway to route the call.
           apikey: SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        };
+        body = payload as unknown as Record<string, unknown>;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
