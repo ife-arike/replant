@@ -21,8 +21,11 @@
 //     show_contact_on_profile, member_since, leaders[] }
 //   leaders: { name: string|null, role: string(raw enum), anonymous: bool }
 //     - anonymous=true  → name is null → render role pill + "Name withheld"
-//     - anonymous=false → name pre-formatted server-side per
-//                         display_name_preference → render as-is + role pill
+//     - anonymous=false → full_name (server returns the complete name —
+//                         device-pass-fixes-1 Fix 1: display_name_preference
+//                         is no longer consulted on this surface, since
+//                         the profile card shows the full identity, not
+//                         a Connect-style first-name token)
 //   contact_email + address appended ONLY when show_contact_on_profile=true.
 //   Pending churches: rag_label = "Verification in progress", leaders = [].
 //

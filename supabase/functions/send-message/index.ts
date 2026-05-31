@@ -37,21 +37,43 @@ import {
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 import { createHandler, type Deps } from "./handler.ts";
 import {
+  createInternalHandler,
+  type InternalDeps,
+} from "./internal-handler.ts";
+import {
   classifyLoadFailure,
   loadTaxonomy,
   type Taxonomy,
 } from "./taxonomy.ts";
 
-function makeDeps(): Deps {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const dbUrl = Deno.env.get("SUPABASE_DB_URL");
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !dbUrl) {
-    throw new Error("Missing Supabase environment configuration");
-  }
+// Module-level boot constants. Read once at cold-start; consumed by both
+// makeDeps (external path) and the /internal boot below. Throws if any
+// env var is missing — refuse-to-start posture is consistent with the
+// existing function-startup discipline.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL");
+if (
+  !SUPABASE_URL ||
+  !SUPABASE_ANON_KEY ||
+  !SUPABASE_SERVICE_ROLE_KEY ||
+  !SUPABASE_DB_URL
+) {
+  throw new Error("Missing Supabase environment configuration");
+}
+const ADMIN_CLIENT: SupabaseClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+);
 
-  const adminClient: SupabaseClient = createClient(supabaseUrl, serviceRoleKey);
+function makeDeps(): Deps {
+  const supabaseUrl = SUPABASE_URL!;
+  const anonKey = SUPABASE_ANON_KEY!;
+  const serviceRoleKey = SUPABASE_SERVICE_ROLE_KEY!;
+  const dbUrl = SUPABASE_DB_URL!;
+
+  const adminClient: SupabaseClient = ADMIN_CLIENT;
   const userClientFor = (authHeader: string): SupabaseClient =>
     createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -589,5 +611,80 @@ function makeDeps(): Deps {
   };
 }
 
-const handler = createHandler(makeDeps());
-Deno.serve(handler);
+// ────────────────────────────────────────────────────────────────────────
+// KAN-217 /internal boot — SEC c.15285 Item 3 sub-items.
+//
+// (3c) sender_id resolved from Vault (replant_system_user_id) at function
+//      startup. Loaded ONCE per isolate via get_secret_by_name SECURITY
+//      DEFINER RPC. Frozen for the lifetime of the isolate; never read
+//      again, never accepted from request body. Boot fails if the secret
+//      is missing or empty — refuse-to-start.
+// (3a) (3b) The /internal handler validates the welcome_dm_internal_token
+//      + X-Replant-Internal sentinel in constant time (internal-auth.ts).
+//      device-pass-fixes-1 (2026-05-30): source shifted from
+//      SUPABASE_SERVICE_ROLE_KEY to a dedicated Vault secret
+//      (`welcome_dm_internal_token`) — scoped to this route, decoupled
+//      from Supabase key rotation. SEC AC-3 amendment stamped.
+// (3d) (3f) Internal token NEVER logged, never in any response payload.
+//      Vault-resident + Netlify env only.
+// ────────────────────────────────────────────────────────────────────────
+async function loadReplantSystemUserId(): Promise<string> {
+  const { data, error } = await ADMIN_CLIENT.rpc("get_secret_by_name", {
+    secret_name: "replant_system_user_id",
+  });
+  if (error || typeof data !== "string" || data.length === 0) {
+    throw new Error("Failed to load replant_system_user_id from Vault");
+  }
+  return data;
+}
+
+async function loadWelcomeDmInternalToken(): Promise<string> {
+  const { data, error } = await ADMIN_CLIENT.rpc("get_secret_by_name", {
+    secret_name: "welcome_dm_internal_token",
+  });
+  if (error || typeof data !== "string" || data.length === 0) {
+    // Refuse to start — /internal route cannot authenticate without this
+    // secret. Mirrors replant_system_user_id posture: prefer a clean
+    // startup failure over silently accepting any Bearer token.
+    throw new Error("Failed to load welcome_dm_internal_token from Vault");
+  }
+  return data;
+}
+
+const deps = makeDeps();
+const [systemSenderId, internalToken] = await Promise.all([
+  loadReplantSystemUserId(),
+  loadWelcomeDmInternalToken(),
+]);
+console.log(JSON.stringify({
+  level: "info",
+  event: "send-message.internal.boot-loaded",
+  // Public-knowledge UUID, safe to log. Internal token NEVER logged.
+  system_sender_id: systemSenderId,
+  ts: new Date().toISOString(),
+}));
+
+const internalDeps: InternalDeps = {
+  internalToken,
+  systemSenderId,
+  fetchConversation: deps.fetchConversation,
+  sendInTransaction: deps.sendInTransaction,
+  getTaxonomy: deps.getTaxonomy,
+  postCommitFlagEffects: deps.postCommitFlagEffects,
+  log: deps.log,
+};
+
+const externalHandler = createHandler(deps);
+const internalHandler = createInternalHandler(internalDeps);
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  // URL.pathname tells us which sub-route was hit. The platform deploys
+  // this function at /functions/v1/send-message; /internal sub-path is
+  // /functions/v1/send-message/internal. Anything else routes to the
+  // existing external (user-JWT) handler.
+  const url = new URL(req.url);
+  if (url.pathname.endsWith("/internal")) {
+    return await internalHandler(req);
+  }
+  return await externalHandler(req);
+});

@@ -1,0 +1,27 @@
+# KAN-71 / KAN-217 — send-message edge function config.
+#
+# verify_jwt = true is LOAD-BEARING per SEC. Any change here requires a
+# fresh SEC ruling before deploy. This setting governs the EXTERNAL
+# (peer-to-peer) route only — the /internal subroute (KAN-217) authenticates
+# via constant-time SUPABASE_SERVICE_ROLE_KEY compare + X-Replant-Internal
+# sentinel header in code (see ./internal-handler.ts). The platform-level
+# verify_jwt=true catches malformed/expired JWTs on the external path
+# before any of this function's handler code runs.
+#
+# DELIVER-ALWAYS (D-45 clause 3) is load-bearing: keyword match writes
+# `flagged` + `flag_reason` columns ONLY. It does NOT gate the INSERT
+# into public.messages, the Realtime broadcast (the messages table is
+# in supabase_realtime — KAN-71 + KAN-214 publication), or the 200
+# response. This holds identically on the /internal path — the keyword
+# scanner runs with no source-prefix carve-out, no is_system_message
+# exemption, no bypass of any kind (SEC c.15285 Item 2 + AC-3e).
+#
+# NOTE: Supabase CLI 2.95.4 has a known quirk where per-function
+# config.toml verify_jwt is ignored on deploy via the platform —
+# verify_jwt must be passed explicitly to deploy_edge_function. The
+# canonical fix is CLI ≥ 2.100.1. The platform setting is the source
+# of truth for what the gateway enforces; this file documents the
+# load-bearing posture on disk. See feedback memory
+# `feedback_supabase_cli_verify_jwt`.
+
+verify_jwt = true

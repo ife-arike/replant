@@ -306,7 +306,7 @@ export default function DMThreadView({
         ? 'Replant Team — Secure Message'
         : initialProfile.displayName,
       churchLabel: initialProfile.isSecure
-        ? 'Replant · system-managed'
+        ? 'Replant · admin-monitored'
         : initialProfile.churchName,
       isSecure: initialProfile.isSecure,
     };
@@ -315,6 +315,13 @@ export default function DMThreadView({
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
+  // device-pass-fixes-1 Fix 4: gate Realtime subscribe on the initial
+  // page load completing (success or error). Previously the two effects
+  // fired concurrently — on first mount with a hydrating session the
+  // initial load could lose its race against the subscribe, and the
+  // Replant Team thread would render empty until the user navigated
+  // away and back (forcing a remount). Sequencing matches LeadersList.
+  const [initialFetchComplete, setInitialFetchComplete] = useState(false);
   const [draft, setDraft] = useState('');
   const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   // Fix 8 (KAN-68 §15.3): paperclip → anticipatory popover (NOT a
@@ -366,7 +373,7 @@ export default function DMThreadView({
       const anon = !!row.other_anonymous;
       const fullName: string = row.other_full_name ?? '';
       const churchName: string = isSec
-        ? 'Replant · system-managed'
+        ? 'Replant · admin-monitored'
         : (row.other_church_name ?? '');
       setOther({
         userId: row.other_user_id,
@@ -385,8 +392,16 @@ export default function DMThreadView({
     if (!conversationId || !callerUserId) {
       setLoading(false);
       setMessages([]);
+      // No fetch to wait for in the lazy-create / unauth-skeleton case;
+      // unblock the Realtime subscribe so it can wire up if/when the
+      // ids arrive on a subsequent render.
+      setInitialFetchComplete(true);
       return;
     }
+    // Reset the gate when conversationId/callerUserId change — the new
+    // conversation needs its own fresh initial load before its Realtime
+    // subscribe can fire.
+    setInitialFetchComplete(false);
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -401,6 +416,7 @@ export default function DMThreadView({
       if (error || !data) {
         setMessages([]);
         setLoading(false);
+        setInitialFetchComplete(true);
         return;
       }
       // We hold messages oldest→newest for groupLabel walk; invert for display.
@@ -415,6 +431,7 @@ export default function DMThreadView({
       setMessages(assignGroupLabels(ordered));
       setExhausted(data.length < PAGE_SIZE);
       setLoading(false);
+      setInitialFetchComplete(true);
       // Mark the thread read on initial open. Fire-and-forget — a
       // mark-read failure must NEVER block the thread render. The
       // caller may not yet be at-the-bottom of the inverted list, but
@@ -426,8 +443,13 @@ export default function DMThreadView({
   }, [conversationId, callerUserId]);
 
   // ── Realtime subscription on messages (conversation_id filter) ─────
+  // device-pass-fixes-1 Fix 4: gated on initialFetchComplete so the
+  // subscribe wires up AFTER the initial page load lands. Same canonical
+  // pattern as LeadersList — Realtime supplements the initial data,
+  // never replaces it.
   useEffect(() => {
     if (!conversationId || !callerUserId) return;
+    if (!initialFetchComplete) return;
     const channel = supabase
       .channel(`dm-thread-${conversationId}`)
       .on(
@@ -471,7 +493,7 @@ export default function DMThreadView({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [conversationId, callerUserId]);
+  }, [conversationId, callerUserId, initialFetchComplete]);
 
   // ── Load older (scroll-to-top in inverted list = onEndReached) ────
   const loadOlder = useCallback(async () => {
