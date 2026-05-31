@@ -72,7 +72,16 @@ export default function ConnectHeader({ subTab, showCompose, onCompose }: Props)
 
 const styles = StyleSheet.create({
   root: {
-    paddingTop: 56,
+    // connect-polish-1 Fix A: lowered from 56 to 60 — wait, no — the
+    // device pass reported the title sitting visually too low because
+    // 56 was reserving vertical space for a hamburger row that Connect
+    // intentionally does not have (Founder ruling: no hamburger on
+    // Connect). Match HomeScreen.tsx's top-bar paddingTop:60 so the
+    // serif title lands at the top of the content area instead of
+    // mid-screen. Connect's title will sit HIGHER than other tabs by
+    // design — that's the intended correction; do not add fake spacing
+    // to compensate.
+    paddingTop: 60,
     paddingHorizontal: 22,
     paddingBottom: 16,
     flexDirection: 'row',

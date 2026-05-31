@@ -25,6 +25,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "./src/contexts/AuthProvider";
 import { HamburgerProvider } from "./src/contexts/HamburgerContext";
+import { ConnectBadgeProvider } from "./src/contexts/ConnectBadgeContext";
 import HamburgerPanel from "./src/components/hamburger/HamburgerPanel";
 import DeactivationModal from "./src/components/auth/DeactivationModal";
 import RootNavigator from "./src/navigation/RootNavigator";
@@ -103,15 +104,25 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
       <AuthProvider>
         <HamburgerProvider>
-          <AppGate />
-          {/* HamburgerPanel mounted as a sibling so its Modal overlay
-              sits above NavigationContainer's tree on open. KAN-76. */}
-          <HamburgerPanel />
-          {/* KAN-36 v2 — DeactivationModal renders above the navigator
-              when AuthProvider sets deactivationModalPath. AuthProvider
-              also signs out on detection, so by the time this is
-              visible the leader is on Login (unauthenticated branch). */}
-          <DeactivationModal />
+          {/* connect-polish-1 Fix E — ConnectBadgeProvider mounts the
+              useConnectUnreadBadge hook ONCE for the whole app, inside
+              AuthProvider (the hook calls useAuth) and outside
+              NavigationContainer so the Realtime channel survives
+              navigation tree changes. ConnectTabIcon + DMThreadView
+              both consume via useConnectBadge — DMThreadView calls
+              refresh() on unmount so the badge decrements immediately
+              when a leader navigates out of a read thread. */}
+          <ConnectBadgeProvider>
+            <AppGate />
+            {/* HamburgerPanel mounted as a sibling so its Modal overlay
+                sits above NavigationContainer's tree on open. KAN-76. */}
+            <HamburgerPanel />
+            {/* KAN-36 v2 — DeactivationModal renders above the navigator
+                when AuthProvider sets deactivationModalPath. AuthProvider
+                also signs out on detection, so by the time this is
+                visible the leader is on Login (unauthenticated branch). */}
+            <DeactivationModal />
+          </ConnectBadgeProvider>
         </HamburgerProvider>
       </AuthProvider>
     </SafeAreaProvider>

@@ -43,6 +43,7 @@ import {
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
+import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
 import { getRoleLabel } from '../../utils/displayHelpers';
 import CovenantStrip from './CovenantStrip';
@@ -99,11 +100,15 @@ interface OtherParty {
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
 const MAX_COMPOSER_HEIGHT = 124;
-// Fix 4 (KAN-68 CD-alignment pass): the earlier B4 tightening
-// (36pt) was rolled back. HANDOFF §6.3 calls for min 42pt, radius
-// 21, send 42×42 — the spec wins. Container padding restored to
-// `10px 14px 28px` (28pt = home-indicator inset on Pro Max).
-const MIN_COMPOSER_HEIGHT = 42;
+// connect-polish-1 Fix B: device pass reported the composer feels too
+// tall on a single line. Founder ruling overrides the prior HANDOFF
+// §6.3 42pt minimum for the FIELD; the attach + send button hit
+// targets stay at 42pt (COMPOSER_BUTTON_SIZE) for tap-area generosity.
+// Field collapses to 36pt min with reduced vertical padding so the
+// placeholder centres in a compact pill, not a tall textarea. Grow-
+// on-input behaviour and textAlignVertical are untouched.
+const MIN_COMPOSER_HEIGHT = 36;
+const COMPOSER_BUTTON_SIZE = 42;
 
 // ── inline icons ──────────────────────────────────────────────────────
 function BackIcon() {
@@ -322,6 +327,28 @@ export default function DMThreadView({
   // Replant Team thread would render empty until the user navigated
   // away and back (forcing a remount). Sequencing matches LeadersList.
   const [initialFetchComplete, setInitialFetchComplete] = useState(false);
+  // connect-polish-1 Fix E: refresh the Connect tab badge when this
+  // thread unmounts (the leader navigates away after reading). The
+  // `mark_conversation_read` RPC fires inside the initial-load
+  // useEffect on a successful load; it writes conversations.last_read_at_x
+  // which is NOT in the Realtime publication, so the badge would only
+  // catch up on the next messages INSERT without this explicit refresh.
+  //
+  // Gating on initialFetchComplete is approximate: an errored initial
+  // load (no mark_conversation_read fired) still triggers refresh on
+  // unmount. Acceptable — that's one extra cheap RPC returning the
+  // unchanged count; not a correctness issue.
+  //
+  // Cleanup fires on (a) deps change — e.g. conv switch within the
+  // same mount — and (b) unmount. Both are useful refresh moments.
+  const { refresh: refreshConnectBadge } = useConnectBadge();
+  useEffect(() => {
+    return () => {
+      if (initialFetchComplete) {
+        void refreshConnectBadge();
+      }
+    };
+  }, [initialFetchComplete, refreshConnectBadge]);
   const [draft, setDraft] = useState('');
   const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   // Fix 8 (KAN-68 §15.3): paperclip → anticipatory popover (NOT a
@@ -982,7 +1009,9 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   attach: {
-    width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT,
+    // connect-polish-1 Fix B: hit target stays at 42pt while field
+    // shrinks to 36pt — buttons use COMPOSER_BUTTON_SIZE.
+    width: COMPOSER_BUTTON_SIZE, height: COMPOSER_BUTTON_SIZE,
     alignItems: 'center', justifyContent: 'center',
   },
   // Fix 8: the attach Pressable's parent. Position-relative anchor
@@ -997,16 +1026,25 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
-    borderRadius: 21,
+    // connect-polish-1 Fix B: pill radius = MIN_COMPOSER_HEIGHT / 2 so
+    // it stays pill-shaped at the new 36pt collapsed height.
+    borderRadius: MIN_COMPOSER_HEIGHT / 2,
     paddingHorizontal: 16,
-    paddingTop: 11,
-    paddingBottom: 11,
+    // connect-polish-1 Fix B: padding 11→8 each direction; field
+    // collapsed height = 36, leaves 20pt for the 14.5pt text which
+    // centres cleanly.
+    paddingTop: 8,
+    paddingBottom: 8,
     fontFamily: Typography.body,
     fontSize: 14.5,
     color: Colors.text,
   },
   send: {
-    width: MIN_COMPOSER_HEIGHT, height: MIN_COMPOSER_HEIGHT, borderRadius: 21,
+    // connect-polish-1 Fix B: button stays at 42pt for hit-target
+    // generosity (was MIN_COMPOSER_HEIGHT, which shrank to 36); pill
+    // radius matches.
+    width: COMPOSER_BUTTON_SIZE, height: COMPOSER_BUTTON_SIZE,
+    borderRadius: COMPOSER_BUTTON_SIZE / 2,
     alignItems: 'center', justifyContent: 'center',
   },
   sendActive: { backgroundColor: Colors.accent },

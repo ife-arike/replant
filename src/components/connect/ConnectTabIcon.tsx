@@ -17,14 +17,18 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ConnectIcon } from '../icons/TabIcons';
 import { Colors, Typography } from '../../constants/theme';
-import { useConnectUnreadBadge } from '../../hooks/useConnectUnreadBadge';
+// connect-polish-1 Fix E — consume the lifted badge state via Context.
+// The hook itself lives in ConnectBadgeProvider (App.tsx) so there's
+// only one Realtime channel + RPC fetcher across the whole app, and
+// DMThreadView can refresh() the count on unmount.
+import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 
 interface Props {
   color: string;
 }
 
 export default function ConnectTabIcon({ color }: Props) {
-  const { label, shown, count } = useConnectUnreadBadge();
+  const { label, shown, count } = useConnectBadge();
   return (
     <View style={styles.wrap}>
       <ConnectIcon color={color} />

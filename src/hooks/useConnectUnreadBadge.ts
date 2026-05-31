@@ -35,6 +35,17 @@ export interface ConnectUnreadBadge {
   // Whether the badge should render at all (count > 0 AND the
   // leader's preference is on).
   shown: boolean;
+  // connect-polish-1 Fix E: imperative refresh for surfaces that mutate
+  // read state via paths Realtime can't observe. `conversations` is
+  // NOT in the Realtime publication, so `mark_conversation_read`
+  // (which writes conversations.last_read_at_x) produces no event —
+  // the badge would only catch up on the next messages INSERT.
+  // DMThreadView calls refresh() on unmount after the leader has
+  // read a thread, so the count decrements immediately on
+  // navigate-away. Returns a Promise so callers can await if needed
+  // (the hook itself never awaits it — the badge update is a side
+  // effect of the inner setCount).
+  refresh: () => Promise<void>;
 }
 
 const REFRESH_DEBOUNCE_MS = 350;
@@ -170,5 +181,6 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
     count,
     label: shown ? formatBadgeLabel(count) : undefined,
     shown,
+    refresh,
   };
 }
