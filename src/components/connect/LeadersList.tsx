@@ -149,14 +149,20 @@ function ThreadRow({
       thread.isSecure && styles.rowSecure,
       pressed && styles.rowPressed,
     ]}>
-      {thread.isSecure && <View style={styles.secureRail} />}
+      {/* connect-polish-1 Fix D: the bright blue 2px left-rail signals
+          "this thread has unread Replant Team messages". Was rendering
+          on all secure thread rows regardless of read state, so the
+          blue accent persisted after the leader opened the thread.
+          Now gated on `unread` so the rail follows the same read-state
+          truth as the bold name + badge. */}
+      {thread.isSecure && unread && <View style={styles.secureRail} />}
       <View style={[
         styles.monogram,
         thread.isSecure && styles.monogramSecure,
         (thread.anonymous || thread.underground) && styles.monogramAnon,
       ]}>
         {thread.isSecure
-          ? <RpMark size={20} />
+          ? <RpMark size={26} />
           : (thread.anonymous || thread.underground)
             ? <AnonGlyph />
             : <Text style={styles.monogramInitial}>{thread.monogramInitial}</Text>}
@@ -533,7 +539,15 @@ const styles = StyleSheet.create({
   listContent: { paddingTop: 6, paddingBottom: 10 },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    // connect-polish-1 Fix C: was 'flex-start' — top-aligned the 40pt
+    // monogram bubble against the row's text block, which made it
+    // float above the name line in 3-line rows. Centering vertically
+    // aligns the bubble's mid-axis with the row's mid-axis at every
+    // content height. Verified on all three row variants: secure
+    // 2-line (rp-mark seal), peer 3-line (initial bubble), anonymous /
+    // underground (figure glyph). secureRail uses position:absolute
+    // top:0 bottom:0 so it still spans the full row height.
+    alignItems: 'center',
     gap: 14,
     paddingVertical: 14,
     paddingHorizontal: 22,
@@ -561,7 +575,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(240,237,230,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
+    // connect-polish-1 Fix C: marginTop:1 was compensating for the
+    // row's flex-start alignment (Fix C now centres the row, so the
+    // offset is no longer needed and would push the bubble off-axis).
   },
   monogramSecure: {
     backgroundColor: 'rgba(107,181,232,0.08)',
