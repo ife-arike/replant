@@ -27,6 +27,7 @@
 // set; for MVP this is fine (a leader's thread count is small).
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   FlatList,
   Pressable,
@@ -393,6 +394,28 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
 
   useEffect(() => { void loadInitial(); }, [loadInitial]);
 
+  // connect-polish-2 Fix 1b: refetch on screen focus return.
+  //
+  // useFocusEffect fires when the Leaders sub-tab becomes focused —
+  // i.e. on initial mount AND whenever the leader returns to the
+  // Connect tab from another tab. Realtime catches the new-message
+  // arrival case; useFocusEffect catches the "leader was away, came
+  // back, wants the real counts" case.
+  //
+  // Note on the same-screen-push case: when the leader opens a thread
+  // via onOpenThread, ConnectScreen pushes DMThreadView via its own
+  // pushVisible state. LeadersList stays MOUNTED behind the push
+  // layer (not unmounted by react-navigation), so useFocusEffect does
+  // NOT fire on back-from-thread. That case is handled by Fix 1a's
+  // optimistic unread clear plus the existing Realtime debounce
+  // refetch — and by ConnectBadgeProvider.refresh() (polish-1 Fix E)
+  // for the Connect tab badge specifically.
+  useFocusEffect(
+    useCallback(() => {
+      void loadInitial();
+    }, [loadInitial]),
+  );
+
   // Realtime list refresh — Fix 2 (KAN-68 fix pass) + device-pass-fixes-1
   // sequencing (Fix 4).
   //
@@ -489,7 +512,23 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
           renderItem={({ item }) => (
             <ThreadRow
               thread={item}
-              onPress={() => onOpenThread(item)}
+              onPress={() => {
+                // connect-polish-2 Fix 1a: optimistic unread clear.
+                // Zero this thread's unread BEFORE navigating so the
+                // row badge clears instantly without waiting for the
+                // server round-trip. The real count reconciles on
+                // focus return (Fix 1b) — and the Connect tab badge
+                // reconciles on DMThreadView unmount via Fix E from
+                // polish-1 (ConnectBadgeProvider.refresh).
+                setAllThreads((prev) =>
+                  prev.map((t) =>
+                    t.conversationId === item.conversationId
+                      ? { ...t, unread: 0 }
+                      : t,
+                  ),
+                );
+                onOpenThread(item);
+              }}
             />
           )}
           contentContainerStyle={styles.listContent}

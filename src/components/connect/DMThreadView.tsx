@@ -100,15 +100,19 @@ interface OtherParty {
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
 const MAX_COMPOSER_HEIGHT = 124;
-// connect-polish-1 Fix B: device pass reported the composer feels too
-// tall on a single line. Founder ruling overrides the prior HANDOFF
-// §6.3 42pt minimum for the FIELD; the attach + send button hit
-// targets stay at 42pt (COMPOSER_BUTTON_SIZE) for tap-area generosity.
-// Field collapses to 36pt min with reduced vertical padding so the
-// placeholder centres in a compact pill, not a tall textarea. Grow-
-// on-input behaviour and textAlignVertical are untouched.
+// connect-polish-1 Fix B → connect-polish-2 Fix 3 follow-up: with the
+// field collapsed to 36pt, the 42pt attach + send buttons looked larger
+// than the field they framed (visual misalignment in the device pass).
+// Founder ruling: match button size to field height so the clip icon,
+// input field, and send arrow all sit at the same vertical extent. The
+// 36pt hit target is still well above the iOS HIG 24pt minimum and the
+// Material 32dp recommendation; tap accuracy is fine. AttachmentPopover
+// anchoring is unaffected — `attachWrap` is `position: relative` and
+// the popover's `bottom: 50` is measured from the wrap's bottom edge
+// (which sits at the composer's flex-end floor regardless of the
+// button's height). Grow-on-input + textAlignVertical untouched.
 const MIN_COMPOSER_HEIGHT = 36;
-const COMPOSER_BUTTON_SIZE = 42;
+const COMPOSER_BUTTON_SIZE = 36;
 
 // ── inline icons ──────────────────────────────────────────────────────
 function BackIcon() {
