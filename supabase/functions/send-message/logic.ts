@@ -146,6 +146,98 @@ export function isSenderVerified(row: SenderRow): boolean {
   return row.verification_status === "verified";
 }
 
+// ──────────────────────── KAN-217 /internal ────────────────────────
+// Internal route body shape. /internal is the BE-only path that the
+// admin server uses for system-issued messages (welcome DM today).
+// Contract is intentionally tighter than the external path:
+//   - conversation_id is REQUIRED (admin BE does find-or-create first)
+//   - sender_id is REJECTED (SEC AC-3c: resolved from Vault at startup,
+//     never accepted from a request body — impersonation hardening)
+//   - recipient_user_id is REJECTED (use conversation_id; the receiver
+//     is the non-system participant on the conversation row)
+
+export interface ValidatedInternalBody {
+  conversation_id: string;
+  content: string;
+}
+
+export type InternalValidationResult =
+  | { ok: true; body: ValidatedInternalBody }
+  | { ok: false; detail: string };
+
+export function validateInternalBody(input: unknown): InternalValidationResult {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, detail: "Request body must be a JSON object." };
+  }
+  const obj = input as Record<string, unknown>;
+
+  // SEC AC-3(c) — sender_id from Vault only. Reject if the field is
+  // present at all (even null) to keep the contract unambiguous and
+  // avoid any future drift where a caller "accidentally" depends on
+  // sender_id being honored.
+  if (Object.prototype.hasOwnProperty.call(obj, "sender_id")) {
+    return {
+      ok: false,
+      detail: "sender_id is not accepted on /internal — resolved from Vault.",
+    };
+  }
+  // Keep the contract tight: /internal is conversation_id-only.
+  if (Object.prototype.hasOwnProperty.call(obj, "recipient_user_id")) {
+    return {
+      ok: false,
+      detail:
+        "recipient_user_id is not accepted on /internal — use conversation_id.",
+    };
+  }
+
+  if (typeof obj.content !== "string") {
+    return { ok: false, detail: "content is required and must be a string." };
+  }
+  const content = obj.content.trim();
+  if (content.length === 0) {
+    return { ok: false, detail: "content must not be empty after trim." };
+  }
+  if (content.length > MAX_CONTENT_LENGTH) {
+    return {
+      ok: false,
+      detail:
+        `content exceeds the maximum length of ${MAX_CONTENT_LENGTH} characters.`,
+    };
+  }
+
+  if (!isUuid(obj.conversation_id)) {
+    return {
+      ok: false,
+      detail: "conversation_id is required and must be a UUID.",
+    };
+  }
+
+  return {
+    ok: true,
+    body: {
+      conversation_id: obj.conversation_id as string,
+      content,
+    },
+  };
+}
+
+// Resolve receiver_id from a conversation row, given the system sender.
+// The receiver is the participant that is NOT the system user. Returns
+// null when the system user is not a participant of the conversation
+// (defensive — admin BE find-or-create should guarantee this).
+export function resolveInternalReceiverId(
+  conversation: { participant_a: string; participant_b: string },
+  systemSenderId: string,
+): string | null {
+  if (conversation.participant_a === systemSenderId) {
+    return conversation.participant_b;
+  }
+  if (conversation.participant_b === systemSenderId) {
+    return conversation.participant_a;
+  }
+  return null;
+}
+
 export function isRecipientAcceptable(
   recipient: RecipientRow | null,
   senderId: string,

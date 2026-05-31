@@ -7,8 +7,10 @@ import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert
 import {
   isUuid,
   MAX_CONTENT_LENGTH,
+  resolveInternalReceiverId,
   sortParticipants,
   validateBody,
+  validateInternalBody,
 } from "./logic.ts";
 
 const VALID_UUID_A = "11111111-1111-4111-8111-111111111111";
@@ -156,3 +158,125 @@ Deno.test("sortParticipants: throws on self-pair (participant_a < participant_b 
 // scanKeywordBlocklist tests removed — function deleted in KAN-124.
 // Full taxonomy matcher coverage lives at matcher.test.ts (synthetic
 // fixtures; never inlines real patterns per AC-12).
+
+// ───────────────────── validateInternalBody (KAN-217) ─────────────────────
+
+const SYSTEM_UUID = "028be745-8014-4314-a7cf-36b0a4d52b46";
+const LEADER_UUID = "33333333-3333-4333-8333-333333333333";
+
+Deno.test("validateInternalBody: rejects null", () => {
+  const r = validateInternalBody(null);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects array", () => {
+  const r = validateInternalBody([]);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects body containing sender_id (impersonation guard)", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "hi",
+    sender_id: LEADER_UUID,
+  });
+  assertEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.detail.includes("sender_id"), true);
+});
+
+Deno.test("validateInternalBody: rejects body containing sender_id even when null", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "hi",
+    sender_id: null,
+  });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects body containing recipient_user_id", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "hi",
+    recipient_user_id: LEADER_UUID,
+  });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects missing conversation_id", () => {
+  const r = validateInternalBody({ content: "hi" });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects non-UUID conversation_id", () => {
+  const r = validateInternalBody({
+    conversation_id: "not-a-uuid",
+    content: "hi",
+  });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects missing content", () => {
+  const r = validateInternalBody({ conversation_id: VALID_UUID_A });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: rejects empty content after trim", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "   ",
+  });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: trims content", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "  hi  ",
+  });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.content, "hi");
+});
+
+Deno.test("validateInternalBody: rejects content over MAX_CONTENT_LENGTH", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "x".repeat(MAX_CONTENT_LENGTH + 1),
+  });
+  assertEquals(r.ok, false);
+});
+
+Deno.test("validateInternalBody: accepts well-formed body", () => {
+  const r = validateInternalBody({
+    conversation_id: VALID_UUID_A,
+    content: "Welcome to the network.",
+  });
+  if (!r.ok) throw new Error(r.detail);
+  assertEquals(r.body.conversation_id, VALID_UUID_A);
+  assertEquals(r.body.content, "Welcome to the network.");
+});
+
+// ─────────────────── resolveInternalReceiverId (KAN-217) ───────────────────
+
+Deno.test("resolveInternalReceiverId: returns B when system is A", () => {
+  const id = resolveInternalReceiverId(
+    { participant_a: SYSTEM_UUID, participant_b: LEADER_UUID },
+    SYSTEM_UUID,
+  );
+  assertEquals(id, LEADER_UUID);
+});
+
+Deno.test("resolveInternalReceiverId: returns A when system is B", () => {
+  const id = resolveInternalReceiverId(
+    { participant_a: LEADER_UUID, participant_b: SYSTEM_UUID },
+    SYSTEM_UUID,
+  );
+  assertEquals(id, LEADER_UUID);
+});
+
+Deno.test("resolveInternalReceiverId: returns null when system is not a participant", () => {
+  const id = resolveInternalReceiverId(
+    { participant_a: LEADER_UUID, participant_b: VALID_UUID_A },
+    SYSTEM_UUID,
+  );
+  assertEquals(id, null);
+});

@@ -40,6 +40,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { getRoleLabel } from '../../utils/displayHelpers';
+import RpMark from '../icons/RpMark';
 import CovenantFooter from './CovenantFooter';
 
 export interface LeaderThread {
@@ -103,17 +104,15 @@ function AnonGlyph() {
     </Svg>
   );
 }
-function RpMark({ color }: { color: string }) {
-  // Minimal stylized R mark — production swap to the rp-mark.svg asset
-  // is a Founder copy-lock issue; this placeholder keeps shape parity.
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={1.5} />
-      <Path d="M9 7.5h4.5a3 3 0 0 1 0 6H9zm0 6l5 5"
-        stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
+// device-pass-fixes-1 Fix 2: previous local RpMark was a stylized-R
+// placeholder ("production swap to the rp-mark.svg asset is a Founder
+// copy-lock issue" was the original deferral). We now import the
+// canonical RpMark from ../icons/RpMark which inlines the real
+// rp-mark.svg via SvgXml. The seal still rides on the sky-tinted
+// monogramSecure background (rgba(107,181,232,0.08) bg + 0.5px
+// rgba(107,181,232,0.35) border, per CD spec §6.1). RpMark's own
+// fill is Colors.accent (#6BB5E8) — no color prop needed.
+
 
 // ── time formatting ───────────────────────────────────────────────────
 // HANDOFF §6.1: "2m ago · 3h ago · Yesterday · 3d ago"
@@ -157,7 +156,7 @@ function ThreadRow({
         (thread.anonymous || thread.underground) && styles.monogramAnon,
       ]}>
         {thread.isSecure
-          ? <RpMark color={Colors.accent} />
+          ? <RpMark size={20} />
           : (thread.anonymous || thread.underground)
             ? <AnonGlyph />
             : <Text style={styles.monogramInitial}>{thread.monogramInitial}</Text>}
@@ -181,7 +180,14 @@ function ThreadRow({
             </View>
           )}
         </View>
-        <Text style={styles.church} numberOfLines={1}>{thread.churchLabel}</Text>
+        {/* device-pass-fixes-1 Fix 3a: secure thread row shows lock +
+            "Replant Team" + SECURE tag only — no "Replant · system-
+            managed" subtitle line. The thread-header surface keeps the
+            updated "Replant · admin-monitored" label (Fix 3b in
+            DMThreadView). */}
+        {!thread.isSecure && (
+          <Text style={styles.church} numberOfLines={1}>{thread.churchLabel}</Text>
+        )}
         <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
           {thread.preview || ' '}
         </Text>
@@ -223,7 +229,13 @@ function ThreadRow({
 // the two fields cleanly separated.
 async function fetchThreadList(): Promise<LeaderThread[]> {
   const { data, error } = await supabase.rpc('get_leader_thread_list');
-  if (error || !data) return [];
+  // device-pass-fixes-1 Fix 4: surface RPC errors (e.g. transient auth.uid()
+  // == null during session hydration) instead of swallowing as empty. The
+  // caller's loadInitial sets setError(...) so the user sees an actionable
+  // state — previously the silent return [] rendered as a blank list and
+  // confused the device pass into thinking the data was missing.
+  if (error) throw error;
+  if (!data) return [];
   return (data as any[]).map((r): LeaderThread => {
     const isSecure = !!r.is_secure_replant_thread;
     const anonymous = !!r.other_anonymous;
@@ -348,6 +360,12 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   // session is hydrated to avoid firing an unauthenticated RPC call.
   const sessionReady = !!session?.user?.id;
 
+  // device-pass-fixes-1 Fix 4: track whether the initial fetch has
+  // landed (success OR error) so the Realtime subscribe effect can wait
+  // for it. Canonical pattern: fetch first, then subscribe — Realtime
+  // supplements the initial data, never replaces it.
+  const [initialFetchComplete, setInitialFetchComplete] = useState(false);
+
   const loadInitial = useCallback(async () => {
     if (!sessionReady) return;
     setLoading(true);
@@ -359,6 +377,7 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
       setError(e as Error);
     } finally {
       setLoading(false);
+      setInitialFetchComplete(true);
     }
   }, [sessionReady]);
 
@@ -368,7 +387,8 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
 
   useEffect(() => { void loadInitial(); }, [loadInitial]);
 
-  // Realtime list refresh — Fix 2 (KAN-68 fix pass).
+  // Realtime list refresh — Fix 2 (KAN-68 fix pass) + device-pass-fixes-1
+  // sequencing (Fix 4).
   //
   // Root cause of the original bd68eb3 subscription failing silently:
   // public.conversations is NOT in the supabase_realtime publication.
@@ -382,9 +402,17 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   // see (i.e. messages in their own threads), so there's no
   // cross-leader leakage. Debounced 250ms to coalesce bursts.
   //
-  // Refetch is a single RPC call, cheap.
+  // device-pass-fixes-1 Fix 4: gate subscribe on initialFetchComplete.
+  // Previously the subscribe and the initial fetch raced — on first
+  // mount with a not-yet-hydrated session, the initial fetch could
+  // return early before the subscribe was up, and no Realtime event
+  // ever fired to trigger a refetch. The user had to switch tabs and
+  // come back (forcing a remount → fresh initial fetch) to see threads.
+  // Now: subscribe is set up AFTER the initial fetch has completed at
+  // least once. Realtime events are pure supplements to the initial data.
   useEffect(() => {
     if (!sessionReady) return;
+    if (!initialFetchComplete) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timer) clearTimeout(timer);
@@ -402,7 +430,7 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
       if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
-  }, [sessionReady, session?.user?.id, loadInitial]);
+  }, [sessionReady, session?.user?.id, loadInitial, initialFetchComplete]);
 
   // Filter on name + church only (NEVER preview). Local 2-char gate
   // mirrors the search semantic in HANDOFF §6.1.
