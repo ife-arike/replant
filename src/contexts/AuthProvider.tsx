@@ -362,6 +362,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setDaysRemaining(null);
         return;
       }
+      // initialize() owns the cold-start check — INITIAL_SESSION is the same
+      // session getSession() returns, fired synchronously during subscription
+      // setup. Calling callAuthStatusCheck here races with initialize()'s own
+      // call and trips the inFlight guard, causing initialize() to fall back
+      // to 'pending' and flash the verification banner for active leaders.
+      if (event === "INITIAL_SESSION") return;
       // SIGNED_IN is a fresh credential presentation — the debounce does not
       // apply. TOKEN_REFRESHED and other events keep their debounce intact.
       // Without this reset, a leader who signs in within DEBOUNCE_MS of the
