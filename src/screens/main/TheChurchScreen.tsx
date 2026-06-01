@@ -30,7 +30,7 @@
 // implicitly — no rotation, no pulse, gated fetches via isActive.
 // ─────────────────────────────────────────────
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
@@ -38,8 +38,10 @@ import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import { useChurchesGlobal } from '../../hooks/useChurchesGlobal';
+import { supabase } from '../../lib/supabase';
 import GlobeView from '../../components/church/GlobeView';
 import ChurchProfileBottomSheet from '../../components/church/ChurchProfileBottomSheet';
+import CompletionFlowOverlay from '../../components/church/CompletionFlowOverlay';
 import PrayerWallPullUp from '../../components/church/PrayerWallPullUp';
 import RegionalPanel, { type ChurchRegion } from '../../components/church/RegionalPanel';
 import CamlView from '../../components/church/CamlView';
@@ -93,6 +95,96 @@ export default function TheChurchScreen() {
   const {
     dots, undergroundCount, ownChurchId, viewerCountry, loading, error, refetch,
   } = useChurchesGlobal();
+
+  // ── KAN-213: Church profile completion gate ─────────────────────────
+  // Resolved once on mount (when branch flips to 'active') via a single
+  // SELECT on public.users. Re-checked each time TheChurchScreen mounts
+  // so a leader who skipped and cold-launched triggers the overlay again.
+  //
+  // completionReady = true  → gate check settled; render overlay or not
+  // showCompletionFlow = true → render CompletionFlowOverlay (AC 1)
+  // skippedThisSession = true → leader pressed Skip; overlay dismissed
+  //   for this session only. profile_completion_done stays false.
+  const [completionReady, setCompletionReady] = useState(false);
+  const [showCompletionFlow, setShowCompletionFlow] = useState(false);
+  const [completionChurchId, setCompletionChurchId] = useState<string | null>(null);
+  const [completionUserId, setCompletionUserId] = useState<string | null>(null);
+  const [completionUserRole, setCompletionUserRole] = useState<string>('pastor');
+  const skippedThisSession = useRef(false);
+
+  const checkCompletionGate = useCallback(async () => {
+    if (!viewerVerified || skippedThisSession.current) return;
+
+    // Resolve the viewer's public.users row for church_id, id, and role.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const authId = sessionData?.session?.user?.id;
+    if (!authId) return;
+
+    const { data: userRow, error: userErr } = await supabase
+      .from('users')
+      .select('id, church_id, role')
+      .eq('auth_id', authId)
+      .single();
+
+    if (userErr || !userRow?.church_id) {
+      setCompletionReady(true);
+      return;
+    }
+
+    const churchId = userRow.church_id as string;
+    const userId = userRow.id as string;
+    const role = (userRow.role as string) ?? 'pastor';
+
+    setCompletionChurchId(churchId);
+    setCompletionUserId(userId);
+    setCompletionUserRole(role);
+
+    // Call get_church_profile to read profile_completion_done.
+    const { data: profileData, error: profileErr } = await supabase.rpc('get_church_profile', {
+      p_church_id: churchId,
+    });
+
+    if (profileErr || profileData === null) {
+      // Can't determine completion state — fail open (let user in, don't block)
+      setCompletionReady(true);
+      return;
+    }
+
+    const profile = profileData as { profile_completion_done?: boolean; profile_completion_done_by?: string | null } | null;
+    const completionDone = profile?.profile_completion_done ?? false;
+    const completionDoneBy = profile?.profile_completion_done_by ?? null;
+
+    // AC 1: show flow if branch === 'active' AND profile_completion_done === false
+    // AC 2: show intro-only if done by a different leader (second-leader path —
+    //        CompletionFlowOverlay handles the second-leader branch internally
+    //        since it already has the profile data; we surface the overlay for
+    //        both cases and let the overlay sort the two paths).
+    const shouldShow =
+      !completionDone ||
+      (completionDone && completionDoneBy !== null && completionDoneBy !== userId);
+
+    setShowCompletionFlow(shouldShow);
+    setCompletionReady(true);
+  }, [viewerVerified]);
+
+  useEffect(() => {
+    void checkCompletionGate();
+  }, [checkCompletionGate]);
+
+  // onComplete — leader finished Step 3 or second-leader tapped "Enter".
+  // Overlay dismissed; DB has profile_completion_done = true so next
+  // checkCompletionGate will return shouldShow = false.
+  const handleCompletionComplete = useCallback(() => {
+    setShowCompletionFlow(false);
+  }, []);
+
+  // onSkip — leader tapped "Skip · I'll do this later" (AC 3).
+  // Sets session-local flag so the overlay does NOT re-show during this
+  // session. profile_completion_done stays false; re-triggers on cold relaunch.
+  const handleCompletionSkip = useCallback(() => {
+    skippedThisSession.current = true;
+    setShowCompletionFlow(false);
+  }, []);
 
   const [page, setPage] = useState<Page>(0);
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
@@ -305,6 +397,26 @@ export default function TheChurchScreen() {
           until the leader's church is confirmed by a Replant team
           member. */}
       {!viewerVerified ? <UnverifiedGateView /> : null}
+
+      {/* KAN-213: Church profile completion gate (AC 1 + AC 2).
+          Renders ONLY when:
+            - branch === 'active' (viewerVerified)
+            - completionReady (gate check settled, avoids flash on cold start)
+            - showCompletionFlow (profile_completion_done = false, or second-leader path)
+          zIndex 28 — sits above UnverifiedGate (zIndex 20).
+          completionChurchId / completionUserId guaranteed non-null when
+          showCompletionFlow is true (gate check sets both before flipping
+          showCompletionFlow). */}
+      {viewerVerified && completionReady && showCompletionFlow &&
+       completionChurchId !== null && completionUserId !== null ? (
+        <CompletionFlowOverlay
+          churchId={completionChurchId}
+          currentUserId={completionUserId}
+          currentRole={completionUserRole}
+          onComplete={handleCompletionComplete}
+          onSkip={handleCompletionSkip}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
