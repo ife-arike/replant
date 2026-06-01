@@ -185,7 +185,8 @@ export default function TheChurchScreen() {
   // checkCompletionGate will return shouldShow = false.
   const handleCompletionComplete = useCallback(() => {
     setShowCompletionFlow(false);
-  }, []);
+    void refetch();
+  }, [refetch]);
 
   // onSkip — leader tapped "Skip · I'll do this later" (AC 3).
   // Sets session-local flag so the overlay does NOT re-show during this
