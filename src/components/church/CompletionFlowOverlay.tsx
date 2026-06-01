@@ -28,6 +28,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -40,6 +41,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { Colors, Typography } from '../../constants/theme';
 import RpMark from '../icons/RpMark';
 import { supabase } from '../../lib/supabase';
@@ -704,6 +706,19 @@ export default function CompletionFlowOverlay({
   onComplete,
   onSkip,
 }: Props) {
+  // Slide-up entrance — card springs from below on first mount so the
+  // flow feels like an arrival rather than a snap.
+  const slideAnim = useRef(new Animated.Value(600)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 60,
+      friction: 12,
+    }).start();
+  }, []);
+
   // -1 = Intro, 0 = Review, 1 = Enrichment, 2 = Visibility
   const [step, setStep] = useState<-1 | 0 | 1 | 2>(-1);
 
@@ -832,13 +847,37 @@ export default function CompletionFlowOverlay({
   const handleEnrichmentContinue = useCallback(async () => {
     setSaving(true);
     try {
-      // TODO: DBA to add p_address param to update_church_profile RPC before wiring
+      // Geocode the typed address on-device (Apple Maps geocoder on iOS —
+      // no location permission required) so the church pin lands on the
+      // real address. Geocoding failure is non-blocking: we proceed to
+      // Step 3 regardless, with lat/lng left null.
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (draft.address?.trim()) {
+        try {
+          const geo = await Location.geocodeAsync(draft.address.trim());
+          if (geo.length > 0) {
+            lat = geo[0].latitude;
+            lng = geo[0].longitude;
+          }
+        } catch {
+          // Geocoding failure is non-blocking — proceed without coordinates.
+        }
+      }
+
+      // TODO: DBA to add p_address param to update_church_profile RPC before
+      // wiring the raw address string. The live RPC currently accepts only
+      // p_lat / p_lng (verified against pg_proc 2026-06-01) — so the typed
+      // address is persisted indirectly via its geocoded coordinates.
       const { error: rpcErr } = await supabase.rpc('update_church_profile', {
         p_church_id: churchId,
         p_website_url: draft.websiteUrl || null,
         p_primary_language: draft.primaryLanguage || null,
         p_denomination_affiliation: draft.denomination || null,
         p_congregation_size_range: draft.congregationSize || null,
+        p_lat: lat,
+        p_lng: lng,
         p_mark_complete: false,
       });
       if (rpcErr) throw rpcErr;
@@ -889,7 +928,10 @@ export default function CompletionFlowOverlay({
     // Absolute fill, zIndex 28 — sits above UnverifiedGate (zIndex 20).
     // No expo-blur — project invariant. Dim overlay only.
     <View style={styles.overlay} pointerEvents="box-none">
-      <View style={styles.card} pointerEvents="auto">
+      <Animated.View
+        style={[styles.card, { transform: [{ translateY: slideAnim }] }]}
+        pointerEvents="auto"
+      >
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={Colors.accent} />
@@ -943,7 +985,7 @@ export default function CompletionFlowOverlay({
             )}
           </KeyboardAvoidingView>
         )}
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -1034,9 +1076,9 @@ const styles = StyleSheet.create({
     left: -28,
   },
   introEyebrow: {
-    fontFamily: Typography.mono,
-    fontSize: 13,
-    letterSpacing: 2.8,
+    fontFamily: Typography.display,
+    fontSize: 17,
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
     color: Colors.accent,
     marginBottom: 4,
@@ -1044,7 +1086,7 @@ const styles = StyleSheet.create({
   },
   introH1: {
     fontFamily: Typography.display,
-    fontSize: 22,
+    fontSize: 24,
     lineHeight: 28,
     letterSpacing: 0.22,
     color: Colors.text,
@@ -1054,8 +1096,8 @@ const styles = StyleSheet.create({
   },
   introLead: {
     fontFamily: Typography.body,
-    fontSize: 13,
-    lineHeight: 20.5, // ~1.58 × 13
+    fontSize: 15,
+    lineHeight: 23,
     color: Colors.textMuted,
     textAlign: 'center',
     maxWidth: 300,

@@ -110,6 +110,10 @@ export default function TheChurchScreen() {
   const [completionChurchId, setCompletionChurchId] = useState<string | null>(null);
   const [completionUserId, setCompletionUserId] = useState<string | null>(null);
   const [completionUserRole, setCompletionUserRole] = useState<string>('pastor');
+  // KAN-213: whether the leader's profile completion is done. Drives the
+  // own-dot re-trigger (3b) — tapping your own pin while incomplete
+  // re-enters the flow rather than opening your card.
+  const [profileComplete, setProfileComplete] = useState(false);
   const skippedThisSession = useRef(false);
 
   const checkCompletionGate = useCallback(async () => {
@@ -127,6 +131,8 @@ export default function TheChurchScreen() {
       .single();
 
     if (userErr || !userRow?.church_id) {
+      // Can't tell — assume complete to avoid false own-dot re-triggers.
+      setProfileComplete(true);
       setCompletionReady(true);
       return;
     }
@@ -145,7 +151,9 @@ export default function TheChurchScreen() {
     });
 
     if (profileErr || profileData === null) {
-      // Can't determine completion state — fail open (let user in, don't block)
+      // Can't determine completion state — fail open (let user in, don't block).
+      // Assume complete so the own-dot tap opens the card, not the flow.
+      setProfileComplete(true);
       setCompletionReady(true);
       return;
     }
@@ -164,6 +172,7 @@ export default function TheChurchScreen() {
       (completionDone && completionDoneBy !== null && completionDoneBy !== userId);
 
     setShowCompletionFlow(shouldShow);
+    setProfileComplete(!shouldShow);
     setCompletionReady(true);
   }, [viewerVerified]);
 
@@ -188,6 +197,22 @@ export default function TheChurchScreen() {
 
   const [page, setPage] = useState<Page>(0);
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
+
+  // KAN-213 (3b): tapping your own church dot while your profile is still
+  // incomplete re-enters the completion flow instead of opening the card.
+  // Clearing skippedThisSession lets the overlay re-mount even if the
+  // leader had skipped it earlier this session.
+  const handleChurchSelect = useCallback(
+    (churchId: string) => {
+      if (churchId === ownChurchId && !profileComplete) {
+        skippedThisSession.current = false;
+        setShowCompletionFlow(true);
+        return;
+      }
+      setSelectedChurchId(churchId);
+    },
+    [ownChurchId, profileComplete],
+  );
   // Fix 6 — city resolved by CamlView via Mapbox places reverse-geocode
   // on the leader's GPS. Null until the first geocode response lands;
   // the header renders bare "The Church" in the interim (no hardcoded
@@ -311,7 +336,7 @@ export default function TheChurchScreen() {
             isActive={page === 0}
             ownChurchId={ownChurchId}
             viewerVerified={viewerVerified}
-            onChurchSelect={setSelectedChurchId}
+            onChurchSelect={handleChurchSelect}
             onCityResolved={setCamlCity}
             onLeaderCountResolved={setCamlLeaderCount}
           />
@@ -335,7 +360,7 @@ export default function TheChurchScreen() {
             loading={loading}
             error={error}
             onRetry={refetch}
-            onChurchSelect={setSelectedChurchId}
+            onChurchSelect={handleChurchSelect}
             // KAN-18: also pause when the user is on the CAML page so the
             // globe stops rotating + pulsing the moment they swap surfaces.
             forcePaused={anyOverlayOpen || page !== 1}
