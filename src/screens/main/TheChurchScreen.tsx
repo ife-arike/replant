@@ -140,9 +140,15 @@ export default function TheChurchScreen() {
     setCompletionUserRole(role);
 
     // Call get_church_profile to read profile_completion_done.
-    const { data: profileData } = await supabase.rpc('get_church_profile', {
+    const { data: profileData, error: profileErr } = await supabase.rpc('get_church_profile', {
       p_church_id: churchId,
     });
+
+    if (profileErr || profileData === null) {
+      // Can't determine completion state — fail open (let user in, don't block)
+      setCompletionReady(true);
+      return;
+    }
 
     const profile = profileData as { profile_completion_done?: boolean; profile_completion_done_by?: string | null } | null;
     const completionDone = profile?.profile_completion_done ?? false;
