@@ -215,16 +215,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         // SEC 11015 #3a — 5xx must NOT log out. Keep session, log, retry on
         // next AppState 'active' transition.
+        lastCheckedAt.current = 0; // reset so 3s retry is not debounced
         console.warn(
           `[AuthProvider] auth-status-check non-OK ${response.status} — session retained, will retry on next active`,
         );
         // B32 — one-time short-fuse retry 3s later. Replaces the
         // safety-net role refresh() used to play from tryAutoSignIn,
         // which created the inFlight double-fire that B30 had to gate
-        // against. lastCheckedAt is NOT updated on the non-ok path
-        // (lookup line above this block), so the 30s debounce does not
-        // block this retry. No signOut, no branch change — SEC 11015
-        // #3a preserved; this only retries the read.
+        // against. lastCheckedAt is reset to 0 on the non-ok path (line
+        // above this comment), so the 30s debounce does not block this
+        // retry. No signOut, no branch change — SEC 11015 #3a preserved;
+        // this only retries the read.
         setTimeout(() => {
           if (sessionRef.current) void callAuthStatusCheck(sessionRef.current);
         }, 3_000);

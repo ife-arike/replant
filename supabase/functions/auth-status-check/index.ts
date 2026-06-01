@@ -64,7 +64,7 @@ function makeDeps(): Deps {
       const { data, error } = await adminClient
         .from("users")
         .select(
-          "id, verification_status, deactivated_at, is_active, church_id, church:churches(verification_deadline)",
+          "id, verification_status, deactivated_at, is_active, church_id, church:churches!users_church_id_fkey(verification_deadline)",
         )
         .eq("auth_id", authUid)
         .maybeSingle();
