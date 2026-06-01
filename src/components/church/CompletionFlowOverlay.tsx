@@ -866,16 +866,13 @@ export default function CompletionFlowOverlay({
         }
       }
 
-      // TODO: DBA to add p_address param to update_church_profile RPC before
-      // wiring the raw address string. The live RPC currently accepts only
-      // p_lat / p_lng (verified against pg_proc 2026-06-01) — so the typed
-      // address is persisted indirectly via its geocoded coordinates.
       const { error: rpcErr } = await supabase.rpc('update_church_profile', {
         p_church_id: churchId,
         p_website_url: draft.websiteUrl || null,
         p_primary_language: draft.primaryLanguage || null,
         p_denomination_affiliation: draft.denomination || null,
         p_congregation_size_range: draft.congregationSize || null,
+        p_address: draft.address || null,
         p_lat: lat,
         p_lng: lng,
         p_mark_complete: false,
