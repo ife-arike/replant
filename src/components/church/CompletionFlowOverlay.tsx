@@ -304,13 +304,13 @@ function IntroScreen({
       contentContainerStyle={[styles.stepContent, styles.introContent]}
       showsVerticalScrollIndicator={false}
     >
-      {/* RP mark with radial glow — CD: width 32, height 32, inset -28 */}
+      {/* RP mark with radial glow — width 80, height 80, inset -28 */}
       <View style={styles.introGlyphWrap}>
         {/* Radial glow — position absolute, inset -28 from glyph bounds.
             CD: background rgba(107,181,232,0.16) radial circle.
             RN: circular View with sky opacity — no CSS radial-gradient. */}
         <View style={styles.introGlow} />
-        <RpMark size={32} />
+        <RpMark size={80} />
       </View>
 
       {/* Eyebrow */}
@@ -762,13 +762,6 @@ export default function CompletionFlowOverlay({
     }
 
     // Pre-fill draft from loaded values
-    const enriched = [
-      p.website_url,
-      p.primary_language,
-      p.denomination_affiliation,
-      p.congregation_size_range,
-    ].some((v) => v !== null && v !== undefined && v !== '' && v !== 'not_specified');
-
     setDraft({
       churchType: p.type ?? '',
       city: p.city ?? '',
@@ -783,12 +776,8 @@ export default function CompletionFlowOverlay({
       showContact: true,
     });
 
-    // AC 9: resume at step 0 if any enrichment already saved; else Intro
-    if (enriched) {
-      setStep(0);
-    } else {
-      setStep(-1);
-    }
+    // Welcome is always the entry point
+    setStep(-1);
 
     setLoading(false);
   }, [churchId, currentUserId, currentRole]);
@@ -1018,35 +1007,36 @@ const styles = StyleSheet.create({
   },
   introContent: {
     alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 24,
+    paddingTop: 64,
+    paddingBottom: 48,
+    flexGrow: 1,
+    justifyContent: 'space-between',
   },
 
   // ── Intro ──
   introGlyphWrap: {
     position: 'relative',
-    width: 32,
-    height: 32,
-    marginBottom: 28,
+    width: 80,
+    height: 80,
+    marginBottom: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   // CD: position absolute, inset -28, background rgba(107,181,232,0.16) radial circle
   introGlow: {
     position: 'absolute',
-    // inset -28 from 32×32 glyph → glow container = 32 + 28*2 = 88×88
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    // inset -28 from 80×80 glyph → glow container = 80 + 28*2 = 136×136
+    width: 136,
+    height: 136,
+    borderRadius: 68,
     backgroundColor: 'rgba(107,181,232,0.16)',
     top: -28,
     left: -28,
   },
-  introGlyph: { position: 'relative' },
   introEyebrow: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 2.2,
+    fontSize: 13,
+    letterSpacing: 2.8,
     textTransform: 'uppercase',
     color: Colors.accent,
     marginBottom: 4,
@@ -1074,7 +1064,7 @@ const styles = StyleSheet.create({
   introCtaRow: {
     width: '100%',
     maxWidth: 320,
-    marginTop: 16,
+    marginTop: 24,
   },
   skipLink: {
     marginTop: 14,
