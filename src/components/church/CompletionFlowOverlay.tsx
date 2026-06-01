@@ -40,8 +40,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Svg, { Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
+import RpMark from '../icons/RpMark';
 import { supabase } from '../../lib/supabase';
 import {
   CHURCH_TYPES,
@@ -61,6 +61,7 @@ interface CompletionProfile {
   type: string;
   city: string | null;
   country: string | null;
+  address: string | null;
   website_url: string | null;
   primary_language: string | null;
   denomination_affiliation: string | null;
@@ -76,6 +77,7 @@ interface DraftState {
   churchType: string;
   city: string;
   country: string;
+  address: string;
   role: string;
   websiteUrl: string;
   primaryLanguage: string;
@@ -302,38 +304,17 @@ function IntroScreen({
       contentContainerStyle={[styles.stepContent, styles.introContent]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Cross glyph with radial glow — CD: width 32, height 32, inset -28 */}
+      {/* RP mark with radial glow — CD: width 32, height 32, inset -28 */}
       <View style={styles.introGlyphWrap}>
         {/* Radial glow — position absolute, inset -28 from glyph bounds.
             CD: background rgba(107,181,232,0.16) radial circle.
             RN: circular View with sky opacity — no CSS radial-gradient. */}
         <View style={styles.introGlow} />
-        <Svg
-          width={32}
-          height={32}
-          viewBox="0 0 32 32"
-          style={styles.introGlyph}
-        >
-          {/* CD .glyph-cross — 32×32, stroke sky */}
-          <Line
-            x1="16" y1="4"
-            x2="16" y2="28"
-            stroke={Colors.accent}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-          <Line
-            x1="7" y1="13"
-            x2="25" y2="13"
-            stroke={Colors.accent}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </Svg>
+        <RpMark size={32} />
       </View>
 
       {/* Eyebrow */}
-      <Text style={styles.introEyebrow}>A welcome</Text>
+      <Text style={styles.introEyebrow}>Welcome</Text>
 
       {/* h1 */}
       {secondLeaderMode ? (
@@ -402,7 +383,10 @@ function ReviewScreen({
   const [rolePickerVisible, setRolePickerVisible] = useState(false);
 
   return (
-    <>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
       <ScrollView
         style={styles.stepScroll}
         contentContainerStyle={styles.stepContent}
@@ -504,7 +488,7 @@ function ReviewScreen({
         onSelect={(v) => onDraftChange({ role: v })}
         onClose={() => setRolePickerVisible(false)}
       />
-    </>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -523,7 +507,10 @@ function EnrichmentScreen({
   onDraftChange: (partial: Partial<DraftState>) => void;
 }) {
   return (
-    <>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
       <ScrollView
         style={styles.stepScroll}
         contentContainerStyle={styles.stepContent}
@@ -537,6 +524,20 @@ function EnrichmentScreen({
           These are optional — but each one helps another leader recognize
           they have found their people.
         </Text>
+
+        {/* Full address */}
+        <View style={styles.field}>
+          <FieldLabel>Full address (optional)</FieldLabel>
+          <TextInput
+            style={styles.input}
+            value={draft.address}
+            onChangeText={(v) => onDraftChange({ address: v })}
+            placeholder="e.g. 123 Main St, Atlanta, GA"
+            placeholderTextColor={Colors.textSubtle}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+        </View>
 
         {/* Website URL */}
         <View style={styles.field}>
@@ -609,7 +610,7 @@ function EnrichmentScreen({
         <GhostButton label="Back" onPress={onBack} />
         <PrimaryButton label="Continue" onPress={onNext} loading={saving} />
       </View>
-    </>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -723,6 +724,7 @@ export default function CompletionFlowOverlay({
     churchType: '',
     city: '',
     country: '',
+    address: '',
     role: currentRole,
     websiteUrl: '',
     primaryLanguage: '',
@@ -771,6 +773,7 @@ export default function CompletionFlowOverlay({
       churchType: p.type ?? '',
       city: p.city ?? '',
       country: p.country ?? '',
+      address: p.address ?? '',
       role: currentRole,
       websiteUrl: p.website_url ?? '',
       primaryLanguage: p.primary_language ?? '',
@@ -840,6 +843,7 @@ export default function CompletionFlowOverlay({
   const handleEnrichmentContinue = useCallback(async () => {
     setSaving(true);
     try {
+      // TODO: DBA to add p_address param to update_church_profile RPC before wiring
       const { error: rpcErr } = await supabase.rpc('update_church_profile', {
         p_church_id: churchId,
         p_website_url: draft.websiteUrl || null,
@@ -978,7 +982,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '88%',
-    minHeight: '60%',
+    minHeight: '75%',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.border,
   },
