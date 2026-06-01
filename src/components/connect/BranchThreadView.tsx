@@ -93,6 +93,13 @@ interface BranchSummary {
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
 const MAX_COMPOSER_HEIGHT = 124;
+// connect-polish-3 Fix B: branch-thread composer was retained at the
+// pre-polish-1 42pt size while the DM composer shrank to 36pt across
+// polish-1 Fix B + polish-2 Fix 3. Founder-reported visual mismatch
+// between branch-thread and DM-thread composers. Matching values here
+// so both surfaces feel identical. textAlignVertical untouched.
+const MIN_COMPOSER_HEIGHT = 36;
+const COMPOSER_BUTTON_SIZE = 36;
 
 // ── icons (subset specific to this view) ─────────────────────────────
 function BackIcon() {
@@ -350,7 +357,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [draft, setDraft] = useState('');
-  const [composerHeight, setComposerHeight] = useState(42);
+  const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   const [showMembers, setShowMembers] = useState(false);
   const [resolvedDecline, setResolvedDecline] = useState(false);
   // Fix 8 (KAN-68 §15.3) — same anticipatory popover as DMThreadView.
@@ -807,7 +814,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
               multiline
               scrollEnabled
               onContentSizeChange={(e) => {
-                const h = Math.min(MAX_COMPOSER_HEIGHT, Math.max(42, e.nativeEvent.contentSize.height + 12));
+                const h = Math.min(MAX_COMPOSER_HEIGHT, Math.max(MIN_COMPOSER_HEIGHT, e.nativeEvent.contentSize.height + 12));
                 setComposerHeight(h);
               }}
             />
@@ -1027,17 +1034,19 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   composerLocked: { alignItems: 'center' },
-  attach: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  // connect-polish-3 Fix B: parameterized to MIN_COMPOSER_HEIGHT /
+  // COMPOSER_BUTTON_SIZE so future tweaks land at one anchor.
+  attach: { width: COMPOSER_BUTTON_SIZE, height: COMPOSER_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center' },
   attachWrap: { position: 'relative' },
   field: {
     flex: 1,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
-    borderRadius: 21,
+    borderRadius: MIN_COMPOSER_HEIGHT / 2,
     paddingHorizontal: 16,
-    paddingTop: 11,
-    paddingBottom: 11,
+    paddingTop: 8,
+    paddingBottom: 8,
     fontFamily: Typography.body,
     fontSize: 14.5,
     color: Colors.text,
@@ -1050,7 +1059,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     textAlign: 'center',
   },
-  send: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  send: { width: COMPOSER_BUTTON_SIZE, height: COMPOSER_BUTTON_SIZE, borderRadius: COMPOSER_BUTTON_SIZE / 2, alignItems: 'center', justifyContent: 'center' },
   sendActive: { backgroundColor: Colors.accent },
   sendDisabled: { backgroundColor: Colors.surfaceElevated },
   // ── members sheet ──
