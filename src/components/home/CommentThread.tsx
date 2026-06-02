@@ -27,6 +27,7 @@ import {
   View,
 } from 'react-native';
 import { Colors, Radius, Typography } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { ROLE_DISPLAY } from './NetworkFeedLogic';
 import { Chevron, LockIcon } from './HomeIcons';
@@ -106,6 +107,11 @@ export function CommentThread({
   onClose: () => void;
   onCommentPosted?: () => void;
 }) {
+  const { branch } = useAuth();
+  // Unverified leaders can READ comments but not POST — the composer is
+  // simply absent for them (the post_comment RPC also hard-gates this).
+  const canPost = branch === 'active';
+
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -237,28 +243,30 @@ export function CommentThread({
         </View>
       )}
 
-      <View style={s.compose}>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Add a word…"
-          placeholderTextColor={Colors.textSubtle}
-          style={s.field}
-          editable={!submitting}
-          multiline
-        />
-        <Pressable
-          onPress={submitComment}
-          disabled={!draft.trim() || submitting}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Post comment"
-        >
-          <Text style={[s.send, (!draft.trim() || submitting) && s.sendDisabled]}>
-            Post
-          </Text>
-        </Pressable>
-      </View>
+      {canPost && (
+        <View style={s.compose}>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Add a word…"
+            placeholderTextColor={Colors.textSubtle}
+            style={s.field}
+            editable={!submitting}
+            multiline
+          />
+          <Pressable
+            onPress={submitComment}
+            disabled={!draft.trim() || submitting}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Post comment"
+          >
+            <Text style={[s.send, (!draft.trim() || submitting) && s.sendDisabled]}>
+              Post
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

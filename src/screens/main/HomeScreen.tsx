@@ -16,7 +16,7 @@
 //
 // VerificationBanner is load-bearing — do not remove or relocate.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/theme';
@@ -26,12 +26,22 @@ import NetworkFeed from '../../components/home/NetworkFeed';
 import HomeTopBar from '../../components/home/HomeTopBar';
 import HomeSectionLabel from '../../components/home/HomeSectionLabel';
 import VerificationBanner from '../../components/home/VerificationBanner';
+import { NotificationToast, type ToastType } from '../../components/home/NotificationToast';
 
 export default function HomeScreen() {
   const { branch } = useAuth();
+  // TODO: wire toast triggers from real events (verification approved, rejected, heartcry responded)
+  const [toast, setToast] = useState<ToastType | null>(null);
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <HomeTopBar />
+      {toast && (
+        <NotificationToast
+          type={toast}
+          onPress={() => { setToast(null); }}
+          onDismiss={() => setToast(null)}
+        />
+      )}
 
       <KeyboardAvoidingView
         style={styles.kav}

@@ -17,8 +17,8 @@
 
 import React, { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Typography, Radius } from '../../constants/theme';
-import { useAuth } from '../../contexts/AuthProvider';
+import { Colors, Typography, Radius } from '../theme';
+import { useAuth } from '../contexts/AuthProvider';
 import { InfoIcon, ClockIcon, AlertIcon, LeaderIcon } from './banner-icons';
 
 const EMAIL = 'accounts@projectreplant.org';
