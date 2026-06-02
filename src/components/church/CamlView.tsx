@@ -857,7 +857,7 @@ export default function CamlView({
           {...panResponder.panHandlers}
         >
           <View>
-            <Pressable onPress={() => snapTo(!sheetOpen)} accessibilityRole="button">
+            <View>
               <View style={styles.sheetGrip} />
               <Text style={styles.sheetMeta}>
                 {loading
@@ -872,7 +872,7 @@ export default function CamlView({
                           ? `SHOWING CHURCHES WITHIN 100 KM · ${data.churches.length} FOUND`
                           : `${data.churches.length} CHURCHES NEAR YOU · SWIPE TO SEE MORE`}
               </Text>
-            </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -1269,7 +1269,7 @@ const styles = StyleSheet.create({
   // lets a long church name truncate (numberOfLines={1}) before crowding
   // the badge out of view.
   listNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  listName: { fontFamily: Typography.displayRegular, fontSize: 17, color: Colors.text, flexShrink: 1 },
+  listName: { fontFamily: Typography.bodyMedium, fontSize: 15, color: Colors.text, flexShrink: 1 },
   // YOU pill — leader's own church marker in the list (parity with the
   // YOUR CHURCH map label). Sky outline, mono micro-caps.
   youBadge: {
