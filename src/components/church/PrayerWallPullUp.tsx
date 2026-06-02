@@ -129,6 +129,7 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
   // value is derived dynamically from containerH (measured via the
   // panel's onLayout below).
   const [snap, setSnap] = useState<Snap>('collapsed');
+  const snapRef = useRef<Snap>('collapsed'); // mirrors snap for PanResponder closures
   const [containerH, setContainerH] = useState(0);
   const translateY = useRef(new Animated.Value(9999)).current; // off-screen until measured
   const dragStartY = useRef(0);
@@ -156,6 +157,7 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
 
   const snapTo = useCallback((target: Snap) => {
     setSnap(target);
+    snapRef.current = target;
     // Fix A: notify host so the globe can pause while we're up.
     onSnapChange?.(target);
     const targetY = snapToY(target, containerHRef.current);
@@ -179,10 +181,10 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
     }
   }, [translateY, reduced, open, clearFilters, onSnapChange]);
 
-  // Tap the collapsed header → expand to half.
-  const handleHeaderTap = useCallback(() => {
-    if (snap === 'collapsed') snapTo('half');
-  }, [snap, snapTo]);
+  // Always points at the current snapTo so PanResponder closures (built
+  // once on mount) never call a stale version.
+  const snapToRef = useRef(snapTo);
+  useEffect(() => { snapToRef.current = snapTo; }, [snapTo]);
 
   // ── Drag responder — attached to the grip area only, so the FlatList
   //    inside can still scroll independently when full-open. Closures
@@ -194,7 +196,7 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dy) > 2 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderGrant: () => {
-        dragStartY.current = snapToY(snap, containerHRef.current);
+        dragStartY.current = snapToY(snapRef.current, containerHRef.current);
         translateY.stopAnimation();
       },
       onPanResponderMove: (_, g) => {
@@ -211,7 +213,7 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
         const minY = snapToY('full', h);
         const maxY = snapToY('collapsed', h);
         const end = Math.max(minY, Math.min(maxY, dragStartY.current + g.dy));
-        snapTo(nearestSnap(end, h));
+        snapToRef.current(nearestSnap(end, h));
       },
     }),
   ).current;
@@ -254,22 +256,15 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
         }}
       >
         {/* ── Head ──
-            Fix B4 (2026-05-28): collapsed state uses a SIBLING Pressable
-            (tap-to-open) instead of a wrapping Pressable around the
-            PanResponder. This stops the Pressable from swallowing the
-            upward-drag PanResponder gestures. Open state uses the
-            panHandlers View for grip + drag. */}
+            Collapsed state is drag-only (tap-to-open removed per ruling):
+            a plain panHandlers View so the tab responds to drag, not tap.
+            Open state also uses the panHandlers View for grip + drag. */}
         {snap === 'collapsed' ? (
-          <Pressable
-            onPress={handleHeaderTap}
-            accessibilityRole="button"
-            accessibilityLabel="Open Prayer Wall"
-            style={styles.collapsedTab}
-          >
+          <View {...panResponder.panHandlers} style={styles.collapsedTab}>
             <View style={styles.grabHandle} />
             <Text style={styles.collapsedLabel}>GLOBAL PRAYER WALL</Text>
             <Text style={styles.collapsedScripture}>"That they all may be one…"</Text>
-          </Pressable>
+          </View>
         ) : (
           <View {...panResponder.panHandlers}>
             <View style={styles.grabHandle} />
