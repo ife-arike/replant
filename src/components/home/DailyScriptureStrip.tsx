@@ -122,46 +122,54 @@ export default function DailyScriptureStrip() {
     };
   }, [today]);
 
+  // KAN-201 home redesign 2026-06-01 — "open" variant (Founder pick):
+  // unboxed, with a faint hanging quote mark. The old bordered box was
+  // removed; the open style now creates the visual separation from the
+  // top bar (which dropped its hairline). Render layer only — all fetch /
+  // cache / fallback logic above is unchanged.
   return (
     <View
-      style={styles.strip}
+      style={styles.wrap}
       accessible
       accessibilityLabel={`${display.content} ${display.reference} ${display.translation}`}
     >
-      <Text style={styles.verse}>{`"${display.content}"`}</Text>
-      <Text style={styles.reference}>{`${display.reference} · ${display.translation}`}</Text>
+      <Text style={styles.quote}>{'“'}</Text>
+      <Text style={styles.verse}>{display.content}</Text>
+      <Text style={styles.ref}>
+        <Text style={styles.refBook}>{display.reference}</Text>
+        {` · ${display.translation}`}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // KAN-201 v4 — sky-dim fill, sky-mid hairline, 6 px radius; padding
-  // 16/14 (was 14/12) brings the strip up to CD baseline.
-  strip: {
-    backgroundColor: 'rgba(107, 181, 232, 0.06)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(107, 181, 232, 0.35)',
-    borderRadius: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  wrap: { position: 'relative', paddingHorizontal: 4, paddingTop: 24, paddingBottom: 18 },
+  // Faint hanging quote mark — Cormorant 500 Medium at 64, sky at 12%.
+  quote: {
+    position: 'absolute',
+    top: -8,
+    left: -4,
+    fontFamily: Typography.displayMedium,
+    fontSize: 64,
+    lineHeight: 64,
+    color: 'rgba(107,181,232,0.12)',
   },
-  // KAN-201 v4 — verse at 18 / 27 (1.5 line-height ratio). Cormorant 500
-  // Medium Italic for the right serif weight at this size.
+  // Verse — Cormorant 300 Light Italic, 23 / 33.
   verse: {
-    fontFamily: Typography.displayItalic,
-    fontSize: 18,
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 23,
+    lineHeight: 33,
+    letterSpacing: 0.2,
     color: Colors.text,
-    lineHeight: 27,
-    marginBottom: 4,
   },
-  // KAN-201 v4 — reference at 12 / 1.8 letter-spacing (= 0.15em × 12).
-  // DM Mono uppercase preserves the eyebrow weight against the larger
-  // serif verse above it.
-  reference: {
+  // Reference line — mono; book in sky, " · translation" muted.
+  ref: {
     fontFamily: Typography.mono,
-    fontSize: 12,
-    letterSpacing: 1.8,
-    color: Colors.accent,
-    textTransform: 'uppercase',
+    fontSize: 13,
+    letterSpacing: 0.5,
+    color: Colors.textMuted,
+    marginTop: 18,
   },
+  refBook: { color: Colors.accent },
 });

@@ -85,7 +85,7 @@ export const PRAYER_WALL_ROLE_LABELS: Record<string, string> = {
   bishop:           'Bishop',
   reverend:         'Reverend',
   intercessor:      'Intercessor',
-  other:            'Leader',        // 'other' self-ID → 'Leader' is more pastoral than 'Minister'
+  other:            'Minister',      // Founder ruling 2026-06-02 — same as ministry_leader
 };
 
 export function getRoleLabel(role: string | null | undefined): string {

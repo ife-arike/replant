@@ -275,13 +275,13 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
     } else {
       churchLabel = rawChurchName;
     }
-    // Monogram initial follows data.jsx monogramInitial(): first char
-    // of leaderName(). leaderName() yields the role-prefixed name in
-    // the prototype, so the initial is the role's first letter ("P"
-    // for "Pastor Ruth James"). We mirror by taking `roleLabel ||
-    // fullName`'s first char. Anonymous + underground render the
-    // muted figure glyph instead — see ThreadRow's branch.
-    const monogramInitial = (roleLabel || fullName).trim().charAt(0).toUpperCase() || '·';
+    // Monogram initial = first char of the leader's name (NOT the role
+    // label). Device pass: showing the role initial ("M" for "Minister
+    // Ruth") reads as a stranger's badge rather than the person. Use the
+    // first-name initial so the avatar is recognisably theirs. Anonymous +
+    // underground render the muted figure glyph instead — see ThreadRow's
+    // branch.
+    const monogramInitial = fullName.trim().charAt(0).toUpperCase() || '·';
     const lastAt = r.last_message_at ? new Date(r.last_message_at) : null;
     return {
       conversationId: r.conversation_id,

@@ -21,6 +21,52 @@
 
 export const AUTHOR_ATTRIBUTION = 'Replant Team';
 
+// ─── Leader display-name resolution (KAN-201 card system 2026-06-02) ──
+//
+// get_comments now returns the raw role enum value for non-masked rows,
+// and the LeaderFeedItem secondary lookup fetches `role` from
+// public.users. Both surfaces humanise the role into a title prefix via
+// this single locked table (Founder confirmed 2026-06-02).
+//
+// 'other' → 'Minister' (Founder ruling 2026-06-02: same display as ministry_leader).
+// An unknown / null role → no prefix (defensive — never crash a card).
+// Masking is handled by the caller; this map is purely cosmetic.
+export const ROLE_DISPLAY: Record<string, string> = {
+  pastor:          'Pastor',
+  apostle:         'Apostle',
+  prophet:         'Prophet',
+  evangelist:      'Evangelist',
+  teacher:         'Teacher',
+  elder:           'Elder',
+  bishop:          'Bishop',
+  reverend:        'Reverend',
+  intercessor:     'Intercessor',
+  psalmist:        'Psalmist',
+  ministry_leader: 'Minister', // Founder ruling 2026-06-02
+  other:           'Minister', // Founder ruling 2026-06-02
+};
+
+// Masked / unresolved leaders surface this constant — never a real name.
+export const MASKED_LEADER_NAME = 'A leader in the network';
+
+// Resolve a display name from a full name + raw role enum value.
+// Format: "{RoleDisplay} {firstName}" — e.g. "Minister Ruth".
+// First name = first whitespace-delimited token of full_name.
+//
+// A first name is required: without one we fall back to the masked
+// constant rather than surface a bare title ("Pastor" with no name is
+// not a valid attribution — and an absent name is treated as held).
+// Masking is the safe default on every leader-resolution path.
+export function resolveDisplayName(
+  fullName: string | null,
+  role: string | null,
+): string {
+  const first = fullName?.split(' ')[0] ?? '';
+  if (!first) return MASKED_LEADER_NAME;
+  const title = role ? (ROLE_DISPLAY[role] ?? '') : '';
+  return [title, first].filter(Boolean).join(' ');
+}
+
 // ─── Pagination (AC: cursor-based, 20 per page, cursor on published_at) ─
 
 export const PAGE_SIZE = 20;
@@ -87,6 +133,43 @@ export interface AnnouncementRow {
   is_active: boolean;
   source_label: string | null;
   tag_type: string | null;
+  // KAN-201 home redesign 2026-06-01 — new card-routing columns.
+  link_url: string | null;
+  author_type: 'admin' | 'leader';
+  comment_count: number;
+  // KAN-201 card system 2026-06-02 — card_type drives routing (takes
+  // priority over the legacy author_type === 'leader' check). CHECK:
+  // standard | article | long_read | leader_word | encouragement |
+  // together | call_to_action. Defaults to 'standard' at the DB layer.
+  card_type:
+    | 'standard'
+    | 'article'
+    | 'long_read'
+    | 'leader_word'
+    | 'encouragement'
+    | 'together'
+    | 'call_to_action';
+  // author_id is selected ONLY to resolve leader-card attribution via a
+  // secondary users/churches lookup in NetworkFeed. It is NEVER rendered
+  // and NEVER passed to a display component (D-56 / SEC Observation D).
+  author_id: string | null;
+}
+
+// ─── Home-card tag mapping (KAN-201 home redesign) ────────────────────
+//
+// The new Home cards use the three-tag `Tags` export from theme
+// (update | notice | urgent). The DB `tag_type` CHECK additionally
+// permits 'new' and 'none'; both — plus null and any unknown value —
+// collapse to the neutral 'update' register for the letterhead eyebrow.
+// This is a render-only mapping; it does NOT replace getTagChipMeta
+// (kept for the legacy chip + its tests).
+
+export type HomeCardTag = 'update' | 'notice' | 'urgent';
+
+export function toHomeCardTag(raw: string | null | undefined): HomeCardTag {
+  if (raw === 'notice') return 'notice';
+  if (raw === 'urgent') return 'urgent';
+  return 'update';
 }
 
 export function isPosted(row: AnnouncementRow, now: Date = new Date()): boolean {

@@ -16,6 +16,8 @@ import {
   formatRelativeTime,
   getTagChipMeta,
   isPosted,
+  resolveDisplayName,
+  toHomeCardTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
 
@@ -78,6 +80,27 @@ describe('getTagChipMeta — AC #13', () => {
   });
 });
 
+describe('toHomeCardTag — Home redesign card-eyebrow mapping', () => {
+  it('maps notice → notice', () => {
+    expect(toHomeCardTag('notice')).toBe('notice');
+  });
+  it('maps urgent → urgent', () => {
+    expect(toHomeCardTag('urgent')).toBe('urgent');
+  });
+  it('maps update → update', () => {
+    expect(toHomeCardTag('update')).toBe('update');
+  });
+  it("collapses 'new' to the neutral update register", () => {
+    expect(toHomeCardTag('new')).toBe('update');
+  });
+  it("collapses 'none', null, undefined, and unknown values to update", () => {
+    expect(toHomeCardTag('none')).toBe('update');
+    expect(toHomeCardTag(null)).toBe('update');
+    expect(toHomeCardTag(undefined)).toBe('update');
+    expect(toHomeCardTag('emergency')).toBe('update');
+  });
+});
+
 describe('isPosted — D-54 predicate (RLS mirror)', () => {
   const NOW = new Date('2026-05-22T12:00:00.000Z');
   const baseRow = (overrides: Partial<AnnouncementRow>): AnnouncementRow => ({
@@ -88,6 +111,12 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     is_active: true,
     source_label: null,
     tag_type: null,
+    // KAN-201 home redesign — card-routing columns added to AnnouncementRow.
+    link_url: null,
+    author_type: 'admin',
+    comment_count: 0,
+    card_type: 'standard',
+    author_id: null,
     ...overrides,
   });
 
@@ -172,5 +201,36 @@ describe('formatRelativeTime — AC #2', () => {
 
   it('malformed ISO returns empty string (defensive)', () => {
     expect(formatRelativeTime('not-a-date', NOW)).toBe('');
+  });
+});
+
+describe('resolveDisplayName — KAN-201 card system (role humanisation)', () => {
+  it('formats as "{RoleDisplay} {firstName}"', () => {
+    expect(resolveDisplayName('Ruth James', 'ministry_leader')).toBe('Minister Ruth');
+    expect(resolveDisplayName('Ife Arike', 'evangelist')).toBe('Evangelist Ife');
+    expect(resolveDisplayName('Daniel Okoro', 'pastor')).toBe('Pastor Daniel');
+  });
+
+  it('takes only the first whitespace-delimited token as the first name', () => {
+    expect(resolveDisplayName('Grace Mary Mbeki', 'bishop')).toBe('Bishop Grace');
+  });
+
+  it("maps 'other' role per the Founder ruling (Minister prefix)", () => {
+    // Founder ruling 2026-06-02: 'other' displays the same as ministry_leader.
+    expect(resolveDisplayName('Sam Lee', 'other')).toBe('Minister Sam');
+  });
+
+  it('renders first name only when role is null (no prefix)', () => {
+    expect(resolveDisplayName('Sam Lee', null)).toBe('Sam');
+  });
+
+  it('renders first name only for an unknown role (defensive — no crash)', () => {
+    expect(resolveDisplayName('Sam Lee', 'archdeacon')).toBe('Sam');
+  });
+
+  it('falls back to the masked constant when no name remains', () => {
+    expect(resolveDisplayName(null, 'pastor')).toBe('A leader in the network');
+    expect(resolveDisplayName('', 'pastor')).toBe('A leader in the network');
+    expect(resolveDisplayName(null, null)).toBe('A leader in the network');
   });
 });

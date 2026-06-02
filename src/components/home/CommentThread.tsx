@@ -1,0 +1,324 @@
+// ─────────────────────────────────────────────
+// CommentThread — in-place comment thread (KAN-201 home redesign)
+//
+// Opens in place beneath a card. Conversational sans (NOT scripture
+// italic). Fetches its own data on mount via get_comments(announcementId)
+// and posts via post_comment — the parent card does NOT pre-fetch.
+//
+// Under-threat (underground) leaders post with a held identity: lock
+// avatar, "A leader in the network", region withheld. Masking is enforced
+// server-side in the RPC (is_masked / masked_region); the client never
+// receives author_id and never renders a name/location for masked rows.
+//
+// Two ways to close: the parent card's footer toggle, or the "Hide"
+// control in this thread header. Tapping inside the thread must not
+// toggle the card body — the parent renders this inside its own
+// Pressable boundary and the inputs here stop propagation implicitly
+// (TextInput / Pressable capture their own touches).
+// ─────────────────────────────────────────────
+
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Colors, Radius, Typography } from '../../constants/theme';
+import { supabase } from '../../lib/supabase';
+import { ROLE_DISPLAY } from './NetworkFeedLogic';
+import { Chevron, LockIcon } from './HomeIcons';
+
+// Display shape for one comment row. Mirrors the get_comments RPC return
+// (id, body, created_at, is_masked, masked_region, full_name, church_name,
+// role) — author_id is NEVER part of this shape (the RPC does not return
+// it). `role` is the raw users.role enum value for non-masked rows and is
+// humanised into a title prefix via ROLE_DISPLAY; it is null for masked
+// rows (the RPC never leaks a role for a held identity).
+export type Comment = {
+  id: string;
+  body: string;
+  created_at: string;
+  is_masked: boolean;
+  masked_region: string | null;
+  author_name: string | null;  // matches get_comments RPC column name
+  church_name: string | null;
+  role: string | null;
+};
+
+type RpcCommentRow = {
+  id: string;
+  body: string;
+  created_at: string;
+  is_masked: boolean;
+  masked_region: string | null;
+  author_name: string | null;  // RPC returns author_name, not full_name
+  church_name: string | null;
+  role: string | null;
+};
+
+const MASKED_NAME = 'A leader in the network';
+const MASKED_FALLBACK = 'region held';
+
+// Resolve the rendered author name for a comment row.
+// Masked rows → the held-identity constant (never a name).
+// Otherwise → "{RoleDisplay} {firstName}" (e.g. "Minister Ruth"). A first
+// name is required — without one we fall back to the masked constant
+// rather than surface a bare title (masking is the safe default).
+function displayName(c: Comment): string {
+  if (c.is_masked) return MASKED_NAME;
+  const first = c.author_name?.split(' ')[0] ?? '';
+  if (!first) return MASKED_NAME;
+  const title = c.role ? (ROLE_DISPLAY[c.role] ?? '') : '';
+  return [title, first].filter(Boolean).join(' ');
+}
+
+// Local relative-time — light-touch, mirrors the feed's register. Kept
+// inline so the thread has no cross-module coupling beyond the RPC.
+function relTime(iso: string): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return '';
+  const diff = Date.now() - ts;
+  const m = 60 * 1000;
+  const h = 60 * m;
+  const d = 24 * h;
+  if (diff < m) return 'just now';
+  if (diff < h) return `${Math.floor(diff / m)}m`;
+  if (diff < d) return `${Math.floor(diff / h)}h`;
+  return `${Math.floor(diff / d)}d`;
+}
+
+function initialOf(name: string | null): string {
+  const c = (name ?? '').trim().charAt(0);
+  return c ? c.toUpperCase() : '·';
+}
+
+export function CommentThread({
+  announcementId,
+  count,
+  onClose,
+  onCommentPosted,
+}: {
+  announcementId: string;
+  count: number;
+  onClose: () => void;
+  onCommentPosted?: () => void;
+}) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errored, setErrored] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadComments = async () => {
+    setLoading(true);
+    setErrored(false);
+    const { data, error } = await supabase.rpc('get_comments', {
+      p_announcement_id: announcementId,
+    });
+    if (error) {
+      setErrored(true);
+      setLoading(false);
+      return;
+    }
+    setComments(((data ?? []) as RpcCommentRow[]).map((r) => ({ ...r })));
+    setLoading(false);
+  };
+
+  // Post-submit re-fetch — keeps the existing comment list visible while
+  // the authoritative server rows (masking, region) silently replace it.
+  // Distinct from loadComments so the spinner only shows on initial load,
+  // never after a successful post (device pass: the list flickered away).
+  const reloadAfterPost = async () => {
+    setRefreshing(true);
+    const { data, error } = await supabase.rpc('get_comments', {
+      p_announcement_id: announcementId,
+    });
+    if (!error) {
+      setComments(((data ?? []) as RpcCommentRow[]).map((r) => ({ ...r })));
+    }
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_comments', {
+        p_announcement_id: announcementId,
+      });
+      if (cancelled) return;
+      if (error) {
+        setErrored(true);
+        setLoading(false);
+        return;
+      }
+      setComments(((data ?? []) as RpcCommentRow[]).map((r) => ({ ...r })));
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [announcementId]);
+
+  const submitComment = async () => {
+    const body = draft.trim();
+    if (!body || submitting) return;
+    setSubmitting(true);
+    const { error } = await supabase.rpc('post_comment', {
+      p_announcement_id: announcementId,
+      p_body: body,
+    });
+    setSubmitting(false);
+    if (error) {
+      // Quiet failure — keep the draft so the leader can retry.
+      return;
+    }
+    setDraft('');
+    // Optimistically bump the parent footer count before the silent
+    // re-fetch lands (device pass: footer stuck at 0 after posting).
+    onCommentPosted?.();
+    // Re-fetch so masking + server-side fields (is_masked / region) are
+    // authoritative rather than guessed client-side for the new row.
+    // reloadAfterPost (not loadComments) keeps the list visible — no spinner.
+    void reloadAfterPost();
+  };
+
+  const total = loading || errored ? count : comments.length;
+
+  return (
+    <View>
+      <View style={s.head}>
+        <Text style={s.headLabel}>Comments {'·'} {total}</Text>
+        <Pressable onPress={onClose} hitSlop={8} style={s.hide}>
+          <View style={{ transform: [{ rotate: '180deg' }] }}>
+            <Chevron color={Colors.accent} />
+          </View>
+        </Pressable>
+      </View>
+
+      {loading && comments.length === 0 && !refreshing ? (
+        <View style={s.loading}>
+          <ActivityIndicator color={Colors.accent} />
+        </View>
+      ) : errored ? (
+        <Pressable onPress={loadComments} hitSlop={8} style={s.retryWrap}>
+          <Text style={s.retry}>Couldn't load comments — tap to retry</Text>
+        </Pressable>
+      ) : (
+        <View style={s.list}>
+          {comments.map((c) => {
+            const name = displayName(c);
+            const church = c.is_masked
+              ? c.masked_region ?? MASKED_FALLBACK
+              : c.church_name ?? '';
+            return (
+              <View key={c.id} style={s.row}>
+                <View style={[s.av, c.is_masked && s.avRound]}>
+                  {c.is_masked ? (
+                    <LockIcon />
+                  ) : (
+                    <Text style={s.avInitial}>{initialOf(c.author_name)}</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={s.nameRow}>
+                    <Text style={s.cname} numberOfLines={1}>{name}</Text>
+                    <Text style={s.ctime}>{relTime(c.created_at)}</Text>
+                  </View>
+                  {!!church && <Text style={s.cchurch} numberOfLines={1}>{church}</Text>}
+                  <Text style={s.ctext}>{c.body}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      <View style={s.compose}>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Add a word…"
+          placeholderTextColor={Colors.textSubtle}
+          style={s.field}
+          editable={!submitting}
+          multiline
+        />
+        <Pressable
+          onPress={submitComment}
+          disabled={!draft.trim() || submitting}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Post comment"
+        >
+          <Text style={[s.send, (!draft.trim() || submitting) && s.sendDisabled]}>
+            Post
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  headLabel: { fontFamily: Typography.mono, fontSize: 11, color: Colors.textMuted, letterSpacing: 0.4 },
+  hide: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+
+  loading: { paddingVertical: 22, alignItems: 'center' },
+  retryWrap: { paddingVertical: 18, alignItems: 'center' },
+  retry: { fontFamily: Typography.mono, fontSize: 11, color: Colors.textSubtle, letterSpacing: 0.4 },
+
+  list: { marginTop: 16, gap: 18 },
+  row: { flexDirection: 'row', gap: 11 },
+  av: {
+    width: 30,
+    height: 30,
+    borderRadius: Radius.sm + 4,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avRound: { borderRadius: 15 },
+  avInitial: { fontFamily: Typography.displayRegular, fontSize: 14, color: Colors.textMuted },
+  nameRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+  cname: { fontFamily: Typography.bodyMedium, fontSize: 13.5, color: Colors.text, flex: 1 },
+  ctime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle, flexShrink: 0 },
+  cchurch: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle, marginTop: 1 },
+  ctext: { fontFamily: Typography.body, fontSize: 14, lineHeight: 21, color: 'rgba(240,237,230,0.72)', marginTop: 4 },
+
+  compose: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 18,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  field: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderRadius: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.text,
+    maxHeight: 100,
+  },
+  send: { fontFamily: Typography.mono, fontSize: 11.5, color: Colors.accent, letterSpacing: 0.4 },
+  sendDisabled: { color: Colors.textSubtle },
+});

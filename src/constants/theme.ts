@@ -35,6 +35,12 @@ export const Colors = {
   amber: '#D4A855',
   red: '#E05555',
 
+  // Home-tab card surfaces (KAN-201 home redesign 2026-06-01) — derived
+  // from existing tokens; do not introduce additional brand values.
+  cardSurface: '#111113',   // card chassis — a hair above surface
+  cardWarm: '#131110',      // warm card surface (leader word cards)
+  linkWell: 'rgba(107,181,232,0.04)', // link block background
+
   // Utility
   overlay: 'rgba(8, 8, 8, 0.85)',
   transparent: 'transparent',
@@ -118,3 +124,18 @@ export const Radius = {
   xl: 20,
   full: 999,
 } as const;
+
+// Tag → dot / label / colour for the Home-tab announcement letterhead
+// eyebrow. The DB `announcements.tag_type` CHECK also permits 'new' and
+// 'none'; the home cards collapse those to the neutral 'update' register
+// (see NetworkFeed card routing). Keep this in sync with the eyebrow dot
+// colours — it is the single source of truth for the new Home cards.
+export const Tags = {
+  update: { label: 'Network update', color: Colors.accent },
+  notice: { label: 'Notice', color: Colors.amber },
+  urgent: { label: 'Urgent', color: Colors.red },
+  // KAN-201 card-system extension 2026-06-02 — new card types.
+  together: { label: 'Together', color: Colors.green },
+  call_to_action: { label: 'Call to action', color: Colors.accent },
+} as const;
+export type TagType = keyof typeof Tags;

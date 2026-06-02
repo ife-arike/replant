@@ -1,35 +1,27 @@
 // ─────────────────────────────────────────────
-// NetworkFeed — KAN-17
+// NetworkFeed — KAN-17 + KAN-201 home redesign 2026-06-01
 //
 // Home Network Feed surface. Reads Posted announcements directly from
 // `public.announcements` under leader RLS (policy
-// `leaders_can_read_posted_announcements`, applied 2026-05-22). FE
-// filter mirrors the policy as defense-in-depth — if a future policy
-// change widens read access, the FE gate still keeps draft / scheduled
-// / inactive rows off-screen.
+// `leaders_can_read_posted_announcements`). FE filter mirrors the policy
+// as defense-in-depth.
 //
 // Read pattern: direct Supabase `from('announcements').select(...)` —
 // no edge function. Sort: `published_at DESC`. Cursor: `published_at <
 // cursor` for older pages.
 //
-// AC coverage:
-//   #1  feed renders on Home below the scripture strip — composed in
-//        HomeScreen, not here.
-//   #4  ORDER BY published_at DESC — set on every query.
-//   #5  Posted-only predicate — set on every query AND mirrored FE-side
-//        in NetworkFeedLogic.isPosted as belt-and-suspenders.
-//   #6  Loads on mount + pull-to-refresh.
-//   #7  Empty-state copy.
-//   #8  Cursor-based pagination, 20 per page.
-//   #9  No real-time push — refresh on Home mount + pull-to-refresh only.
-//   #14 Read-failure shows empty state + "Tap to retry"; no crash.
-//   #15 Scroll position preserved — FlatList stays mounted across
-//        Home-tab re-focus events (React Navigation keeps the Home stack
-//        screen mounted on stack push to Settings).
-//   #[age] Feed age limit — only entries published within
-//           FEED_MAX_AGE_DAYS (7) days are shown. See amendment
-//           c.13861 on KAN-17. Cutoff is a floor independent of
-//           the pagination cursor.
+// Card routing (redesign):
+//   author_type === 'leader' → LeaderWordCard (author resolved via a
+//                               secondary users/churches lookup; UNDERGROUND
+//                               churches are masked client-side — SEC Obs D)
+//   link_url present          → LinkCard (external resource, no comments)
+//   else                      → AnnouncementCard (letterhead)
+//
+// AC coverage retained from KAN-17:
+//   #4 ORDER BY published_at DESC · #5 Posted-only predicate (+ FE mirror)
+//   #6 mount + pull-to-refresh · #7 empty state · #8 cursor pagination 20/pg
+//   #9 no realtime · #14 read-failure retry · #15 scroll preserved
+//   #[age] FEED_MAX_AGE_DAYS (7) floor independent of the cursor.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -45,22 +37,35 @@ import {
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import AnnouncementCard from './AnnouncementCard';
+import LeaderWordCard from './LeaderWordCard';
+import LinkCard from './LinkCard';
+import ArticleCard from './ArticleCard';
+import EncouragementCard from './EncouragementCard';
+import TogetherCard from './TogetherCard';
+import CallToActionCard from './CallToActionCard';
 import {
   PAGE_SIZE,
+  formatRelativeTime,
   isPosted,
+  resolveDisplayName,
+  toHomeCardTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
 
-// Column projection — only what the card renders + the cursor field.
-// `author_id` is intentionally NOT selected: D-56 attribution is a
-// hardcoded FE constant ("Replant Team"), so pulling author_id over the
-// wire would be both wasted bytes and a forensic leak vector.
-const SELECT_COLS = 'id, title, body, published_at, is_active, source_label, tag_type';
+// Column projection. The redesign adds link_url / author_type /
+// comment_count / author_id. author_id is selected ONLY to resolve
+// leader-card attribution via a secondary lookup — it is NEVER rendered
+// and NEVER reaches a display component (D-56 / SEC Observation D).
+const SELECT_COLS =
+  'id, title, body, published_at, is_active, source_label, tag_type, link_url, author_type, comment_count, author_id, card_type';
 
-// KAN-17 amendment 2026-05-22 — Founder ruling: feed shows only
-// announcements published within the last FEED_MAX_AGE_DAYS days.
-// Named constant so future tightening (e.g., 3 days) is one-line.
+// KAN-17 amendment — feed shows only announcements published within the
+// last FEED_MAX_AGE_DAYS days.
 const FEED_MAX_AGE_DAYS = 7;
+
+// Masked-leader display constant (mirrors CommentThread). Underground
+// leaders never surface a name or location.
+const MASKED_NAME = 'A leader in the network';
 
 type LoadState = 'initial' | 'refreshing' | 'paging' | 'idle' | 'error';
 
@@ -68,42 +73,35 @@ export default function NetworkFeed() {
   const [rows, setRows] = useState<AnnouncementRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('initial');
   const [hasMore, setHasMore] = useState(true);
-  // Track whether *any* attempt has resolved so the empty-state vs
-  // first-paint loading-spinner branches don't flicker together.
   const hasFetchedOnce = useRef(false);
 
-  const fetchPage = useCallback(async (cursor: string | null): Promise<{
-    rows: AnnouncementRow[];
-    error: string | null;
-  }> => {
-    // Posted-only predicate on the query — RLS enforces it too, but the
-    // explicit WHERE keeps the response payload minimal AND ensures the
-    // same predicate is visible at the call site for AC review.
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - FEED_MAX_AGE_DAYS);
-    let q = supabase
-      .from('announcements')
-      .select(SELECT_COLS)
-      .not('published_at', 'is', null)
-      .lte('published_at', new Date().toISOString())
-      .gte('published_at', cutoff.toISOString())
-      .eq('is_active', true)
-      .order('published_at', { ascending: false })
-      .limit(PAGE_SIZE);
+  const fetchPage = useCallback(
+    async (cursor: string | null): Promise<{ rows: AnnouncementRow[]; error: string | null }> => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - FEED_MAX_AGE_DAYS);
+      let q = supabase
+        .from('announcements')
+        .select(SELECT_COLS)
+        .not('published_at', 'is', null)
+        .lte('published_at', new Date().toISOString())
+        .gte('published_at', cutoff.toISOString())
+        .eq('is_active', true)
+        .order('published_at', { ascending: false })
+        .limit(PAGE_SIZE);
 
-    if (cursor) {
-      q = q.lt('published_at', cursor);
-    }
+      if (cursor) {
+        q = q.lt('published_at', cursor);
+      }
 
-    const { data, error } = await q;
-    if (error) {
-      return { rows: [], error: error.message };
-    }
-    // FE-side D-54 mirror — belt-and-suspenders. If RLS / query somehow
-    // returned a non-Posted row, drop it before render.
-    const filtered = ((data ?? []) as AnnouncementRow[]).filter((r) => isPosted(r));
-    return { rows: filtered, error: null };
-  }, []);
+      const { data, error } = await q;
+      if (error) {
+        return { rows: [], error: error.message };
+      }
+      const filtered = ((data ?? []) as AnnouncementRow[]).filter((r) => isPosted(r));
+      return { rows: filtered, error: null };
+    },
+    [],
+  );
 
   const loadInitial = useCallback(async () => {
     setLoadState('initial');
@@ -137,8 +135,6 @@ export default function NetworkFeed() {
     const cursor = rows[rows.length - 1].published_at;
     const { rows: pageRows, error } = await fetchPage(cursor);
     if (error) {
-      // Paging failure shouldn't blow away what's already on screen —
-      // surface as an idle state and let the user pull-to-refresh.
       setLoadState('idle');
       return;
     }
@@ -155,9 +151,7 @@ export default function NetworkFeed() {
     loadInitial();
   }, [loadInitial]);
 
-  // Empty state — both AC #7 (no rows) and AC #14 (read error). The
-  // error variant adds the "Tap to retry" affordance; the no-rows
-  // variant is just the empty copy.
+  // Empty + error states — AC #7 (no rows) and AC #14 (read error).
   if (loadState === 'error') {
     return (
       <View style={styles.stateContainer}>
@@ -211,7 +205,12 @@ export default function NetworkFeed() {
           <View style={styles.footerSpinner}>
             <ActivityIndicator color={Colors.accent} />
           </View>
-        ) : null
+        ) : (
+          // "— held in prayer —" sits below the last card, only once the
+          // feed has finished paging. Lives inside the FlatList footer so
+          // it never floats above the list end.
+          <Text style={styles.end}>— held in prayer —</Text>
+        )
       }
     />
   );
@@ -222,7 +221,208 @@ function keyExtractor(row: AnnouncementRow): string {
 }
 
 function renderItem({ item }: { item: AnnouncementRow }) {
-  return <AnnouncementCard row={item} />;
+  return <FeedItem item={item} />;
+}
+
+// One feed row, routed by card_type (KAN-201 card system 2026-06-02).
+// card_type now drives routing and takes priority over the legacy
+// author_type === 'leader' check; author_type stays as defence-in-depth.
+// Leader-voice cards (leader_word, encouragement) resolve author display
+// data from a secondary users/churches lookup; underground churches are
+// masked here, client-side, before the card ever renders (SEC Obs D).
+function FeedItem({ item }: { item: AnnouncementRow }) {
+  const time = item.published_at ? formatRelativeTime(item.published_at) : '';
+  const tag = toHomeCardTag(item.tag_type);
+
+  switch (item.card_type) {
+    case 'article':
+    case 'long_read':
+      return (
+        <ArticleCard
+          announcementId={item.id}
+          tag={tag}
+          kicker={item.card_type === 'long_read' ? 'Long read' : undefined}
+          title={item.title}
+          body={item.body}
+          // standfirst + readTimeMin are not yet columns on announcements;
+          // url is sourced from link_url when present.
+          url={item.link_url ?? undefined}
+          time={time}
+          commentCount={item.comment_count}
+        />
+      );
+
+    case 'encouragement':
+      return <EncouragementFeedItem item={item} time={time} />;
+
+    case 'together':
+      return (
+        <TogetherCard
+          announcementId={item.id}
+          title={item.title}
+          body={item.body}
+          time={time}
+          // Multi-author columns are not built yet — pass undefined so the
+          // card renders the Rp seal + "Replant Team" fallback (correct
+          // behaviour until multi-author support lands).
+          coAuthors={undefined}
+          commentCount={item.comment_count}
+        />
+      );
+
+    case 'call_to_action':
+      // CTA requires a destination. Fall back to a standard card when
+      // link_url is absent rather than rendering a dead button.
+      if (item.link_url) {
+        return (
+          <CallToActionCard
+            announcementId={item.id}
+            tag={tag}
+            title={item.title}
+            body={item.body}
+            ctaLabel={item.source_label ?? 'Learn more'}
+            url={item.link_url}
+            time={time}
+            commentCount={item.comment_count}
+          />
+        );
+      }
+      break;
+
+    case 'leader_word':
+      return <LeaderFeedItem item={item} time={time} />;
+
+    default:
+      break;
+  }
+
+  // Legacy fallback: author_type defence-in-depth, then link, then standard.
+  if (item.author_type === 'leader') {
+    return <LeaderFeedItem item={item} time={time} />;
+  }
+
+  if (item.link_url) {
+    return (
+      <LinkCard
+        tag={tag}
+        title={item.title}
+        body={item.body}
+        time={time}
+        resource={item.source_label ?? 'External resource'}
+        source="external link"
+        url={item.link_url}
+      />
+    );
+  }
+
+  return (
+    <AnnouncementCard
+      announcementId={item.id}
+      tag={tag}
+      title={item.title}
+      body={item.body}
+      time={time}
+      commentCount={item.comment_count}
+    />
+  );
+}
+
+type ResolvedAuthor = {
+  initial: string;
+  name: string;
+  church: string;
+};
+
+// Masked author — the only thing surfaced for underground / unresolved
+// leaders. No initial letter (a lock-style neutral mark), no church.
+const MASKED_AUTHOR: ResolvedAuthor = { initial: '·', name: MASKED_NAME, church: '' };
+
+// Shared leader-author resolver. Resolves full_name + role + church via
+// author_id (matched against public.users.id — author_id references the
+// public.users PK, NOT auth_id; verified live 2026-06-02). The role is
+// humanised into the rendered display name ("Minister Ruth") before any
+// card sees it. Masking is the safe default: a missing author_id, an
+// unresolved row, a church-less leader, an underground church, or any
+// error all leave the author masked.
+function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
+  const [author, setAuthor] = useState<ResolvedAuthor>(MASKED_AUTHOR);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!authorId) return; // stays masked
+      try {
+        const { data: userRow, error: userErr } = await supabase
+          .from('users')
+          .select('full_name, church_id, role')
+          .eq('id', authorId)
+          .maybeSingle();
+        if (cancelled || userErr || !userRow) return;
+
+        const fullName = (userRow.full_name ?? '').trim();
+        const role = (userRow.role as string | null) ?? null;
+        const churchId = userRow.church_id as string | null;
+        if (!churchId) return; // no church → stay masked
+
+        const { data: churchRow, error: churchErr } = await supabase
+          .from('churches')
+          .select('name, type, country')
+          .eq('id', churchId)
+          .maybeSingle();
+        if (cancelled || churchErr || !churchRow) return;
+
+        if (churchRow.type === 'underground') return; // never surface
+
+        if (!cancelled) {
+          setAuthor({
+            initial: fullName ? fullName.charAt(0).toUpperCase() : '·',
+            name: resolveDisplayName(fullName || null, role),
+            church: (churchRow.name as string | null) ?? '',
+          });
+        }
+      } catch {
+        // Stay masked on any failure.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authorId]);
+
+  return author;
+}
+
+function LeaderFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
+  const author = useResolvedLeaderAuthor(item.author_id);
+
+  return (
+    <LeaderWordCard
+      announcementId={item.id}
+      lead={item.title}
+      body={item.body}
+      author={{ ...author, time }}
+      commentCount={item.comment_count}
+    />
+  );
+}
+
+// Encouragement card wrapper — same author-resolution pattern as
+// LeaderFeedItem (underground masking, role humanisation). The card body
+// is the announcement title (the short reflective line); source_label
+// carries the verse anchor when set.
+function EncouragementFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
+  const author = useResolvedLeaderAuthor(item.author_id);
+
+  return (
+    <EncouragementCard
+      announcementId={item.id}
+      lead={item.title}
+      verse={item.source_label ?? undefined}
+      time={time}
+      author={author}
+      commentCount={item.comment_count}
+    />
+  );
 }
 
 function Separator() {
@@ -234,11 +434,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   separator: {
-    // KAN-201 v5 — 16 px between cards (was 12 in v4). With the larger
-    // section gaps now governing the outer rhythm, 16 within the feed
-    // keeps cards comfortably separated without competing with the
-    // 32 px section break above.
-    height: 16,
+    height: 14,
   },
   stateContainer: {
     flex: 1,
@@ -262,5 +458,13 @@ const styles = StyleSheet.create({
   },
   footerSpinner: {
     paddingVertical: Spacing.md,
+  },
+  end: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    letterSpacing: 0.5,
+    color: Colors.textSubtle,
+    textAlign: 'center',
+    paddingVertical: 22,
   },
 });

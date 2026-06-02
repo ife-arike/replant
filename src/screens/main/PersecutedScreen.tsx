@@ -520,17 +520,21 @@ const styles = StyleSheet.create({
 
   // NavBar
   navBar: {
-    height: 52,
+    // Unified top-bar metrics with Home (2026-06-01).
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 18,
   },
   navHairline: { height: StyleSheet.hairlineWidth, backgroundColor: FAINT },
   navTitle: {
+    // Unified wordmark with Home (2026-06-01): Cormorant 400 Regular, 26pt.
+    // Red stays — intentional for the Persecuted tab. No Rp mark (Home only).
     fontFamily: Typography.displayRegular,
-    fontSize: 22,
-    letterSpacing: 0.44,
+    fontSize: 26,
+    letterSpacing: 0.4,
     color: Colors.red,
   },
   hamburger: { gap: 4, alignItems: 'flex-end' },

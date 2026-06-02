@@ -521,11 +521,13 @@ function renderFeedBody(args: FeedBodyArgs) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   topBar: {
+    // Unified top-bar metrics with Home (2026-06-01).
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 18,
   },
   landingHairline: {
     // v6 fix B — 0.5 pt full-bleed hairline below the Prayer Wall
@@ -534,8 +536,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(240, 237, 230, 0.08)',
   },
   title: {
-    fontFamily: Typography.display,
-    fontSize: 22,
+    // Unified wordmark with Home (2026-06-01): Cormorant 400 Regular, 26pt.
+    // No Rp mark on Prayer Wall — Home only (Founder confirmed).
+    fontFamily: Typography.displayRegular,
+    fontSize: 26,
     color: Colors.text,
     letterSpacing: 0.4,
   },

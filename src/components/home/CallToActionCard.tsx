@@ -1,25 +1,25 @@
 // ─────────────────────────────────────────────
-// AnnouncementCard — admin network announcement (KAN-201 home redesign)
+// CallToActionCard — an announcement with a prominent action affordance
+// (KAN-201 card system 2026-06-02 · Founder addition)
 //
-// PREFERRED: variant="letterhead" (dot + label + hairline eyebrow),
-// title 21pt. ALTERNATE: variant="rule" (coloured left margin rule).
-// `warm` surface OFF by default.
+// For card_type = 'call_to_action'. A filled sky-accent CTA row drives to
+// link_url ("Join us", "Pray with us", "Read the report"). Distinct from
+// LinkCard's quiet framed resource block — this one is meant to be acted
+// on, so it carries weight. CTA label text is sourced from source_label
+// (admin-set), defaulting to "Learn more".
 //
-// Interaction: page-turn truncation — tap the card body to expand /
-// collapse; the trailing cue reads "read on" ⇄ "fold" (no chevron).
-// Comments live in the FOOTER, right-aligned. The comment Pressable owns
-// its own hitSlop and stops propagation so a comment tap never toggles
-// the card body. The thread fetches its own data via announcementId.
+// SEC Observation B (defence-in-depth): only http(s) URLs reach the OS
+// link handler. safeOpen rejects every other scheme before openURL.
 //
-// D-56 author attribution: the footer renders the constant "Replant Team"
-// — the DB author_id is retained for audit but NEVER surfaces to users
-// (author_id is not even selected over the wire by NetworkFeed).
+// D-56 author attribution: footer renders "Replant Team" — author_id is
+// never selected over the wire and never reaches this component.
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   LayoutAnimation,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -29,48 +29,50 @@ import {
 } from 'react-native';
 import { Colors, Radius, Tags, Typography, type TagType } from '../../constants/theme';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
-import { Chevron, CommentIcon, RpMark } from './HomeIcons';
+import { Arrow, Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-interface Props {
-  announcementId: string;
-  tag?: TagType; // 'update' | 'notice' | 'urgent'
+// SEC Observation B — client-side scheme allow-list. Only http(s) reaches
+// the OS link handler; everything else is silently ignored.
+const safeOpen = (url: string) => {
+  if (/^https?:\/\//i.test(url)) {
+    void Linking.openURL(url);
+  }
+};
+
+type Props = {
+  tag?: TagType;
   title: string;
   body: string;
-  time: string; // e.g. "2h ago"
+  ctaLabel: string; // button text e.g. "Join us", "Pray with us"
+  url: string; // link_url — required for CTA
+  time: string;
+  announcementId: string;
   commentCount?: number;
-  variant?: 'letterhead' | 'rule';
-  titleSize?: 20 | 21 | 22; // PREFERRED 21
-  warm?: boolean;
-}
+  onCommentPosted?: () => void;
+};
 
-const LINE: Record<number, number> = { 20: 25, 21: 26, 22: 27 };
-
-export default function AnnouncementCard({
-  announcementId,
+export default function CallToActionCard({
   tag = 'update',
   title,
   body,
+  ctaLabel,
+  url,
   time,
+  announcementId,
   commentCount,
-  variant = 'letterhead',
-  titleSize = 21,
-  warm = false,
+  onCommentPosted,
 }: Props) {
-  const [expanded, setExpanded] = useState(false);
   const [cOpen, setCOpen] = useState(false);
-  // Local count so the footer reflects a just-posted comment immediately
-  // (the commentCount prop is a static feed-snapshot value, never refreshed).
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
   const tg = Tags[tag];
 
-  // Urgent dot halo: a slow, gentle breathing pulse (~1.8s period). Only
-  // the halo animates — the dot itself stays solid. Non-urgent tags hold
-  // a static glow (opacity 1).
+  // Urgent dot halo — gentle breathing pulse, generic so an urgent CTA
+  // would blink; non-urgent tags hold static.
   const blinkAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (tag !== 'urgent') return;
@@ -84,44 +86,42 @@ export default function AnnouncementCard({
     return () => loop.stop();
   }, [tag, blinkAnim]);
 
-  const toggleBody = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
-    setExpanded((v) => !v);
-  };
   const toggleComments = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     setCOpen((v) => !v);
   };
 
   return (
-    <Pressable onPress={toggleBody} style={[s.card, warm && s.warm, variant === 'rule' && s.ruleCard]}>
-      {variant === 'rule' && <View style={[s.rule, { backgroundColor: tg.color }]} />}
-
+    <View style={s.card}>
       {/* eyebrow / letterhead */}
       <View style={s.eyebrow}>
-        {variant === 'letterhead' && (
-          <View style={s.dotWrap}>
-            <Animated.View
-              style={[
-                s.dotHalo,
-                { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
-              ]}
-            />
-            <View style={[s.dot, { backgroundColor: tg.color }]} />
-          </View>
-        )}
+        <View style={s.dotWrap}>
+          <Animated.View
+            style={[
+              s.dotHalo,
+              { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
+            ]}
+          />
+          <View style={[s.dot, { backgroundColor: tg.color }]} />
+        </View>
         <Text style={s.eyebrowLabel}>{tg.label}</Text>
         <View style={s.eyebrowRule} />
         <Text style={s.eyebrowTime}>{time}</Text>
       </View>
 
-      <Text style={[s.title, { fontSize: titleSize, lineHeight: LINE[titleSize] }]}>{title}</Text>
-      <Text style={s.body} numberOfLines={expanded ? undefined : 3}>{body}</Text>
+      <Text style={s.title}>{title}</Text>
+      <Text style={s.body}>{body}</Text>
 
-      <View style={s.readon}>
-        <View style={s.readonRule} />
-        <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
-      </View>
+      {/* filled sky-accent CTA — dark text on sky fill */}
+      <Pressable
+        style={s.cta}
+        onPress={() => safeOpen(url)}
+        accessibilityRole="button"
+        accessibilityLabel={ctaLabel}
+      >
+        <Text style={s.ctaLabel}>{ctaLabel}</Text>
+        <Arrow color={Colors.background} />
+      </Pressable>
 
       {/* footer — seal · Replant Team · [comments right-aligned] */}
       <View style={s.foot}>
@@ -130,10 +130,7 @@ export default function AnnouncementCard({
         <View style={{ flex: 1 }} />
         {commentCount != null && (
           <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              toggleComments();
-            }}
+            onPress={toggleComments}
             hitSlop={8}
             style={s.cc}
             accessibilityRole="button"
@@ -149,22 +146,22 @@ export default function AnnouncementCard({
       </View>
 
       {cOpen && (
-        <Pressable onPress={(e) => e.stopPropagation()}>
-          <CommentThread
-            announcementId={announcementId}
-            count={localCount}
-            onClose={() => setCOpen(false)}
-            onCommentPosted={() => setLocalCount((c) => c + 1)}
-          />
-        </Pressable>
+        <CommentThread
+          announcementId={announcementId}
+          count={localCount}
+          onClose={() => setCOpen(false)}
+          onCommentPosted={() => {
+            setLocalCount((c) => c + 1);
+            onCommentPosted?.();
+          }}
+        />
       )}
-    </Pressable>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   card: {
-    position: 'relative',
     backgroundColor: Colors.cardSurface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
@@ -172,9 +169,6 @@ const s = StyleSheet.create({
     padding: 20,
     overflow: 'hidden',
   },
-  warm: { backgroundColor: Colors.cardWarm },
-  ruleCard: { paddingLeft: 22 },
-  rule: { position: 'absolute', left: 0, top: 16, bottom: 16, width: 2, borderRadius: 2 },
 
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
   dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
@@ -184,12 +178,21 @@ const s = StyleSheet.create({
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
-  title: { fontFamily: Typography.displayRegular, color: Colors.text, letterSpacing: 0.1 },
+  title: { fontFamily: Typography.displayRegular, fontSize: 21, lineHeight: 26, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
 
-  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
-  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
-  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
+  // Filled sky-accent action row — dark text on sky fill, arrow at right.
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: 13,
+    marginTop: 16,
+  },
+  ctaLabel: { fontFamily: Typography.bodyMedium, fontSize: 14, color: Colors.background },
 
   foot: {
     flexDirection: 'row',

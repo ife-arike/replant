@@ -1,10 +1,9 @@
 // ─────────────────────────────────────────────
-// HomeSectionLabel — KAN-201 AC #2 + #3
+// HomeSectionLabel — "TODAY" / "NETWORK UPDATES"
+// (KAN-201 home redesign 2026-06-01)
 //
-// Eyebrow label above each Home section ("Today" above the scripture
-// strip, "Network Updates" above the announcements feed). Matches
-// wireframe v4 `.screen-section-label` (lines 297-304): mono uppercase
-// letterspaced sky-color.
+// The only all-caps in the Home UI (Founder call, 2026-06). Pass plain
+// title-case text; uppercasing happens here so the source stays readable.
 // ─────────────────────────────────────────────
 
 import React from 'react';
@@ -16,19 +15,16 @@ interface Props {
 }
 
 export default function HomeSectionLabel({ children }: Props) {
-  return <Text style={styles.label}>{children}</Text>;
+  return <Text style={styles.label}>{children.toUpperCase()}</Text>;
 }
 
 const styles = StyleSheet.create({
-  // KAN-201 v4 — switch to DM Sans 500 (Typography.bodyMedium). Mono
-  // read too utilitarian at the section-label scale; bodyMedium sans
-  // gives the eyebrow a softer typographic register that matches the
-  // CD direction. 12 px / 2.4 letter-spacing (= 0.20em × 12).
   label: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 12,
-    letterSpacing: 2.4,
-    textTransform: 'uppercase',
+    fontSize: 13,
+    letterSpacing: 2.3, // ≈ 0.18em
     color: Colors.accent,
+    marginTop: 22,
+    marginBottom: 14,
   },
 });
