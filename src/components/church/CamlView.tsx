@@ -497,6 +497,9 @@ export default function CamlView({
 
   // ── Sheet: peek ↔ open ──
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Mirrors sheetOpen for the PanResponder, which captures its callbacks
+  // once on mount and would otherwise read a stale sheetOpen closure.
+  const sheetOpenRef = useRef(false);
   const translateY = useRef(new Animated.Value(0)).current; // delta from open position
   // We'll measure container height and compute peek vs open dynamically (parent-relative, same fix as KAN-22 pull-up).
   const [containerH, setContainerH] = useState(0);
@@ -519,6 +522,7 @@ export default function CamlView({
 
   const snapTo = useCallback((open: boolean) => {
     setSheetOpen(open);
+    sheetOpenRef.current = open;
     const target = yFor(open);
     if (reduced) translateY.setValue(target);
     else Animated.timing(translateY, {
@@ -528,6 +532,11 @@ export default function CamlView({
       useNativeDriver: true,
     }).start();
   }, [reduced, translateY]);
+
+  // snapToRef keeps the PanResponder (captured once on mount) calling the
+  // always-current snapTo rather than the mount-time closure.
+  const snapToRef = useRef(snapTo);
+  useEffect(() => { snapToRef.current = snapTo; }, [snapTo]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -546,7 +555,9 @@ export default function CamlView({
         return shouldClaim;
       },
       onPanResponderGrant: () => {
-        dragStartY.current = yFor(sheetOpen);
+        const h = containerHRef.current;
+        const livepeekY = Math.max(0, Math.round(h * SHEET_HEIGHT_RATIO) - SHEET_PEEK_PX);
+        dragStartY.current = sheetOpenRef.current ? 0 : livepeekY;
         translateY.stopAnimation();
       },
       onPanResponderMove: (_, g) => {
@@ -559,9 +570,9 @@ export default function CamlView({
       onPanResponderRelease: (_, g) => {
         const wasOpen = dragStartY.current === 0;
         // If dragged > 60pt away from start, snap toward the other state.
-        if (g.dy > 60 && wasOpen) snapTo(false);
-        else if (g.dy < -60 && !wasOpen) snapTo(true);
-        else snapTo(wasOpen);
+        if (g.dy > 60 && wasOpen) snapToRef.current(false);
+        else if (g.dy < -60 && !wasOpen) snapToRef.current(true);
+        else snapToRef.current(wasOpen);
       },
     }),
   ).current;
