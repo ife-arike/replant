@@ -188,21 +188,22 @@ export default function TheChurchScreen() {
       return;
     }
 
-    const profile = profileData as { profile_completion_done?: boolean; profile_completion_done_by?: string | null } | null;
+    const profile = profileData as { profile_completion_done?: boolean } | null;
     const completionDone = profile?.profile_completion_done ?? false;
-    const completionDoneBy = profile?.profile_completion_done_by ?? null;
 
-    // AC 1: show flow if branch === 'active' AND profile_completion_done === false
-    // AC 2: show intro-only if done by a different leader (second-leader path —
-    //        CompletionFlowOverlay handles the second-leader branch internally
-    //        since it already has the profile data; we surface the overlay for
-    //        both cases and let the overlay sort the two paths).
-    const shouldShow =
-      !completionDone ||
-      (completionDone && completionDoneBy !== null && completionDoneBy !== userId);
+    // KAN-209 ruling (2026-06-04): show completion flow ONLY when
+    // profile_completion_done = false — i.e. the original leader who
+    // registered the church and has not yet finalised the profile.
+    //
+    // A leader joining an already-verified church (profile_completion_done
+    // already true, completed by someone else) goes straight to the Church
+    // tab and sees only the tutorial. No second-leader overlay. The
+    // profile_completion_done flag is the sole gate; no created_at / verified_at
+    // date comparison needed.
+    const shouldShow = !completionDone;
 
     setShowCompletionFlow(shouldShow);
-    setProfileComplete(!shouldShow);
+    setProfileComplete(completionDone); // true if church profile is done, whoever completed it
     setCompletionReady(true);
   }, [viewerVerified]);
 
