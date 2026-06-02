@@ -318,19 +318,19 @@ export default function RegionalPanel({
           {ragCounts.g > 0 ? (
             <View style={styles.ragChunk}>
               <View style={[styles.ragDot, { backgroundColor: Colors.green }]} />
-              <Text style={styles.ragChunkText}>{ragCounts.g}</Text>
+              <Text style={styles.ragChunkText}>{ragCounts.g} FREE</Text>
             </View>
           ) : null}
           {ragCounts.a > 0 ? (
             <View style={styles.ragChunk}>
               <View style={[styles.ragDot, { backgroundColor: Colors.amber }]} />
-              <Text style={styles.ragChunkText}>{ragCounts.a}</Text>
+              <Text style={styles.ragChunkText}>{ragCounts.a} LIMITED</Text>
             </View>
           ) : null}
           {ragCounts.r > 0 ? (
             <View style={styles.ragChunk}>
               <View style={[styles.ragDot, { backgroundColor: Colors.red }]} />
-              <Text style={styles.ragChunkText}>{ragCounts.r}</Text>
+              <Text style={styles.ragChunkText}>{ragCounts.r} RESTRICTED</Text>
             </View>
           ) : null}
         </View>
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
   },
-  ragSummary: { flexDirection: 'row', flexWrap: 'nowrap', gap: 14, marginTop: 0 },
+  ragSummary: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 0 },
   ragChunk: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   ragDot: { width: 7, height: 7, borderRadius: 3.5 },
   ragChunkText: { fontFamily: Typography.body, fontSize: 11, color: Colors.textMuted },
