@@ -125,6 +125,7 @@ export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0 }: 
     rows, loadState, hasFetchedOnce,
     clearFilters,
     open, refresh,
+    updateRow,
   } = usePrayerWall();
 
   // ── Snap state + animated translateY ──
@@ -325,7 +326,7 @@ export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0 }: 
             >
               {visibleRows.map((row, i) => (
                 <View key={row.id} style={i > 0 ? styles.interGap : undefined}>
-                  <PullUpInterCard row={row} />
+                  <PullUpInterCard row={row} onRowUpdate={updateRow} />
                 </View>
               ))}
             </ScrollView>
@@ -367,7 +368,13 @@ function timeAgo(iso: string, now: Date = new Date()): string {
   return `${d}d ago`;
 }
 
-function PullUpInterCard({ row }: { row: PrayerRow }) {
+function PullUpInterCard({
+  row,
+  onRowUpdate,
+}: {
+  row: PrayerRow;
+  onRowUpdate: (id: string, iPrayed: boolean, prayedCount: number) => void;
+}) {
   const [agreed, setAgreed] = useState<boolean>(!!row.i_prayed);
   const [agreedCount, setAgreedCount] = useState<number>(row.prayed_count ?? 0);
 
@@ -381,15 +388,33 @@ function PullUpInterCard({ row }: { row: PrayerRow }) {
     const prev = agreed;
     const prevCount = agreedCount;
     const next = !prev;
+    // Optimistic update
     setAgreed(next);
     setAgreedCount(prevCount + (next ? 1 : -1));
-    const { error } = await supabase.rpc('stand_in_the_gap', {
+    const { data, error } = await supabase.rpc('stand_in_the_gap', {
       p_prayer_request_id: row.id,
     });
     if (error) {
+      // HTTP-level error — roll back
       setAgreed(prev);
       setAgreedCount(prevCount);
+      return;
     }
+    // stand_in_the_gap returns jsonb — use server's prayed truth as source of truth
+    const result = data as { action?: string; prayed?: boolean; error?: string } | null;
+    if (result?.error) {
+      // App-level error (not_verified, self_interaction_blocked, etc.) — roll back
+      setAgreed(prev);
+      setAgreedCount(prevCount);
+      return;
+    }
+    // Success — sync to server state and propagate to hook rows so collapse-
+    // reopen doesn't flash stale i_prayed while the next fetch is in-flight.
+    const serverPrayed = result?.prayed ?? next;
+    const serverCount = prevCount + (serverPrayed ? 1 : -1);
+    setAgreed(serverPrayed);
+    setAgreedCount(serverCount);
+    onRowUpdate(row.id, serverPrayed, serverCount);
   };
 
   return (

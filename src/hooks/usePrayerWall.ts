@@ -42,6 +42,10 @@ export interface UsePrayerWallResult {
   open: () => void;        // triggers first fetch (no-op if already fetched)
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
+  /** Update a single row's prayer state in-place after stand_in_the_gap.
+      Keeps the pull-up rows fresh immediately so remounts don't flash stale
+      state while the next loadInitial fetch is in-flight. */
+  updateRow: (id: string, iPrayed: boolean, prayedCount: number) => void;
 }
 
 async function fetchPage(
@@ -137,6 +141,17 @@ export function usePrayerWall(): UsePrayerWallResult {
     void loadInitial(selectedCategories, urgency);
   }, [loadInitial, selectedCategories, urgency]);
 
+  // Optimistic row update — called from PullUpInterCard after a successful
+  // stand_in_the_gap so the pull-up rows stay fresh immediately. Without
+  // this, a collapse-then-reopen would init PullUpInterCard with the stale
+  // row.i_prayed from before the agree, showing wrong state until the next
+  // loadInitial completes.
+  const updateRow = useCallback((id: string, iPrayed: boolean, prayedCount: number) => {
+    setRows((prev) =>
+      prev.map((r) => r.id === id ? { ...r, i_prayed: iPrayed, prayed_count: prayedCount } : r),
+    );
+  }, []);
+
   return {
     rows,
     loadState,
@@ -150,5 +165,6 @@ export function usePrayerWall(): UsePrayerWallResult {
     open,
     refresh,
     loadMore,
+    updateRow,
   };
 }

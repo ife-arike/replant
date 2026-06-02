@@ -240,6 +240,10 @@ export default function PrayerWallScreen() {
         setDetailRow(null);
         setDeepLinkTestimonyId(null);
         setSelectedTestimony(null);
+        // Reset so the next feed visit always refetches from the DB.
+        // Without this, agreeing in the CAL global prayer wall and then
+        // switching to this tab would show stale i_prayed on the feed cards.
+        hasFetchedOnce.current = false;
       };
     }, []),
   );
