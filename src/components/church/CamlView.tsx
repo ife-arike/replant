@@ -90,6 +90,13 @@ interface CamlViewProps {
   // Masked rows contribute 0 — that's the truth the unverified caller
   // sees today, and the only thing the host can faithfully render.
   onLeaderCountResolved?: (count: number) => void;
+  // Post-completion refetch — TheChurchScreen bumps this after the leader
+  // finishes the Church Profile Setup Flow so CAML re-runs its internal
+  // get-nearby-churches fetch and the leader's own church appears in the
+  // list + on the map without navigating away. Starts at 0 (no fetch on
+  // mount — the mount-fetch effect already handles first load); any
+  // value > 0 triggers a re-fetch.
+  refreshTrigger?: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -157,6 +164,7 @@ async function resolveCity(lng: number, lat: number, token: string): Promise<str
 
 export default function CamlView({
   isActive, ownChurchId, viewerVerified, onChurchSelect, onCityResolved, onLeaderCountResolved,
+  refreshTrigger = 0,
 }: CamlViewProps) {
   // ownChurchId is part of the dispatched contract for symmetry with the
   // CAL surface, but on CAML the server is authoritative — `is_own` is
@@ -169,6 +177,17 @@ export default function CamlView({
   const { session } = useAuth();
 
   const cameraRef = useRef<Camera>(null);
+
+  // YOUR CHURCH pulsing rings — two sonar/GPS-ping rings radiating out
+  // from the own-church dot. Created via useRef so the Animated.Values
+  // survive re-renders (a new Animated.Value() in the body each render
+  // would reset the running loop). Ring 2 is phase-offset by 900ms so
+  // the two rings never overlap exactly. Driven by the effect below;
+  // skipped entirely under useReducedMotion (static halo shown instead).
+  const ring1Scale = useRef(new Animated.Value(1)).current;
+  const ring1Opacity = useRef(new Animated.Value(0.65)).current;
+  const ring2Scale = useRef(new Animated.Value(1)).current;
+  const ring2Opacity = useRef(new Animated.Value(0.65)).current;
 
   const [viewerCoord, setViewerCoord] = useState<[number, number] | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -216,6 +235,62 @@ export default function CamlView({
       toValue: 0, duration: 400, useNativeDriver: true,
     }).start(({ finished }) => { if (finished) setDragHintMounted(false); });
   }, [hasDragged, dragHintMounted, dragHintOpacity]);
+
+  // YOUR CHURCH pulsing rings — two looped scale-up + fade-out animations
+  // (sonar/GPS ping). Each ring scales 1 → 2.2 while opacity falls
+  // 0.65 → 0 over ~2000ms, then resets and loops. Ring 2 starts 900ms
+  // late so the pair stay phase-offset. Skipped under reduced motion —
+  // the static halo Views render instead (see the MarkerView branch).
+  useEffect(() => {
+    if (reduced) return;
+
+    const makeLoop = (scale: Animated.Value, opacity: Animated.Value) =>
+      Animated.loop(
+        Animated.parallel([
+          Animated.timing(scale, {
+            toValue: 2.2,
+            duration: 2000,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 2000,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+
+    const loop1 = makeLoop(ring1Scale, ring1Opacity);
+    const loop2 = makeLoop(ring2Scale, ring2Opacity);
+
+    // A loop restarts its child from the CHILD's defined fromValue, but
+    // Animated.timing has no fromValue — it animates from the value's
+    // current state. After the first cycle the values sit at 2.2 / 0, so
+    // each loop iteration must reset them first. resetAndStart seeds the
+    // start state, then runs the loop.
+    const startLoop = (
+      loop: Animated.CompositeAnimation,
+      scale: Animated.Value,
+      opacity: Animated.Value,
+    ) => {
+      scale.setValue(1);
+      opacity.setValue(0.65);
+      loop.start();
+    };
+
+    startLoop(loop1, ring1Scale, ring1Opacity);
+    const ring2TimeoutId = setTimeout(() => {
+      startLoop(loop2, ring2Scale, ring2Opacity);
+    }, 900);
+
+    return () => {
+      clearTimeout(ring2TimeoutId);
+      loop1.stop();
+      loop2.stop();
+    };
+  }, [reduced, ring1Scale, ring1Opacity, ring2Scale, ring2Opacity]);
 
   // Bumps re-run the location useEffect after the leader returns from
   // Settings with a fresh permission grant. Without this, locationDenied
@@ -362,6 +437,22 @@ export default function CamlView({
     if (!isActive || !viewerCoord || data !== null) return;
     void fetchNearby(viewerCoord);
   }, [isActive, viewerCoord, data, fetchNearby]);
+
+  // Post-completion refetch — the host bumps refreshTrigger after the
+  // leader finishes the Church Profile Setup Flow. The mount-fetch effect
+  // above only fires once (data !== null guard), so a freshly-joined
+  // leader would otherwise have to leave and return to see their own
+  // church land in the list + on the map. Gated on refreshTrigger > 0 to
+  // avoid a double-fetch racing the mount fetch on first render.
+  useEffect(() => {
+    if (refreshTrigger <= 0 || !viewerCoord) return;
+    void fetchNearby(viewerCoord);
+    // viewerCoord intentionally omitted from deps: this effect re-runs
+    // ONLY when the host bumps refreshTrigger, reading whatever GPS coord
+    // is current at that moment. Including it would re-fetch on every GPS
+    // fix — the exact flicker the mount-fetch guard above avoids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   // ── Distance unit detection: US → mi, else km. Read viewer country
   // from the most recent fetched row that includes country (server
@@ -586,6 +677,27 @@ export default function CamlView({
                 textAllowOverlap: true,
               }}
             />
+            {/* Soft halo UNDER each dot — radius 15 (vs 8), low opacity,
+                blurred edge. Renders before caml-nearby-dots so the dot
+                sits on top. RAG-matched to the dot so the glow reads as
+                the same status. No animation — keeps the map alive
+                without per-frame cost. */}
+            <CircleLayer
+              id="caml-nearby-dots-glow"
+              filter={['!', ['has', 'point_count']]}
+              style={{
+                circleRadius: 15,
+                circleOpacity: 0.18,
+                circleColor: [
+                  'match', ['get', 'rag_status'],
+                  'green', Colors.green,
+                  'amber', Colors.amber,
+                  'red',   Colors.red,
+                  Colors.textMuted,
+                ],
+                circleBlur: 0.5,
+              }}
+            />
             <CircleLayer
               id="caml-nearby-dots"
               filter={['!', ['has', 'point_count']]}
@@ -612,8 +724,29 @@ export default function CamlView({
                 accessibilityRole="button"
                 accessibilityLabel="Your church"
               >
-                <View style={styles.ownHaloOuter} pointerEvents="none" />
-                <View style={styles.ownHalo} pointerEvents="none" />
+                {reduced ? (
+                  <>
+                    <View style={styles.ownHaloOuter} pointerEvents="none" />
+                    <View style={styles.ownHalo} pointerEvents="none" />
+                  </>
+                ) : (
+                  <>
+                    <Animated.View
+                      style={[
+                        styles.ownRing,
+                        { opacity: ring1Opacity, transform: [{ scale: ring1Scale }] },
+                      ]}
+                      pointerEvents="none"
+                    />
+                    <Animated.View
+                      style={[
+                        styles.ownRing,
+                        { opacity: ring2Opacity, transform: [{ scale: ring2Scale }] },
+                      ]}
+                      pointerEvents="none"
+                    />
+                  </>
+                )}
                 <View style={styles.ownCore}>
                   <View style={styles.ownDot} />
                 </View>
@@ -721,8 +854,9 @@ export default function CamlView({
       {camlReady && sheetH > 0 ? (
         <Animated.View
           style={[styles.sheet, { height: sheetH, transform: [{ translateY }] }]}
+          {...panResponder.panHandlers}
         >
-          <View {...panResponder.panHandlers}>
+          <View>
             <Pressable onPress={() => snapTo(!sheetOpen)} accessibilityRole="button">
               <View style={styles.sheetGrip} />
               <Text style={styles.sheetMeta}>
@@ -925,9 +1059,16 @@ function CamlListRow({ church, unit, onPress, viewerVerified }: {
     <Pressable onPress={onPress} style={styles.listRow} accessibilityRole="button">
       <View style={[styles.listDot, { backgroundColor: ragColor(church.rag_status) }]} />
       <View style={styles.listBody}>
-        <Text style={styles.listName} numberOfLines={1}>
-          {masked ? typeLabel : (church.name ?? typeLabel)}
-        </Text>
+        <View style={styles.listNameRow}>
+          <Text style={styles.listName} numberOfLines={1}>
+            {masked ? typeLabel : (church.name ?? typeLabel)}
+          </Text>
+          {church.is_own ? (
+            <View style={styles.youBadge}>
+              <Text style={styles.youBadgeText}>YOU</Text>
+            </View>
+          ) : null}
+        </View>
         {masked ? (
           <Text style={styles.listMaskedHint}>VERIFY TO VIEW DETAILS</Text>
         ) : (
@@ -1040,6 +1181,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(107,181,232,0.35)',
   },
+  // Pulsing ping ring — sized to sit concentric with ownCore (16px box,
+  // centre at 8,8). A 24px ring centred there places its top-left at
+  // (8 - 12, 8 - 12) = (-4, -4). Scales up to 2.2× via the loop effect.
+  ownRing: {
+    position: 'absolute',
+    width: 24, height: 24, borderRadius: 12,
+    left: -4, top: -4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.accent,
+  },
   ownCore: {
     width: 16, height: 16, borderRadius: 8,
     backgroundColor: Colors.background,
@@ -1114,7 +1265,24 @@ const styles = StyleSheet.create({
   },
   listDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
   listBody: { flex: 1, minWidth: 0 },
-  listName: { fontFamily: Typography.displayRegular, fontSize: 17, color: Colors.text },
+  // Name + YOU badge share a baseline-ish row. flexShrink on the name
+  // lets a long church name truncate (numberOfLines={1}) before crowding
+  // the badge out of view.
+  listNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  listName: { fontFamily: Typography.displayRegular, fontSize: 17, color: Colors.text, flexShrink: 1 },
+  // YOU pill — leader's own church marker in the list (parity with the
+  // YOUR CHURCH map label). Sky outline, mono micro-caps.
+  youBadge: {
+    paddingHorizontal: 5, paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.4)',
+  },
+  youBadgeText: {
+    fontFamily: Typography.mono, fontSize: 9,
+    letterSpacing: 1.5,
+    color: Colors.accent,
+  },
   listLeader: { marginTop: 3, fontFamily: Typography.body, fontSize: 11.5, color: Colors.textMuted },
   // KAN-18 R2 — RPL identifier row. Matches panHintText sizing per
   // dispatch (CD .rpl class equivalent: mono ~8.5pt, letter-spacing

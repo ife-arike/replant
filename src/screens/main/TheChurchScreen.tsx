@@ -186,6 +186,11 @@ export default function TheChurchScreen() {
   const handleCompletionComplete = useCallback(() => {
     setShowCompletionFlow(false);
     void refetch();
+    // refetch() refreshes the global dot data (useChurchesGlobal), but
+    // CamlView holds its own get-nearby-churches fetch that won't re-run
+    // on its own. Bump the trigger so CAML re-fetches and the leader sees
+    // their church land in the list + on the map right away.
+    setCamlRefreshTrigger((n) => n + 1);
   }, [refetch]);
 
   // onSkip — leader tapped "Skip · I'll do this later" (AC 3).
@@ -198,6 +203,11 @@ export default function TheChurchScreen() {
 
   const [page, setPage] = useState<Page>(0);
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
+  // Post-completion CAML refetch — bumped in handleCompletionComplete so
+  // CamlView re-runs its internal get-nearby-churches fetch and the
+  // leader's own church appears immediately, without leaving the tab.
+  // Starts at 0 (CamlView ignores 0 to avoid double-fetching on mount).
+  const [camlRefreshTrigger, setCamlRefreshTrigger] = useState(0);
 
   // KAN-213 (3b): tapping your own church dot while your profile is still
   // incomplete re-enters the completion flow instead of opening the card.
@@ -340,6 +350,7 @@ export default function TheChurchScreen() {
             onChurchSelect={handleChurchSelect}
             onCityResolved={setCamlCity}
             onLeaderCountResolved={setCamlLeaderCount}
+            refreshTrigger={camlRefreshTrigger}
           />
         </Animated.View>
 
@@ -455,8 +466,8 @@ const styles = StyleSheet.create({
   // has breathing room before the globe area starts.
   header: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 20,
+    paddingTop: 14,
+    paddingBottom: 26,
     // CD has a gradient fade to background. RN doesn't do CSS gradients
     // out-of-the-box; sticking to a solid near-black for now.
     backgroundColor: 'rgba(8, 8, 8, 0.92)',
@@ -465,10 +476,12 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   title: {
     fontFamily: Typography.displayRegular, // CD: Cormorant 400, weight per spec
-    fontSize: 22,
-    letterSpacing: 0.44, // 0.02em × 22
+    // 26pt matches the Replant wordmark register on Home; 30pt (Connect's
+    // size) would wrap long city names like "The Church at Johannesburg".
+    fontSize: 26,
+    letterSpacing: 0.52, // 0.02em × 26
     color: Colors.text,
-    lineHeight: 26,
+    lineHeight: 30,
   },
   titleEm: {
     fontFamily: Typography.displayItalic, // sky italic per CD .tc-title em
