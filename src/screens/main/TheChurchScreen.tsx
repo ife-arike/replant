@@ -407,6 +407,7 @@ export default function TheChurchScreen() {
             // KAN-18: also pause when the user is on the CAML page so the
             // globe stops rotating + pulsing the moment they swap surfaces.
             forcePaused={anyOverlayOpen || page !== 1}
+            bottomInset={88}
           />
 
           {/* Count stats chip — top-left of globe area (CD app.jsx) */}

@@ -105,6 +105,9 @@ interface Props {
       Does NOT participate in the setPaused/scheduleResume state machine
       — it gates the effects directly. */
   forcePaused?: boolean;
+  /** Bottom inset for the zoom-out pill — should match PrayerWallPullUp
+      PEEK_PX (88) so the pill sits above the collapsed pull-up handle. */
+  bottomInset?: number;
 }
 
 export default function GlobeView({
@@ -117,6 +120,7 @@ export default function GlobeView({
   onChurchSelect,
   initialCenterOverride,
   forcePaused = false,
+  bottomInset = 88,
 }: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -137,6 +141,7 @@ export default function GlobeView({
 
   const [paused, setPaused] = useState(false);
   const [resuming, setResuming] = useState(false);
+  const [isZoomedIn, setIsZoomedIn] = useState(false);
   // The current zoom is tracked on a ref (not state) — the CD-side top
   // chrome doesn't render a zoom/percent readout, so we no longer need
   // React renders on every onMapIdle. The ref is read inside the
@@ -236,18 +241,35 @@ export default function GlobeView({
   }, [scheduleResume]);
 
   // onMapIdle captures the user's final zoom/center for refs so the
-  // resumed rotation continues from where they left the map. No timer
-  // scheduling here — onTouchEnd owns the resume cycle.
+  // resumed rotation continues from where they left the map. Also drives
+  // the zoom-out pill visibility. No timer scheduling here — onTouchEnd
+  // owns the resume cycle.
   const handleMapIdle = useCallback((state: unknown) => {
     const props = (state as { properties?: { zoom?: number; center?: [number, number] } } | null)?.properties;
     const z = props?.zoom;
-    if (typeof z === 'number' && Number.isFinite(z)) currentZoomRef.current = z;
+    if (typeof z === 'number' && Number.isFinite(z)) {
+      currentZoomRef.current = z;
+      setIsZoomedIn(z > INITIAL_ZOOM + 0.5);
+    }
     const center = props?.center;
     if (Array.isArray(center) && center.length === 2) {
       currentLngRef.current = center[0];
       currentLatRef.current = center[1];
     }
   }, []);
+
+  const handleZoomOut = useCallback(() => {
+    currentLngRef.current = initialCenter[0];
+    currentLatRef.current = initialCenter[1];
+    currentZoomRef.current = INITIAL_ZOOM;
+    setIsZoomedIn(false);
+    cameraRef.current?.setCamera({
+      centerCoordinate: initialCenter,
+      zoomLevel: INITIAL_ZOOM,
+      animationDuration: reduced ? 0 : 600,
+      animationMode: 'flyTo',
+    });
+  }, [initialCenter, reduced]);
 
   // ── Shape source / GeoJSON ──
   const featureCollection = useMemo(() => ({
@@ -423,6 +445,20 @@ export default function GlobeView({
         </ShapeSource>
       </MapView>
 
+      {/* Zoom-out pill — mirrors RE-CENTER ME on CAML for visual parity.
+          Hidden while any overlay is open (forcePaused) so it doesn't
+          compete with the sheet or prayer wall handle. */}
+      {isZoomedIn && !forcePaused ? (
+        <Pressable
+          onPress={handleZoomOut}
+          accessibilityRole="button"
+          accessibilityLabel="Return to world view"
+          style={[styles.zoomOutPill, { bottom: bottomInset + 8 }]}
+        >
+          <Text style={styles.zoomOutPillText}>ZOOM OUT</Text>
+        </Pressable>
+      ) : null}
+
       {/* Loading / error overlays — dim-only */}
       {loading ? (
         <View style={[styles.overlay, styles.overlayLoading]}>
@@ -479,6 +515,22 @@ const styles = StyleSheet.create({
   overlayError: { paddingHorizontal: 24 },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
+
+  // Zoom-out pill — same geometry as RE-CENTER ME on CAML for visual parity.
+  zoomOutPill: {
+    position: 'absolute',
+    right: 14,
+    paddingVertical: 6, paddingHorizontal: 12,
+    backgroundColor: 'rgba(8,8,8,0.82)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    borderRadius: 100,
+    zIndex: 3,
+  },
+  zoomOutPillText: {
+    fontFamily: Typography.mono, fontSize: 8.5,
+    letterSpacing: 1.53,
+    color: Colors.textMuted, textTransform: 'uppercase',
+  },
 
   // Bottom-centre resume cue — only chrome that stays inside GlobeView
   // post CD strip (motion-contract piece, not a corner pill).
