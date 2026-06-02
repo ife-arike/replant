@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// GlobeView — KAN-21
+// GlobeView — KAN-21 / KAN-223
 //
 // Mapbox globe-projection view of every active, non-underground church
 // in the network. Fetches via useChurchesGlobal (which calls the two
@@ -34,6 +34,17 @@
 //     readout above zoom ≈ 5.
 //   - No RAG pulse on the globe (AC #14, perf).
 //   - No expo-blur — overlays are dim-only by convention.
+//
+// KAN-223 additions:
+//   - Region pill (top-right) — names the currently faced region; tapping
+//     it opens the RegionalPanel via onPickRegion.
+//   - Faced-region detection — computed each rotation tick and on map-idle;
+//     fires onFaceRegion only when the RegionKey changes (key-change guard
+//     on facedKeyRef), avoiding redundant parent re-renders.
+//   - Globe-body tap → onPickRegion — detects a tap (dx/dy < 12 px, not a
+//     drag) on the globe body (not a dot) and fires onPickRegion for the
+//     currently faced region. dotPressedRef guards: if a dot was pressed,
+//     the body-tap handler skips so onChurchSelect wins.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -51,6 +62,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import type { ChurchDot } from '../../hooks/useChurchesGlobal';
 import { getCountryCentroid } from './countryCentroid';
+import { facedRegionForCenter, type RegionDef } from '../../utils/regionUtils';
 
 // ─── Mapbox token (module-level) ─────────────────────────────────────
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
@@ -108,6 +120,15 @@ interface Props {
   /** Bottom inset for the zoom-out pill — should match PrayerWallPullUp
       PEEK_PX (88) so the pill sits above the collapsed pull-up handle. */
   bottomInset?: number;
+  /** KAN-223: Fires when the globe rotates past a new region boundary or
+      the user pans to a new region. Debounced by key-change only —
+      will not fire repeatedly while the globe is within the same region.
+      Handled internally (pill state); forwarded to host for any host-level
+      tracking. Pass undefined if no host-side tracking is needed. */
+  onFaceRegion?: (region: RegionDef) => void;
+  /** KAN-223: Fires when the user taps the globe body (not a dot) or the
+      region pill. The host should open the RegionalPanel for this region. */
+  onPickRegion?: (region: RegionDef) => void;
 }
 
 export default function GlobeView({
@@ -121,6 +142,8 @@ export default function GlobeView({
   initialCenterOverride,
   forcePaused = false,
   bottomInset = 88,
+  onFaceRegion,
+  onPickRegion,
 }: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -151,6 +174,27 @@ export default function GlobeView({
   // 700ms drives the circleOpacity on the rag-dots-red-pulse layer.
   // Paused/forcePaused/reduced suspend it (rotation effect dep mirrors).
   const [pulseOpacity, setPulseOpacity] = useState(0.32);
+
+  // KAN-223: Faced-region state + key-change guard.
+  // `facedRegion` drives the region pill (rendered inside GlobeView so it
+  // sits directly on the globe canvas). `facedKeyRef` prevents redundant
+  // fires — handleFaceRegion is only called when the RegionKey changes.
+  const [facedRegion, setFacedRegion] = useState<RegionDef | null>(null);
+  const facedKeyRef = useRef<string | null>(null);
+
+  // KAN-223: Globe-body tap guard. Set to true in handleSourcePress when a
+  // non-cluster dot is pressed. handleTouchEnd checks this ref; if true, the
+  // body-tap→onPickRegion path is skipped so onChurchSelect always wins.
+  const dotPressedRef = useRef(false);
+  // Touch start position — used to distinguish a tap (small delta) from a drag.
+  const touchStartCoordRef = useRef<{ x: number; y: number } | null>(null);
+
+  // KAN-223: Internal faced-region handler. Sets pill state AND forwards to
+  // the optional host prop. Guards on key change (facedKeyRef).
+  const handleFaceRegion = useCallback((region: RegionDef) => {
+    setFacedRegion(region);
+    onFaceRegion?.(region);
+  }, [onFaceRegion]);
 
   // Whenever the viewer country resolves (post-hook-load), jump the
   // camera + reseat the rotation anchor so we don't start mid-Atlantic.
@@ -189,6 +233,14 @@ export default function GlobeView({
         animationDuration: 0,
         animationMode: 'none',
       });
+      // KAN-223: fire handleFaceRegion only when the globe rotates into a
+      // new region. facedKeyRef guards against per-tick redundant calls —
+      // handleFaceRegion only fires when the RegionKey actually changes.
+      const faced = facedRegionForCenter(nextLng, currentLatRef.current);
+      if (faced.key !== facedKeyRef.current) {
+        facedKeyRef.current = faced.key;
+        handleFaceRegion(faced);
+      }
     }, ROTATION_TICK_MS);
     return () => clearInterval(iv);
   }, [paused, forcePaused, resuming, reduced]);
@@ -230,20 +282,52 @@ export default function GlobeView({
   // Contract per globe.jsx:
   //   onPointerDown → pauseRotation (immediate, clears timers)
   //   onPointerUp   → scheduleResume (3.5s → 600ms cue → resume)
-  const handleTouchStart = useCallback(() => {
-    setPaused(true);
-    setResuming(false);
-    clearResumeCycle();
-  }, [clearResumeCycle]);
+  //
+  // KAN-223: handleTouchStart also records the touch position so
+  // handleTouchEnd can detect a tap (dx/dy < 12 px) vs. a drag.
+  // A globe-body tap fires onPickRegion for the currently faced region.
+  // dotPressedRef guards: if a dot triggered handleSourcePress first,
+  // onPickRegion is skipped and onChurchSelect wins.
+  const handleTouchStart = useCallback(
+    (e: { nativeEvent: { locationX: number; locationY: number } }) => {
+      touchStartCoordRef.current = {
+        x: e.nativeEvent.locationX,
+        y: e.nativeEvent.locationY,
+      };
+      setPaused(true);
+      setResuming(false);
+      clearResumeCycle();
+    },
+    [clearResumeCycle],
+  );
 
-  const handleTouchEnd = useCallback(() => {
-    scheduleResume();
-  }, [scheduleResume]);
+  const handleTouchEnd = useCallback(
+    (e: { nativeEvent: { locationX: number; locationY: number } }) => {
+      const start = touchStartCoordRef.current;
+      // Globe-body tap detection — only fires onPickRegion when:
+      //   1. We have a recorded start position.
+      //   2. A dot was NOT pressed (dotPressedRef guards; resets below).
+      //   3. Movement is < 12 px in both axes (tap, not drag).
+      if (start && !dotPressedRef.current) {
+        const dx = Math.abs(e.nativeEvent.locationX - start.x);
+        const dy = Math.abs(e.nativeEvent.locationY - start.y);
+        if (dx < 12 && dy < 12) {
+          const faced = facedRegionForCenter(currentLngRef.current, currentLatRef.current);
+          onPickRegion?.(faced);
+        }
+      }
+      dotPressedRef.current = false;
+      touchStartCoordRef.current = null;
+      scheduleResume();
+    },
+    [scheduleResume, onPickRegion],
+  );
 
   // onMapIdle captures the user's final zoom/center for refs so the
   // resumed rotation continues from where they left the map. Also drives
-  // the zoom-out pill visibility. No timer scheduling here — onTouchEnd
-  // owns the resume cycle.
+  // the zoom-out pill visibility and (KAN-223) fires faced-region detection
+  // for user pan/drag endings. No timer scheduling here — onTouchEnd owns
+  // the resume cycle.
   const handleMapIdle = useCallback((state: unknown) => {
     const props = (state as { properties?: { zoom?: number; center?: [number, number] } } | null)?.properties;
     const z = props?.zoom;
@@ -255,8 +339,15 @@ export default function GlobeView({
     if (Array.isArray(center) && center.length === 2) {
       currentLngRef.current = center[0];
       currentLatRef.current = center[1];
+      // KAN-223: also update the region pill when the user finishes
+      // panning. Same key-change guard as the rotation tick.
+      const faced = facedRegionForCenter(center[0], center[1]);
+      if (faced.key !== facedKeyRef.current) {
+        facedKeyRef.current = faced.key;
+        handleFaceRegion(faced);
+      }
     }
-  }, []);
+  }, [handleFaceRegion]);
 
   const handleZoomOut = useCallback(() => {
     currentLngRef.current = initialCenter[0];
@@ -318,7 +409,12 @@ export default function GlobeView({
       }
       return;
     }
-    if (typeof props.id === 'string') onChurchSelect(props.id);
+    if (typeof props.id === 'string') {
+      // KAN-223: flag that a dot was pressed so the handleTouchEnd
+      // body-tap guard skips onPickRegion and onChurchSelect wins.
+      dotPressedRef.current = true;
+      onChurchSelect(props.id);
+    }
   }, [onChurchSelect, reduced]);
 
   return (
@@ -332,9 +428,9 @@ export default function GlobeView({
         scaleBarEnabled={false}
         compassEnabled={false}
         pitchEnabled={false}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        onTouchStart={handleTouchStart as (e: unknown) => void}
+        onTouchEnd={handleTouchEnd as (e: unknown) => void}
+        onTouchCancel={handleTouchEnd as (e: unknown) => void}
         onMapIdle={handleMapIdle}
       >
         <Camera
@@ -445,6 +541,23 @@ export default function GlobeView({
         </ShapeSource>
       </MapView>
 
+      {/* KAN-223: Region pill — names the currently faced region.
+          Top-right, below the safe area. Hidden while any overlay is open
+          (forcePaused) so it doesn't compete with the profile sheet, prayer
+          wall chrome, or RegionalPanel itself. The pill both labels the
+          globe view and serves as a tap target that opens the panel. */}
+      {facedRegion && !forcePaused ? (
+        <Pressable
+          onPress={() => onPickRegion?.(facedRegion)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${facedRegion.name} region`}
+          style={[styles.regionPill, { top: insets.top + 16 }]}
+        >
+          <View style={styles.regionPillRing} />
+          <Text style={styles.regionPillText}>{facedRegion.name.toUpperCase()}</Text>
+        </Pressable>
+      ) : null}
+
       {/* Zoom-out pill — mirrors RE-CENTER ME on CAML for visual parity.
           Hidden while any overlay is open (forcePaused) so it doesn't
           compete with the sheet or prayer wall handle. */}
@@ -515,6 +628,38 @@ const styles = StyleSheet.create({
   overlayError: { paddingHorizontal: 24 },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
+
+  // KAN-223: Region pill — top-right corner of the globe canvas.
+  // Intentionally lighter (0.70 bg) than the zoom-out pill (0.82) to
+  // read as a contextual label rather than a hard action affordance.
+  regionPill: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    backgroundColor: 'rgba(8,8,8,0.70)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderRadius: 100,
+    zIndex: 4,
+  },
+  regionPillRing: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 1,
+    borderColor: Colors.textMuted,
+  },
+  regionPillText: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.36, // 0.16em × 8.5
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+  },
 
   // Zoom-out pill — same geometry as RE-CENTER ME on CAML for visual parity.
   zoomOutPill: {

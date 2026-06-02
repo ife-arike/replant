@@ -49,6 +49,7 @@ import CompletionFlowOverlay from '../../components/church/CompletionFlowOverlay
 import PrayerWallPullUp from '../../components/church/PrayerWallPullUp';
 import RegionalPanel, { type ChurchRegion } from '../../components/church/RegionalPanel';
 import CamlView from '../../components/church/CamlView';
+import { REGION_DEFS, groupByRegion, type RegionDef } from '../../utils/regionUtils';
 import ChurchTutorialOverlay, { TUTORIAL_SEEN_KEY } from '../../components/church/ChurchTutorialOverlay';
 
 type Page = 0 | 1; // 0 = CAML (placeholder), 1 = CAL (globe)
@@ -277,6 +278,45 @@ export default function TheChurchScreen() {
     [dots],
   );
 
+  // KAN-223: Pre-compute region groups once per dots update.
+  // groupByRegion assigns each dot to its nearest REGION_DEF centre via
+  // Haversine great-circle distance. Memoised so subsequent renders
+  // (scroll, panel open) don't re-traverse the full dot array.
+  const regionGroups = useMemo(() => groupByRegion(dots), [dots]);
+
+  // KAN-223: Build a ChurchRegion payload from a RegionDef for the panel.
+  // Merges region metadata (key, name, underground flag) with the dot list
+  // assigned to that region. Name/city/country are enriched inside
+  // RegionalPanel itself on open — we pass empty strings here.
+  const buildRegion = useCallback(
+    (def: RegionDef): ChurchRegion => {
+      const churchDots = regionGroups.get(def.key) ?? [];
+      return {
+        key: def.key,
+        name: def.name,
+        underground: def.underground,
+        churches: churchDots.map((d) => ({
+          id: d.id,
+          name: '',   // enriched in RegionalPanel when panel opens
+          city: null,
+          country: null,
+          rag_status: d.rag_status,
+        })),
+      };
+    },
+    [regionGroups],
+  );
+
+  // KAN-223: Open the regional panel for the given RegionDef.
+  // Called from GlobeView's onPickRegion (globe-body tap or pill tap).
+  const handlePickRegion = useCallback(
+    (def: RegionDef) => {
+      setRegional(buildRegion(def));
+      setRegionalOpen(true);
+    },
+    [buildRegion],
+  );
+
   // Horizon animated value 0→1.
   const horizonProgress = React.useRef(new Animated.Value(page)).current;
   React.useEffect(() => {
@@ -301,13 +341,15 @@ export default function TheChurchScreen() {
     outputRange: ['0%', '22%'],
   });
 
-  // Regions button (STUB per Step 0 halt — get_churches_global lacks
-  // country/name/leaders fields). Opens the RegionalPanel shell with a
-  // placeholder region so the chrome is testable; real region selection
-  // lands when DBA delivers (KAN-21 c.14810).
+  // KAN-223: Regions button — opens the panel for the first REGION_DEF
+  // as a default entry point. In practice the leader will usually reach
+  // the panel via the globe pill or a globe-body tap (GlobeView fires
+  // onPickRegion with the currently faced region). The Regions button is
+  // a secondary affordance for when they want to navigate directly.
+  // We use REGION_DEFS[0] (North America) as an arbitrary default; the
+  // pill + globe-body tap always pass the contextually correct region.
   const handleRegionsPress = () => {
-    setRegional({ name: 'Coming soon', churches: [] });
-    setRegionalOpen(true);
+    handlePickRegion(REGION_DEFS[0]);
   };
 
   const handleHorizonPress = () => setPage((p) => (p === 0 ? 1 : 0));
@@ -408,6 +450,10 @@ export default function TheChurchScreen() {
             // globe stops rotating + pulsing the moment they swap surfaces.
             forcePaused={anyOverlayOpen || page !== 1}
             bottomInset={88}
+            // KAN-223: globe-body tap or region-pill tap → open panel for
+            // the currently faced region. onFaceRegion is handled internally
+            // by GlobeView (pill state); we pass undefined here.
+            onPickRegion={handlePickRegion}
           />
 
           {/* Count stats chip — top-left of globe area (CD app.jsx) */}
@@ -434,11 +480,16 @@ export default function TheChurchScreen() {
             <Text style={styles.regionsText}>REGIONS</Text>
           </Pressable>
 
-          {/* RegionalPanel — shell only; body pending DBA. */}
+          {/* KAN-223: RegionalPanel — full build. onPickChurch closes the
+              panel and opens the profile sheet for the selected church. */}
           <RegionalPanel
             open={regionalOpen}
             region={regional}
             onClose={() => setRegionalOpen(false)}
+            onPickChurch={(churchId) => {
+              setRegionalOpen(false);
+              handleChurchSelect(churchId);
+            }}
           />
 
           {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
