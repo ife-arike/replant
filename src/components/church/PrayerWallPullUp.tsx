@@ -112,9 +112,12 @@ interface Props {
       half- or full-open. Called AFTER setSnap inside snapTo, with the
       target snap value. */
   onSnapChange?: (snap: Snap) => void;
+  /** Tutorial collapse — bump this to programmatically snap back to
+      collapsed (e.g., when the Church tab tutorial exits the prayer step). */
+  collapseTrigger?: number;
 }
 
-export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
+export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0 }: Props = {}) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
 
@@ -185,6 +188,13 @@ export default function PrayerWallPullUp({ onSnapChange }: Props = {}) {
   // once on mount) never call a stale version.
   const snapToRef = useRef(snapTo);
   useEffect(() => { snapToRef.current = snapTo; }, [snapTo]);
+
+  const lastCollapseTrigger = useRef(0);
+  useEffect(() => {
+    if (!collapseTrigger || collapseTrigger === lastCollapseTrigger.current || !containerH) return;
+    lastCollapseTrigger.current = collapseTrigger;
+    snapToRef.current('collapsed');
+  }, [collapseTrigger, containerH]);
 
   // ── Drag responder — attached to the grip area only, so the FlatList
   //    inside can still scroll independently when full-open. Closures

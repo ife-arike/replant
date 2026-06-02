@@ -97,6 +97,15 @@ interface CamlViewProps {
   // mount — the mount-fetch effect already handles first load); any
   // value > 0 triggers a re-fetch.
   refreshTrigger?: number;
+  // Tutorial pan — TheChurchScreen bumps this when the Church tab tutorial
+  // enters step 2 ("Your church is here") so the camera flies to the
+  // registered church dot. Same counter pattern as refreshTrigger; 0 is
+  // ignored (no pan on mount). If ownChurch is not yet loaded when the
+  // trigger fires, the effect re-runs once it lands.
+  panToChurchTrigger?: number;
+  /** Tutorial GPS recenter — bump to snap camera back to the leader's
+      physical location after the church-location pan in step 2. */
+  recenterToGPSTrigger?: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -164,7 +173,7 @@ async function resolveCity(lng: number, lat: number, token: string): Promise<str
 
 export default function CamlView({
   isActive, ownChurchId, viewerVerified, onChurchSelect, onCityResolved, onLeaderCountResolved,
-  refreshTrigger = 0,
+  refreshTrigger = 0, panToChurchTrigger = 0, recenterToGPSTrigger = 0,
 }: CamlViewProps) {
   // ownChurchId is part of the dispatched contract for symmetry with the
   // CAL surface, but on CAML the server is authoritative — `is_own` is
@@ -591,6 +600,24 @@ export default function CamlView({
     if (!ownChurch) return;
     cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], 1000);
   }, [ownChurch]);
+
+  // Tutorial pan-to-church — fires once per trigger increment. If
+  // ownChurch is not yet loaded when the trigger fires, the effect
+  // re-runs when ownChurch lands (lastPanTrigger stays at the previous
+  // value until ownChurch is available).
+  const lastPanTrigger = useRef(0);
+  useEffect(() => {
+    if (!panToChurchTrigger || panToChurchTrigger === lastPanTrigger.current || !ownChurchPinReady || !ownChurch) return;
+    lastPanTrigger.current = panToChurchTrigger;
+    cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], 0);
+  }, [panToChurchTrigger, ownChurch, ownChurchPinReady]);
+
+  const lastRecenterTrigger = useRef(0);
+  useEffect(() => {
+    if (!recenterToGPSTrigger || recenterToGPSTrigger === lastRecenterTrigger.current || !viewerCoord) return;
+    lastRecenterTrigger.current = recenterToGPSTrigger;
+    cameraRef.current?.flyTo([viewerCoord[0], viewerCoord[1]], 400);
+  }, [recenterToGPSTrigger, viewerCoord]);
 
   // KAN-18 R2 — second recenter, targeting the leader's live GPS
   // (viewerCoord) instead of their registered church. Surfaced as the

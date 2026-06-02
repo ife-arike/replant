@@ -171,7 +171,11 @@ export default function GlobeView({
   useEffect(() => {
     if (paused || forcePaused || resuming || reduced) return;
     const iv = setInterval(() => {
-      let nextLng = currentLngRef.current + ROTATION_DEG_PER_TICK;
+      // Scale rotation speed by zoom so visual angular velocity stays
+      // constant — at zoom N the map is 2^(N−INITIAL_ZOOM)× magnified,
+      // so divide degrees-per-tick by the same factor.
+      const zoomScale = Math.pow(2, Math.max(0, currentZoomRef.current - INITIAL_ZOOM));
+      let nextLng = currentLngRef.current + ROTATION_DEG_PER_TICK / zoomScale;
       if (nextLng > 180) nextLng -= 360;
       if (nextLng < -180) nextLng += 360;
       currentLngRef.current = nextLng;

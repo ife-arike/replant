@@ -60,7 +60,6 @@ import {
   getRoleLabel,
 } from '../../utils/displayHelpers';
 import { XIcon, HeartIcon } from '../prayer/PrayerIcons';
-import ConnectConfirmModal from './ConnectConfirmModal';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -109,6 +108,8 @@ interface Props {
   onDismiss: () => void;
   /** My Church "Edit profile" CTA. */
   onEditProfile?: () => void;
+  /** Connect button — navigates to Connect tab. */
+  onNavigateToConnect?: () => void;
 }
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -150,6 +151,7 @@ export default function ChurchProfileBottomSheet({
   viewerVerified,
   onDismiss,
   onEditProfile,
+  onNavigateToConnect,
 }: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -269,26 +271,10 @@ export default function ChurchProfileBottomSheet({
   ).current;
 
   // ── Action handlers (MVP stubs / local) ──
-  const connectTargetName = (() => {
-    if (!profile) return '';
-    const named = profile.leaders.find((l) => !l.anonymous && l.name);
-    if (named?.name) return named.name;
-    const anyLeader = profile.leaders[0];
-    if (anyLeader) return getRoleLabel(anyLeader.role);
-    return profile.name;
-  })();
-
-  const [connectModalOpen, setConnectModalOpen] = useState(false);
-
   const handleConnect = () => {
-    if (!profile) return;
-    setConnectModalOpen(true);
+    onDismiss();
+    onNavigateToConnect?.();
   };
-  const handleConnectConfirm = () => {
-    setConnectModalOpen(false);
-    showToast('Connection request sent');
-  };
-  const handleConnectCancel = () => setConnectModalOpen(false);
 
   const handlePray = () => {
     // Fix D (2026-05-28): toggle. On-add → toast; on-remove → silent.
@@ -575,29 +561,6 @@ export default function ChurchProfileBottomSheet({
         </Animated.View>
       </View>
 
-      {/* Fix 7 (2026-05-28): CD-styled connect modal — replaces the
-          iOS Alert.alert. Target label per states.jsx ConnectModal:
-          named leader → "{Name} at {Church}"; anonymous → "the {Role}
-          at {Church}"; no leaders → "the leaders at {Church}". */}
-      {profile ? (
-        <ConnectConfirmModal
-          visible={connectModalOpen}
-          targetLabel={(() => {
-            // Fix C (2026-05-28): with 2+ leaders, address the team
-            // collectively to avoid the request feeling targeted at one
-            // when both serve. Single named leader → name. Single
-            // anonymous → role. Empty → collective fallback.
-            if (profile.leaders.length >= 2) return `the leaders at ${profile.name}`;
-            const named = profile.leaders.find((l) => !l.anonymous && l.name);
-            if (named?.name) return `${named.name} at ${profile.name}`;
-            const any = profile.leaders[0];
-            if (any) return `the ${getRoleLabel(any.role)} at ${profile.name}`;
-            return `the leaders at ${profile.name}`;
-          })()}
-          onCancel={handleConnectCancel}
-          onConfirm={handleConnectConfirm}
-        />
-      ) : null}
     </Modal>
   );
 }

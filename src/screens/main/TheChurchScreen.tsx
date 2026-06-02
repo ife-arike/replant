@@ -33,6 +33,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import * as SecureStore from 'expo-secure-store';
+import type { TabsParamList } from '../../navigation/types';
 import Svg, { Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
@@ -45,6 +49,7 @@ import CompletionFlowOverlay from '../../components/church/CompletionFlowOverlay
 import PrayerWallPullUp from '../../components/church/PrayerWallPullUp';
 import RegionalPanel, { type ChurchRegion } from '../../components/church/RegionalPanel';
 import CamlView from '../../components/church/CamlView';
+import ChurchTutorialOverlay, { TUTORIAL_SEEN_KEY } from '../../components/church/ChurchTutorialOverlay';
 
 type Page = 0 | 1; // 0 = CAML (placeholder), 1 = CAL (globe)
 
@@ -88,6 +93,7 @@ function UnverifiedGateView() {
 export default function TheChurchScreen() {
   const { branch } = useAuth();
   const viewerVerified = branch === 'active';
+  const navigation = useNavigation<BottomTabNavigationProp<TabsParamList>>();
   const reduced = useReducedMotion();
 
   // Hoisted globe data — subtitle + count chip + GlobeView all read from
@@ -115,6 +121,29 @@ export default function TheChurchScreen() {
   // re-enters the flow rather than opening your card.
   const [profileComplete, setProfileComplete] = useState(false);
   const skippedThisSession = useRef(false);
+
+  // Tutorial overlay — shown once after the leader's first Church tab entry
+  // (post-verification). Persisted via SecureStore. Waits for completionReady
+  // so it doesn't race the completion flow.
+  const [showTutorial, setShowTutorial] = useState(false);
+  // Bumped by the tutorial when step 2 ("Your church is here") is entered,
+  // causing CamlView to snap the camera to the church's registered location.
+  const [panToChurchTrigger, setPanToChurchTrigger] = useState(0);
+  const [recenterGPSTrigger, setRecenterGPSTrigger] = useState(0);
+  const [prayerWallCollapseTrigger, setPrayerWallCollapseTrigger] = useState(0);
+  // Stable refs — avoids the "maximum update depth" loop from inline arrows.
+  const handleTutorialPanToChurch = useCallback(() => {
+    setPanToChurchTrigger((n) => n + 1);
+  }, []);
+  const handleTutorialRecenterGPS = useCallback(() => {
+    setRecenterGPSTrigger((n) => n + 1);
+  }, []);
+  useEffect(() => {
+    if (!viewerVerified || !completionReady || showCompletionFlow) return;
+    SecureStore.getItemAsync(TUTORIAL_SEEN_KEY).then((v) => {
+      if (!v) setShowTutorial(true);
+    }).catch(() => {});
+  }, [viewerVerified, completionReady, showCompletionFlow]);
 
   const checkCompletionGate = useCallback(async () => {
     if (!viewerVerified || skippedThisSession.current) return;
@@ -351,6 +380,8 @@ export default function TheChurchScreen() {
             onCityResolved={setCamlCity}
             onLeaderCountResolved={setCamlLeaderCount}
             refreshTrigger={camlRefreshTrigger}
+            panToChurchTrigger={panToChurchTrigger}
+            recenterToGPSTrigger={recenterGPSTrigger}
           />
         </Animated.View>
 
@@ -412,7 +443,7 @@ export default function TheChurchScreen() {
           {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
               anyOverlayOpen gate so the globe pauses while the panel
               is half or full (Fix A). */}
-          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} />
+          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} collapseTrigger={prayerWallCollapseTrigger} />
         </Animated.View>
       </View>
 
@@ -427,6 +458,7 @@ export default function TheChurchScreen() {
         // invariant).
         isOwnChurch={selectedChurchId !== null && selectedChurchId === ownChurchId}
         onDismiss={() => setSelectedChurchId(null)}
+        onNavigateToConnect={() => navigation.navigate('Connect')}
       />
 
       {/* Unverified-leader gate — overlays the entire surface (zIndex
@@ -452,6 +484,21 @@ export default function TheChurchScreen() {
           currentRole={completionUserRole}
           onComplete={handleCompletionComplete}
           onSkip={handleCompletionSkip}
+        />
+      ) : null}
+
+      {/* Church tab tutorial — first-entry onboarding. Shows once after
+          verification + completion gate. zIndex 30 sits above all overlays. */}
+      {showTutorial ? (
+        <ChurchTutorialOverlay
+          onComplete={() => {
+            setShowTutorial(false);
+            setPrayerWallCollapseTrigger((n) => n + 1);
+          }}
+          onRequestPanToChurch={handleTutorialPanToChurch}
+          onRequestRecenterToGPS={handleTutorialRecenterGPS}
+          currentPage={page}
+          prayerWallSnap={prayerWallSnap}
         />
       ) : null}
     </SafeAreaView>
