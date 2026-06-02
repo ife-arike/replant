@@ -153,7 +153,7 @@ const rowStyles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingHorizontal: 18,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
   },
@@ -293,23 +293,26 @@ export default function RegionalPanel({
       <View style={[styles.head, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.eyebrow}>REGION</Text>
         <Text style={styles.title}>{region?.name ?? '—'}</Text>
+        {/* RAG summary — compact dot + count only; no text labels so all
+            three bands fit on one line regardless of count magnitude.
+            Color is the signal; no label needed. */}
         <View style={styles.ragSummary}>
           {ragCounts.g > 0 ? (
             <View style={styles.ragChunk}>
               <View style={[styles.ragDot, { backgroundColor: Colors.green }]} />
-              <Text style={styles.ragChunkText}>{ragCounts.g} freely operating</Text>
+              <Text style={styles.ragChunkText}>{ragCounts.g}</Text>
             </View>
           ) : null}
           {ragCounts.a > 0 ? (
             <View style={styles.ragChunk}>
               <View style={[styles.ragDot, { backgroundColor: Colors.amber }]} />
-              <Text style={styles.ragChunkText}>{ragCounts.a} with limitations</Text>
+              <Text style={styles.ragChunkText}>{ragCounts.a}</Text>
             </View>
           ) : null}
           {ragCounts.r > 0 ? (
             <View style={styles.ragChunk}>
               <View style={[styles.ragDot, { backgroundColor: Colors.red }]} />
-              <Text style={styles.ragChunkText}>{ragCounts.r} not freely</Text>
+              <Text style={styles.ragChunkText}>{ragCounts.r}</Text>
             </View>
           ) : null}
         </View>
@@ -418,7 +421,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 28,
   },
-  ragSummary: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+  ragSummary: { flexDirection: 'row', flexWrap: 'nowrap', gap: 14, marginTop: 12 },
   ragChunk: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   ragDot: { width: 7, height: 7, borderRadius: 3.5 },
   ragChunkText: { fontFamily: Typography.body, fontSize: 11, color: Colors.textMuted },

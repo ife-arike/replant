@@ -541,22 +541,11 @@ export default function GlobeView({
         </ShapeSource>
       </MapView>
 
-      {/* KAN-223: Region pill — names the currently faced region.
-          Top-right, below the safe area. Hidden while any overlay is open
-          (forcePaused) so it doesn't compete with the profile sheet, prayer
-          wall chrome, or RegionalPanel itself. The pill both labels the
-          globe view and serves as a tap target that opens the panel. */}
-      {facedRegion && !forcePaused ? (
-        <Pressable
-          onPress={() => onPickRegion?.(facedRegion)}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${facedRegion.name} region`}
-          style={[styles.regionPill, { top: insets.top + 16 }]}
-        >
-          <View style={styles.regionPillRing} />
-          <Text style={styles.regionPillText}>{facedRegion.name.toUpperCase()}</Text>
-        </Pressable>
-      ) : null}
+      {/* KAN-223: Region pill removed — Founder ruling 2026-06-04.
+          The existing "REGIONS" button in the host header chrome is the
+          sole entry point for the panel; it reads the faced region via
+          onFaceRegion forwarded to TheChurchScreen. Globe-body tap still
+          fires onPickRegion for the currently faced region (unchanged). */}
 
       {/* Zoom-out pill — mirrors RE-CENTER ME on CAML for visual parity.
           Hidden while any overlay is open (forcePaused) so it doesn't
@@ -628,38 +617,6 @@ const styles = StyleSheet.create({
   overlayError: { paddingHorizontal: 24 },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
-
-  // KAN-223: Region pill — top-right corner of the globe canvas.
-  // Intentionally lighter (0.70 bg) than the zoom-out pill (0.82) to
-  // read as a contextual label rather than a hard action affordance.
-  regionPill: {
-    position: 'absolute',
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 11,
-    backgroundColor: 'rgba(8,8,8,0.70)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-    borderRadius: 100,
-    zIndex: 4,
-  },
-  regionPillRing: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 1,
-    borderColor: Colors.textMuted,
-  },
-  regionPillText: {
-    fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.36, // 0.16em × 8.5
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-  },
 
   // Zoom-out pill — same geometry as RE-CENTER ME on CAML for visual parity.
   zoomOutPill: {

@@ -341,15 +341,14 @@ export default function TheChurchScreen() {
     outputRange: ['0%', '22%'],
   });
 
-  // KAN-223: Regions button — opens the panel for the first REGION_DEF
-  // as a default entry point. In practice the leader will usually reach
-  // the panel via the globe pill or a globe-body tap (GlobeView fires
-  // onPickRegion with the currently faced region). The Regions button is
-  // a secondary affordance for when they want to navigate directly.
-  // We use REGION_DEFS[0] (North America) as an arbitrary default; the
-  // pill + globe-body tap always pass the contextually correct region.
+  // KAN-223: Track the currently-faced region so the REGIONS button opens
+  // wherever the globe is actually pointing. GlobeView fires onFaceRegion
+  // on every region-key change (rotation tick + map-idle). Founder ruling
+  // 2026-06-04: no dynamic pill inside GlobeView — REGIONS button is the
+  // sole entry point; it must open the contextually-correct region.
+  const [calFacedRegion, setCalFacedRegion] = useState<RegionDef | null>(null);
   const handleRegionsPress = () => {
-    handlePickRegion(REGION_DEFS[0]);
+    handlePickRegion(calFacedRegion ?? REGION_DEFS[0]);
   };
 
   const handleHorizonPress = () => setPage((p) => (p === 0 ? 1 : 0));
@@ -450,10 +449,10 @@ export default function TheChurchScreen() {
             // globe stops rotating + pulsing the moment they swap surfaces.
             forcePaused={anyOverlayOpen || page !== 1}
             bottomInset={88}
-            // KAN-223: globe-body tap or region-pill tap → open panel for
-            // the currently faced region. onFaceRegion is handled internally
-            // by GlobeView (pill state); we pass undefined here.
+            // KAN-223: globe-body tap → open panel for the currently faced
+            // region. onFaceRegion tracks the facing for the REGIONS button.
             onPickRegion={handlePickRegion}
+            onFaceRegion={setCalFacedRegion}
           />
 
           {/* Count stats chip — top-left of globe area (CD app.jsx) */}
