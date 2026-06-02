@@ -289,13 +289,31 @@ export default function RegionalPanel({
         <Text style={styles.closeXText}>×</Text>
       </Pressable>
 
-      {/* Head — eyebrow, h3, RAG summary */}
+      {/* Head — eyebrow, h3, RAG bar, counts */}
       <View style={[styles.head, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.eyebrow}>REGION</Text>
         <Text style={styles.title}>{region?.name ?? '—'}</Text>
-        {/* RAG summary — compact dot + count only; no text labels so all
-            three bands fit on one line regardless of count magnitude.
-            Color is the signal; no label needed. */}
+
+        {/* RAG bar — proportional green/amber/red segments, full width.
+            4px high, dark base, borderRadius 2. Segments are flex-weighted
+            by count so the bar reflects real distribution at a glance.
+            Only rendered when there are churches to show. */}
+        {(ragCounts.g + ragCounts.a + ragCounts.r) > 0 ? (
+          <View style={styles.ragBar}>
+            {ragCounts.g > 0 ? (
+              <View style={{ flex: ragCounts.g, backgroundColor: Colors.green }} />
+            ) : null}
+            {ragCounts.a > 0 ? (
+              <View style={{ flex: ragCounts.a, backgroundColor: Colors.amber }} />
+            ) : null}
+            {ragCounts.r > 0 ? (
+              <View style={{ flex: ragCounts.r, backgroundColor: Colors.red }} />
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Count chips — dot + number, one line, no labels. Sits below
+            the bar so the bar gives shape and the counts give precision. */}
         <View style={styles.ragSummary}>
           {ragCounts.g > 0 ? (
             <View style={styles.ragChunk}>
@@ -421,7 +439,16 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 28,
   },
-  ragSummary: { flexDirection: 'row', flexWrap: 'nowrap', gap: 14, marginTop: 12 },
+  ragBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  ragSummary: { flexDirection: 'row', flexWrap: 'nowrap', gap: 14, marginTop: 0 },
   ragChunk: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   ragDot: { width: 7, height: 7, borderRadius: 3.5 },
   ragChunkText: { fontFamily: Typography.body, fontSize: 11, color: Colors.textMuted },
