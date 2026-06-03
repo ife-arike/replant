@@ -333,9 +333,12 @@ type ResolvedAuthor = {
   church: string;
 };
 
-// Masked author — the only thing surfaced for underground / unresolved
-// leaders. No initial letter (a lock-style neutral mark), no church.
+// Masked author — the safe default for unresolved / error / loading state.
 const MASKED_AUTHOR: ResolvedAuthor = { initial: '·', name: MASKED_NAME, church: '' };
+
+// Anonymous author — shown when users.anonymous === true.
+// Initial 'A' (not the leader's name initial — that would leak identity).
+const ANON_AUTHOR: ResolvedAuthor = { initial: 'A', name: 'Anonymous', church: '' };
 
 // Shared leader-author resolver. Resolves full_name + role + church via
 // author_id (matched against public.users.id — author_id references the
@@ -343,7 +346,8 @@ const MASKED_AUTHOR: ResolvedAuthor = { initial: '·', name: MASKED_NAME, church
 // humanised into the rendered display name ("Minister Ruth") before any
 // card sees it. Masking is the safe default: a missing author_id, an
 // unresolved row, a church-less leader, an underground church, or any
-// error all leave the author masked.
+// error all leave the author masked. Anonymous leaders (users.anonymous=true)
+// resolve to ANON_AUTHOR — never their real name or name-derived initial.
 function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
   const [author, setAuthor] = useState<ResolvedAuthor>(MASKED_AUTHOR);
 
@@ -354,10 +358,15 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
       try {
         const { data: userRow, error: userErr } = await supabase
           .from('users')
-          .select('full_name, church_id, role')
+          .select('full_name, church_id, role, anonymous')
           .eq('id', authorId)
           .maybeSingle();
         if (cancelled || userErr || !userRow) return;
+
+        if (userRow.anonymous) {
+          if (!cancelled) setAuthor(ANON_AUTHOR);
+          return;
+        }
 
         const fullName = (userRow.full_name ?? '').trim();
         const role = (userRow.role as string | null) ?? null;
