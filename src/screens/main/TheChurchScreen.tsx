@@ -31,7 +31,7 @@
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -51,6 +51,7 @@ import RegionalPanel, { type ChurchRegion } from '../../components/church/Region
 import CamlView from '../../components/church/CamlView';
 import { REGION_DEFS, groupByRegion, type RegionDef } from '../../utils/regionUtils';
 import ChurchTutorialOverlay, { TUTORIAL_SEEN_KEY } from '../../components/church/ChurchTutorialOverlay';
+import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 
 type Page = 0 | 1; // 0 = CAML (placeholder), 1 = CAL (globe)
 
@@ -64,28 +65,42 @@ const HORIZON_MS = 550;
 // Sits at the top of TheChurchScreen's stacking context (zIndex 20)
 // when the viewer is not yet verified, covering globe + CAML + sheet
 // + tab chrome with a near-opaque sky scrim. Pastoral copy + the CD
-// .glyph-cross + Philippians 1:6. The Mapbox surfaces below remain
-// mounted but are visually held until the leader's church is
+// .glyph-cross + Habakkuk 2:3. The Mapbox surfaces below remain
+// mounted but are visually held until the leader or their church is
 // confirmed by a Replant team member.
-function UnverifiedGateView() {
+//
+// Two copy variants:
+//   churchVerified = true  → second leader (church verified, leader pending)
+//   churchVerified = false/null → original leader (church verification pending)
+function UnverifiedGateView({ churchVerified }: { churchVerified: boolean | null }) {
+  const isLeaderPending = churchVerified === true;
   return (
     <View style={styles.unverifiedGate}>
-      {/* Sky cross glyph — CD .glyph-cross, 36×36 */}
-      <Svg width={36} height={36} viewBox="0 0 36 36" style={styles.gateCrossGlyph}>
+      {/* Sky cross glyph */}
+      <Svg width={44} height={44} viewBox="0 0 36 36" style={styles.gateCrossGlyph}>
         <Line x1="18" y1="5"  x2="18" y2="31" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
         <Line x1="9"  y1="15" x2="27" y2="15" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
       </Svg>
-      <Text style={styles.gateTitle}>Your account is being verified.</Text>
-      <Text style={styles.gateBody}>
-        Once your church is confirmed by a Replant team member, you'll unlock The Church
-        tab — and be able to see, and be seen by, every verified leader on the network.
+      <Text style={styles.gateTitle}>
+        {isLeaderPending
+          ? 'Your access is being confirmed.'
+          : 'Your account is being verified.'}
       </Text>
-      <Text style={styles.gateTiny}>Most verifications complete in 24–72 hours.</Text>
+      <Text style={styles.gateBody}>
+        {isLeaderPending
+          ? "Your church is already part of the Replant network. Once the team confirms your account, you'll unlock The Church tab and be seen by leaders around the world."
+          : "Once your church is confirmed by a Replant team member, you'll unlock The Church tab — and be able to see, and be seen by, every verified leader on the network."}
+      </Text>
+      <Text style={styles.gateTiny}>
+        {isLeaderPending
+          ? 'Confirmation usually takes 24–72 hours.'
+          : 'Most verifications complete in 24–72 hours.'}
+      </Text>
       <View style={styles.gateScripture}>
         <Text style={styles.gateScriptureText}>
-          "He which hath begun a good work in you will perform it…"
+          "For the vision is yet for an appointed time, but at the end it shall speak, and not lie: though it tarry, wait for it; because it will surely come, it will not tarry."
         </Text>
-        <Text style={styles.gateScriptureRef}>PHILIPPIANS 1:6</Text>
+        <Text style={styles.gateScriptureRef}>HABAKKUK 2:3</Text>
       </View>
     </View>
   );
@@ -94,6 +109,9 @@ function UnverifiedGateView() {
 export default function TheChurchScreen() {
   const { branch } = useAuth();
   const viewerVerified = branch === 'active';
+  // When the viewer is pending, distinguish church-pending vs leader-pending
+  // so UnverifiedGateView can show the correct copy variant.
+  const churchVerified = useChurchVerifiedStatus();
   const navigation = useNavigation<BottomTabNavigationProp<TabsParamList>>();
   const reduced = useReducedMotion();
 
@@ -122,6 +140,8 @@ export default function TheChurchScreen() {
   // re-enters the flow rather than opening your card.
   const [profileComplete, setProfileComplete] = useState(false);
   const skippedThisSession = useRef(false);
+  // true when the overlay is opened via Edit Profile — bypasses the intro step.
+  const editProfileMode = useRef(false);
 
   // Tutorial overlay — shown once after the leader's first Church tab entry
   // (post-verification). Persisted via SecureStore. Waits for completionReady
@@ -510,14 +530,35 @@ export default function TheChurchScreen() {
         // invariant).
         isOwnChurch={selectedChurchId !== null && selectedChurchId === ownChurchId}
         onDismiss={() => setSelectedChurchId(null)}
+        onEditProfile={() => {
+          // Dismiss sheet, mark as edit-profile mode (skips the intro
+          // step in CompletionFlowOverlay), then open the flow.
+          setSelectedChurchId(null);
+          skippedThisSession.current = false;
+          editProfileMode.current = true;
+          setShowCompletionFlow(true);
+        }}
         onNavigateToConnect={() => navigation.navigate('Connect')}
       />
+
+      {/* Completion-gate loading cover — renders while the async
+          checkCompletionGate is still in flight (viewerVerified but
+          completionReady not yet set). Prevents the raw globe from
+          flashing through before the CompletionFlowOverlay or tutorial
+          appears. Sub-second in practice; dismissed the moment
+          completionReady flips. zIndex 15 — below the completion gate
+          (28) and tutorial (30), above the page surfaces. */}
+      {viewerVerified && !completionReady ? (
+        <View style={styles.completionLoadingGate}>
+          <ActivityIndicator color={Colors.accent} />
+        </View>
+      ) : null}
 
       {/* Unverified-leader gate — overlays the entire surface (zIndex
           20). Mapbox surfaces stay mounted below but are visually held
           until the leader's church is confirmed by a Replant team
           member. */}
-      {!viewerVerified ? <UnverifiedGateView /> : null}
+      {!viewerVerified ? <UnverifiedGateView churchVerified={churchVerified} /> : null}
 
       {/* KAN-213: Church profile completion gate (AC 1 + AC 2).
           Renders ONLY when:
@@ -534,8 +575,9 @@ export default function TheChurchScreen() {
           churchId={completionChurchId}
           currentUserId={completionUserId}
           currentRole={completionUserRole}
-          onComplete={handleCompletionComplete}
-          onSkip={handleCompletionSkip}
+          onComplete={() => { editProfileMode.current = false; handleCompletionComplete(); }}
+          onSkip={() => { editProfileMode.current = false; handleCompletionSkip(); }}
+          skipIntro={editProfileMode.current}
         />
       ) : null}
 
@@ -686,66 +728,73 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
 
+  // ── Completion-gate loading cover ──
+  completionLoadingGate: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 15,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   // ── Unverified gate (UnverifiedGateView) ──
   unverifiedGate: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
-    backgroundColor: 'rgba(8,8,8,0.88)',
+    backgroundColor: 'rgba(8,8,8,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 60,
+    paddingHorizontal: 28,
   },
-  gateCrossGlyph: { marginBottom: 24 },
+  gateCrossGlyph: { marginBottom: 28 },
   gateTitle: {
     fontFamily: Typography.scriptureLight,
-    fontSize: 23,
-    letterSpacing: 0.46, // 0.02em × 23
+    fontSize: 28,
+    letterSpacing: 0.56, // 0.02em × 28
     color: Colors.text,
     textAlign: 'center',
-    lineHeight: 29,
-    marginBottom: 12,
-    maxWidth: 280,
+    lineHeight: 35,
+    marginBottom: 16,
   },
   gateBody: {
     fontFamily: Typography.body,
-    fontSize: 12.5,
+    fontSize: 14.5,
     color: Colors.textMuted,
-    lineHeight: 20.5,
+    lineHeight: 23,
     textAlign: 'center',
-    maxWidth: 280,
-    marginBottom: 8,
+    alignSelf: 'stretch',
+    marginBottom: 10,
   },
   gateTiny: {
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.7,
+    fontSize: 9.5,
+    letterSpacing: 2.1,
     textTransform: 'uppercase',
     color: Colors.accent,
     marginBottom: 28,
   },
   gateScripture: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     backgroundColor: 'rgba(107,181,232,0.06)',
     borderWidth: 0.5,
     borderColor: Colors.borderAccent,
-    borderRadius: 8,
-    maxWidth: 300,
+    borderRadius: 10,
+    alignSelf: 'stretch',
     alignItems: 'center',
   },
   gateScriptureText: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 13.5,
+    fontSize: 16.5,
     color: Colors.text,
-    lineHeight: 20,
+    lineHeight: 25,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   gateScriptureRef: {
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.98, // 0.22em × 9
+    fontSize: 9.5,
+    letterSpacing: 2.09, // 0.22em × 9.5
     textTransform: 'uppercase',
     color: Colors.accent,
   },

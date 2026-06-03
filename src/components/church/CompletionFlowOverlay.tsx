@@ -107,6 +107,12 @@ interface Props {
    * so the overlay does not re-show during this session (AC 3).
    */
   onSkip: () => void;
+  /**
+   * Skip the Intro screen (step -1) and open directly at step 0 (Review).
+   * Used when the leader reaches the flow via "Edit Profile" rather than
+   * the automatic first-visit gate — they don't need the welcome copy.
+   */
+  skipIntro?: boolean;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────
@@ -368,6 +374,7 @@ function ReviewScreen({
   draft,
   loadedName,
   loadedRole,
+  editMode = false,
   onNext,
   onBack,
   saving,
@@ -376,6 +383,7 @@ function ReviewScreen({
   draft: DraftState;
   loadedName: string;
   loadedRole: string;
+  editMode?: boolean;
   onNext: () => void;
   onBack: () => void;
   saving: boolean;
@@ -396,7 +404,7 @@ function ReviewScreen({
         keyboardShouldPersistTaps="handled"
       >
         <ProgressDots currentStep={0} />
-        <StepHeader>Step 1 of 3 · Review</StepHeader>
+        <StepHeader>{editMode ? 'Edit Profile · Review' : 'Step 1 of 3 · Review'}</StepHeader>
         <Text style={styles.stepH1}>Is this still you?</Text>
 
         {/* Church name — read-only */}
@@ -497,12 +505,14 @@ function ReviewScreen({
 // Step 1: Enrichment — CD CompletionStep2
 function EnrichmentScreen({
   draft,
+  editMode = false,
   onNext,
   onBack,
   saving,
   onDraftChange,
 }: {
   draft: DraftState;
+  editMode?: boolean;
   onNext: () => void;
   onBack: () => void;
   saving: boolean;
@@ -520,7 +530,7 @@ function EnrichmentScreen({
         keyboardShouldPersistTaps="handled"
       >
         <ProgressDots currentStep={1} />
-        <StepHeader>Step 2 of 3 · Optional details</StepHeader>
+        <StepHeader>{editMode ? 'Edit Profile · Details' : 'Step 2 of 3 · Optional details'}</StepHeader>
         <Text style={styles.stepH1}>Help others see you clearly.</Text>
         <Text style={styles.stepLead}>
           These are optional — but each one helps another leader recognize
@@ -619,12 +629,14 @@ function EnrichmentScreen({
 // Step 2: Visibility — CD CompletionStep3
 function VisibilityScreen({
   draft,
+  editMode = false,
   onComplete,
   onBack,
   saving,
   onDraftChange,
 }: {
   draft: DraftState;
+  editMode?: boolean;
   onComplete: () => void;
   onBack: () => void;
   saving: boolean;
@@ -639,7 +651,7 @@ function VisibilityScreen({
         showsVerticalScrollIndicator={false}
       >
         <ProgressDots currentStep={2} />
-        <StepHeader>Step 3 of 3 · Contact visibility</StepHeader>
+        <StepHeader>{editMode ? 'Edit Profile · Visibility' : 'Step 3 of 3 · Contact visibility'}</StepHeader>
         <Text style={styles.stepH1}>How visible would you like to be?</Text>
         <Text style={styles.stepLead}>
           Connection requests are always sent through Replant. Choose whether
@@ -688,7 +700,7 @@ function VisibilityScreen({
       <View style={styles.actionBar}>
         <GhostButton label="Back" onPress={onBack} />
         <PrimaryButton
-          label="Enter the Network"
+          label={editMode ? 'Save Changes' : 'Enter the Network'}
           onPress={onComplete}
           loading={saving}
         />
@@ -705,6 +717,7 @@ export default function CompletionFlowOverlay({
   currentRole,
   onComplete,
   onSkip,
+  skipIntro = false,
 }: Props) {
   // Slide-up entrance — card springs from below on first mount so the
   // flow feels like an arrival rather than a snap.
@@ -720,7 +733,8 @@ export default function CompletionFlowOverlay({
   }, []);
 
   // -1 = Intro, 0 = Review, 1 = Enrichment, 2 = Visibility
-  const [step, setStep] = useState<-1 | 0 | 1 | 2>(-1);
+  // skipIntro=true (Edit Profile path) starts at 0 to bypass the welcome copy.
+  const [step, setStep] = useState<-1 | 0 | 1 | 2>(skipIntro ? 0 : -1);
 
   // Loaded data from get_church_profile on mount
   const [loadedProfile, setLoadedProfile] = useState<CompletionProfile | null>(null);
@@ -768,9 +782,17 @@ export default function CompletionFlowOverlay({
     setLoadedProfile(p);
     setLoadedName(p.name ?? '');
 
-    // AC 2: second-leader path — profile complete, done by someone else
-    if (p.profile_completion_done && p.profile_completion_done_by !== currentUserId) {
-      setSecondLeaderMode(true);
+    // AC 2: second-leader path — profile complete, done by someone else.
+    const isSecondLeader =
+      p.profile_completion_done && p.profile_completion_done_by !== currentUserId;
+    setSecondLeaderMode(isSecondLeader);
+
+    // In setup mode (skipIntro=false) the second leader only ever sees the
+    // welcome intro, so there's no need to pre-fill the draft — short-circuit
+    // straight to the intro. In edit mode (skipIntro=true) the second leader
+    // is editing the real church record and MUST get pre-filled fields, so we
+    // fall through to the pre-fill below.
+    if (isSecondLeader && !skipIntro) {
       setStep(-1);
       setLoading(false);
       return;
@@ -791,11 +813,11 @@ export default function CompletionFlowOverlay({
       showContact: true,
     });
 
-    // Welcome is always the entry point
-    setStep(-1);
+    // Welcome is the entry point unless skipIntro (Edit Profile path).
+    setStep(skipIntro ? 0 : -1);
 
     setLoading(false);
-  }, [churchId, currentUserId, currentRole]);
+  }, [churchId, currentUserId, currentRole, skipIntro]);
 
   useEffect(() => {
     void loadProfile();
@@ -958,14 +980,19 @@ export default function CompletionFlowOverlay({
                 draft={draft}
                 loadedName={loadedName}
                 loadedRole={loadedRole}
+                editMode={skipIntro}
                 onNext={handleReviewContinue}
-                onBack={() => setStep(-1)}
+                // Setup mode: Back returns to the welcome intro (step -1).
+                // Edit mode: there is no intro to return to — Back dismisses
+                // the overlay via onSkip (host resets editProfileMode).
+                onBack={skipIntro ? handleSkip : () => setStep(-1)}
                 saving={saving}
                 onDraftChange={onDraftChange}
               />
             ) : step === 1 ? (
               <EnrichmentScreen
                 draft={draft}
+                editMode={skipIntro}
                 onNext={handleEnrichmentContinue}
                 onBack={() => setStep(0)}
                 saving={saving}
@@ -974,6 +1001,7 @@ export default function CompletionFlowOverlay({
             ) : (
               <VisibilityScreen
                 draft={draft}
+                editMode={skipIntro}
                 onComplete={handleComplete}
                 onBack={() => setStep(1)}
                 saving={saving}

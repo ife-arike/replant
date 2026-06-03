@@ -48,8 +48,9 @@
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Line } from 'react-native-svg';
 import Mapbox, {
   Atmosphere,
   Camera,
@@ -561,10 +562,14 @@ export default function GlobeView({
         </Pressable>
       ) : null}
 
-      {/* Loading / error overlays — dim-only */}
+      {/* Loading / error overlays — dim-only, no expo-blur */}
       {loading ? (
         <View style={[styles.overlay, styles.overlayLoading]}>
-          <ActivityIndicator color={Colors.accent} />
+          <Svg width={28} height={28} viewBox="0 0 36 36" style={styles.overlayGlyph}>
+            <Line x1="18" y1="5"  x2="18" y2="31" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
+            <Line x1="9"  y1="15" x2="27" y2="15" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
+          </Svg>
+          <Text style={styles.overlayLoadingText}>Connecting to the network…</Text>
         </View>
       ) : null}
       {error ? (
@@ -613,7 +618,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(8, 8, 8, 0.55)',
     gap: 12,
   },
-  overlayLoading: {},
+  overlayLoading: { gap: 14 },
+  overlayGlyph: {},
+  overlayLoadingText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.7,
+    textTransform: 'uppercase',
+    color: Colors.accent,
+  },
   overlayError: { paddingHorizontal: 24 },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },

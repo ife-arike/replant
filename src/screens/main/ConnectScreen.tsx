@@ -181,7 +181,7 @@ function useCallerIdentity() {
       if (!authUid) return;
       const { data } = await supabase
         .from('users')
-        .select('id, church_id, churches:church_id(name, type)')
+        .select('id, church_id, churches!users_church_id_fkey(name, type)')
         .eq('auth_id', authUid)
         .maybeSingle() as any;
       if (cancelled || !data) return;

@@ -144,7 +144,7 @@ function leaderLineText(leaders: Leader[]): string {
   if (!leaders.length) return '';
   return leaders.slice(0, 2).map((l) => {
     const roleLabel = PRAYER_WALL_ROLE_LABELS[l.role as keyof typeof PRAYER_WALL_ROLE_LABELS] ?? 'Minister';
-    if (l.anon) return `${roleLabel} · Hidden`;
+    if (l.anon) return `A fellow ${roleLabel}`;
     const first = l.first_name?.trim();
     return first ? `${roleLabel} ${first}` : roleLabel;
   }).join(' · ');
@@ -954,15 +954,18 @@ export default function CamlView({
               />
             ))}
 
-            {/* Underground honor note */}
-            <View style={styles.undergroundNote}>
-              <Text style={styles.undergroundEyebrow}>UNDERGROUND · NOT PICTURED</Text>
-              <Text style={styles.undergroundBody}>
-                Some churches gather in places we cannot show on a map.{'\n'}
-                You are part of their covering.
-              </Text>
-              {/* TODO(DBA): live underground count by region */}
-            </View>
+            {/* Underground honor note — only once data has settled so it
+                doesn't surface alone while the nearby list is loading. */}
+            {data !== null ? (
+              <View style={styles.undergroundNote}>
+                <Text style={styles.undergroundEyebrow}>UNDERGROUND · NOT PICTURED</Text>
+                <Text style={styles.undergroundBody}>
+                  Some churches gather in places we cannot show on a map.{'\n'}
+                  You are part of their covering.
+                </Text>
+                {/* TODO(DBA): live underground count by region */}
+              </View>
+            ) : null}
           </ScrollView>
         </Animated.View>
       ) : null}

@@ -64,9 +64,12 @@ async function fetchViewerContext(): Promise<ViewerContext> {
   if (!authId) return { ownChurchId: null, viewerCountry: null };
 
   // Single round-trip: own users row + joined church.country.
+  // FK hint required: churches.profile_completion_done_by (KAN-213) adds a
+  // second FK between users and churches — PostgREST needs the constraint
+  // name to disambiguate, otherwise the embed returns a 400 error.
   const { data, error } = await supabase
     .from('users')
-    .select('church_id, churches:church_id (country)')
+    .select('church_id, churches!users_church_id_fkey ( country )')
     .eq('auth_id', authId)
     .single();
 

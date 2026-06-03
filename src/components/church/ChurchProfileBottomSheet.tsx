@@ -167,6 +167,7 @@ export default function ChurchProfileBottomSheet({
   const [saved, setSaved] = useState(false);
   const [prayed, setPrayed] = useState(false);
   const [contactVisible, setContactVisible] = useState(false); // My Church toggle mirror
+  const [showContactConfirm, setShowContactConfirm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
@@ -297,23 +298,11 @@ export default function ChurchProfileBottomSheet({
   };
 
   const handleToggleVisibility = () => {
-    // My Church visibility toggle — confirmation then stub.
+    // My Church visibility toggle — show styled inline confirmation when
+    // turning ON; turning OFF is silent (reversible, lower stakes).
     const turningOn = !contactVisible;
     if (turningOn) {
-      Alert.alert(
-        'Show contact on profile',
-        'Other leaders will be able to see your email and address. You can change this at any time.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm',
-            onPress: () => {
-              setContactVisible(true);
-              // TODO(KAN-209): persist show_contact_on_profile via RPC/update.
-            },
-          },
-        ],
-      );
+      setShowContactConfirm(true);
     } else {
       setContactVisible(false);
       // TODO(KAN-209): persist show_contact_on_profile = false.
@@ -550,6 +539,46 @@ export default function ChurchProfileBottomSheet({
                 )}
               </View>
             </>
+          ) : null}
+
+          {/* Contact-visibility confirmation — styled inline overlay,
+              replaces native Alert.alert so it inherits the app's
+              dark aesthetic. Only appears when turning contact ON
+              (turning OFF is silent — reversible, lower stakes). */}
+          {showContactConfirm ? (
+            <Pressable
+              style={styles.confirmBackdrop}
+              onPress={() => setShowContactConfirm(false)}
+              accessibilityLabel="Dismiss"
+            >
+              <Pressable style={styles.confirmCard} onPress={() => {}}>
+                <Text style={styles.confirmTitle}>Show contact on profile?</Text>
+                <Text style={styles.confirmBody}>
+                  Other verified leaders will be able to see your email and address.
+                  You can turn this off at any time.
+                </Text>
+                <View style={styles.confirmActions}>
+                  <Pressable
+                    style={[styles.btn, styles.btnGhost, { flex: 1 }]}
+                    onPress={() => setShowContactConfirm(false)}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.btnGhostText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.btn, styles.btnPrimary, { flex: 1 }]}
+                    onPress={() => {
+                      setShowContactConfirm(false);
+                      setContactVisible(true);
+                      // TODO(KAN-209): persist show_contact_on_profile via RPC/update.
+                    }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.btnPrimaryText}>Confirm</Text>
+                  </Pressable>
+                </View>
+              </Pressable>
+            </Pressable>
           ) : null}
 
           {/* Toast */}
@@ -999,6 +1028,41 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
+  },
+
+  // Contact confirmation overlay
+  confirmBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8,8,8,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    zIndex: 10,
+  },
+  confirmCard: {
+    width: '100%',
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    padding: 22,
+  },
+  confirmTitle: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 15,
+    color: Colors.text,
+    marginBottom: 10,
+  },
+  confirmBody: {
+    fontFamily: Typography.body,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: Colors.textMuted,
+    marginBottom: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
 
   // Toast

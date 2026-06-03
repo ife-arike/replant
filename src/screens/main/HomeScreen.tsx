@@ -27,9 +27,13 @@ import HomeTopBar from '../../components/home/HomeTopBar';
 import HomeSectionLabel from '../../components/home/HomeSectionLabel';
 import VerificationBanner from '../../components/home/VerificationBanner';
 import { NotificationToast, type ToastType } from '../../components/home/NotificationToast';
+import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 
 export default function HomeScreen() {
   const { branch } = useAuth();
+  // Distinguish church-pending vs leader-pending so the right banner variant
+  // is shown. null while the check is in flight — defaults to 'church' variant.
+  const churchVerified = useChurchVerifiedStatus();
   // TODO: wire toast triggers from real events (verification approved, rejected, heartcry responded)
   const [toast, setToast] = useState<ToastType | null>(null);
   return (
@@ -51,7 +55,9 @@ export default function HomeScreen() {
         {/* KAN-35 — verification countdown banner. Pending leaders see
             Home with this banner instead of a separate placeholder
             screen (Founder ruling 2026-05-22). */}
-        {branch === 'pending' && <VerificationBanner />}
+        {branch === 'pending' && (
+          <VerificationBanner variant={churchVerified === true ? 'leader' : 'church'} />
+        )}
 
         <HomeSectionLabel>Today</HomeSectionLabel>
         <DailyScriptureStrip />

@@ -32,9 +32,12 @@ async function fetchViewerChurch(): Promise<ViewerChurch | null> {
   const authId = sessionData?.session?.user?.id;
   if (!authId) return null;
 
+  // FK hint required: churches.profile_completion_done_by (KAN-213) creates
+  // a second FK between users and churches, so PostgREST needs explicit
+  // disambiguation via the constraint name.
   const { data, error } = await supabase
     .from('users')
-    .select('churches:church_id (name, type)')
+    .select('churches!users_church_id_fkey ( name, type )')
     .eq('auth_id', authId)
     .single();
 
