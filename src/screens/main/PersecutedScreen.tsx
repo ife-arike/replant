@@ -98,7 +98,7 @@ const THRESHOLD_BODY =
 
 const ACTION_PROMPT = 'Are you currently suffering persecution for the name of Jesus?';
 const ACTION_SUB =
-  'Your account is verified and your identity is held. This is a safe space for your voice.';
+  'Heartcries shared to Replant are encrypted and your identity is held. This is a safe space for your voice.';
 const ACTION_CTA = 'SHARE MY HEARTCRY';
 
 const EMPTY_TITLE = 'Quiet here, for now.';
@@ -305,9 +305,9 @@ export default function PersecutedScreen() {
 function NavBar({ onHamburger }: { onHamburger: () => void }) {
   return (
     <View style={styles.header}>
-      {/* Row 1 — eyebrow label + hamburger */}
+      {/* Row 1 — hamburger only (eyebrow removed per Founder ruling 2026-06-05) */}
       <View style={styles.headerEyebrowRow}>
-        <Text style={styles.headerEyebrow}>TAB 3 · SET APART</Text>
+        <View />
         <Pressable
           onPress={onHamburger}
           accessibilityRole="button"
@@ -637,14 +637,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   thresholdBody: {
-    // KAN-65 R2 — size bump 15 → 17; lineHeight 23 → 26 (same ~1.53
-    // ratio); letterSpacing 0.15 → 0.17 (same 0.01em rule). The body
-    // needs to land like a hand on the shoulder, not a footnote.
+    // KAN-65 R2 — size bump 15 → 17. R3 (2026-06-05) Founder requested
+    // +1 increment: 17 → 18, lineHeight 26 → 28 (~1.55 ratio), letterSpacing 0.18.
     fontFamily: Typography.scriptureItalic,
-    fontSize: 17,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 28,
     color: CREAM,
-    letterSpacing: 0.17,
+    letterSpacing: 0.18,
   },
   thresholdMeta: {
     flexDirection: 'row',
