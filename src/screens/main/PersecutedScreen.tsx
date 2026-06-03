@@ -239,6 +239,11 @@ export default function PersecutedScreen() {
   // ── Verified surface ───────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
+      {/* Left-edge red accent line — design spec (2026-06-03) */}
+      <View
+        pointerEvents="none"
+        style={styles.leftEdgeAccent}
+      />
       <NavBar onHamburger={openHamburger} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <ThresholdPreamble />
@@ -292,15 +297,17 @@ export default function PersecutedScreen() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// NavBar — identical to v1, kept verbatim so the chrome stays stable
-// across the verified / gated / loading branches.
+// NavBar — visual-polish pass (2026-06-03).
+// Three-row structure: eyebrow + hamburger / title / subtitle + hairline.
+// Shared across verified, gated, and loading branches.
 // ─────────────────────────────────────────────────────────────────────
 
 function NavBar({ onHamburger }: { onHamburger: () => void }) {
   return (
-    <>
-      <View style={styles.navBar}>
-        <Text style={styles.navTitle}>The Persecuted Church</Text>
+    <View style={styles.header}>
+      {/* Row 1 — eyebrow label + hamburger */}
+      <View style={styles.headerEyebrowRow}>
+        <Text style={styles.headerEyebrow}>TAB 3 · SET APART</Text>
         <Pressable
           onPress={onHamburger}
           accessibilityRole="button"
@@ -314,8 +321,18 @@ function NavBar({ onHamburger }: { onHamburger: () => void }) {
           <View style={styles.hamburgerBar} />
         </Pressable>
       </View>
-      <View style={styles.navHairline} />
-    </>
+
+      {/* Row 2 — screen title */}
+      <Text style={styles.headerTitle}>The Persecuted Church</Text>
+
+      {/* Row 3 — security subtitle */}
+      <Text style={styles.headerSubtitle}>
+        ENCRYPTED · ANONYMOUS · WITHIN THE NETWORK
+      </Text>
+
+      {/* Hairline — red-mid, 0.5px */}
+      <View style={styles.headerHairline} />
+    </View>
   );
 }
 
@@ -518,27 +535,56 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
   gateRoot: { flex: 1, backgroundColor: '#080808' },
 
-  // NavBar
-  navBar: {
-    // Unified top-bar metrics with Home (2026-06-01).
+  // Left-edge red accent (verified surface only)
+  leftEdgeAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 1.5,
+    backgroundColor: Colors.red,
+    opacity: 0.25,
+    zIndex: 1,
+  },
+
+  // NavBar — visual-polish pass (2026-06-03).
+  // Three-row structure: eyebrow + hamburger / title / subtitle + hairline.
+  header: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 16 },
+  headerEyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 18,
+    marginBottom: 10,
   },
-  navHairline: { height: StyleSheet.hairlineWidth, backgroundColor: FAINT },
-  navTitle: {
-    // Unified wordmark with Home (2026-06-01): Cormorant 400 Regular, 26pt.
-    // Red stays — intentional for the Persecuted tab. No Rp mark (Home only).
+  headerEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 2.16, // 0.24em × 9
+    textTransform: 'uppercase',
+    color: 'rgba(240,237,230,0.32)',
+  },
+  hamburger: { gap: 4, alignItems: 'flex-end' },
+  hamburgerBar: { width: 22, height: 2, backgroundColor: Colors.text, borderRadius: 1 },
+  headerTitle: {
+    // Cormorant Garamond Regular, 26pt, red — visual anchor for the tab.
     fontFamily: Typography.displayRegular,
     fontSize: 26,
     letterSpacing: 0.4,
     color: Colors.red,
   },
-  hamburger: { gap: 4, alignItems: 'flex-end' },
-  hamburgerBar: { width: 22, height: 2, backgroundColor: Colors.text, borderRadius: 1 },
+  headerSubtitle: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.9, // 0.20em × 9.5
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginTop: 6,
+  },
+  headerHairline: {
+    height: 0.5,
+    backgroundColor: 'rgba(217,89,79,0.30)',
+    marginTop: 14,
+  },
 
   // Screen 14B gate
   gateBody: { flex: 1, alignItems: 'center', paddingHorizontal: 28 },
