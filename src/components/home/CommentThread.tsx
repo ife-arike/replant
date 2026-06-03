@@ -33,16 +33,19 @@ import { ROLE_DISPLAY } from './NetworkFeedLogic';
 import { Chevron, LockIcon } from './HomeIcons';
 
 // Display shape for one comment row. Mirrors the get_comments RPC return
-// (id, body, created_at, is_masked, masked_region, full_name, church_name,
-// role) — author_id is NEVER part of this shape (the RPC does not return
-// it). `role` is the raw users.role enum value for non-masked rows and is
-// humanised into a title prefix via ROLE_DISPLAY; it is null for masked
-// rows (the RPC never leaks a role for a held identity).
+// (id, body, created_at, is_masked, mask_reason, masked_region, full_name,
+// church_name, role) — author_id is NEVER part of this shape (the RPC
+// does not return it). `role` is the raw users.role enum value; it is
+// present for all mask_reason values (the RPC returns role even for masked
+// rows to allow humanised "A fellow [role]" display). `mask_reason` drives
+// all masking decisions client-side; `is_masked` is retained for any
+// legacy consumers but `mask_reason` is the canonical discriminant.
 export type Comment = {
   id: string;
   body: string;
   created_at: string;
   is_masked: boolean;
+  mask_reason: 'none' | 'anon' | 'underground' | 'no_church';
   masked_region: string | null;
   author_name: string | null;  // matches get_comments RPC column name
   church_name: string | null;
@@ -54,6 +57,7 @@ type RpcCommentRow = {
   body: string;
   created_at: string;
   is_masked: boolean;
+  mask_reason: 'none' | 'anon' | 'underground' | 'no_church';
   masked_region: string | null;
   author_name: string | null;  // RPC returns author_name, not full_name
   church_name: string | null;
@@ -61,19 +65,26 @@ type RpcCommentRow = {
 };
 
 const MASKED_NAME = 'A leader in the network';
-const MASKED_FALLBACK = 'region held';
 
 // Resolve the rendered author name for a comment row.
-// Masked rows → the held-identity constant (never a name).
-// Otherwise → "{RoleDisplay} {firstName}" (e.g. "Minister Ruth"). A first
-// name is required — without one we fall back to the masked constant
-// rather than surface a bare title (masking is the safe default).
+//
+// mask_reason === 'none'  → "{RoleDisplay} {firstName}" (e.g. "Minister Ruth").
+//                           A first name is required — without one we fall back
+//                           to the masked constant (masking is the safe default).
+// mask_reason === 'anon' or 'underground' with a role → "A fellow {role}"
+//                           (lowercase role, e.g. "A fellow minister").
+// No role or 'no_church'  → MASKED_NAME constant.
 function displayName(c: Comment): string {
-  if (c.is_masked) return MASKED_NAME;
-  const first = c.author_name?.split(' ')[0] ?? '';
-  if (!first) return MASKED_NAME;
-  const title = c.role ? (ROLE_DISPLAY[c.role] ?? '') : '';
-  return [title, first].filter(Boolean).join(' ');
+  if (c.mask_reason === 'none') {
+    const first = c.author_name?.split(' ')[0] ?? '';
+    if (!first) return MASKED_NAME;
+    const title = c.role ? (ROLE_DISPLAY[c.role] ?? '') : '';
+    return [title, first].filter(Boolean).join(' ');
+  }
+  if (c.role) {
+    return 'A fellow ' + (ROLE_DISPLAY[c.role] ?? 'leader').toLowerCase();
+  }
+  return MASKED_NAME;
 }
 
 // Local relative-time — light-touch, mirrors the feed's register. Kept
@@ -217,14 +228,23 @@ export function CommentThread({
         <View style={s.list}>
           {comments.map((c) => {
             const name = displayName(c);
-            const church = c.is_masked
-              ? c.masked_region ?? MASKED_FALLBACK
-              : c.church_name ?? '';
+            // church_name is non-null for anon rows (RPC masking contract);
+            // masked_region carries the region label for underground rows.
+            // This single expression covers all four mask_reason values.
+            const church = c.church_name ?? c.masked_region ?? '';
+            // Avatar shape + content:
+            //   none       → square container, real name initial
+            //   anon       → square container (same style, no avRound), "A"
+            //   underground / no_church → round container (avRound), LockIcon
+            const isRound =
+              c.mask_reason === 'underground' || c.mask_reason === 'no_church';
             return (
               <View key={c.id} style={s.row}>
-                <View style={[s.av, c.is_masked && s.avRound]}>
-                  {c.is_masked ? (
+                <View style={[s.av, isRound && s.avRound]}>
+                  {isRound ? (
                     <LockIcon />
+                  ) : c.mask_reason === 'anon' ? (
+                    <Text style={s.avInitial}>A</Text>
                   ) : (
                     <Text style={s.avInitial}>{initialOf(c.author_name)}</Text>
                   )}
