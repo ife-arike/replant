@@ -104,6 +104,7 @@ export default function PrayerWallScreen() {
   const [view, setView] = useState<PrayerWallView>('landing');
 
   // Church context for PostPrayerRequestModal — fetched once when verified.
+  const [viewerChurchId, setViewerChurchId] = useState<string | null>(null);
   const [postChurchName, setPostChurchName] = useState<string | null>(null);
   const [postIsUnderground, setPostIsUnderground] = useState(false);
   const [postDefaultAnon, setPostDefaultAnon] = useState(false);
@@ -160,6 +161,67 @@ export default function PrayerWallScreen() {
     });
   }, []);
 
+  // ─── Open a prayer request from the journal ───────────────────────
+  // Standing-in-the-gap rows in the Intercession Journal carry only the
+  // request id. Fetch the full request, mask underground/anonymous fields
+  // the same way the RPC would, build a PrayerRow, and raise the detail
+  // sheet. i_prayed can't be derived from this fetch — we stand it in as
+  // false (the sheet is read-context here; toggling re-syncs via RPC).
+  const handleOpenPrayerRequest = useCallback(async (requestId: string) => {
+    const { data, error } = await supabase
+      .from('prayer_requests')
+      .select(`
+        id,
+        content,
+        category,
+        urgent,
+        created_at,
+        church_id,
+        anonymous,
+        prayed_count,
+        status,
+        is_active,
+        churches!prayer_requests_church_id_fkey (
+          name,
+          type,
+          country
+        ),
+        users!prayer_requests_user_id_fkey (
+          full_name,
+          role
+        )
+      `)
+      .eq('id', requestId)
+      .single();
+
+    if (error || !data) return;
+
+    const church = Array.isArray(data.churches) ? data.churches[0] : data.churches;
+    const user = Array.isArray(data.users) ? data.users[0] : data.users;
+    const isUnderground = church?.type === 'underground';
+    const isAnon = data.anonymous ?? false;
+
+    const row: PrayerRow = {
+      id: data.id,
+      church_name: isUnderground ? 'Underground Church' : (church?.name ?? 'Unknown Church'),
+      church_type: church?.type ?? 'standard',
+      country: isUnderground ? null : (church?.country ?? null),
+      category: data.category ?? null,
+      prayer_text: data.content,
+      urgency: data.urgent ?? false,
+      created_at: data.created_at,
+      church_id: data.church_id,
+      leader_display_name: isAnon ? null : (user?.full_name ?? null),
+      leader_role: isAnon ? null : (user?.role ?? null),
+      prayed_count: data.prayed_count ?? 0,
+      i_prayed: false, // unknown from this fetch; stand-in
+      status: data.status ?? 'open',
+      rag_status: null,
+    };
+
+    setDetailRow(row);
+  }, []);
+
   // ─── Church context for post modal ────────────────────────────────
   // Fetched once when the leader is verified. Mirrors PrayerWallLanding's
   // church_id lookup pattern (auth_id → users → churches).
@@ -176,6 +238,7 @@ export default function PrayerWallScreen() {
         .eq('auth_id', authId)
         .maybeSingle();
       if (cancelled || !userData?.church_id) return;
+      setViewerChurchId(userData.church_id);
       const { data: churchData } = await supabase
         .from('churches')
         .select('name, type')
@@ -358,6 +421,17 @@ export default function PrayerWallScreen() {
           onBack={() => setView('landing')}
           pendingChurch={pendingChurch}
           onNavigateToChurchTab={() => navigation.navigate('The Church')}
+          onOpenPrayerRequest={handleOpenPrayerRequest}
+        />
+        <PrayerWallDetailSheet
+          row={detailRow}
+          onDismiss={() => setDetailRow(null)}
+          viewerChurchId={viewerChurchId ?? undefined}
+          onPrayedChange={(id, iPrayed, prayedCount) => {
+            setDetailRow((prev) =>
+              prev?.id === id ? { ...prev, i_prayed: iPrayed, prayed_count: prayedCount } : prev,
+            );
+          }}
         />
       </SafeAreaView>
     );
@@ -456,6 +530,7 @@ export default function PrayerWallScreen() {
       <PrayerWallDetailSheet
         row={detailRow}
         onDismiss={() => setDetailRow(null)}
+        viewerChurchId={viewerChurchId ?? undefined}
         onPrayedChange={(id, iPrayed, prayedCount) => {
           setRows((prev) =>
             prev.map((r) =>

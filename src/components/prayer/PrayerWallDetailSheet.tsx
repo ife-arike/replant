@@ -67,6 +67,12 @@ interface Props {
    * (silent dismiss, no fire) — see hasPrayedStateChanged.
    */
   onPrayedChange?: (requestId: string, iPrayed: boolean, prayedCount: number) => void;
+  /**
+   * The viewer's own church_id. When the post's church_id matches this,
+   * "Connect to this church" is disabled (you can't connect to your own
+   * church) and the label reads "This is your church".
+   */
+  viewerChurchId?: string;
   now?: Date;
 }
 
@@ -76,7 +82,7 @@ const SHEET_HEIGHT = SCREEN_H * SHEET_MAX_RATIO;
 const ANIM_MS = 320;
 const SWIPE_DISMISS_THRESHOLD = 80;
 
-export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, now }: Props) {
+export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, viewerChurchId, now }: Props) {
   const reduced = useReducedMotion();
   const slideY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -239,7 +245,15 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
   const isAnonymous = row.leader_display_name === null;
   const leaderLine = formatLeaderLine(row.leader_role, row.leader_display_name, isAnonymous);
   const timestamp = formatRelativeTime(row.created_at, now);
-  const connectDisabled = isUnderground || isAnonymous;
+  // You can't connect to your own church — disable + relabel when the
+  // post's church_id matches the viewer's own church.
+  const isOwnChurch = viewerChurchId != null && row.church_id === viewerChurchId;
+  const connectDisabled = isUnderground || isAnonymous || isOwnChurch;
+  const connectLabel = isOwnChurch
+    ? 'This is your church'
+    : connectDisabled
+      ? 'Direct message unavailable'
+      : 'Connect to this church';
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -331,9 +345,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
           <Pressable
             onPress={connectDisabled ? undefined : handleConnect}
             accessibilityRole="button"
-            accessibilityLabel={
-              connectDisabled ? 'Direct message unavailable' : 'Connect to this church'
-            }
+            accessibilityLabel={connectLabel}
             accessibilityState={{ disabled: connectDisabled }}
             disabled={connectDisabled}
             style={({ pressed }) => [
@@ -348,9 +360,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
                 connectDisabled && styles.ctaSecondaryTextDisabled,
               ]}
             >
-              {connectDisabled
-                ? 'Anonymous · direct message unavailable'
-                : 'Connect to this church'}
+              {connectLabel}
             </Text>
           </Pressable>
         </View>

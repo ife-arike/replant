@@ -99,13 +99,14 @@ interface Props {
   onBack: () => void;
   pendingChurch?: string | null;
   onNavigateToChurchTab?: () => void;
+  onOpenPrayerRequest?: (requestId: string) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────
 
-export default function IntercessionJournalView({ onBack, pendingChurch, onNavigateToChurchTab }: Props) {
+export default function IntercessionJournalView({ onBack, pendingChurch, onNavigateToChurchTab, onOpenPrayerRequest }: Props) {
   const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<JournalTab>('churches');
   const [holds, setHolds] = useState<HoldRow[]>([]);
@@ -243,10 +244,7 @@ export default function IntercessionJournalView({ onBack, pendingChurch, onNavig
             <StandingEntryRow
               entry={s}
               isLast={isLast}
-              onOpenRequest={() => {
-                // TODO: deep-link to the prayer request on the Prayer Wall.
-                // Full routing is a future ticket — no-op stub for now.
-              }}
+              onOpenRequest={() => onOpenPrayerRequest?.(s.prayer_request_id)}
             />
           );
         }}

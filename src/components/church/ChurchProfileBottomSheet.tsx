@@ -537,48 +537,36 @@ export default function ChurchProfileBottomSheet({
                 <View style={{ height: 12 }} />
               </ScrollView>
 
-              {/* ── Sticky action bar ──
-                  The primary slot renders in BOTH branches so a late-
-                  resolving isOwnChurch (async ownChurchId load) never
-                  swaps a live Connect button into the user's own church.
-                  Own church → Edit Profile. Other church → Connect (when
-                  isOwnChurch is briefly false, the worst case is a Connect
-                  that flips to a disabled "This is your church" label, no
-                  layout jump). Pray + Save stay visible in both cases
-                  (Founder ruling: Pray must remain on own church). */}
+              {/* ── Sticky action bar ── */}
               <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                 {isOwnChurch ? (
-                  <Pressable
-                    onPress={onEditProfile}
-                    style={[styles.btn, styles.btnPrimary, { flex: 2 }]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Edit church profile"
-                  >
-                    <Text style={styles.btnPrimaryText}>Edit Profile</Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    onPress={handleConnect}
-                    style={[styles.btn, styles.btnPrimary, { flex: 2 }]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Send connection request"
-                  >
-                    <Text style={styles.btnPrimaryText}>Connect</Text>
-                  </Pressable>
-                )}
-                {/* Pray + Save — always visible, even for own church. */}
-                <Pressable onPress={handlePray} style={[styles.btn, styles.btnGhost, { flex: 1 }]} accessibilityRole="button" accessibilityLabel="Add to intercession list">
-                  <View style={styles.prayInner}>
-                    <HeartIcon size={13} color={prayed ? Colors.red : Colors.accent} filled={prayed} />
-                    <Text style={styles.btnGhostText}>{prayed ? 'Praying' : 'Pray'}</Text>
-                  </View>
-                </Pressable>
-                <Pressable onPress={handleSave} style={[styles.btn, styles.btnIcon]} accessibilityRole="button" accessibilityLabel={saved ? 'Saved' : 'Save'}>
-                  <BookmarkIcon size={15} color={saved ? Colors.accent : Colors.textMuted} filled={saved} />
-                </Pressable>
-                {/* Share + Report — other churches only. */}
-                {!isOwnChurch ? (
                   <>
+                    <Pressable
+                      onPress={onEditProfile}
+                      style={[styles.btn, styles.btnPrimary, { flex: 2 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit church profile"
+                    >
+                      <Text style={styles.btnPrimaryText}>Edit Profile</Text>
+                    </Pressable>
+                    <Pressable onPress={onDismiss} style={[styles.btn, styles.btnGhost, { flex: 1 }]} accessibilityRole="button">
+                      <Text style={styles.btnGhostText}>Close</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Pressable onPress={handleConnect} style={[styles.btn, styles.btnPrimary, { flex: 2 }]} accessibilityRole="button" accessibilityLabel="Send connection request">
+                      <Text style={styles.btnPrimaryText}>Connect</Text>
+                    </Pressable>
+                    <Pressable onPress={handlePray} style={[styles.btn, styles.btnGhost, { flex: 1 }]} accessibilityRole="button" accessibilityLabel="Add to intercession list">
+                      <View style={styles.prayInner}>
+                        <HeartIcon size={13} color={prayed ? Colors.red : Colors.accent} filled={prayed} />
+                        <Text style={styles.btnGhostText}>{prayed ? 'Praying' : 'Pray'}</Text>
+                      </View>
+                    </Pressable>
+                    <Pressable onPress={handleSave} style={[styles.btn, styles.btnIcon]} accessibilityRole="button" accessibilityLabel={saved ? 'Saved' : 'Save'}>
+                      <BookmarkIcon size={15} color={saved ? Colors.accent : Colors.textMuted} filled={saved} />
+                    </Pressable>
                     <Pressable onPress={handleShare} style={[styles.btn, styles.btnIcon]} accessibilityRole="button" accessibilityLabel="Share">
                       <ShareIcon size={15} color={Colors.textMuted} />
                     </Pressable>
@@ -586,13 +574,7 @@ export default function ChurchProfileBottomSheet({
                       <FlagIcon size={15} color={Colors.textMuted} />
                     </Pressable>
                   </>
-                ) : null}
-                {/* Close — own church only. */}
-                {isOwnChurch ? (
-                  <Pressable onPress={onDismiss} style={[styles.btn, styles.btnGhost, { flex: 1 }]} accessibilityRole="button">
-                    <Text style={styles.btnGhostText}>Close</Text>
-                  </Pressable>
-                ) : null}
+                )}
               </View>
             </>
           ) : null}
