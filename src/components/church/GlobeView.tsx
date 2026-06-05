@@ -189,6 +189,12 @@ export default function GlobeView({
   const dotPressedRef = useRef(false);
   // Touch start position — used to distinguish a tap (small delta) from a drag.
   const touchStartCoordRef = useRef<{ x: number; y: number } | null>(null);
+  // KAN-223 race fix (2026-06-05): defer onPickRegion by 250ms so the Mapbox
+  // feature-press (handleSourcePress) — which fires AFTER RN's handleTouchEnd
+  // — has a window to set dotPressedRef and cancel this pending region open.
+  // Combined with the zoom gate, this prevents a pin tap at INITIAL_ZOOM from
+  // also opening the regional panel under the church sheet.
+  const pendingRegionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // KAN-223: Internal faced-region handler. Sets pill state AND forwards to
   // the optional host prop. Guards on key change (facedKeyRef).
@@ -274,6 +280,7 @@ export default function GlobeView({
 
   useEffect(() => () => {
     clearResumeCycle();
+    if (pendingRegionRef.current) clearTimeout(pendingRegionRef.current);
   }, [clearResumeCycle]);
 
   // ── Touch + Mapbox events ──
@@ -322,7 +329,14 @@ export default function GlobeView({
         const dy = Math.abs(e.nativeEvent.locationY - start.y);
         if (dx < 12 && dy < 12) {
           const faced = facedRegionForCenter(currentLngRef.current, currentLatRef.current);
-          onPickRegion?.(faced);
+          // 250ms defer (2026-06-05): handleSourcePress fires after this
+          // handler; if a dot was hit it cancels this timer (see below), so
+          // a pin tap opens ONLY the church sheet. 100ms was too short and
+          // raced unreliably.
+          pendingRegionRef.current = setTimeout(() => {
+            pendingRegionRef.current = null;
+            onPickRegion?.(faced);
+          }, 250);
         }
       }
       dotPressedRef.current = false;
@@ -425,6 +439,12 @@ export default function GlobeView({
       // a pin tap also opening the regional panel; dotPressedRef remains
       // the same-zoom-level body-vs-dot disambiguator.
       dotPressedRef.current = true;
+      // Cancel any deferred region open queued by handleTouchEnd — a dot was
+      // pressed, so the church sheet wins and the regional panel must NOT open.
+      if (pendingRegionRef.current) {
+        clearTimeout(pendingRegionRef.current);
+        pendingRegionRef.current = null;
+      }
       onChurchSelect(props.id);
     }
   }, [onChurchSelect, reduced]);
