@@ -193,7 +193,7 @@ function ThreadRow({
             updated "Replant · admin-monitored" label (Fix 3b in
             DMThreadView). */}
         {!thread.isSecure && (
-          <Text style={styles.church} numberOfLines={1}>{thread.churchLabel}</Text>
+          <Text style={styles.church} numberOfLines={2}>{thread.churchLabel}</Text>
         )}
         <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
           {thread.preview || ' '}

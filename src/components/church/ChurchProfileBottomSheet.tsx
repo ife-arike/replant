@@ -380,7 +380,7 @@ export default function ChurchProfileBottomSheet({
                   ) : null}
                 </View>
 
-                <Text style={styles.churchName}>{profile.name}</Text>
+                <Text style={styles.churchName} numberOfLines={2}>{profile.name}</Text>
 
                 {/* Leaders (hidden entirely when empty — e.g. pending) */}
                 {profile.leaders.length > 0 ? (

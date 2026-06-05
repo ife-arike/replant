@@ -197,6 +197,10 @@ export default function CamlView({
   const ring1Opacity = useRef(new Animated.Value(0.65)).current;
   const ring2Scale = useRef(new Animated.Value(1)).current;
   const ring2Opacity = useRef(new Animated.Value(0.65)).current;
+  const emptyRing1Opacity = useRef(new Animated.Value(0)).current;
+  const emptyRing1Scale   = useRef(new Animated.Value(1)).current;
+  const emptyRing2Opacity = useRef(new Animated.Value(0)).current;
+  const emptyRing2Scale   = useRef(new Animated.Value(1)).current;
 
   const [viewerCoord, setViewerCoord] = useState<[number, number] | null>(null);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -300,6 +304,64 @@ export default function CamlView({
       loop2.stop();
     };
   }, [reduced, ring1Scale, ring1Opacity, ring2Scale, ring2Opacity]);
+
+  // showEmpty hoisted above the empty-ring pulse effect so the effect's
+  // deps array can reference it without a temporal-dead-zone error (the
+  // render-body declaration lives further down, after the locationDenied
+  // early-return, and would not yet be initialized when this deps array
+  // evaluates). The render body reuses this same const. Depends only on
+  // viewerCoord + data, both declared above.
+  const showEmpty = !!viewerCoord && data !== null && data.caller_verified &&
+    data.churches.filter((c) => !c.is_own).length === 0;
+
+  useEffect(() => {
+    if (reduced || !showEmpty) return;
+
+    const makePulse = (opRef: Animated.Value, scaleRef: Animated.Value) =>
+      Animated.loop(
+        Animated.sequence([
+          // Instant reset to start position — fixes loop not resetting Animated.Value between iterations
+          Animated.parallel([
+            Animated.timing(opRef,    { toValue: 1,   duration: 0, useNativeDriver: true }),
+            Animated.timing(scaleRef, { toValue: 0.2, duration: 0, useNativeDriver: true }),
+          ]),
+          // Animate outward
+          Animated.parallel([
+            Animated.timing(opRef,    { toValue: 0,   duration: 2000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(scaleRef, { toValue: 2.4, duration: 2000, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          ]),
+          // Pause before next pulse
+          Animated.delay(2000),
+        ]),
+      );
+
+    emptyRing1Opacity.setValue(1);
+    emptyRing1Scale.setValue(0.2);
+    emptyRing2Opacity.setValue(0);
+    emptyRing2Scale.setValue(0.2);
+
+    const a1 = makePulse(emptyRing1Opacity, emptyRing1Scale);
+    let a2: Animated.CompositeAnimation | null = null;
+    a1.start();
+
+    // Ring 2 starts when ring 1 finishes its first pulse — clean alternating signal
+    const timer = setTimeout(() => {
+      emptyRing2Opacity.setValue(1);
+      emptyRing2Scale.setValue(0.2);
+      a2 = makePulse(emptyRing2Opacity, emptyRing2Scale);
+      a2.start();
+    }, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      a1.stop();
+      a2?.stop();
+      emptyRing1Opacity.setValue(0);
+      emptyRing1Scale.setValue(0.2);
+      emptyRing2Opacity.setValue(0);
+      emptyRing2Scale.setValue(0.2);
+    };
+  }, [reduced, showEmpty, emptyRing1Opacity, emptyRing1Scale, emptyRing2Opacity, emptyRing2Scale]);
 
   // Bumps re-run the location useEffect after the leader returns from
   // Settings with a fresh permission grant. Without this, locationDenied
@@ -500,7 +562,7 @@ export default function CamlView({
   }), [churches, ragFilter]);
 
   const visibleListRows = useMemo(
-    () => churches.filter((c) => ragFilter[c.rag_status as Rag] !== false),
+    () => churches.filter((c) => !c.is_own && ragFilter[c.rag_status as Rag] !== false),
     [churches, ragFilter],
   );
 
@@ -598,7 +660,7 @@ export default function CamlView({
     typeof ownChurch.lat === 'number' && !isNaN(ownChurch.lat);
   const recenter = useCallback(() => {
     if (!ownChurch) return;
-    cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], 1000);
+    cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], (ownChurch.distance_km ?? 0) >= 80 ? 350 : 1000);
   }, [ownChurch]);
 
   // Tutorial pan-to-church — fires once per trigger increment. If
@@ -650,7 +712,10 @@ export default function CamlView({
   }
 
   const camlReady = !!viewerCoord;
-  const showEmpty = camlReady && data !== null && data.caller_verified && data.churches.length === 0;
+  // showEmpty (no non-own churches in results — own church is always
+  // injected by the edge fn) is computed + declared above, hoisted so the
+  // empty-ring pulse effect's deps array can reference it. Reused here.
+  const emptyIsAway = !ownChurch || (ownChurch.distance_km ?? 0) >= 80;
 
   return (
     <View
@@ -906,9 +971,9 @@ export default function CamlView({
                       ? 'NEARBY · LOADING'
                       : data.churches.length === 0
                         ? 'NO CHURCHES NEARBY'
-                        : data.expanded
-                          ? `SHOWING CHURCHES WITHIN 100 KM · ${data.churches.length} FOUND`
-                          : `${data.churches.length} CHURCHES NEAR YOU · SWIPE TO SEE MORE`}
+                        : data.expanded && visibleListRows.length > 0
+                          ? `SHOWING CHURCHES WITHIN 100 KM · ${visibleListRows.length} FOUND`
+                          : `${visibleListRows.length} CHURCHES NEAR YOU · SWIPE TO SEE MORE`}
               </Text>
             </View>
           </View>
@@ -921,19 +986,60 @@ export default function CamlView({
           >
             {showEmpty ? (
               <View style={styles.emptyPastoral}>
-                <View style={styles.emptyRing} />
-                <Text style={styles.emptyTitle}>You may be the first here.</Text>
-                <Text style={styles.emptyBody}>
-                  No other verified churches have joined Replant in your area yet.
-                  Others will come. Hold this ground. We will let you know the moment
-                  another leader is verified nearby.
-                </Text>
-                <View style={styles.scriptureBox}>
-                  <Text style={styles.scriptureText}>
-                    "Where two or three are gathered in My name, there am I in the midst of them."
-                  </Text>
-                  <Text style={styles.scriptureRef}>MATTHEW 18:20</Text>
+                <View style={styles.emptyRingWrap}>
+                  {!reduced ? (
+                    <>
+                      <Animated.View
+                        style={[styles.emptyRingPulse, { opacity: emptyRing1Opacity, transform: [{ scale: emptyRing1Scale }] }]}
+                        pointerEvents="none"
+                      />
+                      <Animated.View
+                        style={[styles.emptyRingPulse, { opacity: emptyRing2Opacity, transform: [{ scale: emptyRing2Scale }] }]}
+                        pointerEvents="none"
+                      />
+                    </>
+                  ) : null}
+                  <View style={styles.emptyRing} />
+                  <View style={styles.emptyLogoWrap}>
+                    <Svg width={22} height={21} viewBox="482 201 581 544">
+                      <Path
+                        fill={Colors.accent}
+                        d="M 727.50 224.51 C 732.42 223.82 737.39 223.97 742.35 223.21 Q 745.93 222.65 752.75 222.35 Q 774.24 221.41 794.64 223.22 Q 796.68 223.40 799.46 223.76 C 801.86 224.07 804.27 223.90 806.51 224.25 Q 829.32 227.88 835.88 229.63 Q 843.96 231.79 846.42 232.43 Q 852.00 233.89 856.88 235.47 Q 896.68 248.35 931.16 272.57 Q 951.36 286.75 967.19 302.79 Q 990.45 326.35 1007.25 354.73 Q 1032.23 396.94 1039.85 445.05 Q 1043.06 465.29 1042.89 487.09 Q 1042.84 493.60 1042.46 496.91 C 1041.92 501.62 1041.98 505.52 1041.48 510.01 Q 1038.38 537.81 1029.50 564.01 Q 1007.67 628.48 955.20 670.46 Q 952.46 672.65 946.32 677.06 Q 923.10 693.75 898.16 703.82 C 891.10 706.67 885.02 709.28 879.69 710.87 Q 876.51 711.82 862.23 715.95 Q 855.65 717.86 839.48 720.51 Q 824.39 722.98 813.25 723.78 Q 794.33 725.14 769.12 723.85 C 766.01 723.69 762.99 723.01 759.74 722.97 C 756.37 722.92 753.38 722.20 750.21 721.99 C 746.74 721.76 742.33 720.65 738.52 720.17 Q 737.39 720.03 732.57 719.33 Q 721.97 717.78 699.08 711.13 Q 681.78 706.11 667.63 699.61 Q 659.94 696.08 652.44 692.29 Q 595.63 663.58 555.30 613.22 Q 549.80 606.36 541.09 592.68 Q 513.97 550.10 506.45 500.05 Q 505.70 495.08 504.77 485.88 Q 504.11 479.28 503.92 471.61 Q 502.41 410.53 531.97 356.20 Q 546.31 329.85 566.24 308.24 Q 588.39 284.23 615.50 266.26 Q 649.66 243.62 688.92 232.65 Q 708.71 227.12 727.50 224.51 Z M 1030.93 465.85 Q 1031.05 497.05 1024.49 523.76 Q 1015.90 558.72 995.98 589.50 Q 990.46 598.03 983.19 607.43 Q 949.96 650.42 901.32 673.02 Q 874.08 685.68 837.70 693.16 Q 836.85 693.34 828.93 694.29 Q 825.57 694.69 820.13 695.35 Q 804.37 697.28 786.07 696.84 Q 783.01 696.77 782.61 696.59 A 0.32 0.32 0.0 0 1 782.58 696.03 Q 783.49 695.47 784.88 695.38 Q 794.86 694.75 803.26 693.48 Q 813.95 691.88 830.55 688.11 Q 874.58 678.12 913.24 654.24 Q 963.20 623.37 992.93 572.96 Q 1016.51 532.95 1020.91 487.50 Q 1022.25 473.61 1021.34 456.46 Q 1020.55 441.45 1016.90 425.69 Q 1000.48 354.76 948.65 305.16 Q 918.99 276.79 879.11 258.71 Q 874.54 256.64 866.38 253.53 Q 856.17 249.64 853.49 248.82 Q 829.48 241.42 805.19 238.32 C 801.46 237.85 798.71 238.06 795.42 237.56 Q 793.10 237.20 788.08 236.99 Q 769.76 236.24 751.63 237.07 Q 750.09 237.14 744.41 237.73 Q 740.08 238.18 737.20 238.50 Q 731.10 239.17 726.40 239.98 Q 654.98 252.35 600.91 300.92 Q 567.25 331.15 547.21 371.21 Q 532.44 400.73 527.97 432.76 Q 523.16 467.32 528.92 501.33 Q 534.73 535.62 551.23 566.14 Q 567.86 596.88 592.67 621.38 C 597.84 626.48 604.53 633.21 610.93 638.41 C 617.01 643.35 622.57 648.04 627.98 651.88 Q 653.83 670.24 681.86 682.08 Q 705.06 691.87 727.30 696.85 Q 741.90 700.12 754.70 701.56 Q 770.47 703.34 788.59 703.67 C 794.85 703.79 800.09 703.26 805.26 703.24 Q 811.14 703.21 817.70 702.27 C 821.63 701.71 829.88 701.04 835.10 700.19 Q 870.27 694.49 903.09 679.60 C 908.66 677.07 914.27 673.80 919.66 670.92 Q 925.90 667.59 931.72 663.79 Q 952.79 649.99 970.49 631.49 Q 985.30 616.01 996.14 599.66 Q 1014.60 571.84 1024.01 540.00 Q 1027.48 528.23 1030.02 511.76 Q 1033.50 489.17 1031.26 465.83 A 0.17 0.16 -48.1 0 0 1030.93 465.85 Z"
+                      />
+                      <Path
+                        fill={Colors.accent}
+                        d="M 891.92 519.04 Q 892.95 519.84 897.61 521.94 C 908.73 526.95 917.77 534.73 924.23 544.76 Q 928.98 552.12 930.36 561.89 C 930.50 562.87 930.88 563.82 930.49 564.95 A 0.34 0.34 0.0 0 1 929.88 565.01 C 926.57 559.33 923.39 553.64 918.92 548.62 Q 912.15 541.02 903.40 534.45 Q 895.93 528.83 885.39 524.31 Q 874.54 519.65 865.87 517.41 Q 858.00 515.38 842.76 512.16 Q 839.67 511.51 837.49 510.93 C 834.37 510.10 831.35 510.05 828.60 509.45 Q 816.94 506.92 805.63 503.86 Q 797.61 501.69 790.33 498.51 A 0.29 0.29 0.0 0 0 789.99 498.96 Q 793.70 503.75 799.00 508.23 Q 812.41 519.58 830.18 525.56 Q 842.48 529.70 863.91 535.57 Q 875.94 538.86 889.06 545.20 Q 906.64 553.69 918.55 569.21 C 924.11 576.45 927.99 584.73 929.15 593.82 C 929.88 599.49 930.79 604.85 928.86 609.77 A 0.31 0.31 0.0 0 1 928.26 609.70 C 926.47 597.54 922.06 586.74 913.87 577.37 Q 905.37 567.66 894.48 561.55 Q 878.13 552.40 863.58 548.49 Q 854.92 546.16 854.02 545.62 A 0.29 0.29 0.0 0 0 853.58 545.89 Q 853.59 546.04 856.30 549.73 C 862.79 558.58 864.10 570.27 862.14 581.15 Q 860.89 588.11 860.86 590.94 Q 860.74 602.80 869.05 611.90 Q 869.39 612.26 869.39 612.61 A 0.34 0.34 0.0 0 1 868.88 612.91 C 863.56 609.99 858.76 605.42 856.41 599.32 Q 853.68 592.19 853.16 586.80 C 852.28 577.69 855.08 566.77 849.91 558.12 Q 844.03 548.31 833.75 543.05 C 827.72 539.97 817.51 536.71 810.87 533.04 Q 795.55 524.56 783.77 510.83 C 782.96 509.89 782.49 508.48 781.33 507.75 A 0.27 0.27 0.0 0 0 780.92 508.00 C 781.44 513.99 780.94 520.47 779.98 527.22 Q 778.68 536.38 778.08 543.24 Q 775.97 567.61 791.53 585.91 Q 795.81 590.94 805.26 596.97 Q 811.54 600.97 820.91 606.82 Q 834.79 615.49 835.91 631.47 C 836.42 638.78 835.42 645.87 831.02 651.48 Q 830.32 652.36 829.35 652.87 A 0.27 0.26 -6.2 0 1 828.97 652.57 Q 830.89 645.83 831.11 642.67 C 832.31 624.68 818.68 616.07 804.99 609.00 A 0.57 0.57 0.0 0 0 804.16 609.47 L 803.75 616.40 A 1.78 1.64 56.6 0 1 803.69 616.77 C 801.76 624.27 798.87 630.56 795.23 638.67 Q 792.84 644.00 791.87 647.69 Q 789.16 657.87 790.40 668.51 C 790.72 671.29 792.11 674.44 792.52 676.74 A 0.20 0.19 17.0 0 1 792.19 676.91 Q 787.48 672.56 786.61 668.60 Q 785.81 664.94 784.94 661.23 Q 784.20 658.11 784.14 653.74 Q 784.01 644.61 786.25 638.23 Q 792.09 621.65 792.76 619.53 C 794.46 614.11 795.14 605.42 790.81 600.94 C 786.15 596.12 780.64 591.42 776.46 585.66 Q 765.94 571.16 764.30 552.83 A 0.19 0.19 0.0 0 0 763.96 552.74 Q 756.40 563.25 750.71 572.70 Q 743.72 584.29 743.36 597.36 C 743.27 600.70 742.69 604.75 743.52 608.15 C 744.05 610.30 743.79 612.50 744.22 614.55 Q 745.02 618.46 747.36 626.44 Q 750.90 638.46 761.78 650.63 A 0.28 0.27 66.9 0 1 761.60 651.09 Q 760.63 651.17 759.31 650.43 Q 740.68 640.05 734.69 619.31 Q 733.73 616.00 732.08 607.51 Q 731.97 606.94 732.14 606.07 Q 732.27 605.42 732.19 605.13 A 0.39 0.39 0.0 0 0 731.53 604.95 Q 718.20 618.64 699.29 621.52 Q 694.41 622.26 690.70 621.93 A 0.43 0.43 0.0 0 1 690.59 621.10 C 708.52 614.56 725.88 600.95 732.35 582.87 Q 737.63 568.10 742.46 560.98 Q 747.77 553.15 754.30 542.07 C 756.77 537.88 758.69 532.39 760.23 528.49 Q 764.13 518.62 764.41 507.73 A 0.43 0.43 0.0 0 0 763.64 507.45 Q 750.30 524.40 729.87 533.86 Q 720.26 538.30 713.63 540.33 Q 708.85 541.79 705.45 543.53 C 698.92 546.87 696.68 553.09 695.06 560.51 Q 694.79 561.72 694.86 568.50 Q 694.88 570.61 695.55 576.47 Q 695.94 579.92 696.23 585.51 C 696.53 591.39 695.30 601.07 690.46 604.95 A 0.38 0.38 0.0 0 1 689.86 604.56 Q 692.25 595.14 690.72 586.42 Q 690.28 583.89 688.06 577.07 C 684.96 567.58 684.54 555.23 690.16 546.52 A 0.45 0.45 0.0 0 0 689.70 545.83 C 684.84 546.70 680.21 549.49 676.80 550.81 Q 660.10 557.26 646.94 569.96 Q 639.41 577.22 634.99 585.95 Q 630.33 595.14 629.90 604.68 A 0.31 0.31 0.0 0 1 629.41 604.92 C 627.22 603.29 627.08 597.06 627.28 594.49 Q 628.67 577.29 639.90 563.85 Q 645.95 556.63 653.55 551.06 Q 669.54 539.36 687.30 534.40 Q 689.16 533.88 689.36 533.81 Q 696.36 531.45 703.66 529.29 Q 711.80 526.88 717.75 524.24 Q 729.02 519.25 734.83 515.57 Q 740.86 511.76 751.01 502.13 A 3.75 3.60 -7.0 0 0 751.67 501.32 Q 752.33 500.24 754.05 498.27 A 0.34 0.34 0.0 0 0 753.67 497.73 C 749.41 499.48 742.17 502.49 735.91 504.31 Q 722.90 508.07 720.44 508.67 Q 708.72 511.50 691.51 514.30 Q 689.28 514.66 687.32 514.86 A 2.02 0.02 -6.3 0 0 685.59 515.07 Q 665.07 520.13 660.96 521.47 Q 645.09 526.66 631.11 536.02 C 621.71 542.31 614.63 549.61 608.49 558.99 Q 604.90 564.48 603.46 569.67 Q 602.04 574.81 600.41 578.69 A 0.58 0.58 0.0 0 1 599.29 578.50 Q 598.41 563.20 605.27 550.56 Q 606.45 548.39 610.78 542.44 Q 613.38 538.87 617.40 535.21 Q 628.00 525.57 639.92 520.74 A 0.37 0.36 37.1 0 0 639.82 520.04 Q 637.48 519.80 634.28 520.61 A 3.72 3.20 -49.4 0 1 633.76 520.69 L 607.27 522.83 A 1.22 1.21 -80.5 0 0 606.26 523.56 C 603.20 530.77 599.07 535.90 590.48 536.18 Q 581.75 536.46 576.30 530.77 C 567.50 521.58 570.70 506.55 582.87 502.30 Q 592.17 499.06 599.81 504.53 Q 603.95 507.49 606.44 514.58 A 0.90 0.88 5.4 0 0 606.82 515.03 Q 607.15 515.21 607.65 514.84 Q 607.87 514.68 608.38 514.63 C 613.00 514.17 616.50 514.04 621.80 513.16 Q 628.54 512.04 634.93 510.98 Q 644.18 509.45 648.03 508.68 C 666.70 504.98 678.64 502.61 694.79 500.21 Q 703.27 498.95 712.28 497.11 C 725.59 494.39 732.88 492.52 742.14 488.13 A 8.45 7.98 12.9 0 0 743.62 487.26 L 749.52 482.89 A 7.31 7.31 0.0 0 0 751.02 481.39 Q 755.24 475.80 755.89 474.37 Q 760.39 464.47 760.82 454.52 Q 761.67 435.09 755.00 416.48 C 753.12 411.22 748.79 410.79 743.16 411.10 Q 725.98 412.02 707.29 406.18 Q 701.21 404.28 696.72 402.04 Q 655.18 381.31 647.77 334.57 A 1.26 1.26 0.0 0 1 648.86 333.13 C 650.54 332.92 652.81 332.16 654.23 332.14 C 659.03 332.10 663.56 331.06 668.61 331.06 Q 685.18 331.05 688.50 331.32 Q 700.47 332.28 712.21 335.08 C 719.42 336.80 725.65 339.78 732.52 343.03 Q 736.26 344.79 739.57 347.02 Q 749.65 353.79 756.50 363.71 Q 764.26 374.94 766.53 387.20 Q 767.37 391.76 768.36 397.81 C 769.08 402.24 769.03 408.52 768.94 411.69 A 0.64 0.63 39.0 0 1 767.69 411.82 Q 765.89 404.69 761.60 398.62 C 758.79 394.63 756.15 390.52 753.62 387.60 Q 736.53 367.86 711.89 359.54 Q 707.94 358.20 701.51 356.74 Q 696.16 355.53 690.95 354.16 A 0.39 0.39 0.0 0 0 690.48 354.41 L 690.47 354.43 A 0.43 0.43 0.0 0 0 690.69 354.96 Q 698.47 358.69 712.07 365.17 C 717.65 367.83 724.61 372.95 728.72 375.81 Q 743.46 386.05 753.14 402.12 Q 759.70 413.01 763.36 422.38 Q 765.90 428.90 767.46 436.79 Q 767.60 437.45 767.73 437.54 A 1.15 1.15 0.0 0 0 769.43 436.89 C 771.10 431.38 772.79 423.87 775.42 417.65 Q 781.80 402.52 790.91 391.63 Q 794.85 386.92 801.90 380.14 Q 807.69 374.56 814.12 370.00 Q 821.41 364.82 828.18 360.69 C 830.36 359.35 832.34 358.77 834.38 357.46 Q 840.98 353.20 848.70 349.59 A 0.36 0.36 0.0 0 0 848.84 349.05 L 848.67 348.83 A 0.23 0.22 64.9 0 0 848.44 348.74 Q 836.34 352.00 831.78 353.55 Q 825.27 355.75 817.17 359.91 Q 808.82 364.20 796.50 374.33 C 792.47 377.65 789.47 381.58 785.01 386.51 Q 778.27 393.99 774.23 402.93 Q 774.06 403.32 772.62 404.65 A 0.32 0.32 0.0 0 1 772.11 404.55 Q 771.85 404.00 772.64 400.71 Q 772.83 399.88 773.16 397.26 C 775.64 377.41 785.16 360.14 801.57 348.40 Q 813.02 340.21 825.76 336.02 Q 837.35 332.21 850.08 330.39 Q 865.66 328.15 887.70 329.16 A 0.86 0.86 0.0 0 1 888.50 329.87 Q 888.60 330.44 888.30 331.16 Q 887.94 332.00 887.89 332.53 Q 886.73 343.83 884.04 355.01 Q 881.20 366.78 875.07 377.35 Q 859.78 403.70 830.89 414.63 Q 820.81 418.44 811.16 419.95 C 807.81 420.48 804.44 421.19 801.22 421.70 C 792.25 423.13 785.65 428.91 782.57 437.30 Q 779.66 445.20 779.33 455.76 C 778.84 471.58 786.06 484.50 800.92 490.59 Q 810.06 494.34 821.00 496.49 Q 832.36 498.71 845.54 500.91 C 846.97 501.15 848.78 501.03 850.37 501.39 Q 855.40 502.52 859.60 503.27 Q 867.45 504.67 868.87 504.97 Q 891.41 509.66 910.03 512.67 Q 920.55 514.38 929.60 515.19 A 0.86 0.86 0.0 0 0 930.48 514.65 L 932.31 510.09 A 2.35 2.01 -22.2 0 1 932.48 509.76 Q 938.31 500.83 948.35 501.28 C 968.13 502.15 970.09 530.35 951.62 535.89 Q 951.03 536.06 945.88 536.11 C 937.30 536.18 933.23 530.51 929.95 523.65 A 1.02 1.02 0.0 0 0 929.16 523.08 L 892.07 518.66 A 0.21 0.21 0.0 0 0 891.92 519.04 Z"
+                      />
+                    </Svg>
+                  </View>
                 </View>
+                {emptyIsAway ? (
+                  <>
+                    <Text style={styles.emptyTitle}>No Replant churches in this area yet.</Text>
+                    <Text style={styles.emptyBody}>
+                      Your church is registered elsewhere — this is unfamiliar ground for Replant. If you know any churches in this area, extend an invite on our behalf.
+                    </Text>
+                    <View style={styles.scriptureBox}>
+                      <Text style={styles.scriptureText}>
+                        {'"'}How beautiful on the mountains are the feet of those who bring good news.{'"'}
+                      </Text>
+                      <Text style={styles.scriptureRef}>ISAIAH 52:7</Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.emptyTitle}>You may be the first here.</Text>
+                    <Text style={styles.emptyBody}>
+                      No other verified churches have joined Replant in this area yet. Others will come. Hold this ground.{'\n\n'}If you know any churches nearby, please extend an invite on behalf of Replant.
+                    </Text>
+                    <View style={styles.scriptureBox}>
+                      <Text style={styles.scriptureText}>
+                        {'"'}You are the light of the world. A city set on a hill cannot be hidden.{'"'}
+                      </Text>
+                      <Text style={styles.scriptureRef}>MATTHEW 5:14</Text>
+                    </View>
+                  </>
+                )}
               </View>
             ) : null}
 
@@ -1350,10 +1456,26 @@ const styles = StyleSheet.create({
 
   // Empty pastoral
   emptyPastoral: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16, gap: 10 },
+  emptyRingWrap: {
+    width: 42, height: 42,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  emptyRingPulse: {
+    position: 'absolute',
+    width: 42, height: 42, borderRadius: 21,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.accent,
+  },
   emptyRing: {
     width: 42, height: 42, borderRadius: 21,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(107,181,232,0.35)',
+    borderWidth: 1, borderColor: 'rgba(107,181,232,0.55)',
     borderStyle: 'dashed',
+  },
+  emptyLogoWrap: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     fontFamily: Typography.displayRegular, fontSize: 21,
@@ -1371,8 +1493,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   scriptureText: {
-    fontFamily: Typography.scriptureItalic, fontSize: 13.5,
-    lineHeight: 20, color: Colors.text, textAlign: 'center',
+    fontFamily: Typography.scriptureItalic, fontSize: 15,
+    lineHeight: 23, color: Colors.text, textAlign: 'center',
   },
   scriptureRef: {
     marginTop: 8,

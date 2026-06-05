@@ -113,6 +113,14 @@ async function upstashExpire(url: string, token: string, key: string, ttl: numbe
   if (!res.ok) throw new Error(`Upstash EXPIRE ${res.status}`);
 }
 
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 async function rateLimit(userId: string): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
   const url   = Deno.env.get("UPSTASH_REDIS_REST_URL");
   const token = Deno.env.get("UPSTASH_REDIS_REST_TOKEN");
@@ -156,7 +164,7 @@ function maskRow(row: NearbyRow, callerVerified: boolean, callerChurchId: string
     network_id:  row.network_id ?? null,
     is_own:      isOwn,
   };
-  if (callerVerified) {
+  if (callerVerified || isOwn) {
     return { ...common, name: row.name, leaders: row.leaders ?? [] };
   }
   // Unverified — name OMITTED (not null); leaders = [].
@@ -252,6 +260,35 @@ async function handler(req: Request): Promise<Response> {
       rows = (passTwo.data ?? []) as NearbyRow[];
       radiusKm = RADIUS_EXPANDED_KM;
       expanded = true;
+    }
+  }
+
+  // Always include the caller's own church regardless of search radius.
+  // Fixes the case where the leader is traveling far from their registered church.
+  if (callerChurchId && !rows.some((r) => r.id === callerChurchId)) {
+    const { data: ownRow } = await admin
+      .from("churches")
+      .select("id, name, type, city, country, lat, lng, rag_status, verification_status, church_code")
+      .eq("id", callerChurchId)
+      .single();
+    if (ownRow && typeof ownRow.lat === "number" && typeof ownRow.lng === "number") {
+      rows = [
+        ...rows,
+        {
+          id:                  ownRow.id,
+          name:                ownRow.name,
+          type:                ownRow.type,
+          city:                ownRow.city ?? null,
+          country:             ownRow.country ?? null,
+          lat:                 ownRow.lat,
+          lng:                 ownRow.lng,
+          rag_status:          ownRow.rag_status,
+          verification_status: ownRow.verification_status,
+          distance_km:         haversineKm(viewerLat, viewerLng, ownRow.lat, ownRow.lng),
+          network_id:          (ownRow.church_code as string | null) ?? null,
+          leaders:             null,
+        },
+      ];
     }
   }
 
