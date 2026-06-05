@@ -337,6 +337,7 @@ export default function PrayerWallScreen() {
         <IntercessionJournalView
           onBack={() => setView('landing')}
           pendingChurch={pendingChurch}
+          onNavigateToChurchTab={() => navigation.navigate('The Church')}
         />
       </SafeAreaView>
     );

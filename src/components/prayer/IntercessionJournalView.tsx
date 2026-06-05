@@ -33,6 +33,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../contexts/AuthProvider';
@@ -98,13 +99,14 @@ function getLocationLine(city: string | null, country: string | null): string {
 interface Props {
   onBack: () => void;
   pendingChurch?: string | null;
+  onNavigateToChurchTab?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────
 
-export default function IntercessionJournalView({ onBack, pendingChurch }: Props) {
+export default function IntercessionJournalView({ onBack, pendingChurch, onNavigateToChurchTab }: Props) {
   const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<JournalTab>('churches');
   const [holds, setHolds] = useState<HoldRow[]>([]);
@@ -117,9 +119,6 @@ export default function IntercessionJournalView({ onBack, pendingChurch }: Props
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
-
-  // Segmented pill animation — thumb slides left/right.
-  const thumbX = useRef(new Animated.Value(0)).current;
 
   // ── Data fetch ─────────────────────────────────────────────────────────
 
@@ -143,13 +142,7 @@ export default function IntercessionJournalView({ onBack, pendingChurch }: Props
 
   const switchTab = useCallback((tab: JournalTab) => {
     setActiveTab(tab);
-    Animated.timing(thumbX, {
-      toValue: tab === 'churches' ? 0 : 1,
-      duration: 220,
-      easing: Easing.bezier(0.3, 0.7, 0.4, 1),
-      useNativeDriver: false,
-    }).start();
-  }, [thumbX]);
+  }, []);
 
   // ── Remove hold ────────────────────────────────────────────────────────
 
@@ -249,9 +242,7 @@ export default function IntercessionJournalView({ onBack, pendingChurch }: Props
             activeTab={activeTab}
             holdCount={holds.length}
             standingCount={standing.length}
-            thumbX={thumbX}
             onSwitchTab={switchTab}
-            isFull={isFull}
           />
         }
         ListEmptyComponent={
@@ -259,6 +250,7 @@ export default function IntercessionJournalView({ onBack, pendingChurch }: Props
             <IJEmpty
               tab={activeTab}
               onBack={onBack}
+              onChurchTabPress={onNavigateToChurchTab}
             />
           )
         }
@@ -297,17 +289,13 @@ function IJHeader({
   activeTab,
   holdCount,
   standingCount,
-  thumbX,
   onSwitchTab,
-  isFull,
 }: {
   onBack: () => void;
   activeTab: JournalTab;
   holdCount: number;
   standingCount: number;
-  thumbX: Animated.Value;
   onSwitchTab: (tab: JournalTab) => void;
-  isFull: boolean;
 }) {
   const subtitle =
     activeTab === 'churches'
@@ -332,83 +320,78 @@ function IJHeader({
       <Text style={styles.title}>Intercession Journal</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
 
-      {/* Segmented pill */}
-      <IJSeg
-        activeTab={activeTab}
-        holdCount={holdCount}
-        standingCount={standingCount}
-        thumbX={thumbX}
-        onSwitchTab={onSwitchTab}
-        isFull={isFull}
-      />
+      {/* Connect-style segmented switcher */}
+      <JournalSegmented value={activeTab} onChange={onSwitchTab} />
     </View>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// IJSeg — animated segmented pill
+// JournalSegmented — Connect-style segmented switcher
+//
+// Replicates the visual pattern of src/components/connect/Segmented.tsx
+// inline (we can't import it — it pulls SubTab from ConnectScreen).
+// Same surfaceElevated thumb, same useWindowDimensions width math, same
+// 200ms Easing.bezier(0.32, 0.72, 0, 1) translate.
 // ─────────────────────────────────────────────────────────────────────────
 
-function IJSeg({
-  activeTab,
-  holdCount,
-  standingCount,
-  thumbX,
-  onSwitchTab,
-  isFull,
+const SEG_OPTIONS: Array<{ value: JournalTab; label: string }> = [
+  { value: 'churches', label: 'Churches' },
+  { value: 'standing', label: 'Standing in Gap' },
+];
+
+// Header has 20px horizontal padding; inner thumb padding is 3.
+const SEG_SIDE_PAD = 20;
+const SEG_INNER_PAD = 3;
+
+function JournalSegmented({
+  value,
+  onChange,
 }: {
-  activeTab: JournalTab;
-  holdCount: number;
-  standingCount: number;
-  thumbX: Animated.Value;
-  onSwitchTab: (tab: JournalTab) => void;
-  isFull: boolean;
+  value: JournalTab;
+  onChange: (tab: JournalTab) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const innerWidth = width - SEG_SIDE_PAD * 2 - SEG_INNER_PAD * 2;
+  const itemWidth = innerWidth / SEG_OPTIONS.length;
+
+  const activeIdx = SEG_OPTIONS.findIndex((o) => o.value === value);
+  const tx = useRef(new Animated.Value(activeIdx)).current;
+
+  useEffect(() => {
+    Animated.timing(tx, {
+      toValue: activeIdx,
+      duration: 200,
+      easing: Easing.bezier(0.32, 0.72, 0, 1),
+      useNativeDriver: true,
+    }).start();
+  }, [activeIdx, tx]);
+
+  const translateX = tx.interpolate({
+    inputRange: [0, SEG_OPTIONS.length - 1],
+    outputRange: [0, itemWidth * (SEG_OPTIONS.length - 1)],
+  });
+
   return (
-    <View style={styles.segTrack}>
-      {/* Animated thumb */}
+    <View style={styles.segRoot}>
       <Animated.View
-        style={[
-          styles.segThumb,
-          {
-            left: thumbX.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['3%', '50%'],
-            }),
-          },
-        ]}
+        style={[styles.segThumb, { width: itemWidth, transform: [{ translateX }] }]}
         pointerEvents="none"
       />
-
-      {/* Churches label */}
-      <Pressable
-        onPress={() => onSwitchTab('churches')}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: activeTab === 'churches' }}
-        style={styles.segLabel}
-      >
-        <Text style={[styles.segLabelText, activeTab === 'churches' && styles.segLabelActive]}>
-          Churches{' '}
-          <Text style={[styles.segChip, activeTab === 'churches' && styles.segChipActive]}>
-            {holdCount}/{10}{isFull ? ' · Full' : ''}
-          </Text>
-        </Text>
-      </Pressable>
-
-      {/* Standing in Gap label */}
-      <Pressable
-        onPress={() => onSwitchTab('standing')}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: activeTab === 'standing' }}
-        style={styles.segLabel}
-      >
-        <Text style={[styles.segLabelText, activeTab === 'standing' && styles.segLabelActive]}>
-          Standing in Gap{' '}
-          <Text style={[styles.segChip, activeTab === 'standing' && styles.segChipActive]}>
-            {standingCount}
-          </Text>
-        </Text>
-      </Pressable>
+      {SEG_OPTIONS.map((o) => {
+        const on = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            style={styles.segItem}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+          >
+            <Text style={[styles.segLabel, on && styles.segLabelOn]}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -551,7 +534,15 @@ function FullNotice({ pendingChurch }: { pendingChurch: string }) {
 // IJEmpty
 // ─────────────────────────────────────────────────────────────────────────
 
-function IJEmpty({ tab, onBack }: { tab: JournalTab; onBack: () => void }) {
+function IJEmpty({
+  tab,
+  onBack,
+  onChurchTabPress,
+}: {
+  tab: JournalTab;
+  onBack: () => void;
+  onChurchTabPress?: () => void;
+}) {
   const isChurches = tab === 'churches';
   return (
     <View style={styles.emptyContainer}>
@@ -567,7 +558,14 @@ function IJEmpty({ tab, onBack }: { tab: JournalTab; onBack: () => void }) {
           : 'Stand in the gap for a prayer request on the Prayer Wall.'}
       </Text>
       <Pressable
-        onPress={onBack}
+        onPress={() => {
+          if (isChurches) {
+            if (onChurchTabPress) onChurchTabPress();
+            else onBack();
+          } else {
+            onBack();
+          }
+        }}
         hitSlop={8}
         accessibilityRole="button"
         style={styles.emptyCta}
@@ -631,18 +629,46 @@ function TrashGlyph() {
 }
 
 function SteepleGlyph() {
+  // Simple arch / doorway — vertical jambs rising to a semicircle head,
+  // closed across the base. Reads as a church door.
   return (
     <Svg width={28} height={28} viewBox="0 0 28 28">
-      <Path d="M14 4v6M11 10h6M8 10v14h12V10" fill="none" stroke="rgba(107,181,232,0.5)" strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M10 24v-6a4 4 0 0 1 8 0v6" fill="none" stroke="rgba(107,181,232,0.5)" strokeWidth={1.1} />
+      <Path
+        d="M7 23V13a7 7 0 0 1 14 0v10M7 23h14"
+        fill="none"
+        stroke="rgba(107,181,232,0.5)"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
 
 function HandsGlyph() {
+  // Two upward, open hands raised in prayer. Each hand is a cupped palm
+  // (curve) rising into three finger strokes; mirrored about centre with
+  // a small gap between the palms.
   return (
     <Svg width={28} height={28} viewBox="0 0 28 28">
-      <Path d="M10 20c0-4 8-4 8 0M6 16l4-10 4 6 4-6 4 10" fill="none" stroke="rgba(107,181,232,0.5)" strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Left hand: palm cup + fingers */}
+      <Path
+        d="M13 23c-3 0-5-2-5-5v-5M8 13l1.5 3M11 9v5M13.5 11v5"
+        fill="none"
+        stroke="rgba(107,181,232,0.5)"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Right hand: palm cup + fingers */}
+      <Path
+        d="M15 23c3 0 5-2 5-5v-5M20 13l-1.5 3M17 9v5M14.5 11v5"
+        fill="none"
+        stroke="rgba(107,181,232,0.5)"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -696,50 +722,40 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // ── Segmented pill
-  segTrack: {
-    flexDirection: 'row',
-    height: 40,
-    borderRadius: 999,
-    backgroundColor: SURFACE,
-    borderWidth: 0.5,
-    borderColor: FAINT,
-    position: 'relative',
-    overflow: 'hidden',
+  // ── Connect-style segmented switcher
+  segRoot: {
+    marginTop: 2,
     marginBottom: 8,
+    padding: SEG_INNER_PAD,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    borderRadius: 11,
+    flexDirection: 'row',
+    position: 'relative',
   },
   segThumb: {
     position: 'absolute',
-    top: 3,
-    bottom: 3,
-    width: '47%',
-    borderRadius: 999,
-    backgroundColor: SKY_FAINT,
-    borderWidth: 0.5,
-    borderColor: SKY_MID,
+    top: SEG_INNER_PAD,
+    left: SEG_INNER_PAD,
+    bottom: SEG_INNER_PAD,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: 8,
   },
-  segLabel: {
+  segItem: {
     flex: 1,
+    paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  segLabelText: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 0.8,
+  segLabel: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 12.5,
     color: Colors.textMuted,
-    textTransform: 'uppercase',
+    letterSpacing: 0.1,
   },
-  segLabelActive: {
-    color: SKY,
-  },
-  segChip: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    color: Colors.textMuted,
-  },
-  segChipActive: {
-    color: SKY,
+  segLabelOn: {
+    color: Colors.text,
   },
 
   // ── ChurchRow
