@@ -70,7 +70,16 @@ interface Props {
   onBackToLanding: () => void;
 }
 
-const TESTIMONY_MAX_CHARS = 600;
+const TESTIMONY_MAX_CHARS = 300;
+
+const TESTIMONY_ERROR_MESSAGES: Record<string, string> = {
+  content_required: 'Please write what God has done.',
+  content_too_long: 'Your testimony is too long (300 character limit).',
+  not_verified: 'Only verified leaders can share testimonies.',
+  request_not_found: 'This prayer request could not be found.',
+  not_your_request: "You can only share testimonies for your church's prayer requests.",
+  already_converted: 'This prayer request has already been marked as answered.',
+};
 
 export default function MyOpenPrayersView({ onBackToLanding }: Props) {
   const { session } = useAuth();
@@ -198,10 +207,18 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
       <DeleteConfirmModal
         visible={deleteRowId !== null}
         onCancel={() => setDeleteRowId(null)}
-        onConfirm={() => {
-          // TODO: wire soft_delete_prayer_request RPC — pending SEC checkpoint.
-          // No persistence today; close the modal so the leader gets
-          // visual feedback the affordance fired.
+        onConfirm={async () => {
+          if (!deleteRowId) return;
+          const { data, error } = await supabase.rpc('soft_delete_prayer_request', {
+            p_request_id: deleteRowId,
+          });
+          const rpcError = (data as { error?: string } | null)?.error;
+          if (error || rpcError) {
+            Alert.alert('Could not delete', 'Please try again.');
+            setDeleteRowId(null);
+            return;
+          }
+          setRows((prev) => prev.filter((r) => r.id !== deleteRowId));
           setDeleteRowId(null);
         }}
       />
@@ -210,10 +227,22 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
       <MarkAsPraiseComposer
         row={praiseRow}
         onDismiss={() => setPraiseRow(null)}
-        onSubmit={() => {
-          // TODO: wire create_testimony RPC — pending SEC checkpoint.
-          // No persistence today; just dismiss so the leader sees the
-          // composer close.
+        onSubmit={async (testimonyText) => {
+          if (!praiseRow) return;
+          const { data, error } = await supabase.rpc('create_testimony', {
+            p_request_id: praiseRow.id,
+            p_testimony_text: testimonyText,
+          });
+          const rpcError = (data as { error?: string } | null)?.error;
+          if (error || rpcError) {
+            const msg =
+              TESTIMONY_ERROR_MESSAGES[rpcError ?? ''] ??
+              'Something went wrong. Please try again.';
+            Alert.alert('Could not share testimony', msg);
+            // Do NOT dismiss — let the leader retry or edit
+            throw new Error(rpcError ?? 'rpc_error');
+          }
+          setRows((prev) => prev.filter((r) => r.id !== praiseRow.id));
           setPraiseRow(null);
         }}
       />
@@ -369,10 +398,11 @@ function MarkAsPraiseComposer({
 }: {
   row: OpenPrayerRow | null;
   onDismiss: () => void;
-  onSubmit: () => void;
+  onSubmit: (text: string) => Promise<void>;
 }) {
   const [text, setText] = useState('');
   const [anonymous, setAnonymous] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const slideY = useRef(new Animated.Value(800)).current;
 
   useEffect(() => {
@@ -387,6 +417,7 @@ function MarkAsPraiseComposer({
       }).start();
     } else {
       slideY.setValue(800);
+      setSubmitting(false);
     }
   }, [row, slideY]);
 
@@ -450,16 +481,26 @@ function MarkAsPraiseComposer({
           </View>
 
           <Pressable
-            onPress={onSubmit}
-            disabled={text.trim().length === 0}
+            onPress={async () => {
+              if (submitting) return;
+              setSubmitting(true);
+              try {
+                await onSubmit(text.trim());
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            disabled={text.trim().length === 0 || submitting}
             accessibilityRole="button"
             style={({ pressed }) => [
               styles.composerSubmit,
-              text.trim().length === 0 && styles.composerSubmitDisabled,
+              (text.trim().length === 0 || submitting) && styles.composerSubmitDisabled,
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.composerSubmitText}>Share testimony</Text>
+            <Text style={styles.composerSubmitText}>
+              {submitting ? 'Sharing...' : 'Share testimony'}
+            </Text>
           </Pressable>
         </Animated.View>
       </KeyboardAvoidingView>
