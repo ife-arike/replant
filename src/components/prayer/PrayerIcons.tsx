@@ -156,3 +156,16 @@ export function OverflowIcon({ size = 14, color }: IconProps) {
     </Svg>
   );
 }
+
+// Overflow menu trigger — three VERTICAL dots (⋮). Used by the My
+// Prayers card so the affordance reads as "card-scoped actions" rather
+// than the horizontal ⋯ which is easily confused with truncation.
+export function OverflowVerticalIcon({ size = 14, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <Circle cx="8" cy="3" r="1.2" fill={color} />
+      <Circle cx="8" cy="8" r="1.2" fill={color} />
+      <Circle cx="8" cy="13" r="1.2" fill={color} />
+    </Svg>
+  );
+}

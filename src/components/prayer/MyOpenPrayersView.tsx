@@ -1,30 +1,35 @@
 // ─────────────────────────────────────────────
-// MyOpenPrayersView — KAN-23 v2 (Ticket E)
+// MyOpenPrayersView — KAN-23 v2 (Ticket E) · Founder device-pass rebuild
 //
-// "My open prayers" surface inside the Prayer Wall tab. Reached from
-// the landing's "View my open prayers →" quick-link.
+// "My Prayers" surface inside the Prayer Wall tab. Reached from the
+// landing's "View my open prayers →" quick-link. Lets a leader steward
+// their church's own open prayer requests: edit, mark as answered, delete.
 //
-// Cards reuse the prayer-card chrome with three differences:
-//   - No › chevron — replaced by an ••• overflow trigger top-right.
-//   - Author line in the meta: "by {author_display_name}" mono 10 pt.
-//   - Card body tap is a no-op (the actions live in the overflow).
+// Card chrome (rebuilt):
+//   - Body text in heartcry italic (PRAYER_CARD_BODY_STYLE, 16 pt) — was
+//     too small at 12 pt before.
+//   - Leader attribution shows role + first name ("Minister Ifeoluwa")
+//     via formatLeaderLine, sourced from author_role + author_display_name.
+//   - Overflow trigger is a VERTICAL three-dot (⋮) anchored top-right.
 //
-// Overflow menu (popover anchored top-right of card):
-//   - Edit                — STUB
-//   - Mark as praise      — STUB (opens composer sheet, submit no-op)
-//   - Delete (red)        — STUB (opens confirm modal, confirm no-op)
+// Two entry points to the action set:
+//   1. Tap the card BODY → PrayerWallDetailSheet-style pull-up bottom
+//      sheet with the full prayer + Edit / Mark as Answered / Delete.
+//   2. Tap the ⋮ dots → a small contextual menu ANCHORED near the dots
+//      (measured at runtime), not a centred modal.
 //
-// All three are explicit UI-only stubs per the dispatch's write-stub
-// rule. Each tap landing site carries a `// TODO: wire …` comment so
-// nothing about the behaviour is silent or surprising.
-//
-// Empty state: green ghost CTA "Receive intercession →" returns the
-// leader to the landing view.
+// Actions:
+//   - Edit            — update_prayer_request RPC does NOT exist yet, so
+//                       Edit renders disabled/muted. See TODO below.
+//   - Mark as Answered → AnsweredModal (full sheet): write a testimony +
+//                       submit to wall (create_testimony), OR mark answered
+//                       privately (soft_delete_prayer_request).
+//   - Delete (red)    → centred confirm modal → soft_delete_prayer_request.
 //
 // Data: supabase.rpc('get_open_prayers', { p_church_id }). The user's
 // church_id isn't on AuthState directly — we fetch it from public.users
-// using the existing supabase client pattern (mirrors SettingsScreen +
-// SettingsScreenContainer).
+// (mirrors SettingsScreen). The RPC returns church_name + country +
+// category + urgency + prayed_count + author_display_name + author_role.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -32,6 +37,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   Easing,
   FlatList,
   KeyboardAvoidingView,
@@ -39,18 +45,18 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthProvider';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
-import {
-  formatRelativeTime,
-} from './PrayerWallLogic';
-import { OverflowIcon } from './PrayerIcons';
+import { formatRelativeTime, getLocationLine } from './PrayerWallLogic';
+import { formatLeaderLine } from '../../utils/displayHelpers';
+import { OverflowVerticalIcon } from './PrayerIcons';
+import { PRAYER_CARD_BODY_STYLE, PRAYER_DETAIL_STYLE } from './PrayerWallCard';
 
 interface OpenPrayerRow {
   id: string;
@@ -59,6 +65,8 @@ interface OpenPrayerRow {
   urgency: boolean;
   created_at: string;
   prayed_count: number;
+  church_name: string | null;
+  country: string | null;
   author_display_name: string | null;
   author_role: string | null;
 }
@@ -69,6 +77,10 @@ interface Props {
   /** Returns the leader to the landing view (used by empty-state CTA). */
   onBackToLanding: () => void;
 }
+
+const { height: SCREEN_H } = Dimensions.get('window');
+const SHEET_HEIGHT = SCREEN_H * 0.88;
+const ANIM_MS = 320;
 
 const TESTIMONY_MAX_CHARS = 300;
 
@@ -81,18 +93,29 @@ const TESTIMONY_ERROR_MESSAGES: Record<string, string> = {
   already_converted: 'This prayer request has already been marked as answered.',
 };
 
+/** Anchor rect for the contextual dots menu, in window coordinates. */
+interface MenuAnchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export default function MyOpenPrayersView({ onBackToLanding }: Props) {
   const { session } = useAuth();
   const [churchId, setChurchId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenPrayerRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('initial');
-  const [menuRowId, setMenuRowId] = useState<string | null>(null);
-  const [deleteRowId, setDeleteRowId] = useState<string | null>(null);
-  const [praiseRow, setPraiseRow] = useState<OpenPrayerRow | null>(null);
+
+  // Action surfaces — at most one open at a time.
+  const [sheetRow, setSheetRow] = useState<OpenPrayerRow | null>(null);
+  const [menuState, setMenuState] = useState<{ row: OpenPrayerRow; anchor: MenuAnchor } | null>(null);
+  const [deleteRow, setDeleteRow] = useState<OpenPrayerRow | null>(null);
+  const [answeredRow, setAnsweredRow] = useState<OpenPrayerRow | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Resolve current leader's church_id via public.users — the auth
-  // context doesn't carry it directly. Mirrors the pattern in
-  // SettingsScreen.tsx around line 210.
+  // context doesn't carry it directly. Mirrors SettingsScreen.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -104,7 +127,6 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
         .maybeSingle();
       if (cancelled) return;
       if (error || !data?.church_id) {
-        // No church — empty state will show.
         setChurchId(null);
         setLoadState('idle');
         return;
@@ -133,6 +155,34 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
   useEffect(() => {
     void loadInitial();
   }, [loadInitial]);
+
+  const removeRow = useCallback((id: string) => {
+    setRows((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+  }, []);
+
+  // ── Action dispatchers shared by both entry points ──────────────────
+  const onEdit = useCallback(() => {
+    // TODO: update_prayer_request RPC needed — DBA ticket required.
+    // Edit is rendered disabled/muted everywhere until the RPC lands;
+    // this handler is intentionally never reachable (guarded by the
+    // disabled flag on the menu/sheet items).
+  }, []);
+
+  const onMarkAnswered = useCallback((row: OpenPrayerRow) => {
+    setSheetRow(null);
+    setMenuState(null);
+    setAnsweredRow(row);
+  }, []);
+
+  const onDelete = useCallback((row: OpenPrayerRow) => {
+    setSheetRow(null);
+    setMenuState(null);
+    setDeleteRow(row);
+  }, []);
 
   if (loadState === 'initial') {
     return (
@@ -178,59 +228,62 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
         renderItem={({ item }) => (
           <OpenPrayerCard
             row={item}
-            onOpenMenu={() => setMenuRowId(item.id)}
+            onOpenSheet={() => setSheetRow(item)}
+            onOpenMenu={(anchor) => setMenuState({ row: item, anchor })}
           />
         )}
       />
 
-      {/* Overflow menu */}
-      {menuRowId !== null ? (
-        <OverflowMenu
-          onDismiss={() => setMenuRowId(null)}
-          onEdit={() => {
-            // TODO: wire edit → posting sheet (KAN-205).
-            setMenuRowId(null);
-          }}
-          onMarkAsPraise={() => {
-            const row = rows.find((r) => r.id === menuRowId) ?? null;
-            setMenuRowId(null);
-            setPraiseRow(row);
-          }}
-          onDelete={() => {
-            setDeleteRowId(menuRowId);
-            setMenuRowId(null);
-          }}
+      {/* Card body tap → pull-up detail sheet with the action row */}
+      <PrayerActionSheet
+        row={sheetRow}
+        onDismiss={() => setSheetRow(null)}
+        onEdit={onEdit}
+        onMarkAnswered={onMarkAnswered}
+        onDelete={onDelete}
+      />
+
+      {/* ⋮ tap → anchored contextual menu */}
+      {menuState !== null ? (
+        <AnchoredOverflowMenu
+          anchor={menuState.anchor}
+          onDismiss={() => setMenuState(null)}
+          onEdit={onEdit}
+          onMarkAnswered={() => onMarkAnswered(menuState.row)}
+          onDelete={() => onDelete(menuState.row)}
         />
       ) : null}
 
-      {/* Delete confirm modal */}
+      {/* Delete confirm modal (centred — brief confirmation) */}
       <DeleteConfirmModal
-        visible={deleteRowId !== null}
-        onCancel={() => setDeleteRowId(null)}
+        visible={deleteRow !== null}
+        onCancel={() => setDeleteRow(null)}
         onConfirm={async () => {
-          if (!deleteRowId) return;
+          if (!deleteRow) return;
+          const targetId = deleteRow.id;
           const { data, error } = await supabase.rpc('soft_delete_prayer_request', {
-            p_request_id: deleteRowId,
+            p_request_id: targetId,
           });
           const rpcError = (data as { error?: string } | null)?.error;
           if (error || rpcError) {
             Alert.alert('Could not delete', 'Please try again.');
-            setDeleteRowId(null);
+            setDeleteRow(null);
             return;
           }
-          setRows((prev) => prev.filter((r) => r.id !== deleteRowId));
-          setDeleteRowId(null);
+          removeRow(targetId);
+          setDeleteRow(null);
         }}
       />
 
-      {/* Mark-as-praise composer */}
-      <MarkAsPraiseComposer
-        row={praiseRow}
-        onDismiss={() => setPraiseRow(null)}
-        onSubmit={async (testimonyText) => {
-          if (!praiseRow) return;
+      {/* Mark-as-answered full modal */}
+      <AnsweredModal
+        row={answeredRow}
+        onDismiss={() => setAnsweredRow(null)}
+        onSubmitTestimony={async (testimonyText) => {
+          if (!answeredRow) return;
+          const targetId = answeredRow.id;
           const { data, error } = await supabase.rpc('create_testimony', {
-            p_request_id: praiseRow.id,
+            p_request_id: targetId,
             p_testimony_text: testimonyText,
           });
           const rpcError = (data as { error?: string } | null)?.error;
@@ -239,13 +292,35 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
               TESTIMONY_ERROR_MESSAGES[rpcError ?? ''] ??
               'Something went wrong. Please try again.';
             Alert.alert('Could not share testimony', msg);
-            // Do NOT dismiss — let the leader retry or edit
+            // Do NOT dismiss — let the leader retry or edit.
             throw new Error(rpcError ?? 'rpc_error');
           }
-          setRows((prev) => prev.filter((r) => r.id !== praiseRow.id));
-          setPraiseRow(null);
+          // create_testimony already marks the request 'answered', so it
+          // drops out of the open feed on its own — no extra
+          // soft_delete needed (that would overwrite status to
+          // 'withdrawn'). We just mirror the removal locally.
+          removeRow(targetId);
+          setAnsweredRow(null);
+          showToast('Your testimony has been shared with the wall.');
+        }}
+        onMarkPrivately={async () => {
+          if (!answeredRow) return;
+          const targetId = answeredRow.id;
+          const { data, error } = await supabase.rpc('soft_delete_prayer_request', {
+            p_request_id: targetId,
+          });
+          const rpcError = (data as { error?: string } | null)?.error;
+          if (error || rpcError) {
+            Alert.alert('Could not update', 'Please try again.');
+            throw new Error(rpcError ?? 'rpc_error');
+          }
+          removeRow(targetId);
+          setAnsweredRow(null);
         }}
       />
+
+      {/* Success toast */}
+      <SuccessToast message={toast} onDone={() => setToast(null)} />
     </View>
   );
 }
@@ -254,33 +329,56 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
 
 function OpenPrayerCard({
   row,
+  onOpenSheet,
   onOpenMenu,
 }: {
   row: OpenPrayerRow;
-  onOpenMenu: () => void;
+  onOpenSheet: () => void;
+  onOpenMenu: (anchor: MenuAnchor) => void;
 }) {
   const timestamp = formatRelativeTime(row.created_at);
-  const author = row.author_display_name ?? 'A leader';
+  // Role + first name ("Minister Ifeoluwa"). Own-church requests are
+  // never anonymous to their own leader, so isAnonymous=false.
+  const leaderLine = formatLeaderLine(row.author_role, row.author_display_name, false);
+  const triggerRef = useRef<View>(null);
 
-  // Body tap is a no-op per dispatch — wrap in View, not Pressable.
+  const openMenuFromTrigger = () => {
+    const node = triggerRef.current;
+    if (!node) {
+      onOpenMenu({ x: 0, y: 0, width: 0, height: 0 });
+      return;
+    }
+    node.measureInWindow((x, y, width, height) => {
+      onOpenMenu({ x, y, width, height });
+    });
+  };
+
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={onOpenSheet}
+      accessibilityRole="button"
+      accessibilityLabel="Open prayer request"
+      style={({ pressed }) => [
         styles.card,
         { borderLeftColor: row.urgency ? Colors.red : Colors.accent },
+        pressed && styles.cardPressed,
       ]}
     >
       <View style={styles.cardTopRow}>
-        <Text style={styles.body} numberOfLines={3}>{row.prayer_text}</Text>
-        <Pressable
-          onPress={onOpenMenu}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Open prayer request actions"
-          style={styles.overflowTrigger}
-        >
-          <OverflowIcon size={14} color={Colors.textMuted} />
-        </Pressable>
+        <Text style={[styles.body, PRAYER_CARD_BODY_STYLE]} numberOfLines={3}>
+          {row.prayer_text}
+        </Text>
+        <View ref={triggerRef} collapsable={false}>
+          <Pressable
+            onPress={openMenuFromTrigger}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Open prayer request actions"
+            style={styles.overflowTrigger}
+          >
+            <OverflowVerticalIcon size={16} color={Colors.textMuted} />
+          </Pressable>
+        </View>
       </View>
       <View style={styles.metaRow}>
         {row.category ? (
@@ -293,35 +391,224 @@ function OpenPrayerCard({
             <Text style={styles.urgentChipText}>Urgent</Text>
           </View>
         ) : null}
-        <Text style={styles.authorLine}>by {author}</Text>
+        <Text style={styles.authorLine} numberOfLines={1}>{leaderLine}</Text>
         {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
       </View>
+    </Pressable>
+  );
+}
+
+// ─── Pull-up action sheet (card body tap) ────────────────────────────
+
+function PrayerActionSheet({
+  row,
+  onDismiss,
+  onEdit,
+  onMarkAnswered,
+  onDelete,
+}: {
+  row: OpenPrayerRow | null;
+  onDismiss: () => void;
+  onEdit: () => void;
+  onMarkAnswered: (row: OpenPrayerRow) => void;
+  onDelete: (row: OpenPrayerRow) => void;
+}) {
+  const slideY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (row !== null) {
+      setMounted(true);
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: 0,
+          duration: ANIM_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0.55,
+          duration: ANIM_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (mounted) {
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: SHEET_HEIGHT,
+          duration: ANIM_MS,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: ANIM_MS,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => setMounted(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row]);
+
+  if (!mounted || row === null) return null;
+
+  const locationLine = getLocationLine(row.church_name ?? 'Your church', row.country);
+  const leaderLine = formatLeaderLine(row.author_role, row.author_display_name, false);
+  const timestamp = formatRelativeTime(row.created_at);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Pressable onPress={onDismiss} style={StyleSheet.absoluteFill} accessibilityLabel="Dismiss">
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: backdropOpacity }]}
+        />
+      </Pressable>
+
+      <Animated.View style={[styles.sheet, { transform: [{ translateY: slideY }] }]}>
+        <View style={styles.grabHandle} />
+
+        <Text
+          style={[
+            styles.sheetLocation,
+            { color: row.urgency ? Colors.red : Colors.accent },
+          ]}
+          numberOfLines={2}
+        >
+          {locationLine.toUpperCase()}
+        </Text>
+        <Text style={styles.sheetLeaderLine}>{leaderLine}</Text>
+
+        <Text style={[styles.sheetBody, PRAYER_DETAIL_STYLE]}>{row.prayer_text}</Text>
+
+        <View style={styles.sheetMetaRow}>
+          {row.category ? (
+            <View style={styles.categoryChip}>
+              <Text style={styles.categoryChipText}>{row.category}</Text>
+            </View>
+          ) : null}
+          {row.urgency ? (
+            <View style={styles.urgentChip}>
+              <Text style={styles.urgentChipText}>Urgent</Text>
+            </View>
+          ) : null}
+          {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
+        </View>
+
+        {/* Action row */}
+        <View style={styles.sheetActions}>
+          <SheetActionButton label="Edit" tone="sky" disabled onPress={onEdit} />
+          <SheetActionButton label="Mark as Answered" tone="sky" onPress={() => onMarkAnswered(row)} />
+          <SheetActionButton label="Delete" tone="red" onPress={() => onDelete(row)} />
+        </View>
+      </Animated.View>
     </View>
   );
 }
 
-// ─── Overflow menu ───────────────────────────────────────────────────
+function SheetActionButton({
+  label,
+  tone,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  tone: 'sky' | 'red';
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const color = disabled ? Colors.textSubtle : tone === 'red' ? Colors.red : Colors.accent;
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      style={({ pressed }) => [
+        styles.sheetActionBtn,
+        pressed && !disabled && { backgroundColor: 'rgba(240, 237, 230, 0.04)' },
+      ]}
+    >
+      <Text style={[styles.sheetActionText, { color }]}>{label}</Text>
+    </Pressable>
+  );
+}
 
-function OverflowMenu({
+// ─── Anchored contextual menu (⋮ tap) ────────────────────────────────
+
+const MENU_WIDTH = 180;
+const MENU_GUTTER = 12;
+
+function AnchoredOverflowMenu({
+  anchor,
   onDismiss,
   onEdit,
-  onMarkAsPraise,
+  onMarkAnswered,
   onDelete,
 }: {
+  anchor: MenuAnchor;
   onDismiss: () => void;
   onEdit: () => void;
-  onMarkAsPraise: () => void;
+  onMarkAnswered: () => void;
   onDelete: () => void;
 }) {
+  const { width: winW } = Dimensions.get('window');
+  const [menuH, setMenuH] = useState(0);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.96)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [opacity, scale]);
+
+  // Right-align the menu under the dots, clamped to the screen edges.
+  const rawLeft = anchor.x + anchor.width - MENU_WIDTH;
+  const left = Math.max(MENU_GUTTER, Math.min(rawLeft, winW - MENU_WIDTH - MENU_GUTTER));
+  const top = anchor.y + anchor.height + 4;
+
+  const onMenuLayout = (e: LayoutChangeEvent) => {
+    setMenuH(e.nativeEvent.layout.height);
+  };
+
   return (
-    <Modal transparent visible onRequestClose={onDismiss} animationType="fade">
+    <Modal transparent visible onRequestClose={onDismiss} animationType="none">
       <Pressable style={styles.menuBackdrop} onPress={onDismiss} accessibilityLabel="Dismiss menu">
-        <View style={styles.menu}>
-          <MenuItem label="Edit" onPress={onEdit} />
-          <MenuItem label="Mark as praise" onPress={onMarkAsPraise} tone="green" />
+        <Animated.View
+          onLayout={onMenuLayout}
+          style={[
+            styles.menu,
+            {
+              left,
+              top,
+              opacity,
+              transform: [{ scale }],
+            },
+            // Reposition above the dots if it would overflow the bottom.
+            menuH > 0 && top + menuH > SCREEN_H - MENU_GUTTER
+              ? { top: anchor.y - menuH - 4 }
+              : null,
+          ]}
+        >
+          <MenuItem label="Edit" onPress={onEdit} disabled />
+          <MenuItem label="Mark as Answered" onPress={onMarkAnswered} tone="sky" />
           <View style={styles.menuDivider} />
           <MenuItem label="Delete" onPress={onDelete} tone="red" />
-        </View>
+        </Animated.View>
       </Pressable>
     </Modal>
   );
@@ -331,24 +618,34 @@ function MenuItem({
   label,
   onPress,
   tone,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
-  tone?: 'red' | 'green';
+  tone?: 'red' | 'sky';
+  disabled?: boolean;
 }) {
-  const color = tone === 'red' ? Colors.red : tone === 'green' ? Colors.green : Colors.text;
+  const color = disabled
+    ? Colors.textSubtle
+    : tone === 'red'
+      ? Colors.red
+      : tone === 'sky'
+        ? Colors.accent
+        : Colors.text;
   return (
     <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      style={({ pressed }) => [styles.menuItem, pressed && !disabled && { opacity: 0.7 }]}
     >
       <Text style={[styles.menuItemText, { color }]}>{label}</Text>
     </Pressable>
   );
 }
 
-// ─── Delete confirm ──────────────────────────────────────────────────
+// ─── Delete confirm (centred) ────────────────────────────────────────
 
 function DeleteConfirmModal({
   visible,
@@ -363,10 +660,8 @@ function DeleteConfirmModal({
     <Modal transparent visible={visible} onRequestClose={onCancel} animationType="fade">
       <View style={styles.confirmBackdrop}>
         <View style={styles.confirmCard}>
-          <Text style={styles.confirmEyebrow}>Delete prayer request</Text>
-          <Text style={styles.confirmBody}>
-            This will remove the request from the prayer wall. This cannot be undone.
-          </Text>
+          <Text style={styles.confirmHeading}>Delete this prayer request?</Text>
+          <Text style={styles.confirmBody}>This cannot be undone.</Text>
           <View style={styles.confirmCtaRow}>
             <Pressable
               onPress={onCancel}
@@ -389,50 +684,47 @@ function DeleteConfirmModal({
   );
 }
 
-// ─── Mark-as-praise composer ─────────────────────────────────────────
+// ─── Mark-as-answered modal ──────────────────────────────────────────
 
-function MarkAsPraiseComposer({
+function AnsweredModal({
   row,
   onDismiss,
-  onSubmit,
+  onSubmitTestimony,
+  onMarkPrivately,
 }: {
   row: OpenPrayerRow | null;
   onDismiss: () => void;
-  onSubmit: (text: string) => Promise<void>;
+  onSubmitTestimony: (text: string) => Promise<void>;
+  onMarkPrivately: () => Promise<void>;
 }) {
   const [text, setText] = useState('');
-  const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const slideY = useRef(new Animated.Value(800)).current;
+  const slideY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
   useEffect(() => {
     if (row !== null) {
       setText('');
-      setAnonymous(false);
+      setSubmitting(false);
       Animated.timing(slideY, {
         toValue: 0,
-        duration: 300,
+        duration: ANIM_MS,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     } else {
-      slideY.setValue(800);
-      setSubmitting(false);
+      slideY.setValue(SHEET_HEIGHT);
     }
   }, [row, slideY]);
 
   if (row === null) return null;
 
   const handleDismiss = () => {
+    if (submitting) return;
     if (text.trim().length > 0) {
-      Alert.alert(
-        'Discard testimony?',
-        'You have unsaved testimony content.',
-        [
-          { text: 'Keep editing', style: 'cancel' },
-          { text: 'Discard', style: 'destructive', onPress: onDismiss },
-        ],
-      );
+      Alert.alert('Discard?', 'You have unsaved text.', [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: onDismiss },
+      ]);
       return;
     }
     onDismiss();
@@ -440,56 +732,56 @@ function MarkAsPraiseComposer({
 
   const remaining = TESTIMONY_MAX_CHARS - text.length;
 
+  const runGuarded = async (fn: () => Promise<void>) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await fn();
+    } catch {
+      // Errors surface via Alert inside the handlers; re-enable the form.
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Modal transparent visible onRequestClose={handleDismiss} animationType="fade">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={StyleSheet.absoluteFill}
       >
-        <Pressable style={styles.composerBackdrop} onPress={handleDismiss} accessibilityLabel="Dismiss composer" />
+        <Pressable style={styles.composerBackdrop} onPress={handleDismiss} accessibilityLabel="Dismiss" />
         <Animated.View style={[styles.composerSheet, { transform: [{ translateY: slideY }] }]}>
           <View style={styles.grabHandle} />
 
-          <Text style={styles.composerTitle}>Mark as praise</Text>
+          {/* Go back link, top-left */}
+          <Pressable
+            onPress={handleDismiss}
+            hitSlop={8}
+            accessibilityRole="button"
+            style={styles.goBackLink}
+            disabled={submitting}
+          >
+            <Text style={styles.goBackText}>← Go back</Text>
+          </Pressable>
 
-          <View style={styles.composerQuote}>
-            <Text style={styles.composerQuoteLabel}>Original request</Text>
-            <Text style={styles.composerQuoteText} numberOfLines={4}>{row.prayer_text}</Text>
-          </View>
+          <Text style={styles.composerTitle}>How was this answered?</Text>
+          <Text style={styles.composerSub}>Share a few words — how did God move?</Text>
 
           <TextInput
             value={text}
             onChangeText={(t) => setText(t.slice(0, TESTIMONY_MAX_CHARS))}
             multiline
-            placeholder="What did God do? Share what He's done..."
+            editable={!submitting}
+            placeholder="Describe what God did..."
             placeholderTextColor={Colors.textSubtle}
             style={styles.composerInput}
             accessibilityLabel="Testimony text"
           />
-
-          <View style={styles.composerToolRow}>
-            <View style={styles.composerAnonRow}>
-              <Switch
-                value={anonymous}
-                onValueChange={setAnonymous}
-                accessibilityLabel="Post anonymously"
-                trackColor={{ false: Colors.border, true: Colors.green }}
-              />
-              <Text style={styles.composerAnonLabel}>Post anonymously</Text>
-            </View>
-            <Text style={styles.composerCharCount}>{remaining}</Text>
-          </View>
+          <Text style={styles.composerCharCount}>{remaining}</Text>
 
           <Pressable
-            onPress={async () => {
-              if (submitting) return;
-              setSubmitting(true);
-              try {
-                await onSubmit(text.trim());
-              } finally {
-                setSubmitting(false);
-              }
-            }}
+            onPress={() => runGuarded(() => onSubmitTestimony(text.trim()))}
             disabled={text.trim().length === 0 || submitting}
             accessibilityRole="button"
             style={({ pressed }) => [
@@ -499,12 +791,55 @@ function MarkAsPraiseComposer({
             ]}
           >
             <Text style={styles.composerSubmitText}>
-              {submitting ? 'Sharing...' : 'Share testimony'}
+              {submitting ? 'Sharing...' : 'Submit to Testimony Wall'}
             </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => runGuarded(onMarkPrivately)}
+            disabled={submitting}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.composerGhost, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.composerGhostText}>Mark as answered privately</Text>
           </Pressable>
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+// ─── Success toast ───────────────────────────────────────────────────
+
+function SuccessToast({ message, onDone }: { message: string | null; onDone: () => void }) {
+  const translateY = useRef(new Animated.Value(80)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (message === null) return;
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: 0, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+    ]).start();
+    const t = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: 80, duration: 220, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 220, useNativeDriver: true }),
+      ]).start(() => onDone());
+    }, 3200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message]);
+
+  if (message === null) return null;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.toast, { opacity, transform: [{ translateY }] }]}
+    >
+      <Text style={styles.toastText}>{message}</Text>
+    </Animated.View>
   );
 }
 
@@ -522,11 +857,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyCopy: {
-    // v5 item 07 — copy above the empty-state CTA: 17 pt Cormorant
-    // italic 300, rgba(text, 0.65), 24 pt margin above the button.
-    // v7 Item 00 — native Cormorant 300 Light Italic via Typography.scriptureItalic.
-    // The 24 pt gap is honoured via marginTop on backCta below
-    // (parent container's gap: 12 is overridden for this pair).
     fontFamily: Typography.scriptureItalic,
     fontSize: 17,
     color: 'rgba(240, 237, 230, 0.65)',
@@ -541,10 +871,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   backCta: {
-    // v5 item 07 — ghost-sky button: 0.5 pt sky-mid border, sky text,
-    // transparent bg, padding 12 × 24, radius 8. 24 pt total margin
-    // between copy and button = the parent container's gap: 12 plus
-    // this 12. (RN's flex gap stacks with the child's marginTop.)
     marginTop: 12,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -554,7 +880,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.transparent,
   },
   backCtaText: {
-    // v5 item 07 — 15 pt DM Sans 500, 0.02em (~0.3 pt on 15 pt), sky.
     fontFamily: Typography.bodyMedium,
     fontSize: 15,
     letterSpacing: 0.3,
@@ -569,8 +894,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 6,
     borderBottomRightRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -578,10 +906,6 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    fontFamily: Typography.body,
-    fontSize: 12,
-    color: Colors.text,
-    lineHeight: 20,
   },
   overflowTrigger: {
     width: 28,
@@ -595,7 +919,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 8,
+    marginTop: 10,
     flexWrap: 'wrap',
   },
   categoryChip: {
@@ -629,44 +953,99 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   authorLine: {
-    // v7 Item 08 — DM Sans 400 (was DM Mono).
     fontFamily: Typography.body,
     fontSize: 11,
     color: Colors.textMuted,
   },
   timestamp: {
-    // v7 Item 08 — DM Sans 400, sentence case, no tracking.
     fontFamily: Typography.body,
     fontSize: 11,
     color: Colors.textMuted,
     marginLeft: 'auto',
   },
 
-  // Overflow menu
+  // Pull-up action sheet
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: SHEET_HEIGHT,
+    backgroundColor: Colors.surfaceElevated,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 20,
+    paddingBottom: 28,
+  },
+  sheetLocation: {
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    lineHeight: 16,
+  },
+  sheetLeaderLine: {
+    marginTop: 4,
+    fontFamily: Typography.body,
+    fontSize: 15,
+    lineHeight: 20,
+    color: 'rgba(240, 237, 230, 0.45)',
+  },
+  sheetBody: {
+    marginTop: 14,
+  },
+  sheetMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    flexWrap: 'wrap',
+  },
+  sheetActions: {
+    marginTop: 22,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+    paddingTop: 8,
+  },
+  sheetActionBtn: {
+    height: 52,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetActionText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 16,
+  },
+
+  // Anchored overflow menu
   menuBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   menu: {
-    width: 240,
+    position: 'absolute',
+    minWidth: MENU_WIDTH,
     backgroundColor: Colors.surfaceElevated,
-    borderRadius: 10,
-    paddingVertical: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingVertical: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(240, 237, 230, 0.14)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 16,
   },
   menuItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
   },
   menuItemText: {
     fontFamily: Typography.body,
     fontSize: 14,
   },
   menuDivider: {
-    height: 0.25,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: Colors.border,
     marginVertical: 4,
   },
@@ -684,27 +1063,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceElevated,
     borderRadius: 12,
     padding: 20,
-    gap: 12,
+    gap: 10,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
   },
-  confirmEyebrow: {
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.8,
-    color: Colors.red,
-    textTransform: 'uppercase',
+  confirmHeading: {
+    fontFamily: Typography.displayMedium,
+    fontSize: 20,
+    color: Colors.text,
+    letterSpacing: 0.2,
   },
   confirmBody: {
     fontFamily: Typography.body,
-    fontSize: 14,
-    color: Colors.text,
-    lineHeight: 22,
+    fontSize: 13,
+    color: Colors.textMuted,
+    lineHeight: 20,
   },
   confirmCtaRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 8,
+    marginTop: 10,
   },
   ctaGhost: {
     flex: 1,
@@ -734,7 +1112,7 @@ const styles = StyleSheet.create({
     color: Colors.background,
   },
 
-  // Composer
+  // Answered modal / composer
   composerBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
@@ -749,7 +1127,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     paddingHorizontal: 20,
     paddingBottom: 28,
-    gap: 14,
+    gap: 12,
   },
   grabHandle: {
     alignSelf: 'center',
@@ -758,6 +1136,15 @@ const styles = StyleSheet.create({
     borderRadius: 1.25,
     backgroundColor: 'rgba(240, 237, 230, 0.18)',
     marginTop: 8,
+    marginBottom: 6,
+  },
+  goBackLink: {
+    alignSelf: 'flex-start',
+  },
+  goBackText: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   composerTitle: {
     fontFamily: Typography.displayMedium,
@@ -765,27 +1152,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: 0.3,
   },
-  composerQuote: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: 'rgba(91, 173, 122, 0.06)',
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.green,
-    borderRadius: 4,
-  },
-  composerQuoteLabel: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  composerQuoteText: {
-    marginTop: 4,
-    fontFamily: Typography.scriptureItalic,
+  composerSub: {
+    fontFamily: Typography.body,
     fontSize: 13,
     color: Colors.textMuted,
-    lineHeight: 20,
+    lineHeight: 19,
   },
   composerInput: {
     minHeight: 120,
@@ -795,44 +1166,69 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
     fontFamily: Typography.scriptureItalic,
-    fontSize: 15,
+    fontSize: 16,
     color: Colors.text,
-    lineHeight: 22,
+    lineHeight: 24,
     textAlignVertical: 'top',
   },
-  composerToolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  composerAnonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  composerAnonLabel: {
-    fontFamily: Typography.body,
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
   composerCharCount: {
+    alignSelf: 'flex-end',
     fontFamily: Typography.mono,
     fontSize: 10,
     color: Colors.textMuted,
+    marginTop: -4,
   },
   composerSubmit: {
-    height: 48,
+    height: 50,
     borderRadius: 8,
-    backgroundColor: Colors.green,
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 4,
   },
   composerSubmitDisabled: {
     opacity: 0.45,
   },
   composerSubmitText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.background,
+  },
+  composerGhost: {
+    height: 46,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  composerGhostText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+
+  // Success toast
+  toast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 28,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(107, 181, 232, 0.30)',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  toastText: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });
