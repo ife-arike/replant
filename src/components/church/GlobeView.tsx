@@ -189,6 +189,14 @@ export default function GlobeView({
   const dotPressedRef = useRef(false);
   // Touch start position — used to distinguish a tap (small delta) from a drag.
   const touchStartCoordRef = useRef<{ x: number; y: number } | null>(null);
+  // Pin-tap race fix (2026-06-05): the Mapbox feature-press (onPress →
+  // handleSourcePress) fires AFTER the native onTouchEnd, so the
+  // dotPressedRef guard in handleTouchEnd is still false when a pin is
+  // tapped directly — the regional panel would open under the church
+  // sheet. We defer the onPickRegion call by 100ms and store its timeout
+  // here; handleSourcePress cancels it when a dot press is detected, so a
+  // direct pin tap opens ONLY the church sheet.
+  const pendingRegionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // KAN-223: Internal faced-region handler. Sets pill state AND forwards to
   // the optional host prop. Guards on key change (facedKeyRef).
@@ -272,7 +280,10 @@ export default function GlobeView({
     }, RESUME_DELAY_MS);
   }, [clearResumeCycle, reduced]);
 
-  useEffect(() => () => clearResumeCycle(), [clearResumeCycle]);
+  useEffect(() => () => {
+    clearResumeCycle();
+    if (pendingRegionRef.current) { clearTimeout(pendingRegionRef.current); pendingRegionRef.current = null; }
+  }, [clearResumeCycle]);
 
   // ── Touch + Mapbox events ──
   // Fix 3: pause/resume is driven by RN core onTouchStart/onTouchEnd on
@@ -314,7 +325,14 @@ export default function GlobeView({
         const dy = Math.abs(e.nativeEvent.locationY - start.y);
         if (dx < 12 && dy < 12) {
           const faced = facedRegionForCenter(currentLngRef.current, currentLatRef.current);
-          onPickRegion?.(faced);
+          // Defer 100ms so a direct pin tap (whose Mapbox feature-press
+          // fires AFTER this native touch-end) can cancel it in
+          // handleSourcePress. A body tap with no following feature-press
+          // lands the regional panel after the delay.
+          pendingRegionRef.current = setTimeout(() => {
+            pendingRegionRef.current = null;
+            onPickRegion?.(faced);
+          }, 100);
         }
       }
       dotPressedRef.current = false;
@@ -414,6 +432,13 @@ export default function GlobeView({
       // KAN-223: flag that a dot was pressed so the handleTouchEnd
       // body-tap guard skips onPickRegion and onChurchSelect wins.
       dotPressedRef.current = true;
+      // Pin-tap race fix: this feature-press fires AFTER onTouchEnd, which
+      // may have scheduled a deferred onPickRegion. Cancel it so a direct
+      // pin tap opens ONLY the church sheet, not the regional panel under it.
+      if (pendingRegionRef.current) {
+        clearTimeout(pendingRegionRef.current);
+        pendingRegionRef.current = null;
+      }
       onChurchSelect(props.id);
     }
   }, [onChurchSelect, reduced]);
