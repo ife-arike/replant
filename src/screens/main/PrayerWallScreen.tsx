@@ -104,6 +104,7 @@ export default function PrayerWallScreen() {
   const [view, setView] = useState<PrayerWallView>('landing');
 
   // Church context for PostPrayerRequestModal — fetched once when verified.
+  const [viewerChurchId, setViewerChurchId] = useState<string | null>(null);
   const [postChurchName, setPostChurchName] = useState<string | null>(null);
   const [postIsUnderground, setPostIsUnderground] = useState(false);
   const [postDefaultAnon, setPostDefaultAnon] = useState(false);
@@ -160,6 +161,67 @@ export default function PrayerWallScreen() {
     });
   }, []);
 
+  // ─── Open a prayer request from the journal ───────────────────────
+  // Standing-in-the-gap rows in the Intercession Journal carry only the
+  // request id. Fetch the full request, mask underground/anonymous fields
+  // the same way the RPC would, build a PrayerRow, and raise the detail
+  // sheet. i_prayed can't be derived from this fetch — we stand it in as
+  // false (the sheet is read-context here; toggling re-syncs via RPC).
+  const handleOpenPrayerRequest = useCallback(async (requestId: string) => {
+    const { data, error } = await supabase
+      .from('prayer_requests')
+      .select(`
+        id,
+        content,
+        category,
+        urgent,
+        created_at,
+        church_id,
+        anonymous,
+        prayed_count,
+        status,
+        is_active,
+        churches!prayer_requests_church_id_fkey (
+          name,
+          type,
+          country
+        ),
+        users!prayer_requests_user_id_fkey (
+          full_name,
+          role
+        )
+      `)
+      .eq('id', requestId)
+      .single();
+
+    if (error || !data) return;
+
+    const church = Array.isArray(data.churches) ? data.churches[0] : data.churches;
+    const user = Array.isArray(data.users) ? data.users[0] : data.users;
+    const isUnderground = church?.type === 'underground';
+    const isAnon = data.anonymous ?? false;
+
+    const row: PrayerRow = {
+      id: data.id,
+      church_name: isUnderground ? 'Underground Church' : (church?.name ?? 'Unknown Church'),
+      church_type: church?.type ?? 'standard',
+      country: isUnderground ? null : (church?.country ?? null),
+      category: data.category ?? null,
+      prayer_text: data.content,
+      urgency: data.urgent ?? false,
+      created_at: data.created_at,
+      church_id: data.church_id,
+      leader_display_name: isAnon ? null : (user?.full_name ?? null),
+      leader_role: isAnon ? null : (user?.role ?? null),
+      prayed_count: data.prayed_count ?? 0,
+      i_prayed: false, // unknown from this fetch; stand-in
+      status: data.status ?? 'open',
+      rag_status: null,
+    };
+
+    setDetailRow(row);
+  }, []);
+
   // ─── Church context for post modal ────────────────────────────────
   // Fetched once when the leader is verified. Mirrors PrayerWallLanding's
   // church_id lookup pattern (auth_id → users → churches).
@@ -176,6 +238,7 @@ export default function PrayerWallScreen() {
         .eq('auth_id', authId)
         .maybeSingle();
       if (cancelled || !userData?.church_id) return;
+      setViewerChurchId(userData.church_id);
       const { data: churchData } = await supabase
         .from('churches')
         .select('name, type')
@@ -327,6 +390,25 @@ export default function PrayerWallScreen() {
           onViewJournal={() => setView('journal')}
           onPost={handlePostPress}
         />
+
+        {/* Post modal also lives on the landing return — handlePostPress
+            fires here when the leader taps "SHARE A NEED" on the Receive
+            card. Without this, postModalVisible flips true but no modal
+            renders (the feed-view modal is in a different early return). */}
+        <PostPrayerRequestModal
+          visible={postModalVisible}
+          churchName={postChurchName}
+          isUnderground={postIsUnderground}
+          defaultAnonymous={postDefaultAnon}
+          onCancel={() => setPostModalVisible(false)}
+          onSuccess={() => {
+            setPostModalVisible(false);
+            // Posted from landing — force the feed to re-fetch from scratch
+            // next time the leader enters it so the new request appears.
+            hasFetchedOnce.current = false;
+            setRows([]);
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -339,6 +421,17 @@ export default function PrayerWallScreen() {
           onBack={() => setView('landing')}
           pendingChurch={pendingChurch}
           onNavigateToChurchTab={() => navigation.navigate('The Church')}
+          onOpenPrayerRequest={handleOpenPrayerRequest}
+        />
+        <PrayerWallDetailSheet
+          row={detailRow}
+          onDismiss={() => setDetailRow(null)}
+          viewerChurchId={viewerChurchId ?? undefined}
+          onPrayedChange={(id, iPrayed, prayedCount) => {
+            setDetailRow((prev) =>
+              prev?.id === id ? { ...prev, i_prayed: iPrayed, prayed_count: prayedCount } : prev,
+            );
+          }}
         />
       </SafeAreaView>
     );
@@ -437,6 +530,7 @@ export default function PrayerWallScreen() {
       <PrayerWallDetailSheet
         row={detailRow}
         onDismiss={() => setDetailRow(null)}
+        viewerChurchId={viewerChurchId ?? undefined}
         onPrayedChange={(id, iPrayed, prayedCount) => {
           setRows((prev) =>
             prev.map((r) =>
@@ -454,11 +548,15 @@ export default function PrayerWallScreen() {
         onCancel={() => setPostModalVisible(false)}
         onSuccess={() => {
           setPostModalVisible(false);
-          // Trigger a feed refresh if currently on the feed view so the
-          // new request appears after pull-to-refresh.
           if (view === 'feed') {
+            // On the feed — refresh in place so the new request appears
+            // immediately at the top without leaving the view.
+            void refresh();
+          } else {
+            // Posted from another view (e.g. SHARE A NEED on landing) —
+            // reset so the feed re-fetches from scratch on next entry.
             hasFetchedOnce.current = false;
-            void loadInitial(selectedCategories, urgency);
+            setRows([]);
           }
         }}
       />

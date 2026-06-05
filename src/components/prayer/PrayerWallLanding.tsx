@@ -955,10 +955,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   receiveStatTextMuted: {
+    // Match the hero stats line: tracked mono UPPERCASE so "OPEN ·
+    // PRAYING FOR YOU" reads as one stats line with the sky numeral,
+    // not lowercase body fragments (2026-06-05 copy/case polish).
     fontFamily: Typography.mono,
     fontSize: 9.5,
     letterSpacing: 1.52,
     color: Colors.textMuted,
+    textTransform: 'uppercase',
   },
   receiveActiveCta: {
     borderWidth: 0.5,

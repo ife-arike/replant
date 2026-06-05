@@ -373,6 +373,11 @@ export default function GlobeView({
   }, [handleFaceRegion]);
 
   const handleZoomOut = useCallback(() => {
+    // Pause auto-rotation before flyTo — prevents the active rotation
+    // fighting the camera animation and causing erratic spinning.
+    setPaused(true);
+    setResuming(false);
+    clearResumeCycle();
     currentLngRef.current = initialCenter[0];
     currentLatRef.current = initialCenter[1];
     currentZoomRef.current = INITIAL_ZOOM;
@@ -380,10 +385,13 @@ export default function GlobeView({
     cameraRef.current?.setCamera({
       centerCoordinate: initialCenter,
       zoomLevel: INITIAL_ZOOM,
+      heading: 0,
       animationDuration: reduced ? 0 : 600,
       animationMode: 'flyTo',
     });
-  }, [initialCenter, reduced]);
+    // Resume rotation after the animation settles (standard 3.5s delay).
+    scheduleResume();
+  }, [initialCenter, reduced, clearResumeCycle, scheduleResume]);
 
   // ── Shape source / GeoJSON ──
   const featureCollection = useMemo(() => ({

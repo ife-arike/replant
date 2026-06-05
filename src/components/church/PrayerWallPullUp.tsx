@@ -115,9 +115,13 @@ interface Props {
   /** Tutorial collapse — bump this to programmatically snap back to
       collapsed (e.g., when the Church tab tutorial exits the prayer step). */
   collapseTrigger?: number;
+  /** Focus refresh — bump this (e.g. on Church-tab focus) to re-fetch the
+      global prayer feed so a request posted elsewhere shows up. Skips the
+      initial render (refresh only fires when refetchTrigger > 0). */
+  refetchTrigger?: number;
 }
 
-export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0 }: Props = {}) {
+export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0, refetchTrigger = 0 }: Props = {}) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
 
@@ -196,6 +200,15 @@ export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0 }: 
     lastCollapseTrigger.current = collapseTrigger;
     snapToRef.current('collapsed');
   }, [collapseTrigger, containerH]);
+
+  // Focus refresh — re-fetch the global feed whenever the host bumps
+  // refetchTrigger (Church-tab focus). Skip the initial render so the
+  // panel's own open()/fetch path stays the source of the first load.
+  useEffect(() => {
+    if (refetchTrigger > 0) {
+      void refresh();
+    }
+  }, [refetchTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Drag responder — attached to the grip area only, so the FlatList
   //    inside can still scroll independently when full-open. Closures

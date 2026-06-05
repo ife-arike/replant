@@ -33,7 +33,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as SecureStore from 'expo-secure-store';
 import type { TabsParamList } from '../../navigation/types';
@@ -155,6 +155,7 @@ export default function TheChurchScreen() {
   const [panToChurchTrigger, setPanToChurchTrigger] = useState(0);
   const [recenterGPSTrigger, setRecenterGPSTrigger] = useState(0);
   const [prayerWallCollapseTrigger, setPrayerWallCollapseTrigger] = useState(0);
+  const [prayerWallRefetchTrigger, setPrayerWallRefetchTrigger] = useState(0);
   // Stable refs — avoids the "maximum update depth" loop from inline arrows.
   const handleTutorialPanToChurch = useCallback(() => {
     setPanToChurchTrigger((n) => n + 1);
@@ -256,6 +257,20 @@ export default function TheChurchScreen() {
   }, []);
 
   const [page, setPage] = useState<Page>(0);
+
+  // Reset to CAML (page 0 — Church At My Location) every time the tab
+  // receives focus. page persists across tab switches otherwise, so a
+  // leader who left on the CAL globe would return to it; the Founder
+  // wants the tab to always open on their own location.
+  useFocusEffect(
+    useCallback(() => {
+      setPage(0);
+      // Refresh the global Prayer Wall pull-up on every tab focus so a
+      // request posted elsewhere (Prayer Wall tab) is reflected here.
+      setPrayerWallRefetchTrigger((n) => n + 1);
+    }, []),
+  );
+
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
   // Post-completion CAML refetch — bumped in handleCompletionComplete so
   // CamlView re-runs its internal get-nearby-churches fetch and the
@@ -518,7 +533,7 @@ export default function TheChurchScreen() {
           {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
               anyOverlayOpen gate so the globe pauses while the panel
               is half or full (Fix A). */}
-          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} collapseTrigger={prayerWallCollapseTrigger} />
+          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} collapseTrigger={prayerWallCollapseTrigger} refetchTrigger={prayerWallRefetchTrigger} />
         </Animated.View>
       </View>
 
