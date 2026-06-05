@@ -187,6 +187,7 @@ export default function TestimoniesView({
             row={item}
             isHighlighted={item.id === highlightedId}
             onPress={onSelectTestimony}
+            green
           />
         )}
         ItemSeparatorComponent={Separator}
@@ -254,13 +255,15 @@ function ScriptureHeader({
   // anything. The pill itself was carrying no information the leader
   // needed: arriving from the landing was already obvious from the
   // testimony being glowed and scrolled into view.
+  // Prayer Wall redesign — Testimonies pill takes the green register.
+  // Reference tinted green (Rev 12:11) to match the green card chrome.
   return (
     <View style={styles.headerWrap}>
       <ScriptureBanner
         tone="none"
         text={REV_12_11_KJV}
         reference={REV_12_11_REF}
-        referenceColor="rgba(107, 181, 232, 0.70)"
+        referenceColor="rgba(107, 158, 122, 0.85)"
       />
     </View>
   );

@@ -27,6 +27,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -74,11 +75,29 @@ interface Props {
   /** v6 Fix G — tap opens TestimonyDetailSheet on the parent. */
   onPress: (row: TestimonyRow) => void;
   now?: Date;
+  /**
+   * Prayer Wall redesign — Testimonies pill green variant. When true the
+   * card swaps its sky chrome for the testimony green: 2 pt green left
+   * border, green head dot, and a "Rejoice" action (shofar icon) in
+   * place of the sky celebrate glyph. Default false keeps the existing
+   * sky styling for any other consumer.
+   */
+  green?: boolean;
 }
 
 const GLOW_DURATION_MS = 1600;
 
-export default function TestimonyCard({ row, isHighlighted = false, onPress, now }: Props) {
+// Prayer Wall redesign — testimony green token (README --green).
+const TESTIMONY_GREEN = '#6B9E7A';
+const REJOICE_ICON = require('../../../assets/rejoice-icon.png');
+
+export default function TestimonyCard({
+  row,
+  isHighlighted = false,
+  onPress,
+  now,
+  green = false,
+}: Props) {
   const reduced = useReducedMotion();
   const glow = useRef(new Animated.Value(0)).current;
 
@@ -105,6 +124,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
     ]).start();
   }, [isHighlighted, reduced, glow]);
 
+  const glowColor = green ? 'rgba(107, 158, 122, 0.55)' : 'rgba(107, 181, 232, 0.55)';
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
 
   const locationLine = getLocationLine(row.church_name, row.country);
@@ -129,17 +149,30 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
       onPress={() => onPress(row)}
       accessibilityRole="button"
       accessibilityLabel={`Open testimony from ${row.church_name}`}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        green && styles.cardGreen,
+        pressed && styles.cardPressed,
+      ]}
     >
       {/* Deep-link glow overlay — sits on top, pointer-events: none. */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.glow, { opacity: glowOpacity }]}
+        style={[styles.glow, { backgroundColor: glowColor, opacity: glowOpacity }]}
       />
 
-      <Text style={styles.location} numberOfLines={1}>
-        {locationLine}
-      </Text>
+      {green ? (
+        <View style={styles.greenHead}>
+          <View style={styles.greenHeadDot} />
+          <Text style={[styles.location, styles.locationGreen]} numberOfLines={1}>
+            {locationLine}
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.location} numberOfLines={1}>
+          {locationLine}
+        </Text>
+      )}
       <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
 
       <Text style={[styles.body, TESTIMONY_CARD_BODY_STYLE]} numberOfLines={4}>
@@ -160,25 +193,41 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
         </View>
         {/* Passive celebrate display — no Pressable. Fed directly
             from row props so the parent's onCelebratedChange row swap
-            propagates here on the next render. */}
-        <View
-          style={styles.celebrateWrap}
-          accessible
-          accessibilityLabel={`${row.celebrated_count} rejoicing`}
-        >
-          <CelebrateIcon
-            size={16}
-            color={row.i_celebrated ? Colors.green : Colors.textMuted}
-          />
-          <Text
-            style={[
-              styles.celebrateCount,
-              row.i_celebrated && styles.celebrateCountActive,
-            ]}
+            propagates here on the next render. Green variant (Testimonies
+            pill) renders the shofar "Rejoice" action; the tap path still
+            lives in TestimonyDetailSheet. */}
+        {green ? (
+          <View
+            style={styles.celebrateWrap}
+            accessible
+            accessibilityLabel={`${row.celebrated_count} rejoicing`}
           >
-            {row.celebrated_count}
-          </Text>
-        </View>
+            <Image source={REJOICE_ICON} style={styles.rejoiceIcon} resizeMode="contain" />
+            <Text style={styles.rejoiceLabel}>Rejoice</Text>
+            <Text style={styles.rejoiceCount}>
+              {`${row.celebrated_count} rejoicing`}
+            </Text>
+          </View>
+        ) : (
+          <View
+            style={styles.celebrateWrap}
+            accessible
+            accessibilityLabel={`${row.celebrated_count} rejoicing`}
+          >
+            <CelebrateIcon
+              size={16}
+              color={row.i_celebrated ? Colors.green : Colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.celebrateCount,
+                row.i_celebrated && styles.celebrateCountActive,
+              ]}
+            >
+              {row.celebrated_count}
+            </Text>
+          </View>
+        )}
         {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
       </View>
     </Pressable>
@@ -200,8 +249,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     overflow: 'hidden',
   },
+  cardGreen: {
+    // Prayer Wall redesign — Testimonies pill green variant.
+    backgroundColor: '#121214',
+    borderLeftWidth: 2,
+    borderLeftColor: TESTIMONY_GREEN,
+    borderColor: 'rgba(240, 237, 230, 0.08)',
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+  },
   cardPressed: {
     opacity: 0.85,
+  },
+  greenHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  greenHeadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: TESTIMONY_GREEN,
+  },
+  locationGreen: {
+    flex: 1,
+    color: TESTIMONY_GREEN,
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.62, // 0.18em × 9
+    textTransform: 'uppercase',
+  },
+  rejoiceIcon: {
+    width: 28,
+    height: 28,
+    marginVertical: -4,
+    marginRight: -1,
+  },
+  rejoiceLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.19, // 0.14em × 8.5
+    textTransform: 'uppercase',
+    color: TESTIMONY_GREEN,
+  },
+  rejoiceCount: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.19,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginLeft: 'auto',
   },
   glow: {
     position: 'absolute',

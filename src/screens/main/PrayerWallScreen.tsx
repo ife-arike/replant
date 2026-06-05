@@ -50,10 +50,12 @@ import PrayerWallCard from '../../components/prayer/PrayerWallCard';
 import PrayerWallDetailSheet from '../../components/prayer/PrayerWallDetailSheet';
 import PrayerWallFilterBar from '../../components/prayer/PrayerWallFilterBar';
 import PrayerWallLanding from '../../components/prayer/PrayerWallLanding';
-import PrayerWallSegmentedControl from '../../components/prayer/PrayerWallSegmentedControl';
+import PrayerWallPillNav, { type PrayerWallPill } from '../../components/prayer/PrayerWallPillNav';
 import ScriptureBanner from '../../components/prayer/ScriptureBanner';
 import TestimoniesView from '../../components/prayer/TestimoniesView';
 import MyOpenPrayersView from '../../components/prayer/MyOpenPrayersView';
+import RevelationView from '../../components/prayer/RevelationView';
+import LocationsView from '../../components/prayer/LocationsView';
 import IntercessionJournalView from '../../components/prayer/IntercessionJournalView';
 import PostPrayerRequestModal from '../../components/church/PostPrayerRequestModal';
 import {
@@ -67,7 +69,21 @@ import {
 } from '../../components/prayer/PrayerWallLogic';
 import type { TabsParamList } from '../../navigation/types';
 
-type PrayerWallView = 'landing' | 'feed' | 'testimonies' | 'my_open_prayers' | 'journal';
+// Prayer Wall redesign — pill-driven view model.
+//   feed / testimonies / my_prayers / revelation / locations
+//     → the five pill surfaces (header + pill nav shown).
+//   feed_list  → full prayer-request list (entered from the Feed pill's
+//                "Enter the prayer wall" CTA). No pill nav, no segmented
+//                control. Back returns to the 'feed' pill.
+//   journal    → IntercessionJournalView. No pill nav, no header.
+type PrayerWallView =
+  | 'feed'
+  | 'testimonies'
+  | 'my_prayers'
+  | 'revelation'
+  | 'locations'
+  | 'feed_list'
+  | 'journal';
 type LoadState = 'initial' | 'refreshing' | 'paging' | 'idle' | 'error';
 
 const SKELETON_COUNT = 3;
@@ -101,7 +117,11 @@ export default function PrayerWallScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<TabsParamList>>();
   const route = useRoute<RouteProp<TabsParamList, 'Prayer Wall'>>();
 
-  const [view, setView] = useState<PrayerWallView>('landing');
+  const [view, setView] = useState<PrayerWallView>('feed');
+  // Active pill mirrors `view` while on a pill surface; held separately so
+  // the pill bar stays highlighted correctly when feed_list (a sub-view of
+  // the Feed pill) is active.
+  const [activePill, setActivePill] = useState<PrayerWallPill>('feed');
 
   // Church context for PostPrayerRequestModal — fetched once when verified.
   const [viewerChurchId, setViewerChurchId] = useState<string | null>(null);
@@ -307,7 +327,7 @@ export default function PrayerWallScreen() {
   // on first entry; subsequent entries within the same focus cycle
   // refresh implicitly when filters change (effect below).
   useEffect(() => {
-    if (view !== 'feed') return;
+    if (view !== 'feed_list') return;
     if (!hasFetchedOnce.current) {
       void loadInitial(selectedCategories, urgency);
     }
@@ -321,7 +341,7 @@ export default function PrayerWallScreen() {
   // on every toggle (handleCategoryToggle always returns a new Set),
   // so this effect catches multi-select additions and removals.
   useEffect(() => {
-    if (view !== 'feed') return;
+    if (view !== 'feed_list') return;
     if (!hasFetchedOnce.current) return; // initial-load effect owns the first fetch
     void loadInitial(selectedCategories, urgency);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
@@ -350,7 +370,8 @@ export default function PrayerWallScreen() {
       }
 
       return () => {
-        setView('landing');
+        setView('feed');
+        setActivePill('feed');
         setSelectedCategories(new Set());
         setUrgency(DEFAULT_URGENCY);
         setDetailRow(null);
@@ -370,55 +391,23 @@ export default function PrayerWallScreen() {
     setPostModalVisible(true);
   };
 
+  // Pill nav change — set both the active pill and the matching view.
+  const handlePillChange = useCallback((pill: PrayerWallPill) => {
+    setActivePill(pill);
+    setView(pill as PrayerWallView);
+  }, []);
+
   // ─── View routing ────────────────────────────────────────────────
 
-  if (view === 'landing') {
-    return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <View style={styles.landingHeader}>
-          <Text style={styles.title}>Prayer Wall</Text>
-          <Text style={styles.landingSubtitle}>THE BODY GATHERED · IN ONE ACCORD</Text>
-        </View>
-        <View style={styles.landingHairline} />
-        <PrayerWallLanding
-          onEnterFeed={() => setView('feed')}
-          onSeeAllTestimonies={() => setView('testimonies')}
-          onOpenTestimony={(id) => {
-            setDeepLinkTestimonyId(id);
-            setView('testimonies');
-          }}
-          onViewJournal={() => setView('journal')}
-          onPost={handlePostPress}
-        />
-
-        {/* Post modal also lives on the landing return — handlePostPress
-            fires here when the leader taps "SHARE A NEED" on the Receive
-            card. Without this, postModalVisible flips true but no modal
-            renders (the feed-view modal is in a different early return). */}
-        <PostPrayerRequestModal
-          visible={postModalVisible}
-          churchName={postChurchName}
-          isUnderground={postIsUnderground}
-          defaultAnonymous={postDefaultAnon}
-          onCancel={() => setPostModalVisible(false)}
-          onSuccess={() => {
-            setPostModalVisible(false);
-            // Posted from landing — force the feed to re-fetch from scratch
-            // next time the leader enters it so the new request appears.
-            hasFetchedOnce.current = false;
-            setRows([]);
-          }}
-        />
-      </SafeAreaView>
-    );
-  }
-
+  // journal — full-bleed Intercession Journal. No pill nav, no header.
+  // Back returns to the Feed pill (the journal is reached from the Feed
+  // pill's JournalLinkRow, or via cross-tab nav with initialView=journal).
   if (view === 'journal') {
     const pendingChurch = route.params?.pendingChurch ?? null;
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <IntercessionJournalView
-          onBack={() => setView('landing')}
+          onBack={() => { setView('feed'); setActivePill('feed'); }}
           pendingChurch={pendingChurch}
           onNavigateToChurchTab={() => navigation.navigate('The Church')}
           onOpenPrayerRequest={handleOpenPrayerRequest}
@@ -437,84 +426,114 @@ export default function PrayerWallScreen() {
     );
   }
 
-  if (view === 'my_open_prayers') {
+  // feed_list — full prayer-request list (filter bar + paginated cards).
+  // Entered from the Feed pill's "Enter the prayer wall" CTA. No pill nav,
+  // no segmented control. Back returns to the Feed pill.
+  if (view === 'feed_list') {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.topBar}>
           <Pressable
-            onPress={() => setView('landing')}
+            onPress={() => { setView('feed'); setActivePill('feed'); }}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Back to Prayer Wall landing"
+            accessibilityLabel="Back to Prayer Wall"
           >
             <Text style={styles.backArrow}>←</Text>
           </Pressable>
-          <Text style={styles.title}>My open prayers</Text>
-          <View style={styles.topBarRightPlaceholder} />
+          <Text style={styles.title}>Prayer Wall</Text>
+          {isVerified ? (
+            <Pressable
+              onPress={handlePostPress}
+              accessibilityRole="button"
+              accessibilityLabel="Post a prayer request"
+              hitSlop={8}
+            >
+              <Text style={styles.postCta}>+ Post</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.topBarRightPlaceholder} />
+          )}
         </View>
-        <MyOpenPrayersView onBackToLanding={() => setView('landing')} />
+
+        <PrayerWallFilterBar
+          selectedCategories={selectedCategories}
+          urgency={urgency}
+          resultCount={rows.length}
+          onCategoryToggle={handleCategoryToggle}
+          onUrgencyChange={setUrgency}
+          onClear={handleClearFilters}
+        />
+        {renderFeedBody({
+          loadState,
+          hasFetchedOnce: hasFetchedOnce.current,
+          rows,
+          isVerified,
+          loadInitial: () => void loadInitial(selectedCategories, urgency),
+          refresh,
+          loadMore,
+          listRef,
+          onOpenDetail: setDetailRow,
+          onPostPress: handlePostPress,
+        })}
+
+        <PrayerWallDetailSheet
+          row={detailRow}
+          onDismiss={() => setDetailRow(null)}
+          viewerChurchId={viewerChurchId ?? undefined}
+          onPrayedChange={(id, iPrayed, prayedCount) => {
+            setRows((prev) =>
+              prev.map((r) =>
+                r.id === id ? { ...r, i_prayed: iPrayed, prayed_count: prayedCount } : r,
+              ),
+            );
+          }}
+        />
+
+        <PostPrayerRequestModal
+          visible={postModalVisible}
+          churchName={postChurchName}
+          isUnderground={postIsUnderground}
+          defaultAnonymous={postDefaultAnon}
+          onCancel={() => setPostModalVisible(false)}
+          onSuccess={() => {
+            setPostModalVisible(false);
+            // On the list — refresh in place so the new request appears
+            // immediately at the top without leaving the view.
+            void refresh();
+          }}
+        />
       </SafeAreaView>
     );
   }
 
-  // 'feed' and 'testimonies' share top-bar + segmented control chrome.
-  const segmentValue = view === 'feed' ? 'feed' : 'testimonies';
-
+  // ─── Pill surfaces ───────────────────────────────────────────────
+  // feed / testimonies / my_prayers / revelation / locations all share
+  // the tab header + pill nav chrome. Each renders its own body below.
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <View style={styles.topBar}>
-        <Pressable
-          onPress={() => setView('landing')}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Back to Prayer Wall landing"
-        >
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
+      <View style={styles.tabHeader}>
         <Text style={styles.title}>Prayer Wall</Text>
-        {isVerified && view === 'feed' ? (
-          <Pressable
-            onPress={handlePostPress}
-            accessibilityRole="button"
-            accessibilityLabel="Post a prayer request"
-            hitSlop={8}
-          >
-            <Text style={styles.postCta}>+ Post</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.topBarRightPlaceholder} />
-        )}
+        <Text style={styles.landingSubtitle}>THE BODY GATHERED · IN ONE ACCORD</Text>
       </View>
 
-      <PrayerWallSegmentedControl
-        value={segmentValue}
-        onChange={(next) => setView(next)}
-      />
+      <PrayerWallPillNav active={activePill} onChange={handlePillChange} />
 
-      {view === 'feed' ? (
-        <>
-          <PrayerWallFilterBar
-            selectedCategories={selectedCategories}
-            urgency={urgency}
-            resultCount={rows.length}
-            onCategoryToggle={handleCategoryToggle}
-            onUrgencyChange={setUrgency}
-            onClear={handleClearFilters}
-          />
-          {renderFeedBody({
-            loadState,
-            hasFetchedOnce: hasFetchedOnce.current,
-            rows,
-            isVerified,
-            loadInitial: () => void loadInitial(selectedCategories, urgency),
-            refresh,
-            loadMore,
-            listRef,
-            onOpenDetail: setDetailRow,
-            onPostPress: handlePostPress,
-          })}
-        </>
-      ) : (
+      {view === 'feed' && (
+        <PrayerWallLanding
+          onEnterFeed={() => setView('feed_list')}
+          onSeeAllTestimonies={() => { setActivePill('testimonies'); setView('testimonies'); }}
+          onOpenTestimony={(id) => {
+            setDeepLinkTestimonyId(id);
+            setActivePill('testimonies');
+            setView('testimonies');
+          }}
+          onViewJournal={() => setView('journal')}
+          onPost={handlePostPress}
+        />
+      )}
+
+      {view === 'testimonies' && (
         <TestimoniesView
           deepLinkTestimonyId={deepLinkTestimonyId}
           onDeepLinkConsumed={() => setDeepLinkTestimonyId(null)}
@@ -527,6 +546,20 @@ export default function PrayerWallScreen() {
         />
       )}
 
+      {view === 'my_prayers' && (
+        <MyOpenPrayersView onBackToLanding={() => { setView('feed'); setActivePill('feed'); }} />
+      )}
+
+      {view === 'revelation' && (
+        <RevelationView onNavigateToPersecuted={() => navigation.navigate('Persecuted')} />
+      )}
+
+      {view === 'locations' && <LocationsView />}
+
+      {/* Detail sheet — reachable from the Feed pill landing previews
+          (PrayerWallLanding routes those into feed_list, but the sheet
+          host stays mounted here for any pill-surface open path) and
+          kept passing viewerChurchId for the own-church Connect guard. */}
       <PrayerWallDetailSheet
         row={detailRow}
         onDismiss={() => setDetailRow(null)}
@@ -540,6 +573,8 @@ export default function PrayerWallScreen() {
         }}
       />
 
+      {/* Post modal — also hosted on the pill surfaces so "Share a need"
+          on the Feed pill's Receive card can open it without leaving. */}
       <PostPrayerRequestModal
         visible={postModalVisible}
         churchName={postChurchName}
@@ -548,16 +583,10 @@ export default function PrayerWallScreen() {
         onCancel={() => setPostModalVisible(false)}
         onSuccess={() => {
           setPostModalVisible(false);
-          if (view === 'feed') {
-            // On the feed — refresh in place so the new request appears
-            // immediately at the top without leaving the view.
-            void refresh();
-          } else {
-            // Posted from another view (e.g. SHARE A NEED on landing) —
-            // reset so the feed re-fetches from scratch on next entry.
-            hasFetchedOnce.current = false;
-            setRows([]);
-          }
+          // Posted from a pill surface — reset so the feed_list re-fetches
+          // from scratch on next entry and the new request appears.
+          hasFetchedOnce.current = false;
+          setRows([]);
         }}
       />
     </SafeAreaView>
@@ -690,12 +719,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 18,
   },
-  landingHairline: {
-    // v6 fix B — 0.5 pt full-bleed hairline below the Prayer Wall
-    // title on the landing only. Matches Home tab pattern.
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(240, 237, 230, 0.08)',
-  },
   title: {
     // Unified wordmark with Home (2026-06-01): Cormorant 400 Regular, 26pt.
     // No Rp mark on Prayer Wall — Home only (Founder confirmed).
@@ -710,10 +733,12 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     lineHeight: 24,
   },
-  landingHeader: {
-    paddingHorizontal: 20,
+  tabHeader: {
+    // Prayer Wall redesign — header shown above the pill nav on all five
+    // pill surfaces. Matches the old landing header metrics.
+    paddingHorizontal: 22,
     paddingTop: 14,
-    paddingBottom: 16,
+    paddingBottom: 4,
   },
   landingSubtitle: {
     fontFamily: Typography.mono,
