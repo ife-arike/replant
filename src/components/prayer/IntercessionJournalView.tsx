@@ -531,7 +531,7 @@ function StandingEntryRow({
           {`${entry.church_name.toUpperCase()} · ${location.toUpperCase()} · ${when.toUpperCase()}`}
         </Text>
       </View>
-      <Text style={styles.openRequest} numberOfLines={1}>OPEN REQUEST</Text>
+      <Text style={styles.openRequest} numberOfLines={1}>OPEN</Text>
     </Pressable>
   );
 }
@@ -864,15 +864,15 @@ const styles = StyleSheet.create({
   },
   churchName: {
     fontFamily: Typography.displayRegular,
-    fontSize: 16,
+    fontSize: 17,
     color: OFFWHITE,
-    letterSpacing: 0.16,
+    letterSpacing: 0.17,
     marginBottom: 3,
   },
   churchMeta: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.36,
+    fontSize: 10,
+    letterSpacing: 1.6,
     color: Colors.textMuted,
     textTransform: 'uppercase',
   },
@@ -918,16 +918,16 @@ const styles = StyleSheet.create({
   },
   standingText: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 14.5,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 23,
     color: CREAM,
     letterSpacing: 0.07,
     marginBottom: 5,
   },
   standingMeta: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.36,
+    fontSize: 10,
+    letterSpacing: 1.6,
     color: Colors.textMuted,
     textTransform: 'uppercase',
   },

@@ -266,7 +266,7 @@ function RevelationDetail({
 
       <View style={styles.promiseCard}>
         <Text style={styles.sectionLabel}>THE PROMISE TO THE OVERCOMER</Text>
-        <Text style={styles.sectionVerse}>{archetype.promise}</Text>
+        <Text style={styles.promiseVerse}>{archetype.promise}</Text>
         <Text style={styles.promiseRef}>{archetype.promiseRef.toUpperCase()}</Text>
       </View>
 
@@ -342,12 +342,12 @@ function PenGlyph({ color }: { color: string }) {
   return (
     <Svg width={14} height={14} viewBox="0 0 16 16">
       <Path
-        d="M8 2v5M6 4l2-2 2 2M4 14V9a2.5 2.5 0 0 1 5 0v3M7 12V9a2.5 2.5 0 0 1 5 0v5"
-        fill="none"
+        d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"
         stroke={color}
-        strokeWidth={1}
+        strokeWidth={1.2}
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
     </Svg>
   );
@@ -374,8 +374,8 @@ const styles = StyleSheet.create({
   },
   introBody: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 26,
     color: CREAM,
     letterSpacing: 0.15,
   },
@@ -399,37 +399,37 @@ const styles = StyleSheet.create({
   cardLinksOut: { borderLeftWidth: 2, borderLeftColor: RED },
   cardNum: {
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 0.18 * 9,
+    fontSize: 10,
+    letterSpacing: 0.18 * 10,
     color: MUTED_32,
     paddingTop: 6,
   },
   cardBody: { flex: 1, minWidth: 0 },
   cardCondition: {
     fontFamily: Typography.displayRegular,
-    fontSize: 20,
+    fontSize: 24,
     color: OFFWHITE,
     letterSpacing: 0.2,
   },
   cardCity: {
     fontFamily: Typography.mono,
-    fontSize: 9,
-    letterSpacing: 0.18 * 9,
+    fontSize: 10,
+    letterSpacing: 0.18 * 10,
     textTransform: 'uppercase',
     color: MUTED_55,
     marginTop: 4,
   },
   cardBrief: {
     fontFamily: Typography.body,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 22,
     color: MUTED_55,
     marginTop: 10,
   },
   cardRef: {
     fontFamily: Typography.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.18 * 8.5,
+    fontSize: 10,
+    letterSpacing: 0.18 * 10,
     textTransform: 'uppercase',
     color: SKY,
     marginTop: 12,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   detailCity: {
     fontFamily: Typography.body,
-    fontSize: 14,
+    fontSize: 15,
     color: MUTED_55,
     marginTop: 4,
   },
@@ -517,8 +517,8 @@ const styles = StyleSheet.create({
   },
   sectionVerse: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 27,
     color: CREAM,
     letterSpacing: 0.16,
   },
@@ -534,6 +534,13 @@ const styles = StyleSheet.create({
     // gradient approximated with a faint sky wash (no BlurView / gradients
     // dependency required) — README: from rgba(107,181,232,0.04).
     backgroundColor: 'rgba(107,181,232,0.04)',
+  },
+  promiseVerse: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 18,
+    lineHeight: 28,
+    color: CREAM,
+    letterSpacing: 0.16,
   },
   promiseRef: {
     fontFamily: Typography.mono,
