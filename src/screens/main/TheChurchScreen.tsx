@@ -155,6 +155,7 @@ export default function TheChurchScreen() {
   const [panToChurchTrigger, setPanToChurchTrigger] = useState(0);
   const [recenterGPSTrigger, setRecenterGPSTrigger] = useState(0);
   const [prayerWallCollapseTrigger, setPrayerWallCollapseTrigger] = useState(0);
+  const [prayerWallRefetchTrigger, setPrayerWallRefetchTrigger] = useState(0);
   // Stable refs — avoids the "maximum update depth" loop from inline arrows.
   const handleTutorialPanToChurch = useCallback(() => {
     setPanToChurchTrigger((n) => n + 1);
@@ -264,6 +265,9 @@ export default function TheChurchScreen() {
   useFocusEffect(
     useCallback(() => {
       setPage(0);
+      // Refresh the global Prayer Wall pull-up on every tab focus so a
+      // request posted elsewhere (Prayer Wall tab) is reflected here.
+      setPrayerWallRefetchTrigger((n) => n + 1);
     }, []),
   );
 
@@ -529,7 +533,7 @@ export default function TheChurchScreen() {
           {/* KAN-22 — Prayer Wall pull-up. onSnapChange feeds the
               anyOverlayOpen gate so the globe pauses while the panel
               is half or full (Fix A). */}
-          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} collapseTrigger={prayerWallCollapseTrigger} />
+          <PrayerWallPullUp onSnapChange={setPrayerWallSnap} collapseTrigger={prayerWallCollapseTrigger} refetchTrigger={prayerWallRefetchTrigger} />
         </Animated.View>
       </View>
 

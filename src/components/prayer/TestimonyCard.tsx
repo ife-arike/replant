@@ -65,6 +65,7 @@ export const TESTIMONY_CARD_BODY_STYLE = {
   fontSize: 16,
   lineHeight: 25,
   letterSpacing: 0.08,
+  color: Colors.text,
 } as const;
 
 interface Props {
