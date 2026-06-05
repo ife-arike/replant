@@ -111,6 +111,14 @@ export function truncateExcerpt(text: string | null | undefined): string {
 // once we cross 30 days. Returns '' on invalid input so callers can
 // optionally hide the timestamp cell.
 
+// ── Hold count formatting (KAN-32 Day 3) ─────────────────────────────────────
+
+export function formatHoldCount(n: number): string {
+  if (n < 1000) return n.toString();
+  if (n < 10000) return (n / 1000).toFixed(1) + 'k';
+  return Math.round(n / 1000) + 'k';
+}
+
 const MIN_MS = 60_000;
 const HOUR_MS = 60 * MIN_MS;
 const DAY_MS = 24 * HOUR_MS;

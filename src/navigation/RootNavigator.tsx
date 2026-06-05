@@ -37,6 +37,10 @@ import { useAuth } from "../contexts/AuthProvider";
 import HeartcrySubmissionScreen from "../screens/main/HeartcrySubmissionScreen";
 import SettingsScreenContainer from "../screens/main/SettingsScreenContainer";
 import SetNewPasswordScreen from "../screens/onboarding/SetNewPasswordScreen";
+import ArticleReaderScreen from "../screens/main/persecuted/readers/ArticleReaderScreen";
+import GuidanceReaderScreen from "../screens/main/persecuted/readers/GuidanceReaderScreen";
+import StoryArchiveScreen from "../screens/main/persecuted/readers/StoryArchiveScreen";
+import WitnessArchiveScreen from "../screens/main/persecuted/readers/WitnessArchiveScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
@@ -57,6 +61,28 @@ export default function RootNavigator() {
               screen itself self-gates on the verified DB literal at
               submit time (the edge function enforces). */}
           <Stack.Screen name="HeartcrySubmission" component={HeartcrySubmissionScreen} />
+          {/* Persecuted tab — pushed reader/archive screens (slide_from_right).
+              Tab bar hidden while any of these are on top. */}
+          <Stack.Screen
+            name="ArticleReader"
+            component={ArticleReaderScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="GuidanceReader"
+            component={GuidanceReaderScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="StoryArchive"
+            component={StoryArchiveScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="WitnessArchive"
+            component={WitnessArchiveScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
         </>
       )}
       {(branch === "unauthenticated" || branch === "loading") && (
