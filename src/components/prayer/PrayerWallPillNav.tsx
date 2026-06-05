@@ -121,6 +121,14 @@ function Pill({
 
 const styles = StyleSheet.create({
   container: {
+    // A horizontal ScrollView placed in a flex column will stretch to
+    // fill the column's cross-axis (vertical) space unless its growth is
+    // pinned. Without flexGrow: 0 the pill bar expands downward and opens
+    // a large blank gap between the header and the Feed content (the
+    // 3339b1d restructure regression). flexShrink: 0 keeps it from being
+    // squeezed when the body below is tall.
+    flexGrow: 0,
+    flexShrink: 0,
     paddingTop: 12,
     paddingBottom: 14,
     borderBottomWidth: 0.5,

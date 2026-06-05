@@ -294,6 +294,16 @@ function RevelationDetail({
             </View>
           ))}
         </View>
+
+        {/* Scripture footer — 1 Thessalonians 5:11 (KJV). Closes the
+            Voices section with the call to comfort and edify one another,
+            matching the Galatians 6:2 / Ephesians 6:18 footer style. */}
+        <View style={styles.voicesScripture}>
+          <Text style={styles.voicesScriptureVerse}>
+            &quot;Wherefore comfort yourselves together, and edify one another, even as also ye do.&quot;
+          </Text>
+          <Text style={styles.voicesScriptureRef}>1 THESSALONIANS 5:11 · KJV</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -581,5 +591,29 @@ const styles = StyleSheet.create({
     letterSpacing: 0.16 * 8.5,
     textTransform: 'uppercase',
     color: MUTED_32,
+  },
+
+  // ── Detail · voices scripture footer (1 Thessalonians 5:11)
+  voicesScripture: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  voicesScriptureVerse: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 15,
+    lineHeight: 23,
+    color: CREAM,
+    letterSpacing: 0.15,
+    textAlign: 'center',
+    maxWidth: 320,
+    marginBottom: 12,
+  },
+  voicesScriptureRef: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 0.18 * 8.5,
+    textTransform: 'uppercase',
+    color: 'rgba(240,237,230,0.45)',
+    textAlign: 'center',
   },
 });
