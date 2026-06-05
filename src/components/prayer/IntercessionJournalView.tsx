@@ -629,12 +629,19 @@ function TrashGlyph() {
 }
 
 function SteepleGlyph() {
-  // Simple arch / doorway — vertical jambs rising to a semicircle head,
-  // closed across the base. Reads as a church door.
+  // Clean equal-armed cross, centred at (14, 14).
   return (
     <Svg width={28} height={28} viewBox="0 0 28 28">
       <Path
-        d="M7 23V13a7 7 0 0 1 14 0v10M7 23h14"
+        d="M14 5 L14 23"
+        fill="none"
+        stroke="rgba(107,181,232,0.5)"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8 13 L20 13"
         fill="none"
         stroke="rgba(107,181,232,0.5)"
         strokeWidth={1.2}
@@ -646,23 +653,30 @@ function SteepleGlyph() {
 }
 
 function HandsGlyph() {
-  // Two upward, open hands raised in prayer. Each hand is a cupped palm
-  // (curve) rising into three finger strokes; mirrored about centre with
-  // a small gap between the palms.
+  // Two open cupped hands side by side, palms up — a prayer/offering posture.
   return (
     <Svg width={28} height={28} viewBox="0 0 28 28">
-      {/* Left hand: palm cup + fingers */}
+      {/* Left hand: palm curve upward */}
       <Path
-        d="M13 23c-3 0-5-2-5-5v-5M8 13l1.5 3M11 9v5M13.5 11v5"
+        d="M6 18 C6 14 10 12 10 16"
         fill="none"
         stroke="rgba(107,181,232,0.5)"
         strokeWidth={1.2}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Right hand: palm cup + fingers */}
+      {/* Right hand: mirrored */}
       <Path
-        d="M15 23c3 0 5-2 5-5v-5M20 13l-1.5 3M17 9v5M14.5 11v5"
+        d="M22 18 C22 14 18 12 18 16"
+        fill="none"
+        stroke="rgba(107,181,232,0.5)"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Centre join: flat base connecting the two palms */}
+      <Path
+        d="M10 16 L18 16"
         fill="none"
         stroke="rgba(107,181,232,0.5)"
         strokeWidth={1.2}
