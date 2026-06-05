@@ -238,6 +238,11 @@ export default function PrayerWallLanding({
       <View style={styles.bodyPad}>
         <HeroPrayerCard previewRows={previewRows} onEnterFeed={onEnterFeed} />
 
+        {/* Device-pass — sky hairline closing the hero section, matching
+            the Persecuted tab's header hairline pattern (0.5 pt, 30%
+            alpha brand colour). Sky here vs red there. */}
+        <View style={styles.heroHairline} />
+
         {isVerified ? (
           <ReceiveActiveCard requests={ownRequests} onPost={onPost} />
         ) : (
@@ -698,6 +703,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(107,181,232,0.35)',
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  heroHairline: {
+    // Device-pass — sky hairline mirroring the Persecuted tab's
+    // headerHairline (height 0.5, 30% brand alpha). Hero card already
+    // carries marginBottom:20, so this sits ~4 pt below it then leaves
+    // 16 pt of air before the Receive card.
+    height: 0.5,
+    backgroundColor: 'rgba(107,181,232,0.30)',
+    marginTop: -4,
+    marginBottom: 16,
   },
   heroEyebrowRow: {
     flexDirection: 'row',

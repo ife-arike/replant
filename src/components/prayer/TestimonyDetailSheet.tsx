@@ -26,6 +26,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Image,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -44,9 +45,15 @@ import {
   hasPrayedStateChanged,
   type TestimonyRow,
 } from './PrayerWallLogic';
-import { CelebrateIcon, XIcon } from './PrayerIcons';
+import { XIcon } from './PrayerIcons';
 import { formatLeaderLine } from '../../utils/displayHelpers';
 import { TESTIMONY_DETAIL_STYLE } from './TestimonyCard';
+
+// Device-pass fix — "Rejoice with them" uses the shofar glyph
+// (assets/rejoice-icon.png), matching the Testimonies card. Replaces the
+// former bell/CelebrateIcon. Green title token #6B9E7A also applied below.
+const REJOICE_ICON = require('../../../assets/rejoice-icon.png');
+const TESTIMONY_GREEN = '#6B9E7A';
 
 interface Props {
   row: TestimonyRow | null;
@@ -310,9 +317,10 @@ export default function TestimonyDetailSheet({
             style={styles.celebrateCta}
           >
             <Animated.View style={{ transform: [{ scale: burstScale }] }}>
-              <CelebrateIcon
-                size={20}
-                color={iCelebrated ? Colors.green : Colors.textMuted}
+              <Image
+                source={REJOICE_ICON}
+                style={styles.rejoiceIcon}
+                resizeMode="contain"
               />
             </Animated.View>
             <Text
@@ -376,7 +384,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.6,
     lineHeight: 16,
-    color: Colors.accent,
+    // Device-pass fix — church/location eyebrow in testimony green (was
+    // sky Colors.accent) to match the testimony surface treatment.
+    color: TESTIMONY_GREEN,
   },
   leaderLine: {
     // v8 Fix H4 — attribution 15 pt DM Sans 400, lh 1.3, muted-45%.
@@ -443,6 +453,13 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(91, 173, 122, 0.45)',
     backgroundColor: 'rgba(91, 173, 122, 0.08)',
+  },
+  rejoiceIcon: {
+    // Device-pass fix — shofar glyph at 28×28 (matches the Testimonies
+    // card), negative vertical margin keeps the CTA row height in check.
+    width: 28,
+    height: 28,
+    marginVertical: -4,
   },
   celebrateLabel: {
     fontFamily: Typography.bodyMedium,

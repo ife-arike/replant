@@ -91,6 +91,12 @@ const GLOW_DURATION_MS = 1600;
 const TESTIMONY_GREEN = '#6B9E7A';
 const REJOICE_ICON = require('../../../assets/rejoice-icon.png');
 
+// Thousands-separated count for the "N rejoicing" footer label
+// (e.g. 1289 → "1,289"). Keeps the card from showing a bare 1289.
+function formatRejoiceCount(n: number): string {
+  return n.toLocaleString('en-US');
+}
+
 export default function TestimonyCard({
   row,
   isHighlighted = false,
@@ -167,6 +173,9 @@ export default function TestimonyCard({
           <Text style={[styles.location, styles.locationGreen]} numberOfLines={1}>
             {locationLine}
           </Text>
+          {/* Device-pass rework — time posted moves to the top-right of
+              the header row (was bottom of the footer). */}
+          {timestamp ? <Text style={styles.headTimestamp}>{timestamp}</Text> : null}
         </View>
       ) : (
         <Text style={styles.location} numberOfLines={1}>
@@ -186,29 +195,28 @@ export default function TestimonyCard({
         </View>
       ) : null}
 
-      <View style={styles.metaRow}>
-        {/* Always "Testimony" — never a category chip. Locked. */}
-        <View style={styles.testimonyChip}>
-          <Text style={styles.testimonyChipText}>Testimony</Text>
-        </View>
-        {/* Passive celebrate display — no Pressable. Fed directly
-            from row props so the parent's onCelebratedChange row swap
-            propagates here on the next render. Green variant (Testimonies
-            pill) renders the shofar "Rejoice" action; the tap path still
-            lives in TestimonyDetailSheet. */}
-        {green ? (
+      {/* Device-pass rework — footer is now a single row: Rejoice action
+          far left, "N rejoicing" count far right. The redundant
+          "TESTIMONY" badge (testimonyChip) is gone — the Testimonies tab
+          already labels every card as a testimony. Time posted lives in
+          the header row (top-right), no longer here. Display-only — the
+          tap path for Rejoice lives in TestimonyDetailSheet. */}
+      {green ? (
+        <View style={styles.metaRow}>
           <View
-            style={styles.celebrateWrap}
+            style={styles.rejoiceAction}
             accessible
-            accessibilityLabel={`${row.celebrated_count} rejoicing`}
+            accessibilityLabel={`${formatRejoiceCount(row.celebrated_count)} rejoicing`}
           >
             <Image source={REJOICE_ICON} style={styles.rejoiceIcon} resizeMode="contain" />
             <Text style={styles.rejoiceLabel}>Rejoice</Text>
-            <Text style={styles.rejoiceCount}>
-              {`${row.celebrated_count} rejoicing`}
-            </Text>
           </View>
-        ) : (
+          <Text style={styles.rejoiceCount}>
+            {`${formatRejoiceCount(row.celebrated_count)} rejoicing`}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.metaRow}>
           <View
             style={styles.celebrateWrap}
             accessible
@@ -227,9 +235,9 @@ export default function TestimonyCard({
               {row.celebrated_count}
             </Text>
           </View>
-        )}
-        {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
-      </View>
+          {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -268,6 +276,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  headTimestamp: {
+    // Device-pass rework — time posted at the top-right of the header.
+    fontFamily: Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginLeft: 'auto',
+    flexShrink: 0,
+  },
   greenHeadDot: {
     width: 6,
     height: 6,
@@ -281,6 +297,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 1.62, // 0.18em × 9
     textTransform: 'uppercase',
+  },
+  rejoiceAction: {
+    // Device-pass rework — Rejoice icon + label grouped at the far left
+    // of the footer row.
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   rejoiceIcon: {
     width: 28,
@@ -296,6 +319,7 @@ const styles = StyleSheet.create({
     color: TESTIMONY_GREEN,
   },
   rejoiceCount: {
+    // Device-pass rework — "N rejoicing" pinned to the far right.
     fontFamily: Typography.mono,
     fontSize: 8.5,
     letterSpacing: 1.19,
@@ -373,26 +397,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 12,
-    flexWrap: 'wrap',
-  },
-  testimonyChip: {
-    // v5 item 06 — chip padding 3 × 8 pt, radius 3, bg
-    // rgba(91,173,122,0.12). Always reads "Testimony" — never a
-    // category chip (locked).
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 3,
-    backgroundColor: 'rgba(107, 181, 232, 0.12)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(107, 181, 232, 0.35)',
-  },
-  testimonyChipText: {
-    // v5 item 06 — 11 pt DM Mono 400, 0.14em UPPERCASE green.
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    color: Colors.accent,
-    textTransform: 'uppercase',
   },
   celebrateWrap: {
     // v6 Fix G — display-only (no tap-hit-target). Icon + count

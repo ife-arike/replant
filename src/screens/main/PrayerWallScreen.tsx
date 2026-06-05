@@ -33,6 +33,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Pressable,
   RefreshControl,
@@ -168,6 +169,35 @@ export default function PrayerWallScreen() {
   );
   const hasFetchedOnce = useRef(false);
   const listRef = useRef<FlatList<PrayerRow> | null>(null);
+
+  // KAN-24 — confirmation toast after a prayer request is lifted to the
+  // wall. The modal dismisses on success (host-owned), so the toast must
+  // live here at the screen. 3 s visible, 200 ms fade in/out — mirrors
+  // the IntercessionJournalView toast pattern.
+  const [toast, setToast] = useState<string | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback(
+    (msg: string) => {
+      setToast(msg);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+      toastTimer.current = setTimeout(() => {
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => setToast(null));
+      }, 3000);
+    },
+    [toastOpacity],
+  );
+  // Clear any pending toast timer on unmount.
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Toggle a category in/out of the selected Set. Always returns a new
   // Set instance so React re-renders consumers (Set identity is the
@@ -498,11 +528,18 @@ export default function PrayerWallScreen() {
           onCancel={() => setPostModalVisible(false)}
           onSuccess={() => {
             setPostModalVisible(false);
+            showToast('Your request has been lifted to the wall.');
             // On the list — refresh in place so the new request appears
             // immediately at the top without leaving the view.
             void refresh();
           }}
         />
+
+        {toast ? (
+          <Animated.View style={[styles.toast, { opacity: toastOpacity }]} pointerEvents="none">
+            <Text style={styles.toastText}>{toast}</Text>
+          </Animated.View>
+        ) : null}
       </SafeAreaView>
     );
   }
@@ -583,12 +620,19 @@ export default function PrayerWallScreen() {
         onCancel={() => setPostModalVisible(false)}
         onSuccess={() => {
           setPostModalVisible(false);
+          showToast('Your request has been lifted to the wall.');
           // Posted from a pill surface — reset so the feed_list re-fetches
           // from scratch on next entry and the new request appears.
           hasFetchedOnce.current = false;
           setRows([]);
         }}
       />
+
+      {toast ? (
+        <Animated.View style={[styles.toast, { opacity: toastOpacity }]} pointerEvents="none">
+          <Text style={styles.toastText}>{toast}</Text>
+        </Animated.View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -710,6 +754,28 @@ function renderFeedBody(args: FeedBodyArgs) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
+
+  // KAN-24 — submit confirmation toast. Mirrors the
+  // IntercessionJournalView toast (dark pill, faint hairline, off-white
+  // body), pinned near the bottom of the screen.
+  toast: {
+    position: 'absolute',
+    bottom: 28,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 0.5,
+    borderColor: 'rgba(240,237,230,0.08)',
+  },
+  toastText: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#F0EDE6',
+  },
   topBar: {
     // Unified top-bar metrics with Home (2026-06-01).
     flexDirection: 'row',
@@ -750,16 +816,6 @@ const styles = StyleSheet.create({
   },
   topBarRightPlaceholder: {
     width: 24, // keep title centered when no right action
-  },
-  hamburger: {
-    gap: 4,
-    alignItems: 'flex-end',
-  },
-  hamburgerBar: {
-    width: 18,
-    height: 1.5,
-    borderRadius: 1,
-    backgroundColor: Colors.text,
   },
   postCta: {
     fontFamily: Typography.mono,
