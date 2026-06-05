@@ -34,7 +34,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -116,6 +115,7 @@ interface Props {
   onSeeAllTestimonies: () => void;
   onOpenTestimony: (testimonyId: string) => void;
   onViewJournal: () => void;
+  onPost?: () => void;
 }
 
 // Local count formatter (matches CD's formatCount).
@@ -140,6 +140,7 @@ export default function PrayerWallLanding({
   onSeeAllTestimonies,
   onOpenTestimony,
   onViewJournal,
+  onPost,
 }: Props) {
   const { branch, session } = useAuth();
   const isVerified = branch === 'active';
@@ -238,7 +239,7 @@ export default function PrayerWallLanding({
         <HeroPrayerCard previewRows={previewRows} onEnterFeed={onEnterFeed} />
 
         {isVerified ? (
-          <ReceiveActiveCard requests={ownRequests} />
+          <ReceiveActiveCard requests={ownRequests} onPost={onPost} />
         ) : (
           <ReceiveLockedCard />
         )}
@@ -415,9 +416,9 @@ function ReceiveLockedCard() {
 // ReceiveActiveCard
 // ─────────────────────────────────────────────────────────────────────
 
-function ReceiveActiveCard({ requests }: { requests: OpenPrayerRow[] }) {
+function ReceiveActiveCard({ requests, onPost }: { requests: OpenPrayerRow[]; onPost?: () => void }) {
   const handleShareNeed = () => {
-    Alert.alert('Share a need', 'This feature is coming soon.');
+    onPost?.();
   };
   const isEmpty = requests.length === 0;
   return (

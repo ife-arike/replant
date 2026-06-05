@@ -325,6 +325,7 @@ export default function PrayerWallScreen() {
             setView('testimonies');
           }}
           onViewJournal={() => setView('journal')}
+          onPost={handlePostPress}
         />
       </SafeAreaView>
     );
