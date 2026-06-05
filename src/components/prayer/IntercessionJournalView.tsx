@@ -61,7 +61,6 @@ interface StandingRow {
   city: string | null;
   country: string | null;
   prayed_at: string;
-  prayed_count: number;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -234,7 +233,16 @@ export default function IntercessionJournalView({ onBack, pendingChurch, onNavig
           }
           const s = row.item as StandingRow;
           const isLast = index === listData.length - 1;
-          return <StandingEntryRow entry={s} isLast={isLast} />;
+          return (
+            <StandingEntryRow
+              entry={s}
+              isLast={isLast}
+              onOpenRequest={() => {
+                // TODO: deep-link to the prayer request on the Prayer Wall.
+                // Full routing is a future ticket — no-op stub for now.
+              }}
+            />
+          );
         }}
         ListHeaderComponent={
           <IJHeader
@@ -487,11 +495,24 @@ function ChurchRow({
 // StandingEntryRow
 // ─────────────────────────────────────────────────────────────────────────
 
-function StandingEntryRow({ entry, isLast }: { entry: StandingRow; isLast: boolean }) {
+function StandingEntryRow({
+  entry,
+  isLast,
+  onOpenRequest,
+}: {
+  entry: StandingRow;
+  isLast: boolean;
+  onOpenRequest?: () => void;
+}) {
   const location = getLocationLine(entry.city, entry.country);
   const when = formatRelativeTime(entry.prayed_at);
   return (
-    <View style={[styles.standingRow, !isLast && styles.rowDivider]}>
+    <Pressable
+      onPress={onOpenRequest}
+      accessibilityRole="button"
+      accessibilityLabel="Open prayer request"
+      style={[styles.standingRow, !isLast && styles.rowDivider]}
+    >
       <View style={styles.standingDot} />
       <View style={styles.standingBody}>
         <Text style={styles.standingText} numberOfLines={1}>
@@ -501,10 +522,8 @@ function StandingEntryRow({ entry, isLast }: { entry: StandingRow; isLast: boole
           {`${entry.church_name.toUpperCase()} · ${location.toUpperCase()} · ${when.toUpperCase()}`}
         </Text>
       </View>
-      <Text style={styles.standingCount} numberOfLines={1}>
-        {`YOU + ${entry.prayed_count > 1 ? entry.prayed_count - 1 : 0} STANDING`}
-      </Text>
-    </View>
+      <Text style={styles.openRequest} numberOfLines={1}>OPEN REQUEST →</Text>
+    </Pressable>
   );
 }
 
@@ -902,7 +921,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textTransform: 'uppercase',
   },
-  standingCount: {
+  openRequest: {
     fontFamily: Typography.mono,
     fontSize: 8.5,
     letterSpacing: 1.2,
