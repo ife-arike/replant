@@ -33,7 +33,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as SecureStore from 'expo-secure-store';
 import type { TabsParamList } from '../../navigation/types';
@@ -256,6 +256,17 @@ export default function TheChurchScreen() {
   }, []);
 
   const [page, setPage] = useState<Page>(0);
+
+  // Reset to CAML (page 0 — Church At My Location) every time the tab
+  // receives focus. page persists across tab switches otherwise, so a
+  // leader who left on the CAL globe would return to it; the Founder
+  // wants the tab to always open on their own location.
+  useFocusEffect(
+    useCallback(() => {
+      setPage(0);
+    }, []),
+  );
+
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
   // Post-completion CAML refetch — bumped in handleCompletionComplete so
   // CamlView re-runs its internal get-nearby-churches fetch and the

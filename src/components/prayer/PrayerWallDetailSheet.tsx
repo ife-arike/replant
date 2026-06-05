@@ -52,7 +52,7 @@ import {
 } from './PrayerWallLogic';
 import { formatLeaderLine } from '../../utils/displayHelpers';
 import { HeartIcon, XIcon } from './PrayerIcons';
-import { PRAYER_BODY_STYLE } from './PrayerWallCard';
+import { PRAYER_DETAIL_STYLE } from './PrayerWallCard';
 
 interface Props {
   row: PrayerRow | null;
@@ -278,8 +278,9 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
 
         <Text style={styles.leaderLine}>{leaderLine}</Text>
 
-        {/* Body — full prayer text, no clamp, Cormorant italic */}
-        <Text style={[styles.body, PRAYER_BODY_STYLE]}>{row.prayer_text}</Text>
+        {/* Body — full prayer text, no clamp, plain/readable Cormorant
+            Medium (NOT italic — detail sheets stay legible at length) */}
+        <Text style={[styles.body, PRAYER_DETAIL_STYLE]}>{row.prayer_text}</Text>
 
         {/* Meta chips + passive heart count */}
         <View style={styles.metaRow}>
@@ -407,10 +408,10 @@ const styles = StyleSheet.create({
     color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v8 Fix D — type values (fontFamily / fontSize / lineHeight /
-    // color) are now sourced from the shared PRAYER_BODY_STYLE
-    // constant (imported from PrayerWallCard). This style block
-    // owns only the sheet-specific positioning.
+    // Type values (fontFamily / fontSize / lineHeight / color) are
+    // sourced from the PRAYER_DETAIL_STYLE constant (imported from
+    // PrayerWallCard) — plain Cormorant Medium, kept readable. This
+    // style block owns only the sheet-specific positioning.
     // v8 Fix E — 14 pt gap above body (between leader attribution
     // and prayer body) per dispatch.
     marginTop: 14,

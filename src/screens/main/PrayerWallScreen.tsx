@@ -327,6 +327,25 @@ export default function PrayerWallScreen() {
           onViewJournal={() => setView('journal')}
           onPost={handlePostPress}
         />
+
+        {/* Post modal also lives on the landing return — handlePostPress
+            fires here when the leader taps "SHARE A NEED" on the Receive
+            card. Without this, postModalVisible flips true but no modal
+            renders (the feed-view modal is in a different early return). */}
+        <PostPrayerRequestModal
+          visible={postModalVisible}
+          churchName={postChurchName}
+          isUnderground={postIsUnderground}
+          defaultAnonymous={postDefaultAnon}
+          onCancel={() => setPostModalVisible(false)}
+          onSuccess={() => {
+            setPostModalVisible(false);
+            // Posted from landing — force the feed to re-fetch from scratch
+            // next time the leader enters it so the new request appears.
+            hasFetchedOnce.current = false;
+            setRows([]);
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -454,11 +473,15 @@ export default function PrayerWallScreen() {
         onCancel={() => setPostModalVisible(false)}
         onSuccess={() => {
           setPostModalVisible(false);
-          // Trigger a feed refresh if currently on the feed view so the
-          // new request appears after pull-to-refresh.
           if (view === 'feed') {
+            // On the feed — refresh in place so the new request appears
+            // immediately at the top without leaving the view.
+            void refresh();
+          } else {
+            // Posted from another view (e.g. SHARE A NEED on landing) —
+            // reset so the feed re-fetches from scratch on next entry.
             hasFetchedOnce.current = false;
-            void loadInitial(selectedCategories, urgency);
+            setRows([]);
           }
         }}
       />

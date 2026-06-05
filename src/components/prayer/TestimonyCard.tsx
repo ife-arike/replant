@@ -43,18 +43,28 @@ import { formatLeaderLine } from '../../utils/displayHelpers';
 import { CelebrateIcon } from './PrayerIcons';
 
 /**
- * v8 Fix G — shared body style for TestimonyCard +
- * TestimonyDetailSheet. Same 18 pt Cormorant 500 Medium Italic as
- * PRAYER_BODY_STYLE — both card types now match per Founder ruling
- * (prayer and testimony body weights should not differ at the same
- * size). Kept as a separate const from PRAYER_BODY_STYLE so the two
- * surfaces can diverge later without touching each other.
+ * Detail-sheet body style — plain/readable, NOT italic. Cormorant 500
+ * Medium at 18 pt. TestimonyDetailSheet imports this so the full
+ * testimony text stays legible at length in the sheet.
  */
-export const TESTIMONY_BODY_STYLE = {
-  fontFamily: Typography.displayMediumItalic,
+export const TESTIMONY_DETAIL_STYLE = {
+  fontFamily: Typography.displayMedium,
   fontSize: 18,
   lineHeight: 27, // 18 × 1.50
   color: Colors.text,
+} as const;
+
+/**
+ * Card-only body style — heartcry italic (scriptureItalic, 300 Light
+ * Italic) at 16 pt, matching PRAYER_CARD_BODY_STYLE. Founder override
+ * 2026-06-05: scriptureItalic approved for prayer-request + testimony
+ * CARDS (detail sheets stay plain). Used only on TestimonyCard's body.
+ */
+export const TESTIMONY_CARD_BODY_STYLE = {
+  fontFamily: Typography.scriptureItalic,
+  fontSize: 16,
+  lineHeight: 25,
+  letterSpacing: 0.08,
 } as const;
 
 interface Props {
@@ -131,7 +141,7 @@ export default function TestimonyCard({ row, isHighlighted = false, onPress, now
       </Text>
       <Text style={styles.leader} numberOfLines={1}>{leaderLine}</Text>
 
-      <Text style={[styles.body, TESTIMONY_BODY_STYLE]} numberOfLines={4}>
+      <Text style={[styles.body, TESTIMONY_CARD_BODY_STYLE]} numberOfLines={4}>
         {row.testimony_text}
       </Text>
 
@@ -221,9 +231,9 @@ const styles = StyleSheet.create({
     color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v8 Fix G — type values sourced from the shared
-    // TESTIMONY_BODY_STYLE constant (exported above). This style
-    // block owns only card-specific positioning (marginTop).
+    // Type values sourced from TESTIMONY_CARD_BODY_STYLE (exported
+    // above) — heartcry scriptureItalic at 16 pt. This style block
+    // owns only card-specific positioning (marginTop).
     marginTop: 8,
   },
   quote: {

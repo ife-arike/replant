@@ -43,17 +43,28 @@ import {
 import { HeartIcon } from './PrayerIcons';
 
 /**
- * v8 Fix D — shared body style for the prayer card + prayer detail
- * sheet. Both surfaces render the same italic at the same size + lh.
- * Cormorant 500 Medium Italic (NOT 300 Light Italic — v8 device pass
- * matched on a slightly heavier weight to keep prayer text readable
- * against the soft surface). PrayerWallDetailSheet imports this.
+ * Detail-sheet body style — plain/readable, NOT italic. Cormorant 500
+ * Medium at 18 pt. PrayerWallDetailSheet imports this so the full
+ * prayer text stays legible at length in the sheet.
  */
-export const PRAYER_BODY_STYLE = {
+export const PRAYER_DETAIL_STYLE = {
   fontFamily: Typography.displayMedium,
   fontSize: 18,
   lineHeight: 27, // 18 × 1.50
   color: Colors.text,
+} as const;
+
+/**
+ * Card-only body style — heartcry italic (scriptureItalic, 300 Light
+ * Italic) at 16 pt. Founder override 2026-06-05: scriptureItalic is
+ * approved for prayer-request + testimony CARDS (the detail sheets stay
+ * plain). Used only on PrayerWallCard's body Text.
+ */
+export const PRAYER_CARD_BODY_STYLE = {
+  fontFamily: Typography.scriptureItalic,
+  fontSize: 16,
+  lineHeight: 25,
+  letterSpacing: 0.08,
 } as const;
 
 interface Props {
@@ -100,7 +111,7 @@ export default function PrayerWallCard({ row, onPress, now }: Props) {
         <Text style={styles.tapToOpen}>Tap to open</Text>
       </View>
 
-      <Text style={[styles.body, PRAYER_BODY_STYLE]} numberOfLines={3}>
+      <Text style={[styles.body, PRAYER_CARD_BODY_STYLE]} numberOfLines={3}>
         {row.prayer_text}
       </Text>
 
@@ -170,9 +181,11 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   location: {
-    // v7 Item 05 — church name 16 pt DM Sans 400 (unchanged from v6).
+    // v7 Item 05 — church name DM Sans 400. Reduced 16 → 14 pt
+    // (2026-06-05 polish) so the identity line sits quieter relative to
+    // the heartcry body below it.
     fontFamily: Typography.body,
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.text,
     lineHeight: 21,
   },
@@ -186,12 +199,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   body: {
-    // v8 Fix D — body uses the shared PRAYER_BODY_STYLE constant
-    // (exported below) so PrayerWallCard + PrayerWallDetailSheet
-    // render the same italic at the same size + line-height. Both
-    // surfaces moved off Typography.scriptureItalic (300 Light) in
-    // favour of Typography.displayMediumItalic (500 Medium) at
-    // 18 pt + lh 27. Spread via array style at the render site.
+    // Card body uses PRAYER_CARD_BODY_STYLE (exported above) —
+    // heartcry scriptureItalic at 16 pt / lh 25. The detail sheet
+    // diverges: it imports PRAYER_DETAIL_STYLE (plain Cormorant
+    // Medium, 18 pt) so the full prayer reads legibly at length.
+    // Spread via array style at the render site.
   },
   metaRow: {
     flexDirection: 'row',

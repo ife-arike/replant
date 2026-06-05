@@ -268,12 +268,17 @@ export default function IntercessionJournalView({ onBack, pendingChurch, onNavig
             />
           )
         }
-        ListFooterComponent={
-          listData.length > 0 ? <IJFoot /> : null
-        }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        style={styles.list}
       />
+
+      {/* Galatians 6:2 footer — pinned to the true bottom of the screen
+          (outside the scrollable list) so it sits at the foot of the
+          surface rather than floating up under a short list. Shown only
+          when the active tab has content; the empty state owns its own
+          full-height layout. */}
+      {listData.length > 0 ? <IJFoot /> : null}
 
       {/* Toast */}
       {toast ? (
@@ -528,7 +533,7 @@ function StandingEntryRow({
           {`${entry.church_name.toUpperCase()} · ${location.toUpperCase()} · ${when.toUpperCase()}`}
         </Text>
       </View>
-      <Text style={styles.openRequest} numberOfLines={1}>OPEN REQUEST →</Text>
+      <Text style={styles.openRequest} numberOfLines={1}>OPEN REQUEST</Text>
     </Pressable>
   );
 }
@@ -718,7 +723,8 @@ function HandsGlyph() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  listContent: { paddingBottom: 40 },
+  list: { flex: 1 },
+  listContent: { paddingBottom: 24 },
 
   // ── Header
   header: {
@@ -1035,12 +1041,14 @@ const styles = StyleSheet.create({
     color: SKY,
   },
 
-  // ── Scripture footer
+  // ── Scripture footer — pinned to the bottom of the screen (sibling of
+  // the FlatList, not a list footer). marginHorizontal keeps the divider
+  // inset matching the rows above; no marginTop since flex layout places
+  // it at the foot of the surface directly below the scroll area.
   foot: {
-    marginTop: 40,
     marginHorizontal: 20,
     paddingTop: 22,
-    paddingBottom: 12,
+    paddingBottom: 16,
     borderTopWidth: 0.5,
     borderTopColor: FAINT,
     alignItems: 'center',

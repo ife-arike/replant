@@ -46,7 +46,7 @@ import {
 } from './PrayerWallLogic';
 import { CelebrateIcon, XIcon } from './PrayerIcons';
 import { formatLeaderLine } from '../../utils/displayHelpers';
-import { TESTIMONY_BODY_STYLE } from './TestimonyCard';
+import { TESTIMONY_DETAIL_STYLE } from './TestimonyCard';
 
 interface Props {
   row: TestimonyRow | null;
@@ -284,8 +284,9 @@ export default function TestimonyDetailSheet({
 
         <Text style={styles.leaderLine}>{leaderLine}</Text>
 
-        {/* Full testimony text — no clamp. */}
-        <Text style={[styles.body, TESTIMONY_BODY_STYLE]}>{row.testimony_text}</Text>
+        {/* Full testimony text — no clamp, plain/readable Cormorant
+            Medium (NOT italic — detail sheets stay legible at length). */}
+        <Text style={[styles.body, TESTIMONY_DETAIL_STYLE]}>{row.testimony_text}</Text>
 
         {/* Optional "Originally prayed as:" quote block. */}
         {hasOriginal ? (
@@ -389,9 +390,9 @@ const styles = StyleSheet.create({
     color: 'rgba(240, 237, 230, 0.45)',
   },
   body: {
-    // v8 Fix G — type values sourced from the shared
-    // TESTIMONY_BODY_STYLE constant (imported from TestimonyCard).
-    // This style block owns only sheet-specific positioning.
+    // Type values sourced from TESTIMONY_DETAIL_STYLE (imported from
+    // TestimonyCard) — plain Cormorant Medium, kept readable. This
+    // style block owns only sheet-specific positioning.
     // v8 Fix H4 — 14 pt gap above body (between leader attribution
     // and testimony body) per dispatch.
     marginTop: 14,
