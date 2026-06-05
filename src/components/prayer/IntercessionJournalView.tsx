@@ -130,6 +130,12 @@ export default function IntercessionJournalView({ onBack, pendingChurch, onNavig
         supabase.rpc('get_standing_in_gap_history'),
       ]);
       if (cancelled) return;
+      if (holdsRes.error) {
+        console.error('[Journal] get_intercession_holds error:', holdsRes.error);
+      }
+      if (standingRes.error) {
+        console.error('[Journal] get_standing_in_gap_history error:', standingRes.error);
+      }
       setHolds((holdsRes.data ?? []) as HoldRow[]);
       setStanding((standingRes.data ?? []) as StandingRow[]);
       setLoading(false);
