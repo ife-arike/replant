@@ -142,6 +142,9 @@ export default function TheChurchScreen() {
   const skippedThisSession = useRef(false);
   // true when the overlay is opened via Edit Profile — bypasses the intro step.
   const editProfileMode = useRef(false);
+  // First-time-only guard for Pray → journal navigation. After the first Pray
+  // tap navigates the leader to the journal, subsequent taps show a toast.
+  const hasNavigatedToJournal = useRef(false);
 
   // Tutorial overlay — shown once after the leader's first Church tab entry
   // (post-verification). Persisted via SecureStore. Waits for completionReady
@@ -539,6 +542,18 @@ export default function TheChurchScreen() {
           setShowCompletionFlow(true);
         }}
         onNavigateToConnect={() => navigation.navigate('Connect')}
+        onNavigateToJournal={
+          !hasNavigatedToJournal.current
+            ? () => {
+                hasNavigatedToJournal.current = true;
+                navigation.navigate('Prayer Wall', { initialView: 'journal' });
+              }
+            : undefined
+        }
+        onNavigateToJournalFull={(churchName) => {
+          hasNavigatedToJournal.current = true;
+          navigation.navigate('Prayer Wall', { initialView: 'journal', pendingChurch: churchName });
+        }}
       />
 
       {/* Completion-gate loading cover — renders while the async

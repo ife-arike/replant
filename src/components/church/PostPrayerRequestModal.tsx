@@ -66,6 +66,7 @@ interface Props {
   visible: boolean;
   churchName: string | null;
   isUnderground: boolean;
+  defaultAnonymous?: boolean;
   onCancel: () => void;
   onSuccess: () => void; // host dismisses + toasts
 }
@@ -84,12 +85,13 @@ function errorCopy(code: string | null | undefined): string {
 }
 
 export default function PostPrayerRequestModal({
-  visible, churchName, isUnderground, onCancel, onSuccess,
+  visible, churchName, isUnderground, defaultAnonymous = false, onCancel, onSuccess,
 }: Props) {
   const insets = useSafeAreaInsets();
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PrayerCategory | null>(null);
   const [urgent, setUrgent] = useState(false);
+  const [anonymous, setAnonymous] = useState(defaultAnonymous);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -106,6 +108,7 @@ export default function PostPrayerRequestModal({
     setContent('');
     setCategory(null);
     setUrgent(false);
+    setAnonymous(defaultAnonymous);
     setSubmitting(false);
     setErrorMsg(null);
   };
@@ -120,6 +123,7 @@ export default function PostPrayerRequestModal({
       p_content: trimmed,
       p_category: category,
       p_urgent: urgent,
+      p_anonymous_override: isUnderground ? true : anonymous,
     });
     if (error) {
       // The DEFINER fn RAISEs the code as message text; supabase-js
@@ -132,8 +136,8 @@ export default function PostPrayerRequestModal({
     onSuccess();
   };
 
-  const attribution = isUnderground
-    ? 'This request will be posted anonymously on behalf of your church.'
+  const attribution = isUnderground || anonymous
+    ? `This request will be posted anonymously on behalf of ${churchName ?? 'your church'}.`
     : `This request will be posted on behalf of ${churchName ?? 'your church'}.`;
 
   return (
@@ -203,6 +207,23 @@ export default function PostPrayerRequestModal({
               thumbColor={Colors.text}
             />
           </View>
+
+          {/* Anon toggle — hidden for underground (always anon) */}
+          {!isUnderground ? (
+            <View style={styles.urgentRow}>
+              <View style={styles.urgentTextCol}>
+                <Text style={styles.urgentTitle}>Post anonymously</Text>
+                <Text style={styles.urgentSub}>Your name will be hidden. Your church will still be shown.</Text>
+              </View>
+              <Switch
+                value={anonymous}
+                onValueChange={setAnonymous}
+                disabled={submitting}
+                trackColor={{ false: 'rgba(240,237,230,0.15)', true: Colors.accent }}
+                thumbColor={Colors.text}
+              />
+            </View>
+          ) : null}
 
           {/* Error */}
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}

@@ -50,7 +50,7 @@ import { HeartIcon } from './PrayerIcons';
  * against the soft surface). PrayerWallDetailSheet imports this.
  */
 export const PRAYER_BODY_STYLE = {
-  fontFamily: Typography.displayMediumItalic,
+  fontFamily: Typography.displayMedium,
   fontSize: 18,
   lineHeight: 27, // 18 × 1.50
   color: Colors.text,

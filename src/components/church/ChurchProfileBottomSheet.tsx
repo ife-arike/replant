@@ -110,6 +110,19 @@ interface Props {
   onEditProfile?: () => void;
   /** Connect button — navigates to Connect tab. */
   onNavigateToConnect?: () => void;
+  /**
+   * Called after a successful "Pray" tap (first-time session guard lives in
+   * the parent). When provided, the sheet dismisses and the parent navigates
+   * to the Prayer Wall journal. When undefined (subsequent taps), a toast is
+   * shown instead.
+   */
+  onNavigateToJournal?: () => void;
+  /**
+   * Called when the intercession list is already full (10 holds). Parent
+   * navigates to journal with the pending church name surfaced in the
+   * full-list notice.
+   */
+  onNavigateToJournalFull?: (churchName: string) => void;
 }
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -152,6 +165,8 @@ export default function ChurchProfileBottomSheet({
   onDismiss,
   onEditProfile,
   onNavigateToConnect,
+  onNavigateToJournal,
+  onNavigateToJournalFull,
 }: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -277,12 +292,35 @@ export default function ChurchProfileBottomSheet({
     onNavigateToConnect?.();
   };
 
-  const handlePray = () => {
-    // Fix D (2026-05-28): toggle. On-add → toast; on-remove → silent.
-    const next = !prayed;
-    setPrayed(next);
-    if (next) showToast('Added to your intercession list');
-    // MVP: write-only, no backend. TODO: wire intercession list.
+  const handlePray = async () => {
+    if (prayed || !profile) return;
+    setPrayed(true); // optimistic
+    const { data, error } = await supabase.rpc('add_intercession_hold', {
+      p_church_id: profile.id,
+    });
+    if (error) {
+      setPrayed(false);
+      showToast('Something went wrong. Try again.');
+      return;
+    }
+    const result = data as { error?: string; action?: string } | null;
+    if (result?.error === 'list_full') {
+      setPrayed(false);
+      if (onNavigateToJournalFull) {
+        onDismiss();
+        onNavigateToJournalFull(profile.name);
+      } else {
+        showToast('Your intercession list is full. Remove a church to add another.');
+      }
+      return;
+    }
+    // Added successfully (or already_held — treat as success for UX).
+    if (onNavigateToJournal) {
+      onDismiss();
+      onNavigateToJournal();
+    } else {
+      showToast('Added to your intercession list');
+    }
   };
 
   const handleSave = () => {

@@ -13,7 +13,7 @@ export type TabsParamList = {
   Home: undefined;
   "The Church": undefined;
   Persecuted: undefined;
-  "Prayer Wall": undefined;
+  "Prayer Wall": { initialView?: 'journal'; pendingChurch?: string } | undefined;
   Connect: undefined;
 };
 

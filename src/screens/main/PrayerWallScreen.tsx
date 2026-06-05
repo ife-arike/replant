@@ -33,7 +33,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -42,11 +41,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
-import { useHamburger } from '../../contexts/HamburgerContext';
 import PrayerWallCard from '../../components/prayer/PrayerWallCard';
 import PrayerWallDetailSheet from '../../components/prayer/PrayerWallDetailSheet';
 import PrayerWallFilterBar from '../../components/prayer/PrayerWallFilterBar';
@@ -55,6 +54,8 @@ import PrayerWallSegmentedControl from '../../components/prayer/PrayerWallSegmen
 import ScriptureBanner from '../../components/prayer/ScriptureBanner';
 import TestimoniesView from '../../components/prayer/TestimoniesView';
 import MyOpenPrayersView from '../../components/prayer/MyOpenPrayersView';
+import IntercessionJournalView from '../../components/prayer/IntercessionJournalView';
+import PostPrayerRequestModal from '../../components/church/PostPrayerRequestModal';
 import {
   DEFAULT_URGENCY,
   PAGE_SIZE,
@@ -64,8 +65,9 @@ import {
   type SelectedCategories,
   type UrgencyFilter,
 } from '../../components/prayer/PrayerWallLogic';
+import type { TabsParamList } from '../../navigation/types';
 
-type PrayerWallView = 'landing' | 'feed' | 'testimonies' | 'my_open_prayers';
+type PrayerWallView = 'landing' | 'feed' | 'testimonies' | 'my_open_prayers' | 'journal';
 type LoadState = 'initial' | 'refreshing' | 'paging' | 'idle' | 'error';
 
 const SKELETON_COUNT = 3;
@@ -94,11 +96,18 @@ async function fetchPage(
 }
 
 export default function PrayerWallScreen() {
-  const { branch } = useAuth();
+  const { branch, session } = useAuth();
   const isVerified = branch === 'active';
-  const { open: openHamburger } = useHamburger();
+  const navigation = useNavigation<BottomTabNavigationProp<TabsParamList>>();
+  const route = useRoute<RouteProp<TabsParamList, 'Prayer Wall'>>();
 
   const [view, setView] = useState<PrayerWallView>('landing');
+
+  // Church context for PostPrayerRequestModal — fetched once when verified.
+  const [postChurchName, setPostChurchName] = useState<string | null>(null);
+  const [postIsUnderground, setPostIsUnderground] = useState(false);
+  const [postDefaultAnon, setPostDefaultAnon] = useState(false);
+  const [postModalVisible, setPostModalVisible] = useState(false);
   const [rows, setRows] = useState<PrayerRow[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('initial');
   const [hasMore, setHasMore] = useState(true);
@@ -150,6 +159,35 @@ export default function PrayerWallScreen() {
       return next;
     });
   }, []);
+
+  // ─── Church context for post modal ────────────────────────────────
+  // Fetched once when the leader is verified. Mirrors PrayerWallLanding's
+  // church_id lookup pattern (auth_id → users → churches).
+
+  useEffect(() => {
+    if (!isVerified) return;
+    let cancelled = false;
+    (async () => {
+      const authId = session?.user?.id;
+      if (!authId) return;
+      const { data: userData } = await supabase
+        .from('users')
+        .select('church_id, anonymous')
+        .eq('auth_id', authId)
+        .maybeSingle();
+      if (cancelled || !userData?.church_id) return;
+      const { data: churchData } = await supabase
+        .from('churches')
+        .select('name, type')
+        .eq('id', userData.church_id)
+        .maybeSingle();
+      if (cancelled || !churchData) return;
+      setPostChurchName(churchData.name ?? null);
+      setPostIsUnderground(churchData.type === 'underground');
+      setPostDefaultAnon(userData.anonymous ?? false);
+    })();
+    return () => { cancelled = true; };
+  }, [isVerified, session?.user?.id]);
 
   // ─── Feed loaders ─────────────────────────────────────────────────
 
@@ -231,8 +269,23 @@ export default function PrayerWallScreen() {
   // + clear selected testimony (v6 Fix G — testimony detail sheet
   // dismisses when the leader leaves the tab, same posture as the
   // prayer detail sheet).
+  // Keep a stable ref to route.params so useFocusEffect can read them at
+  // focus time without including them in the dependency array (which would
+  // cause the blur cleanup to fire every time params change — resetting view
+  // mid-session).
+  const routeParamsRef = useRef(route.params);
+  useEffect(() => { routeParamsRef.current = route.params; }, [route.params]);
+
   useFocusEffect(
     useCallback(() => {
+      // On focus: check if a cross-tab navigation requested the journal view.
+      const params = routeParamsRef.current;
+      if (params?.initialView === 'journal') {
+        setView('journal');
+        // Consume the param so re-focus doesn't re-trigger.
+        navigation.setParams({ initialView: undefined, pendingChurch: undefined });
+      }
+
       return () => {
         setView('landing');
         setSelectedCategories(new Set());
@@ -240,12 +293,9 @@ export default function PrayerWallScreen() {
         setDetailRow(null);
         setDeepLinkTestimonyId(null);
         setSelectedTestimony(null);
-        // Reset so the next feed visit always refetches from the DB.
-        // Without this, agreeing in the CAL global prayer wall and then
-        // switching to this tab would show stale i_prayed on the feed cards.
         hasFetchedOnce.current = false;
       };
-    }, []),
+    }, [navigation]),
   );
 
   const handleClearFilters = () => {
@@ -254,10 +304,7 @@ export default function PrayerWallScreen() {
   };
 
   const handlePostPress = () => {
-    Alert.alert(
-      'Posting a prayer request',
-      'This is coming in a future update. Thank you for wanting to lift up your church.',
-    );
+    setPostModalVisible(true);
   };
 
   // ─── View routing ────────────────────────────────────────────────
@@ -265,24 +312,10 @@ export default function PrayerWallScreen() {
   if (view === 'landing') {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
-        <View style={styles.topBar}>
+        <View style={styles.landingHeader}>
           <Text style={styles.title}>Prayer Wall</Text>
-          <Pressable
-            onPress={openHamburger}
-            accessibilityRole="button"
-            accessibilityLabel="Open menu"
-            accessibilityState={{ expanded: false }}
-            hitSlop={10}
-            style={styles.hamburger}
-          >
-            <View style={styles.hamburgerBar} />
-            <View style={styles.hamburgerBar} />
-            <View style={styles.hamburgerBar} />
-          </Pressable>
+          <Text style={styles.landingSubtitle}>THE BODY GATHERED · IN ONE ACCORD</Text>
         </View>
-        {/* v6 fix B — Founder override of v5 Option A. Ship the
-            0.5 pt hairline below the Prayer Wall title on the
-            landing, matching Home. Only renders on this view. */}
         <View style={styles.landingHairline} />
         <PrayerWallLanding
           onEnterFeed={() => setView('feed')}
@@ -291,7 +324,19 @@ export default function PrayerWallScreen() {
             setDeepLinkTestimonyId(id);
             setView('testimonies');
           }}
-          onViewMyOpenPrayers={() => setView('my_open_prayers')}
+          onViewJournal={() => setView('journal')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (view === 'journal') {
+    const pendingChurch = route.params?.pendingChurch ?? null;
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <IntercessionJournalView
+          onBack={() => setView('landing')}
+          pendingChurch={pendingChurch}
         />
       </SafeAreaView>
     );
@@ -391,16 +436,28 @@ export default function PrayerWallScreen() {
         row={detailRow}
         onDismiss={() => setDetailRow(null)}
         onPrayedChange={(id, iPrayed, prayedCount) => {
-          // KAN-23 corrections r1 — mirror the sheet's optimistic
-          // stand-in-the-gap toggle back to the feed row so the card
-          // heart count + filled state don't go stale when the sheet
-          // closes. STUB until the stand_in_the_gap RPC lands; next
-          // feed refresh overwrites with server-truth.
           setRows((prev) =>
             prev.map((r) =>
               r.id === id ? { ...r, i_prayed: iPrayed, prayed_count: prayedCount } : r,
             ),
           );
+        }}
+      />
+
+      <PostPrayerRequestModal
+        visible={postModalVisible}
+        churchName={postChurchName}
+        isUnderground={postIsUnderground}
+        defaultAnonymous={postDefaultAnon}
+        onCancel={() => setPostModalVisible(false)}
+        onSuccess={() => {
+          setPostModalVisible(false);
+          // Trigger a feed refresh if currently on the feed view so the
+          // new request appears after pull-to-refresh.
+          if (view === 'feed') {
+            hasFetchedOnce.current = false;
+            void loadInitial(selectedCategories, urgency);
+          }
         }}
       />
     </SafeAreaView>
@@ -552,6 +609,19 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.accent,
     lineHeight: 24,
+  },
+  landingHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
+  },
+  landingSubtitle: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.9,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    marginTop: 6,
   },
   topBarRightPlaceholder: {
     width: 24, // keep title centered when no right action

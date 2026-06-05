@@ -61,7 +61,7 @@ import { formatLeaderLine } from '../../utils/displayHelpers';
 
 // ── Static copy ──────────────────────────────────────────────────────
 
-const HERO_EYEBROW = 'TONIGHT · LIVE';
+const HERO_EYEBROW = 'LIVE';
 const HERO_TITLE = 'Make intercession';
 const HERO_SUB = 'Pray through the wall of requests from churches around the world.';
 const HERO_CTA = 'ENTER THE PRAYER WALL';
@@ -74,9 +74,9 @@ const HERO_STAT_HOUR_ADDS = '12';
 
 const RECEIVE_LOCKED_TITLE = 'Receive intercession';
 const RECEIVE_LOCKED_SUB = 'Let the body lift your church in prayer.';
-const RECEIVE_LOCKED_BADGE = 'COMING SOON';
+const RECEIVE_LOCKED_BADGE = 'AVAILABLE ON VERIFICATION';
 
-const RECEIVE_ACTIVE_EYEBROW = 'YOUR CHURCH · IN PRAYER';
+const RECEIVE_ACTIVE_EYEBROW = 'YOUR CHURCH';
 const RECEIVE_ACTIVE_TITLE = 'Receive intercession';
 const RECEIVE_ACTIVE_SUB = 'Let the body stand with you. Share what your church is carrying.';
 const RECEIVE_ACTIVE_EMPTY_TITLE = 'No open requests yet.';
@@ -115,7 +115,7 @@ interface Props {
   onEnterFeed: () => void;
   onSeeAllTestimonies: () => void;
   onOpenTestimony: (testimonyId: string) => void;
-  onViewMyOpenPrayers: () => void;
+  onViewJournal: () => void;
 }
 
 // Local count formatter (matches CD's formatCount).
@@ -139,7 +139,7 @@ export default function PrayerWallLanding({
   onEnterFeed,
   onSeeAllTestimonies,
   onOpenTestimony,
-  onViewMyOpenPrayers,
+  onViewJournal,
 }: Props) {
   const { branch, session } = useAuth();
   const isVerified = branch === 'active';
@@ -243,7 +243,7 @@ export default function PrayerWallLanding({
           <ReceiveLockedCard />
         )}
 
-        <JournalLinkRow onPress={onViewMyOpenPrayers} />
+        <JournalLinkRow onPress={onViewJournal} />
 
         {/* Section header — "Testimonies from the wall" + "See all" link */}
         <View style={styles.sectionHeaderRow}>
@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   receiveActiveEmptyTitle: {
-    fontFamily: Typography.scriptureItalic,
+    fontFamily: Typography.displayRegular,
     fontSize: 17,
     color: Colors.text,
     letterSpacing: 0.17,
@@ -1142,7 +1142,7 @@ const styles = StyleSheet.create({
   },
   testimonyEmptyGlyph: { marginBottom: 18, opacity: 0.6 },
   testimonyEmptyTitle: {
-    fontFamily: Typography.scriptureItalic,
+    fontFamily: Typography.displayRegular,
     fontSize: 19,
     lineHeight: 26,
     color: Colors.text,
