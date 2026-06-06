@@ -552,6 +552,7 @@ export default function PrayerWallScreen() {
       <View style={styles.tabHeader}>
         <Text style={styles.title}>Prayer Wall</Text>
         <Text style={styles.landingSubtitle}>THE BODY GATHERED · IN ONE ACCORD</Text>
+        <View style={styles.headerHairline} />
       </View>
 
       <PrayerWallPillNav active={activePill} onChange={handlePillChange} />
@@ -802,9 +803,20 @@ const styles = StyleSheet.create({
   tabHeader: {
     // Prayer Wall redesign — header shown above the pill nav on all five
     // pill surfaces. Matches the old landing header metrics.
+    // paddingBottom is 0 since the headerHairline provides the visual
+    // closing edge (mirrors PersecutedScreen NavBar pattern).
     paddingHorizontal: 22,
     paddingTop: 14,
-    paddingBottom: 4,
+    paddingBottom: 0,
+  },
+  headerHairline: {
+    // Sky hairline at the bottom of the tab header — mirrors the
+    // PersecutedScreen headerHairline (height 0.5, 30% accent alpha).
+    // Persecuted uses red; Prayer Wall uses sky.
+    height: 0.5,
+    backgroundColor: 'rgba(107,181,232,0.30)',
+    marginTop: 14,
+    width: '100%',
   },
   landingSubtitle: {
     fontFamily: Typography.mono,

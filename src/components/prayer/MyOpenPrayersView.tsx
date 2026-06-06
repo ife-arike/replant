@@ -84,6 +84,11 @@ const ANIM_MS = 320;
 
 const TESTIMONY_MAX_CHARS = 300;
 
+// ── James 5:16 scripture banner ──────────────────────────────────────
+const JAS_5_16_KJV =
+  '"The effectual fervent prayer of a righteous man availeth much."';
+const JAS_5_16_REF = 'JAMES 5:16 · KJV';
+
 const TESTIMONY_ERROR_MESSAGES: Record<string, string> = {
   content_required: 'Please write what God has done.',
   content_too_long: 'Your testimony is too long (300 character limit).',
@@ -224,6 +229,7 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
         data={rows}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={<ScriptureBannerJas />}
         ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
         renderItem={({ item }) => (
           <OpenPrayerCard
@@ -321,6 +327,17 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
 
       {/* Success toast */}
       <SuccessToast message={toast} onDone={() => setToast(null)} />
+    </View>
+  );
+}
+
+// ─── James 5:16 scripture banner ────────────────────────────────────
+
+function ScriptureBannerJas() {
+  return (
+    <View style={styles.scriptureBanner}>
+      <Text style={styles.scriptureEyebrow}>{JAS_5_16_REF}</Text>
+      <Text style={styles.scriptureVerse}>{JAS_5_16_KJV}</Text>
     </View>
   );
 }
@@ -1204,6 +1221,30 @@ const styles = StyleSheet.create({
     fontFamily: Typography.bodyMedium,
     fontSize: 14,
     color: Colors.textMuted,
+  },
+
+  // James 5:16 scripture banner
+  scriptureBanner: {
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+  },
+  scriptureEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 0.24 * 9, // 0.24em × 9
+    textTransform: 'uppercase',
+    color: '#6BB5E8',
+    marginBottom: 10,
+  },
+  scriptureVerse: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 16,
+    lineHeight: 25,
+    color: '#E6E1D5',
+    textAlign: 'center',
+    maxWidth: 300,
   },
 
   // Success toast

@@ -373,7 +373,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   introBody: {
-    fontFamily: Typography.scriptureItalic,
+    // KAN-23 v8 polish — roman (non-italic). scriptureLight = Cormorant
+    // Garamond 300 Light, upright. Same weight, same size, no italic.
+    fontFamily: Typography.scriptureLight,
     fontSize: 17,
     lineHeight: 26,
     color: CREAM,
