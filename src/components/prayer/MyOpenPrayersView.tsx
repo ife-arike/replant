@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.border,
-    paddingTop: 8,
+    // paddingTop: 8 removed — caused first row to appear taller than the others
   },
   actionDivider: {
     height: StyleSheet.hairlineWidth,

@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,      // was paddingVertical: 6 — now matches Prayer Wall's pill nav top spacing
     paddingBottom: 8,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(217,89,79,0.22)',  // faint red closing hairline — Persecuted accent
+    borderBottomColor: 'rgba(240,237,230,0.08)',  // was rgba(217,89,79,0.22)
   },
   content: {
     gap: 6,
