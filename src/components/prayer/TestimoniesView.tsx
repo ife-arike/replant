@@ -264,6 +264,7 @@ function ScriptureHeader({
         text={REV_12_11_KJV}
         reference={REV_12_11_REF}
         referenceColor="rgba(107, 158, 122, 0.85)"
+        bodyFontSize={17}
       />
     </View>
   );

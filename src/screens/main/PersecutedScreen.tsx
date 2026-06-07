@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
 
   // NavBar
-  header: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 16 },
+  header: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 0 },
   headerTitle: {
     fontFamily: Typography.displayRegular,
     fontSize: 26,

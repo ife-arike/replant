@@ -446,8 +446,8 @@ const styles = StyleSheet.create({
   celebrateCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 12,
+    // gap removed — explicit per-child margins below
+    paddingVertical: 10,   // was 12 — slightly tighter since icon is now 24px
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
@@ -455,16 +455,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(91, 173, 122, 0.08)',
   },
   rejoiceIcon: {
-    // Device-pass fix — shofar glyph at 32×32, negative vertical margin
-    // keeps the CTA row height in check.
-    width: 32,
-    height: 32,
-    marginVertical: -4,
+    // Device-pass fix — shofar glyph at 24×24, negative vertical margin
+    // clips the PNG's transparent edges and keeps the CTA row height in check.
+    width: 24,          // was 32 — smaller to clip PNG's transparent edges
+    height: 24,         // was 32
+    marginVertical: -6, // was -4 — clips more of the transparent padding
   },
   celebrateLabel: {
     fontFamily: Typography.bodyMedium,
     fontSize: 14,
     color: Colors.green,
+    marginLeft: 4,   // ADD — tight gap between icon and label
   },
   celebrateLabelActive: {
     color: Colors.green,
@@ -473,6 +474,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 12,
     color: Colors.textMuted,
+    marginLeft: 6,  // ADD — clear separation from label text
   },
   celebrateCountActive: {
     color: Colors.green,

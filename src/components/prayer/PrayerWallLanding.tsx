@@ -605,7 +605,7 @@ function TestimonyCardView({
   );
   // Live wire field is celebrated_count (TestimonyRow). Dispatch's "amened"
   // label is the surface lexicon; the underlying count is the same.
-  const amenLabel = `${formatCount(row.celebrated_count)} amen · ${formatRelativeTime(row.created_at)}`;
+  const amenLabel = `${formatCount(row.celebrated_count)} rejoicing · ${formatRelativeTime(row.created_at)}`;
   return (
     <Pressable
       onPress={onPress}
