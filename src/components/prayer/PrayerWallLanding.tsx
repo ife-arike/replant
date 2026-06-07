@@ -1140,7 +1140,7 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     letterSpacing: 1.19, // 0.14em × 8.5
     textTransform: 'uppercase',
-    color: '#5BAD7A', // green
+    color: Colors.text,
   },
   testimonyMeta: {
     fontFamily: Typography.mono,
