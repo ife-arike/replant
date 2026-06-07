@@ -472,7 +472,7 @@ function PrayerActionSheet({
 
   if (!mounted || row === null) return null;
 
-  const locationLine = getLocationLine(row.church_name ?? 'Your church', row.country);
+  const locationLine = getLocationLine(row.church_name ?? 'Your church', row.country ?? null);
   const leaderLine = formatLeaderLine(row.author_role, row.author_display_name, false);
   const timestamp = formatRelativeTime(row.created_at);
 
@@ -517,7 +517,9 @@ function PrayerActionSheet({
         {/* Action row */}
         <View style={styles.sheetActions}>
           <SheetActionButton label="Edit" tone="sky" disabled onPress={onEdit} />
+          <View style={styles.actionDivider} />
           <SheetActionButton label="Mark as Answered" tone="sky" onPress={() => onMarkAnswered(row)} />
+          <View style={styles.actionDivider} />
           <SheetActionButton label="Delete" tone="red" onPress={() => onDelete(row)} />
         </View>
       </Animated.View>
@@ -622,6 +624,7 @@ function AnchoredOverflowMenu({
           ]}
         >
           <MenuItem label="Edit" onPress={onEdit} disabled />
+          <View style={styles.menuDivider} />
           <MenuItem label="Mark as Answered" onPress={onMarkAnswered} tone="sky" />
           <View style={styles.menuDivider} />
           <MenuItem label="Delete" onPress={onDelete} tone="red" />
@@ -1023,6 +1026,11 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     paddingTop: 8,
   },
+  actionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.border,
+    marginHorizontal: 0,
+  },
   sheetActionBtn: {
     height: 52,
     borderRadius: 8,
@@ -1240,7 +1248,7 @@ const styles = StyleSheet.create({
   },
   scriptureVerse: {
     fontFamily: Typography.scriptureItalic,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 25,
     color: '#E6E1D5',
     textAlign: 'center',

@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     borderRadius: 100,
     borderWidth: 0.5,
-    borderColor: 'transparent',
+    borderColor: 'rgba(240,237,230,0.10)',
     backgroundColor: 'transparent',
   },
   pillActive: {

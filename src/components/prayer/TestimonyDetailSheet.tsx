@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   celebrateCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 4,
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 8,
@@ -455,10 +455,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(91, 173, 122, 0.08)',
   },
   rejoiceIcon: {
-    // Device-pass fix — shofar glyph at 28×28 (matches the Testimonies
-    // card), negative vertical margin keeps the CTA row height in check.
-    width: 28,
-    height: 28,
+    // Device-pass fix — shofar glyph at 32×32, negative vertical margin
+    // keeps the CTA row height in check.
+    width: 32,
+    height: 32,
     marginVertical: -4,
   },
   celebrateLabel: {

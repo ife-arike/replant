@@ -620,10 +620,7 @@ function TestimonyCardView({
       <Text style={styles.testimonyLeader} numberOfLines={1}>{leader}</Text>
       <Text style={styles.testimonyQuote} numberOfLines={4}>{`"${row.testimony_text}"`}</Text>
       <View style={styles.testimonyMetaRow}>
-        <View style={styles.rejoiceRow}>
-          <MusicNoteGlyph color="#5BAD7A" />
-          <Text style={styles.testimonyRejoice}>REJOICE</Text>
-        </View>
+        <Text style={styles.testimonyRejoice}>+ Rejoice</Text>
         <Text style={styles.testimonyMeta}>{amenLabel.toUpperCase()}</Text>
       </View>
     </Pressable>
@@ -677,24 +674,6 @@ function PlusGlyph({ color }: { color: string }) {
   return (
     <Svg width={11} height={11} viewBox="0 0 12 12">
       <Path d="M6 2v8M2 6h8" stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-// Musical note — a simple eighth-note silhouette (filled) for the Rejoice
-// label on the testimony carousel cards.
-function MusicNoteGlyph({ color }: { color: string }) {
-  return (
-    <Svg width={10} height={10} viewBox="0 0 12 12">
-      {/* Stem */}
-      <Path d="M8 1v7" stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" />
-      {/* Flag */}
-      <Path d="M8 1 C10 2.5, 10 4, 8 4.5" stroke={color} strokeWidth={1.2} fill="none" strokeLinecap="round" />
-      {/* Note head */}
-      <Path
-        d="M6 8 C6 9.1 4.5 9.8 3.5 9.2 C2.5 8.6 2.8 7.2 4 7.0 C5 6.85 6 7.1 6 8Z"
-        fill={color}
-      />
     </Svg>
   );
 }

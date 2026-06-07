@@ -111,18 +111,9 @@ function Pill({
       accessibilityLabel={label}
     >
       <Animated.View style={[styles.pill, { backgroundColor, borderColor }]}>
-        {/* Experiment: inactive pills render empty — just the pill shape.
-            Active pill shows its label. Hit targets stay the same size.
-            The pill shape itself communicates how many surfaces exist. */}
-        {active ? (
-          <Text style={[styles.pillLabel, styles.pillLabelActive]}>
-            {label}
-          </Text>
-        ) : (
-          // Empty spacer — same height as the label line so the pill
-          // shape is consistent across all states.
-          <View style={styles.pillLabelSpacer} />
-        )}
+        <Text style={[styles.pillLabel, active && styles.pillLabelActive]}>
+          {label}
+        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -163,10 +154,5 @@ const styles = StyleSheet.create({
   },
   pillLabelActive: {
     color: SKY,
-  },
-  // Experiment — inactive pills show no text. This spacer keeps the
-  // pill shape consistent height with the active (labelled) pill.
-  pillLabelSpacer: {
-    height: 13, // matches DM Mono 10px natural line height
   },
 });
