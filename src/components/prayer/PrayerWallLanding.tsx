@@ -1089,7 +1089,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: FAINT,
     borderLeftWidth: 2,
-    borderLeftColor: '#6B9E7A',
+    borderLeftColor: Colors.text,
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
     paddingVertical: 16,
@@ -1101,13 +1101,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
-  testimonyHeadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#6B9E7A' },
+  testimonyHeadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text },
   testimonyLoc: {
     flex: 1,
     fontFamily: Typography.mono,
     fontSize: 9,
     letterSpacing: 1.62, // 0.18em × 9
-    color: '#6B9E7A',
+    color: Colors.text,
     fontWeight: '500',
   },
   testimonyLeader: {
