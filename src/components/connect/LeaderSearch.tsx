@@ -220,12 +220,11 @@ export default function LeaderSearch({ onBack, onPick }: Props) {
 
       {!active && (
         <View style={styles.hintBox}>
-          {/* B7 (device pass): hint copy updated to mention RPL Network
-              ID. LABEL CHANGE ONLY — search_leaders RPC does not match
-              against church_code yet; that's a separate DBA ticket. No
-              client-side church_code filtering is added here. */}
+          {/* KAN-??? (2026-06-08): church_code matching now live in RPC.
+              Church name removed as a search criterion (Founder ruling).
+              Underground leaders findable by RPL Network ID only. */}
           <Text style={styles.hint}>
-            Search the network by a leader's name, church name, or RPL Network ID.
+            Search by a leader's name or RPL Network ID.
           </Text>
         </View>
       )}

@@ -35,6 +35,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -59,6 +60,11 @@ interface Props {
   branchId: string;
   callerUserId: string | null;
   onBack: () => void;
+  // Optional swipe-left-to-go-back gesture handler. Called by the
+  // PanResponder when the leader swipes right→left with a horizontal
+  // displacement > 80pt and a vertical component < 30pt. The existing
+  // back button remains; this is an additive gesture path.
+  onSwipeBack?: () => void;
 }
 
 interface BranchMessage {
@@ -348,7 +354,7 @@ function computeTally(members: BranchMember[]) {
 }
 
 // ── main ─────────────────────────────────────────────────────────────
-export default function BranchThreadView({ branchId, callerUserId, onBack }: Props) {
+export default function BranchThreadView({ branchId, callerUserId, onBack, onSwipeBack }: Props) {
   const { session } = useAuth();
   const [summary, setSummary] = useState<BranchSummary | null>(null);
   const [members, setMembers] = useState<BranchMember[]>([]);
@@ -375,6 +381,26 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
     members.forEach((bm) => m.set(bm.userId, bm));
     return m;
   }, [members]);
+
+  // ── Swipe-left-to-go-back PanResponder ────────────────────────────
+  // Only claims the gesture when the move is predominantly horizontal
+  // (dx > 10pt, |dy| < 25pt) so it does NOT intercept vertical FlatList
+  // scrolling. Fires onSwipeBack on release when total dx > 80pt.
+  // The 80pt threshold is intentional — avoids accidental triggers while
+  // the leader pans the message list slightly sideways.
+  const swipePanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const { dx, dy } = gestureState;
+        return dx > 10 && Math.abs(dy) < 25;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 80 && onSwipeBack) {
+          onSwipeBack();
+        }
+      },
+    }),
+  ).current;
 
   const hostMinistryId = useMemo(() => {
     return members.find((m) => m.isHost)?.ministryId ?? null;
@@ -671,7 +697,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack }: Pro
   const forming = summary?.status === 'forming';
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} {...swipePanResponder.panHandlers}>
       <View style={styles.head}>
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />

@@ -33,6 +33,7 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -76,6 +77,11 @@ interface Props {
   covenantAcknowledged: boolean;
   onAcknowledgeCovenant: () => Promise<void>;
   onBack: () => void;
+  // Optional swipe-left-to-go-back gesture handler. Called by the
+  // PanResponder when the leader swipes right→left with a horizontal
+  // displacement > 80pt and a vertical component < 30pt. The existing
+  // back button remains; this is an additive gesture path.
+  onSwipeBack?: () => void;
   onConversationCreated?: (conversationId: string) => void;
 }
 
@@ -299,6 +305,7 @@ export default function DMThreadView({
   covenantAcknowledged,
   onAcknowledgeCovenant,
   onBack,
+  onSwipeBack,
   onConversationCreated,
 }: Props) {
   const { session } = useAuth();
@@ -370,6 +377,26 @@ export default function DMThreadView({
   useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
 
   const isSecure = other?.isSecure ?? false;
+
+  // ── Swipe-left-to-go-back PanResponder ────────────────────────────
+  // Only claims the gesture when the move is predominantly horizontal
+  // (dx > 10pt, |dy| < 25pt) so it does NOT intercept vertical FlatList
+  // scrolling. Fires onSwipeBack on release when total dx > 80pt.
+  // The 80pt threshold is intentional — avoids accidental triggers while
+  // the leader pans the message list slightly sideways.
+  const swipePanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const { dx, dy } = gestureState;
+        return dx > 10 && Math.abs(dy) < 25;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 80 && onSwipeBack) {
+          onSwipeBack();
+        }
+      },
+    }),
+  ).current;
 
   // ── Resolve other party identity ───────────────────────────────────
   // Header rendering per §6.3: name (serif 18px) + church (mono 9.5px
@@ -723,7 +750,7 @@ export default function DMThreadView({
   const canSend = draft.trim().length > 0;
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} {...swipePanResponder.panHandlers}>
       <View style={styles.head}>
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />

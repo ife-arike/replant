@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__38f67f6f-16e6-4cb8-a80e-1269075c2892__getJiraIssue",
+      "mcp__38f67f6f-16e6-4cb8-a80e-1269075c2892__searchJiraIssuesUsingJql",
+      "mcp__38f67f6f-16e6-4cb8-a80e-1269075c2892__getTransitionsForJiraIssue",
+      "mcp__38f67f6f-16e6-4cb8-a80e-1269075c2892__getJiraProjectIssueTypesMetadata",
+      "mcp__a311497a-e6ad-43b2-baeb-352bdd3e7450__list_tables",
+      "mcp__a311497a-e6ad-43b2-baeb-352bdd3e7450__get_project_url",
+      "mcp__a311497a-e6ad-43b2-baeb-352bdd3e7450__list_migrations",
+      "Bash(git -C * log *)",
+      "Bash(git -C * diff *)",
+      "Bash(git -C * status *)",
+      "Bash(git -C * show *)",
+      "Bash(npx tsc --noEmit *)"
+    ]
+  }
+}

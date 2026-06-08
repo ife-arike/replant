@@ -562,7 +562,7 @@ export default function CamlView({
   }), [churches, ragFilter]);
 
   const visibleListRows = useMemo(
-    () => churches.filter((c) => !c.is_own && ragFilter[c.rag_status as Rag] !== false),
+    () => churches.filter((c) => ragFilter[c.rag_status as Rag] !== false),
     [churches, ragFilter],
   );
 

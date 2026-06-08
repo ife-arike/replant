@@ -32,7 +32,6 @@ import React, {
 import {
   Animated,
   Easing,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -43,9 +42,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
+import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 import { supabase } from '../../lib/supabase';
 
 import ConnectHeader from '../../components/connect/ConnectHeader';
@@ -131,39 +131,48 @@ function useToast() {
   return { show, node };
 }
 
-// ── unverified soft gate (HANDOFF §8) ────────────────────────────────
-function ShieldGlyph() {
+// ── ConnectGateView — full-screen overlay (HANDOFF §8) ───────────────
+// Matches TheChurchScreen's UnverifiedGateView exactly: absolute fill,
+// rgba(8,8,8,0.92) background, sky cross glyph, scriptureLight title,
+// body text, mono wait-line, scripture box with Habakkuk 2:3.
+//
+// Two copy variants (same logic as TheChurchScreen):
+//   churchVerified = true  → second leader (church verified, leader pending)
+//   churchVerified = false/null → original leader (church + leader pending)
+//
+// NOT dismissible — this is a protection layer, not an info sheet.
+// Copy is Connect-specific (not "The Church tab" language).
+function ConnectGateView({ churchVerified }: { churchVerified: boolean | null }) {
+  const isLeaderPending = churchVerified === true;
   return (
-    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"
-        stroke={Colors.accent} strokeWidth={1.4} strokeLinejoin="round" />
-      <Path d="M9 12l2 2 4-4.2"
-        stroke={Colors.accent} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function UnverifiedGate({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <Pressable style={styles.gateScrim} onPress={onDismiss}>
-        <Pressable style={styles.gateSheet} onPress={() => {}}>
-          <View style={styles.gateGrab} />
-          <View style={styles.gateGlyph}><ShieldGlyph /></View>
-          <Text style={styles.gateTitle}>For verified leaders</Text>
-          <Text style={styles.gateBody}>
-            Available to verified leaders. Verification confirms your place
-            in the network.
-          </Text>
-          <Pressable
-            onPress={onDismiss}
-            style={({ pressed }) => [styles.gateBtn, pressed && { opacity: 0.85 }]}
-          >
-            <Text style={styles.gateBtnText}>I understand</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <View style={styles.gate}>
+      {/* Sky cross glyph — identical to TheChurchScreen */}
+      <Svg width={44} height={44} viewBox="0 0 36 36" style={styles.gateCrossGlyph}>
+        <Line x1="18" y1="5"  x2="18" y2="31" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
+        <Line x1="9"  y1="15" x2="27" y2="15" stroke={Colors.accent} strokeWidth="1.5" strokeLinecap="round" />
+      </Svg>
+      <Text style={styles.gateTitle}>
+        {isLeaderPending
+          ? 'Your access is being confirmed.'
+          : 'Your account is being verified.'}
+      </Text>
+      <Text style={styles.gateBody}>
+        {isLeaderPending
+          ? "Your church is already part of the Replant network. Once the team confirms your account, you'll unlock Connect and be able to reach leaders directly."
+          : "Once your church is confirmed by a Replant team member, you'll unlock Connect — private, sealed letters between leaders around the world."}
+      </Text>
+      <Text style={styles.gateTiny}>
+        {isLeaderPending
+          ? 'Confirmation usually takes 24–72 hours.'
+          : 'Most verifications complete in 24–72 hours.'}
+      </Text>
+      <View style={styles.gateScripture}>
+        <Text style={styles.gateScriptureText}>
+          "For the vision is yet for an appointed time, but at the end it shall speak, and not lie: though it tarry, wait for it; because it will surely come, it will not tarry."
+        </Text>
+        <Text style={styles.gateScriptureRef}>HABAKKUK 2:3</Text>
+      </View>
+    </View>
   );
 }
 
@@ -201,12 +210,15 @@ function useCallerIdentity() {
 export default function ConnectScreen() {
   const { branch } = useAuth();
   const verified = branch === 'active';
+  // Distinguish church-pending vs leader-pending for the gate copy.
+  // useChurchVerifiedStatus only fires a DB query when branch === 'pending';
+  // it is a no-op (returns null) for active leaders — zero extra cost.
+  const churchVerified = useChurchVerifiedStatus();
   const { callerUserId, callerChurchId, callerChurchName } = useCallerIdentity();
 
   const [subTab, setSubTab] = useState<SubTab>('leaders');
   const [view, setView] = useState<ConnectView>({ kind: 'list' });
   const [covenantAck, setCovenantAck] = useState(false);
-  const [gateDismissedThisSession, setGateDismissedThisSession] = useState(false);
   const { show: showToast, node: toastNode } = useToast();
   const { width } = useWindowDimensions();
 
@@ -358,6 +370,7 @@ export default function ConnectScreen() {
             covenantAcknowledged={covenantAck}
             onAcknowledgeCovenant={acknowledgeCovenant}
             onBack={backToList}
+            onSwipeBack={backToList}
             onConversationCreated={(cid) => {
               // Update the in-flight view so a subsequent send-message
               // call carries conversation_id (not recipient_user_id).
@@ -375,6 +388,7 @@ export default function ConnectScreen() {
             branchId={pushVisible.branchId}
             callerUserId={callerUserId}
             onBack={backToList}
+            onSwipeBack={backToList}
           />
         );
       case 'create':
@@ -406,10 +420,7 @@ export default function ConnectScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      {/* List + chrome (always mounted under push surfaces). The
-          `filter: brightness(0.5)` from the prototype maps to RN as an
-          opacity overlay over the list when the unverified sheet is
-          showing — see styles.gateBackdrop. */}
+      {/* List + chrome (always mounted under push surfaces). */}
       <View style={styles.listLayer}>
         <ConnectHeader
           subTab={subTab}
@@ -422,9 +433,6 @@ export default function ConnectScreen() {
         <View style={styles.listBody}>
           {listSurface}
         </View>
-        {!verified && !gateDismissedThisSession && (
-          <View pointerEvents="none" style={styles.gateBackdrop} />
-        )}
       </View>
 
       {/* Push layer — slides in from right with fade. */}
@@ -442,13 +450,11 @@ export default function ConnectScreen() {
         </Animated.View>
       )}
 
-      {/* Unverified soft gate — shown each time the leader lands on
-          Connect while not yet verified. Does NOT permanently dismiss;
-          just hides for this session. */}
-      <UnverifiedGate
-        visible={!verified && !gateDismissedThisSession}
-        onDismiss={() => setGateDismissedThisSession(true)}
-      />
+      {/* Unverified gate — full-screen overlay (zIndex 20) matching the
+          Church tab gate style. NOT dismissible — protection layer.
+          Covers the list AND any push surface that might be behind it.
+          Two copy variants: church-pending vs leader-pending. */}
+      {!verified ? <ConnectGateView churchVerified={churchVerified} /> : null}
 
       {/* iOS toast (Android uses ToastAndroid). */}
       {toastNode}
@@ -466,60 +472,66 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     zIndex: 20,
   },
-  // ── unverified gate ──
-  gateBackdrop: {
+  // ── ConnectGateView — full-screen overlay (mirrors TheChurchScreen) ──
+  gate: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,8,8,0.5)',
-  },
-  gateScrim: {
-    flex: 1,
-    backgroundColor: 'rgba(4,4,4,0.5)',
-    justifyContent: 'flex-end',
-  },
-  gateSheet: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.border,
-    paddingHorizontal: 28,
-    paddingTop: 12,
-    paddingBottom: 36,
+    zIndex: 20,
+    backgroundColor: 'rgba(8,8,8,0.92)',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
   },
-  gateGrab: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: 'rgba(240,237,230,0.20)',
-    marginBottom: 16,
-  },
-  gateGlyph: { marginBottom: 12 },
+  gateCrossGlyph: { marginBottom: 28 },
   gateTitle: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 22,
+    fontFamily: Typography.scriptureLight,
+    fontSize: 28,
+    letterSpacing: 0.56,
     color: Colors.text,
     textAlign: 'center',
-    marginBottom: 8,
+    lineHeight: 35,
+    marginBottom: 16,
   },
   gateBody: {
     fontFamily: Typography.body,
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: 14.5,
     color: Colors.textMuted,
+    lineHeight: 23,
     textAlign: 'center',
-    marginBottom: 18,
+    alignSelf: 'stretch',
+    marginBottom: 10,
   },
-  gateBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 999,
+  gateTiny: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 2.1,
+    textTransform: 'uppercase',
+    color: Colors.accent,
+    marginBottom: 28,
+  },
+  gateScripture: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(107,181,232,0.06)',
     borderWidth: 0.5,
-    borderColor: 'rgba(240,237,230,0.14)',
+    borderColor: Colors.borderAccent,
+    borderRadius: 10,
+    alignSelf: 'stretch',
+    alignItems: 'center',
   },
-  gateBtnText: {
-    fontFamily: Typography.bodyMedium,
-    fontSize: 13,
+  gateScriptureText: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 16.5,
     color: Colors.text,
-    letterSpacing: 0.3,
+    lineHeight: 25,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  gateScriptureRef: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 2.09,
+    textTransform: 'uppercase',
+    color: Colors.accent,
   },
   // ── toast (iOS only; Android uses ToastAndroid) ──
   toast: {

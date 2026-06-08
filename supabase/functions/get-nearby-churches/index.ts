@@ -263,8 +263,11 @@ async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // Always include the caller's own church regardless of search radius.
-  // Fixes the case where the leader is traveling far from their registered church.
+  // Inject own church if it fell outside the search radius but is still
+  // within RADIUS_EXPANDED_KM of the viewer's current location. This covers
+  // the edge case where expansion didn't fire (≥3 other churches within 50km)
+  // but the leader's church is just outside the base radius. Beyond 100km the
+  // church is genuinely far away and should not appear in the list.
   if (callerChurchId && !rows.some((r) => r.id === callerChurchId)) {
     const { data: ownRow } = await admin
       .from("churches")
@@ -272,23 +275,28 @@ async function handler(req: Request): Promise<Response> {
       .eq("id", callerChurchId)
       .single();
     if (ownRow && typeof ownRow.lat === "number" && typeof ownRow.lng === "number") {
-      rows = [
-        ...rows,
-        {
-          id:                  ownRow.id,
-          name:                ownRow.name,
-          type:                ownRow.type,
-          city:                ownRow.city ?? null,
-          country:             ownRow.country ?? null,
-          lat:                 ownRow.lat,
-          lng:                 ownRow.lng,
-          rag_status:          ownRow.rag_status,
-          verification_status: ownRow.verification_status,
-          distance_km:         haversineKm(viewerLat, viewerLng, ownRow.lat, ownRow.lng),
-          network_id:          (ownRow.church_code as string | null) ?? null,
-          leaders:             null,
-        },
-      ];
+      const ownDistKm = haversineKm(viewerLat, viewerLng, ownRow.lat, ownRow.lng);
+      // Only inject if within RADIUS_EXPANDED_KM. Beyond that the leader is
+      // traveling and their home church should not appear in the nearby list.
+      if (ownDistKm <= RADIUS_EXPANDED_KM) {
+        rows = [
+          ...rows,
+          {
+            id:                  ownRow.id,
+            name:                ownRow.name,
+            type:                ownRow.type,
+            city:                ownRow.city ?? null,
+            country:             ownRow.country ?? null,
+            lat:                 ownRow.lat,
+            lng:                 ownRow.lng,
+            rag_status:          ownRow.rag_status,
+            verification_status: ownRow.verification_status,
+            distance_km:         ownDistKm,
+            network_id:          (ownRow.church_code as string | null) ?? null,
+            leaders:             null,
+          },
+        ];
+      }
     }
   }
 
