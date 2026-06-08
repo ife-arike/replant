@@ -26,9 +26,10 @@
 //   - leader_count + leaders[] bundled so submit doesn't need a
 //     second round-trip to expand a ministry into user_ids.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Pressable,
   StyleSheet,
@@ -145,6 +146,11 @@ export default function BranchCreate({
   const [ministries, setMinistries] = useState<MinistryRow[]>([]);
   const [loadingMinistries, setLoadingMinistries] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showNameHint, setShowNameHint] = useState(false);
+  const shakeAnim     = useRef(new Animated.Value(0)).current;
+  const nameHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flatListRef   = useRef<FlatList<MinistryRow>>(null);
+  const nameInputRef  = useRef<TextInput>(null);
 
   // Initial corpus load — no query filter.
   useEffect(() => {
@@ -192,9 +198,29 @@ export default function BranchCreate({
   }, [ministries, picked]);
 
   const canSend = name.trim().length > 0 && picked.size >= 1 && !sending;
+  // Button is tappable whenever picks > 0 so a tap with an empty name
+  // can trigger the shake feedback rather than silently doing nothing.
+  const canTap  = picked.size >= 1 && !sending;
+
+  const triggerNameShake = useCallback(() => {
+    setShowNameHint(true);
+    if (nameHintTimer.current) clearTimeout(nameHintTimer.current);
+    nameHintTimer.current = setTimeout(() => setShowNameHint(false), 2500);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue:  7, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -7, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  5, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -5, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  3, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  0, duration: 45, useNativeDriver: true }),
+    ]).start(() => nameInputRef.current?.focus());
+  }, [shakeAnim]);
 
   const handleSend = useCallback(async () => {
-    if (!canSend || !callerUserId) return;
+    if (!callerUserId || sending) return;
+    if (name.trim().length === 0) { triggerNameShake(); return; }
+    if (picked.size === 0) return;
     // Resolve invitee user IDs from selected ministries.
     const inviteeIds: string[] = [];
     ministries.forEach((m) => {
@@ -239,6 +265,7 @@ export default function BranchCreate({
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={filtered}
         keyExtractor={(m) => m.ministryId}
         ListHeaderComponent={
@@ -247,15 +274,21 @@ export default function BranchCreate({
               "I AM THE VINE, YE ARE THE BRANCHES" · JOHN 15:5
             </Text>
             <Text style={styles.fieldLabel}>Name this branch</Text>
-            <TextInput
-              style={styles.nameField}
-              value={name}
-              onChangeText={(t) => setName(t.slice(0, 48))}
-              placeholder="e.g. East Africa Outreach"
-              placeholderTextColor={Colors.textSubtle}
-              maxLength={48}
-              autoCapitalize="words"
-            />
+            <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+              <TextInput
+                ref={nameInputRef}
+                style={[styles.nameField, showNameHint && styles.nameFieldError]}
+                value={name}
+                onChangeText={(t) => { setName(t.slice(0, 48)); if (showNameHint) setShowNameHint(false); }}
+                placeholder="e.g. East Africa Outreach"
+                placeholderTextColor={Colors.textSubtle}
+                maxLength={48}
+                autoCapitalize="words"
+              />
+            </Animated.View>
+            {showNameHint && (
+              <Text style={styles.nameHint}>Add a branch name to continue</Text>
+            )}
             <View style={styles.section}>
               <Text style={styles.fieldLabel}>Invite ministries</Text>
               <Text style={styles.capCount}>{picked.size} of {MAX_INVITEES} selected</Text>
@@ -343,11 +376,11 @@ export default function BranchCreate({
         </Text>
         <Pressable
           onPress={handleSend}
-          disabled={!canSend}
+          disabled={!canTap}
           style={({ pressed }) => [
             styles.btnPrimary,
-            !canSend && styles.btnPrimaryDisabled,
-            pressed && canSend && { opacity: 0.85 },
+            !canTap && styles.btnPrimaryDisabled,
+            pressed && canTap && { opacity: 0.85 },
           ]}
         >
           {sending
@@ -404,7 +437,17 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
-    marginBottom: 18,
+    marginBottom: 6,
+  },
+  nameFieldError: {
+    borderColor: Colors.accent,
+  },
+  nameHint: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.accent,
+    marginBottom: 12,
+    paddingHorizontal: 2,
   },
   section: {
     flexDirection: 'row',
