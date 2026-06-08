@@ -137,11 +137,14 @@ BEGIN
   END IF;
 
   -- Caller must be a CURRENT member (not 'left') to read the sheet.
+  -- NOTE: use alias _bm to avoid "column reference is ambiguous" — user_id
+  -- and consent_status are both RETURNS TABLE output names AND branch_members
+  -- column names; unqualified refs inside SQL sub-stmts are ambiguous in PG.
   IF NOT EXISTS (
-    SELECT 1 FROM public.branch_members
-    WHERE branch_id = p_branch_id
-      AND user_id   = v_caller_id
-      AND consent_status <> 'left'
+    SELECT 1 FROM public.branch_members AS _bm
+    WHERE _bm.branch_id      = p_branch_id
+      AND _bm.user_id        = v_caller_id
+      AND _bm.consent_status <> 'left'
   ) THEN
     RAISE EXCEPTION 'not_a_member';
   END IF;
