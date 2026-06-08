@@ -38,6 +38,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -88,6 +89,8 @@ interface BranchMember {
   anonymous: boolean;
   isHost: boolean;
   consentStatus: 'invited' | 'joined' | 'declined';
+  ministryCity: string | null;
+  ministryCountry: string | null;
 }
 
 interface BranchSummary {
@@ -270,6 +273,7 @@ function MembersSheet({
   membersError,
   onRetryMembers,
   hostMinistryId,
+  callerMinistryId,
   onClose,
   callerUserId,
   callerIsHost,
@@ -288,6 +292,7 @@ function MembersSheet({
   membersError: string | null;
   onRetryMembers: () => void;
   hostMinistryId: string | null;
+  callerMinistryId: string | null;
   onClose: () => void;
   callerUserId: string | null;
   callerIsHost: boolean;
@@ -376,16 +381,20 @@ function MembersSheet({
               <Text style={styles.retryText}>Couldn't load members · Tap to retry</Text>
             </Pressable>
           ) : (
-          <View style={{ marginTop: 14 }}>
+          <ScrollView style={styles.membersList} showsVerticalScrollIndicator={false}>
             {byMinistry.map(([mid, list]) => {
               const ministryName = list[0]?.ministryName ?? 'Ministry';
-              const isHostMinistry = mid === hostMinistryId;
+              const ministryLabel = (() => {
+                const locationStr = [list[0]?.ministryCity, list[0]?.ministryCountry].filter(Boolean).join(', ');
+                return locationStr ? `${ministryName} · ${locationStr}` : ministryName;
+              })();
+              const isCallerMinistry = mid === callerMinistryId;
               return (
                 <View key={mid} style={styles.ministryBlock}>
                   <View style={styles.ministryNameRow}>
-                    <Text style={styles.ministryName}>{ministryName}</Text>
-                    {isHostMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
-                    {callerIsHost && !isHostMinistry && (
+                    <Text style={styles.ministryName}>{ministryLabel}</Text>
+                    {isCallerMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
+                    {callerIsHost && mid !== hostMinistryId && (
                       <Pressable
                         onPress={() => confirmRemoveMinistry(mid)}
                         hitSlop={6}
@@ -398,7 +407,12 @@ function MembersSheet({
                   {list.map((m) => (
                     <View key={m.userId} style={styles.memberLeader}>
                       <Text style={styles.mlName} numberOfLines={1}>
-                        {m.anonymous ? getRoleLabel(m.role) : m.fullName || getRoleLabel(m.role)}
+                        {(() => {
+                          const roleLabel = getRoleLabel(m.role);
+                          return m.anonymous
+                            ? (roleLabel || 'Leader')
+                            : [roleLabel, m.fullName].filter(Boolean).join(' ') || 'Leader';
+                        })()}
                       </Text>
                       {callerIsHost && !m.isHost && (
                         <Pressable
@@ -410,12 +424,12 @@ function MembersSheet({
                         </Pressable>
                       )}
                       {m.consentStatus === 'joined' && (
-                        <View style={[styles.consent, styles.consentJoined]}>
+                        <View style={styles.consent}>
                           <CheckMini /><Text style={styles.consentTextJoined}>Joined</Text>
                         </View>
                       )}
                       {m.consentStatus === 'declined' && (
-                        <View style={[styles.consent, styles.consentDeclined]}>
+                        <View style={styles.consent}>
                           <XMini /><Text style={styles.consentTextDeclined}>Declined</Text>
                         </View>
                       )}
@@ -429,7 +443,7 @@ function MembersSheet({
                 </View>
               );
             })}
-          </View>
+          </ScrollView>
           )}
           {callerIsHost && (
             <>
@@ -555,6 +569,10 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
     return !!members.find((m) => m.userId === callerUserId && m.isHost);
   }, [members, callerUserId]);
 
+  const callerMinistryId = useMemo(() => {
+    return members.find((m) => m.userId === callerUserId)?.ministryId ?? null;
+  }, [members, callerUserId]);
+
   const fullyDeclinedMinistry = useMemo(() => {
     if (resolvedDecline) return null;
     if (!callerIsHost) return null;
@@ -602,6 +620,8 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         anonymous: !!r.anonymous,
         isHost: !!r.is_host,
         consentStatus: r.consent_status,
+        ministryCity: r.ministry_city ?? null,
+        ministryCountry: r.ministry_country ?? null,
       };
     });
     setMembers(mapped);
@@ -1097,6 +1117,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         membersError={membersError}
         onRetryMembers={loadMembersAndSummary}
         hostMinistryId={hostMinistryId}
+        callerMinistryId={callerMinistryId}
         onClose={() => setShowMembers(false)}
         callerUserId={callerUserId}
         callerIsHost={callerIsHost}
@@ -1350,45 +1371,49 @@ const styles = StyleSheet.create({
   },
   sheet: {
     maxHeight: '76%',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     borderTopWidth: 0.5,
-    borderTopColor: Colors.border,
+    borderTopColor: 'rgba(240,237,230,0.14)',
     paddingHorizontal: 22,
     paddingTop: 10,
     paddingBottom: 28,
   },
   sheetGrab: {
     alignSelf: 'center',
-    width: 36, height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(240,237,230,0.20)',
+    width: 38, height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(240,237,230,0.14)',
     marginBottom: 14,
   },
   sheetTitle: {
-    fontFamily: Typography.displayRegular,
-    fontSize: 22,
+    fontFamily: Typography.displayMedium,
+    fontSize: 21,
     color: Colors.text,
   },
   sheetSub: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 0.4,
+    fontSize: 9.5,
+    letterSpacing: 0.95,
     color: Colors.accent,
     marginTop: 4,
+    marginBottom: 4,
+  },
+  membersList: {
+    flex: 1,
   },
   ministryBlock: {
-    marginTop: 16,
-    paddingBottom: 6,
+    paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.border,
   },
   ministryNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   ministryName: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 13.5,
+    fontSize: 13,
     color: Colors.text,
+    flex: 1,
   },
   youTag: {
     fontFamily: Typography.mono,
@@ -1405,42 +1430,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingLeft: 2,
   },
   mlName: {
     flex: 1,
     fontFamily: Typography.body,
     fontSize: 13,
-    color: Colors.text,
+    color: Colors.textMuted,
     minWidth: 0,
     marginRight: 8,
   },
   consent: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: 'rgba(240,237,230,0.04)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  consentJoined: { backgroundColor: 'rgba(91,173,122,0.10)' },
-  consentDeclined: { backgroundColor: 'rgba(224,85,85,0.10)' },
-  consentTextJoined: { fontFamily: Typography.mono, fontSize: 10, color: Colors.green, letterSpacing: 0.3 },
-  consentTextDeclined: { fontFamily: Typography.mono, fontSize: 10, color: Colors.red, letterSpacing: 0.3 },
-  consentTextInvited: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textMuted, letterSpacing: 0.3 },
+  consentTextJoined: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.02,
+    textTransform: 'uppercase',
+    color: Colors.green,
+  },
+  consentTextDeclined: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.02,
+    textTransform: 'uppercase',
+    color: Colors.red,
+  },
+  consentTextInvited: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.02,
+    textTransform: 'uppercase',
+    color: Colors.textSubtle,
+  },
   retryRow: { marginTop: 20, alignItems: 'center', paddingVertical: 12 },
   retryText: { fontFamily: Typography.mono, fontSize: 10.5, color: Colors.accent, letterSpacing: 0.4 },
   sheetClose: {
     marginTop: 16,
-    paddingVertical: 12,
-    borderRadius: 999,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: 'rgba(240,237,230,0.14)',
+    borderColor: Colors.border,
     alignItems: 'center',
+    width: '100%',
   },
   sheetCloseText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 13,
-    color: Colors.text,
-    letterSpacing: 0.3,
+    fontSize: 11.5,
+    letterSpacing: 1.38,
+    textTransform: 'uppercase',
+    color: Colors.textMuted,
   },
   // ── host admin + leave actions in MembersSheet ──
   removeMinistryText: {
@@ -1456,36 +1501,57 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   sheetActionRename: {
-    marginTop: 8,
-    paddingVertical: 12,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.35)',
     alignItems: 'center',
+    width: '100%',
   },
   sheetActionRenameText: {
-    fontFamily: Typography.mono,
-    fontSize: 10.5,
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11.5,
+    letterSpacing: 1.38,
+    textTransform: 'uppercase',
     color: Colors.accent,
-    textAlign: 'center',
   },
   sheetActionDelete: {
-    paddingVertical: 12,
+    marginBottom: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(224,85,85,0.30)',
     alignItems: 'center',
+    width: '100%',
   },
   sheetActionDeleteText: {
-    fontFamily: Typography.mono,
-    fontSize: 10.5,
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11.5,
+    letterSpacing: 1.38,
+    textTransform: 'uppercase',
     color: Colors.red,
-    textAlign: 'center',
   },
   sheetActionLeave: {
-    marginTop: 8,
-    paddingVertical: 12,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(224,85,85,0.30)',
     alignItems: 'center',
+    width: '100%',
   },
   sheetActionLeaveText: {
-    fontFamily: Typography.mono,
-    fontSize: 10.5,
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11.5,
+    letterSpacing: 1.38,
+    textTransform: 'uppercase',
     color: Colors.red,
-    textAlign: 'center',
   },
 });
 
