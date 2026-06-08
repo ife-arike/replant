@@ -267,6 +267,8 @@ function MembersSheet({
   ministryCount,
   memberCount,
   members,
+  membersError,
+  onRetryMembers,
   hostMinistryId,
   onClose,
 }: {
@@ -275,6 +277,8 @@ function MembersSheet({
   ministryCount: number;
   memberCount: number;
   members: BranchMember[];
+  membersError: string | null;
+  onRetryMembers: () => void;
   hostMinistryId: string | null;
   onClose: () => void;
 }) {
@@ -295,6 +299,11 @@ function MembersSheet({
           <View style={styles.sheetGrab} />
           <Text style={styles.sheetTitle}>{branchName}</Text>
           <Text style={styles.sheetSub}>{ministryCount} ministries · {memberCount} leaders</Text>
+          {membersError && members.length === 0 ? (
+            <Pressable onPress={onRetryMembers} style={styles.retryRow}>
+              <Text style={styles.retryText}>Couldn't load members · Tap to retry</Text>
+            </Pressable>
+          ) : (
           <View style={{ marginTop: 14 }}>
             {byMinistry.map(([mid, list]) => {
               const ministryName = list[0]?.ministryName ?? 'Ministry';
@@ -331,6 +340,7 @@ function MembersSheet({
               );
             })}
           </View>
+          )}
           <Pressable
             onPress={onClose}
             style={({ pressed }) => [styles.sheetClose, pressed && { opacity: 0.7 }]}
@@ -385,6 +395,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   const [draft, setDraft] = useState('');
   const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   const [showMembers, setShowMembers] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [resolvedDecline, setResolvedDecline] = useState(false);
   // Fix 8 (KAN-68 §15.3) — same anticipatory popover as DMThreadView.
   const [attachPopoverVisible, setAttachPopoverVisible] = useState(false);
@@ -451,6 +462,12 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       supabase.rpc('get_branch_members', { p_branch_id: branchId }),
       supabase.rpc('get_branch_list'),
     ]);
+    if (memRes.error) {
+      console.error('[BranchThreadView] get_branch_members failed:', memRes.error.message, memRes.error.details);
+      setMembersError(memRes.error.message ?? 'Failed to load members');
+    } else {
+      setMembersError(null);
+    }
     const mapped: BranchMember[] = (memRes.data ?? []).map((r: any) => {
       const fullName: string = r.full_name ?? '';
       const [first = '', ...rest] = fullName.split(' ');
@@ -769,9 +786,13 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
                 <View style={styles.formingBanner}>
                   <Text style={styles.formingTitle}>Forming this branch</Text>
                   <Text style={styles.formingBody}>
-                    {tally.declined > 0
-                      ? `${tally.joined} of ${tally.total} joined · ${tally.declined} declined. ${tally.pending} still to consent.`
-                      : `${tally.joined} of ${tally.total} leaders have joined. Messages open once every leader accepts — ${tally.pending} still to consent.`}
+                    {members.length === 0 && !membersError
+                      ? 'Loading member status…'
+                      : membersError
+                        ? 'Could not load member status. Pull down or tap ↑ to retry.'
+                        : tally.declined > 0
+                          ? `${tally.joined} of ${tally.total} joined · ${tally.declined} declined. ${tally.pending} still to consent.`
+                          : `${tally.joined} of ${tally.total} leaders have joined. Messages open once every leader accepts — ${tally.pending} still to consent.`}
                   </Text>
                 </View>
               )}
@@ -903,6 +924,8 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         ministryCount={summary?.ministryCount ?? 0}
         memberCount={summary?.memberCount ?? 0}
         members={members}
+        membersError={membersError}
+        onRetryMembers={loadMembersAndSummary}
         hostMinistryId={hostMinistryId}
         onClose={() => setShowMembers(false)}
       />
@@ -1225,6 +1248,8 @@ const styles = StyleSheet.create({
   consentTextJoined: { fontFamily: Typography.mono, fontSize: 10, color: Colors.green, letterSpacing: 0.3 },
   consentTextDeclined: { fontFamily: Typography.mono, fontSize: 10, color: Colors.red, letterSpacing: 0.3 },
   consentTextInvited: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textMuted, letterSpacing: 0.3 },
+  retryRow: { marginTop: 20, alignItems: 'center', paddingVertical: 12 },
+  retryText: { fontFamily: Typography.mono, fontSize: 10.5, color: Colors.accent, letterSpacing: 0.4 },
   sheetClose: {
     marginTop: 16,
     paddingVertical: 12,
