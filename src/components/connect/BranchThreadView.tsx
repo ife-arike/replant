@@ -1401,7 +1401,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   membersList: {
-    flex: 1,
+    flexShrink: 1,  // flex:1 collapses to 0 when parent has maxHeight but no explicit height (yoga)
   },
   ministryBlock: {
     paddingVertical: 12,
