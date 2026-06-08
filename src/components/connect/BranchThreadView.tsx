@@ -271,6 +271,14 @@ function MembersSheet({
   onRetryMembers,
   hostMinistryId,
   onClose,
+  callerUserId,
+  callerIsHost,
+  branchId,
+  onLeave,
+  onRemoveLeader,
+  onRemoveMinistry,
+  onEditName,
+  onDeleteBranch,
 }: {
   visible: boolean;
   branchName: string;
@@ -281,6 +289,14 @@ function MembersSheet({
   onRetryMembers: () => void;
   hostMinistryId: string | null;
   onClose: () => void;
+  callerUserId: string | null;
+  callerIsHost: boolean;
+  branchId: string;
+  onLeave: () => void;
+  onRemoveLeader: (userId: string) => void;
+  onRemoveMinistry: (ministryId: string) => void;
+  onEditName: (newName: string) => void;
+  onDeleteBranch: () => void;
 }) {
   // Group members by ministry_id, preserving insertion order.
   const byMinistry = useMemo(() => {
@@ -291,6 +307,62 @@ function MembersSheet({
     });
     return Array.from(map.entries());
   }, [members]);
+
+  const confirmLeave = () => {
+    Alert.alert(
+      'Leave this branch?',
+      'You will no longer have access to this conversation or its messages.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: onLeave },
+      ],
+    );
+  };
+
+  const confirmRemoveMinistry = (mid: string) => {
+    Alert.alert(
+      'Remove this ministry?',
+      'All leaders from this ministry will be removed from the branch.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => onRemoveMinistry(mid) },
+      ],
+    );
+  };
+
+  const confirmRemoveLeader = (userId: string) => {
+    Alert.alert(
+      'Remove this leader?',
+      'They will no longer have access to this branch.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => onRemoveLeader(userId) },
+      ],
+    );
+  };
+
+  const promptRename = () => {
+    Alert.prompt(
+      'Rename branch',
+      'Enter a new name for this branch.',
+      (newName) => {
+        if (newName && newName.trim()) onEditName(newName.trim());
+      },
+      'plain-text',
+      branchName,
+    );
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Delete this branch?',
+      'This will permanently close the thread for all members.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: onDeleteBranch },
+      ],
+    );
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -307,18 +379,36 @@ function MembersSheet({
           <View style={{ marginTop: 14 }}>
             {byMinistry.map(([mid, list]) => {
               const ministryName = list[0]?.ministryName ?? 'Ministry';
-              const isHost = mid === hostMinistryId;
+              const isHostMinistry = mid === hostMinistryId;
               return (
                 <View key={mid} style={styles.ministryBlock}>
                   <View style={styles.ministryNameRow}>
                     <Text style={styles.ministryName}>{ministryName}</Text>
-                    {isHost && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
+                    {isHostMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
+                    {callerIsHost && !isHostMinistry && (
+                      <Pressable
+                        onPress={() => confirmRemoveMinistry(mid)}
+                        hitSlop={6}
+                        style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}
+                      >
+                        <Text style={styles.removeMinistryText}>Remove ministry</Text>
+                      </Pressable>
+                    )}
                   </View>
                   {list.map((m) => (
                     <View key={m.userId} style={styles.memberLeader}>
                       <Text style={styles.mlName} numberOfLines={1}>
                         {m.anonymous ? getRoleLabel(m.role) : m.fullName || getRoleLabel(m.role)}
                       </Text>
+                      {callerIsHost && !m.isHost && (
+                        <Pressable
+                          onPress={() => confirmRemoveLeader(m.userId)}
+                          hitSlop={6}
+                          style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                        >
+                          <Text style={styles.removeLeaderText}>Remove</Text>
+                        </Pressable>
+                      )}
                       {m.consentStatus === 'joined' && (
                         <View style={[styles.consent, styles.consentJoined]}>
                           <CheckMini /><Text style={styles.consentTextJoined}>Joined</Text>
@@ -340,6 +430,30 @@ function MembersSheet({
               );
             })}
           </View>
+          )}
+          {callerIsHost && (
+            <>
+              <Pressable
+                onPress={promptRename}
+                style={({ pressed }) => [styles.sheetActionRename, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.sheetActionRenameText}>Rename branch</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmDelete}
+                style={({ pressed }) => [styles.sheetActionDelete, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.sheetActionDeleteText}>Delete branch</Text>
+              </Pressable>
+            </>
+          )}
+          {!callerIsHost && (
+            <Pressable
+              onPress={confirmLeave}
+              style={({ pressed }) => [styles.sheetActionLeave, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={styles.sheetActionLeaveText}>Leave this branch</Text>
+            </Pressable>
           )}
           <Pressable
             onPress={onClose}
@@ -503,6 +617,62 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   }, [branchId]);
 
   useEffect(() => { void loadMembersAndSummary(); }, [loadMembersAndSummary]);
+
+  // ── Branch member action handlers (KAN-69) ────────────────────────
+  const handleLeave = useCallback(async () => {
+    const { error } = await supabase.rpc('leave_branch', { p_branch_id: branchId });
+    if (error) {
+      Alert.alert('Error', "Couldn't leave the branch. Try again.");
+      return;
+    }
+    onBack();
+  }, [branchId, onBack]);
+
+  const handleRemoveLeader = useCallback(async (userId: string) => {
+    const { error } = await supabase.rpc('remove_branch_leader', {
+      p_branch_id: branchId,
+      p_user_id: userId,
+    });
+    if (error) {
+      Alert.alert('Error', "Couldn't remove that leader. Try again.");
+      return;
+    }
+    loadMembersAndSummary();
+  }, [branchId, loadMembersAndSummary]);
+
+  const handleRemoveMinistry = useCallback(async (ministryId: string) => {
+    const { error } = await supabase.rpc('remove_ministry_from_branch', {
+      p_branch_id: branchId,
+      p_ministry_id: ministryId,
+    });
+    if (error) {
+      Alert.alert('Error', "Couldn't remove that ministry. Try again.");
+      return;
+    }
+    loadMembersAndSummary();
+  }, [branchId, loadMembersAndSummary]);
+
+  const handleEditName = useCallback(async (newName: string) => {
+    if (!newName.trim()) return;
+    const { error } = await supabase.rpc('edit_branch_name', {
+      p_branch_id: branchId,
+      p_name: newName.trim(),
+    });
+    if (error) {
+      Alert.alert('Error', "Couldn't rename the branch. Try again.");
+      return;
+    }
+    loadMembersAndSummary();
+  }, [branchId, loadMembersAndSummary]);
+
+  const handleDeleteBranch = useCallback(async () => {
+    const { error } = await supabase.rpc('delete_branch', { p_branch_id: branchId });
+    if (error) {
+      Alert.alert('Error', "Couldn't delete the branch. Try again.");
+      return;
+    }
+    onBack();
+  }, [branchId, onBack]);
 
   // ── Load initial messages page (only when joined+active OR forming
   // with caller=joined-host; get_branch_messages will 403 otherwise). ─
@@ -928,6 +1098,14 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         onRetryMembers={loadMembersAndSummary}
         hostMinistryId={hostMinistryId}
         onClose={() => setShowMembers(false)}
+        callerUserId={callerUserId}
+        callerIsHost={callerIsHost}
+        branchId={branchId}
+        onLeave={handleLeave}
+        onRemoveLeader={handleRemoveLeader}
+        onRemoveMinistry={handleRemoveMinistry}
+        onEditName={handleEditName}
+        onDeleteBranch={handleDeleteBranch}
       />
     </View>
   );
@@ -1263,6 +1441,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.text,
     letterSpacing: 0.3,
+  },
+  // ── host admin + leave actions in MembersSheet ──
+  removeMinistryText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    color: Colors.red,
+    textAlign: 'right',
+  },
+  removeLeaderText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    color: Colors.red,
+    marginRight: 6,
+  },
+  sheetActionRename: {
+    marginTop: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sheetActionRenameText: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.accent,
+    textAlign: 'center',
+  },
+  sheetActionDelete: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sheetActionDeleteText: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.red,
+    textAlign: 'center',
+  },
+  sheetActionLeave: {
+    marginTop: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sheetActionLeaveText: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.red,
+    textAlign: 'center',
   },
 });
 

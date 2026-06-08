@@ -3,7 +3,7 @@
 // Push screen for "Start a branch". Name field (≤48 chars) + host chip
 // (caller's ministry, locked) + searchable ministry pick list (cap 6
 // invitees = 7 ministries total per HANDOFF). On send: invokes the
-// SECURITY DEFINER create_branch(p_name, p_invited_user_ids[]) RPC
+// SECURITY DEFINER create_branch(p_name, p_invited_ministry_ids[]) RPC
 // (KAN-214 Migration 2 + follow-up amendment) which validates the
 // ministry cap server-side (counts DISTINCT church_ids across invited
 // users, not raw user count), writes branches + branch_members rows,
@@ -221,20 +221,13 @@ export default function BranchCreate({
     if (!callerUserId || sending) return;
     if (name.trim().length === 0) { triggerNameShake(); return; }
     if (picked.size === 0) return;
-    // Resolve invitee user IDs from selected ministries.
-    const inviteeIds: string[] = [];
-    ministries.forEach((m) => {
-      if (picked.has(m.ministryId)) inviteeIds.push(...m.leaderIds);
-    });
-    // Server cap is "≤ 6 distinct MINISTRIES" (KAN-214 follow-up
-    // migration 20260529000003 fixed the original USER-count cap).
-    // The FE cap of 6 ministry selections + this cap match exactly,
-    // so a legitimately-sized branch never trips branch_cap_exceeded.
+    // Server cap is ≤ 6 invited ministries. The FE cap of 6 picks matches
+    // exactly, so a legitimately-sized branch never trips branch_cap_exceeded.
     setSending(true);
     try {
       const { data, error } = await supabase.rpc('create_branch', {
         p_name: name.trim(),
-        p_invited_user_ids: inviteeIds,
+        p_invited_ministry_ids: Array.from(picked),
       });
       if (error) {
         if (error.message?.includes('branch_cap_exceeded')) {
