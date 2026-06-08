@@ -46,6 +46,7 @@ import Svg, { Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
+import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase } from '../../lib/supabase';
 
 import ConnectHeader from '../../components/connect/ConnectHeader';
@@ -214,10 +215,12 @@ export default function ConnectScreen() {
   // useChurchVerifiedStatus only fires a DB query when branch === 'pending';
   // it is a no-op (returns null) for active leaders — zero extra cost.
   const churchVerified = useChurchVerifiedStatus();
+  const { pendingInvites } = useConnectBadge();
   const { callerUserId, callerChurchId, callerChurchName } = useCallerIdentity();
 
   const [subTab, setSubTab] = useState<SubTab>('leaders');
   const [view, setView] = useState<ConnectView>({ kind: 'list' });
+  const [ministriesRefreshTick, setMinistriesRefreshTick] = useState(0);
   const [covenantAck, setCovenantAck] = useState(false);
   const { show: showToast, node: toastNode } = useToast();
   const { width } = useWindowDimensions();
@@ -266,6 +269,7 @@ export default function ConnectScreen() {
         if (finished) {
           setPushVisible(null);
           setView({ kind: 'list' });
+          setMinistriesRefreshTick((t) => t + 1);
         }
       });
       return;
@@ -344,9 +348,10 @@ export default function ConnectScreen() {
         onOpenBranch={(branchId) => goTo({ kind: 'branch', branchId })}
         onStartBranch={() => goTo({ kind: 'create' })}
         onToast={showToast}
+        refreshTrigger={ministriesRefreshTick}
       />
     );
-  }, [subTab, goTo, showToast]);
+  }, [subTab, goTo, showToast, ministriesRefreshTick]);
 
   // ── render the active push surface (when applicable) ─────────────
   const pushSurface = useMemo(() => {
@@ -428,7 +433,11 @@ export default function ConnectScreen() {
           onCompose={handleCompose}
         />
         {view.kind === 'list' && (
-          <Segmented value={subTab} onChange={setSubTab} />
+          <Segmented
+            value={subTab}
+            onChange={setSubTab}
+            badges={{ ministries: pendingInvites }}
+          />
         )}
         <View style={styles.listBody}>
           {listSurface}

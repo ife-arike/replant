@@ -48,6 +48,7 @@ interface Props {
   onOpenBranch: (branchId: string) => void;
   onStartBranch: () => void;
   onToast: (text: string) => void;
+  refreshTrigger?: number;
 }
 
 // ── inline icons ──────────────────────────────────────────────────────
@@ -239,7 +240,7 @@ function MinistriesEmpty({ onStart }: { onStart: () => void }) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────
-export default function MinistriesList({ onOpenBranch, onStartBranch, onToast }: Props) {
+export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, refreshTrigger }: Props) {
   const [rows, setRows] = useState<BranchListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -276,6 +277,16 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast }:
 
   useEffect(() => { void load(); }, [load]);
 
+  // Refetch when the host bumps refreshTrigger (e.g. after returning from
+  // BranchCreate → BranchThreadView). Skips the initial value so it only
+  // fires on genuine changes, not mount.
+  const hasRefreshTrigger = refreshTrigger !== undefined;
+  useEffect(() => {
+    if (!hasRefreshTrigger) return;
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
+
   // Realtime list refresh — Fix 3 (KAN-68 fix pass). Mirrors the
   // Leaders pattern with the right published-table targets for
   // Ministries:
@@ -300,6 +311,11 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast }:
     };
     const channel = supabase
       .channel('ministries-list-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'branches' },
+        queueRefresh,
+      )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'branches' },

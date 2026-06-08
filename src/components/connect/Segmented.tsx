@@ -14,6 +14,9 @@ import type { SubTab } from '../../screens/main/ConnectScreen';
 interface Props {
   value: SubTab;
   onChange: (next: SubTab) => void;
+  // Optional per-tab badge counts (e.g. pending branch invites on the
+  // Ministries pill). A value > 0 renders a small sky-blue indicator.
+  badges?: Partial<Record<SubTab, number>>;
 }
 
 const OPTIONS: Array<{ value: SubTab; label: string }> = [
@@ -25,7 +28,7 @@ const OPTIONS: Array<{ value: SubTab; label: string }> = [
 const SIDE_PAD = 22;
 const INNER_PAD = 3;
 
-export default function Segmented({ value, onChange }: Props) {
+export default function Segmented({ value, onChange, badges }: Props) {
   const { width } = useWindowDimensions();
   // Container inner width = screen width - 2*22 (side padding).
   // Each item width = (inner - 2*3 padding) / 2.
@@ -72,6 +75,11 @@ export default function Segmented({ value, onChange }: Props) {
             accessibilityState={{ selected: on }}
           >
             <Text style={[styles.label, on && styles.labelOn]}>{o.label}</Text>
+            {(badges?.[o.value] ?? 0) > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{Math.min(badges![o.value]!, 9)}</Text>
+              </View>
+            )}
           </Pressable>
         );
       })}
@@ -105,6 +113,25 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: 6,
+    right: 18,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    color: '#07232f',
+    fontWeight: '700',
   },
   label: {
     fontFamily: Typography.bodyMedium,

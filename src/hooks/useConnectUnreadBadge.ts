@@ -46,6 +46,10 @@ export interface ConnectUnreadBadge {
   // (the hook itself never awaits it — the badge update is a side
   // effect of the inner setCount).
   refresh: () => Promise<void>;
+  // Count of pending branch invites (caller_consent_status='invited').
+  // Contributes to the tab-icon count AND drives the Ministries-pill
+  // badge in the segmented control.
+  pendingInvites: number;
 }
 
 const REFRESH_DEBOUNCE_MS = 350;
@@ -57,7 +61,7 @@ function formatBadgeLabel(count: number): string | undefined {
   return String(count);
 }
 
-async function fetchTotalUnread(): Promise<number> {
+async function fetchTotalUnread(): Promise<{ messages: number; pendingInvites: number }> {
   // Both RPCs return a bigint unread_count per row. The two queries
   // run in parallel and we sum across both result sets. RPC failures
   // (e.g. session expired, RLS gate) fall back to zero rather than
@@ -72,19 +76,21 @@ async function fetchTotalUnread(): Promise<number> {
         0,
       )
     : 0;
-  const branchSum = Array.isArray(branchesRes.data)
-    ? (branchesRes.data as any[]).reduce(
-        (acc, r) => acc + (Number(r?.unread_count) || 0),
-        0,
-      )
-    : 0;
-  return leaderSum + branchSum;
+  const branchData = Array.isArray(branchesRes.data) ? (branchesRes.data as any[]) : [];
+  const branchSum = branchData.reduce(
+    (acc, r) => acc + (Number(r?.unread_count) || 0),
+    0,
+  );
+  // Pending branch invites awaiting the caller's Join/Decline.
+  const pendingInvites = branchData.filter((r) => r?.caller_consent_status === 'invited').length;
+  return { messages: leaderSum + branchSum, pendingInvites };
 }
 
 export function useConnectUnreadBadge(): ConnectUnreadBadge {
   const { session, branch } = useAuth();
   const enabled = useNotifBadgeEnabled();
   const [count, setCount] = useState(0);
+  const [pendingInvites, setPendingInvites] = useState(0);
 
   // Only count when the leader has an active verified session. Any
   // other branch (loading / unauthenticated / pending / recovery)
@@ -94,11 +100,13 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
   const refresh = useCallback(async () => {
     if (!eligible) {
       setCount(0);
+      setPendingInvites(0);
       return;
     }
     try {
-      const total = await fetchTotalUnread();
-      setCount(total);
+      const result = await fetchTotalUnread();
+      setCount(result.messages + result.pendingInvites);
+      setPendingInvites(result.pendingInvites);
     } catch {
       // Silent — see fetchTotalUnread comment.
     }
@@ -182,5 +190,6 @@ export function useConnectUnreadBadge(): ConnectUnreadBadge {
     label: shown ? formatBadgeLabel(count) : undefined,
     shown,
     refresh,
+    pendingInvites,
   };
 }

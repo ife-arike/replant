@@ -75,6 +75,7 @@ interface BranchMessage {
   createdAt: Date;
   state?: 'pending' | 'sent' | 'failed';
   groupLabel?: string | null;
+  isSystem?: boolean;
 }
 
 interface BranchMember {
@@ -95,6 +96,13 @@ interface BranchSummary {
   ministryCount: number;
   memberCount: number;
 }
+
+// KAN-69 §7.x — branch-join system message. The DB migration
+// (20260608000001) inserts a row authored by this synthetic system user
+// whenever a leader accepts a branch invitation. These rows render as a
+// centered grace notice rather than a chat bubble — a clear, calm record
+// of consent to the branch's fellowship.
+const BRANCH_SYSTEM_USER_ID = '028be745-8014-4314-a7cf-36b0a4d52b46';
 
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
@@ -179,6 +187,18 @@ function AlertIcon() {
       <Circle cx={7} cy={7} r={5.8} stroke={Colors.red} strokeWidth={1.4} />
       <Path d="M7 4v3.4M7 9.6v.2" stroke={Colors.red} strokeWidth={1.4} strokeLinecap="round" />
     </Svg>
+  );
+}
+
+// ── system notice (branch-join consent record) ──────────────────────
+// Rendered for messages authored by BRANCH_SYSTEM_USER_ID. Centered,
+// muted, mono — distinct from a chat bubble. A quiet, grace-filled
+// record that a leader consented to and joined this branch.
+function SystemNotice({ text }: { text: string }) {
+  return (
+    <View style={styles.systemNotice}>
+      <Text style={styles.systemNoticeText}>{text}</Text>
+    </View>
   );
 }
 
@@ -417,7 +437,13 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
     return findFullyDeclinedMinistry(members);
   }, [members, callerIsHost, summary?.status, resolvedDecline]);
 
-  const tally = useMemo(() => computeTally(members), [members]);
+  const tally = useMemo(() => {
+    const t = computeTally(members);
+    if (members.length === 0 && summary) {
+      return { ...t, total: summary.memberCount, pending: summary.memberCount };
+    }
+    return t;
+  }, [members, summary]);
 
   // ── Load members + summary (refetch via Realtime + after actions) ─
   const loadMembersAndSummary = useCallback(async () => {
@@ -479,10 +505,12 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       const ordered: BranchMessage[] = (data as any[])
         .map((m) => ({
           id: m.message_id,
-          mine: m.sender_id === callerUserId,
+          // System messages are never "mine" regardless of caller.
+          mine: m.sender_id !== BRANCH_SYSTEM_USER_ID && m.sender_id === callerUserId,
           senderId: m.sender_id,
           text: m.content,
           createdAt: new Date(m.created_at),
+          isSystem: m.sender_id === BRANCH_SYSTEM_USER_ID,
         }))
         .reverse(); // RPC returns newest-first; flip to oldest-first.
       setMessages(assignGroupLabels(ordered));
@@ -520,10 +548,11 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
           if (!row) return;
           const incoming: BranchMessage = {
             id: row.id,
-            mine: row.sender_id === callerUserId,
+            mine: row.sender_id !== BRANCH_SYSTEM_USER_ID && row.sender_id === callerUserId,
             senderId: row.sender_id,
             text: row.content,
             createdAt: new Date(row.created_at),
+            isSystem: row.sender_id === BRANCH_SYSTEM_USER_ID,
           };
           if (messagesRef.current.some((m) => m.id === incoming.id)) return;
           const next = [...messagesRef.current, incoming].sort(
@@ -577,10 +606,11 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       }
       const older: BranchMessage[] = (data as any[]).map((m) => ({
         id: m.message_id,
-        mine: m.sender_id === callerUserId,
+        mine: m.sender_id !== BRANCH_SYSTEM_USER_ID && m.sender_id === callerUserId,
         senderId: m.sender_id,
         text: m.content,
         createdAt: new Date(m.created_at),
+        isSystem: m.sender_id === BRANCH_SYSTEM_USER_ID,
       })).reverse();
       setMessages(assignGroupLabels([...older, ...messages]));
       if ((data as any[]).length < PAGE_SIZE) setExhausted(true);
@@ -771,6 +801,16 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
             </View>
           }
           renderItem={({ item, index }) => {
+            if (item.isSystem) {
+              return (
+                <View>
+                  <SystemNotice text={item.text} />
+                  {item.groupLabel && (
+                    <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
+                  )}
+                </View>
+              );
+            }
             const member = memberByUserId.get(item.senderId) ?? null;
             const nextOlder = displayData[index + 1];
             const prevSameSender = !!nextOlder
@@ -1028,6 +1068,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 6,
+  },
+  // ── system notice (branch-join consent record) ──
+  systemNotice: {
+    alignItems: 'center',
+    marginVertical: 10,
+    paddingHorizontal: 16,
+  },
+  systemNoticeText: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
   loadingOlder: {
     flexDirection: 'row',

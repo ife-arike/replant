@@ -40,6 +40,7 @@ const DEFAULT: ConnectUnreadBadge = {
   label: undefined,
   shown: false,
   refresh: async () => undefined,
+  pendingInvites: 0,
 };
 
 const ConnectBadgeContext = createContext<ConnectUnreadBadge>(DEFAULT);
@@ -56,8 +57,9 @@ export function ConnectBadgeProvider({ children }: { children: React.ReactNode }
       label: badge.label,
       shown: badge.shown,
       refresh: badge.refresh,
+      pendingInvites: badge.pendingInvites,
     }),
-    [badge.count, badge.label, badge.shown, badge.refresh],
+    [badge.count, badge.label, badge.shown, badge.refresh, badge.pendingInvites],
   );
   return (
     <ConnectBadgeContext.Provider value={value}>
