@@ -255,41 +255,60 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
   // on the affected row without flashing every other invite card.
   const [busyByBranchId, setBusyByBranchId] = useState<Record<string, boolean>>({});
 
+  const fetchRows = useCallback(async () => {
+    const { data, error: rpcErr } = await supabase.rpc('get_branch_list');
+    if (rpcErr) throw rpcErr;
+    return (data ?? []).map((r: any) => ({
+      branchId: r.branch_id,
+      name: r.name,
+      status: r.status,
+      memberCount: Number(r.member_count) || 0,
+      ministryCount: Number(r.ministry_count) || 0,
+      lastMessagePreview: r.last_message_preview ?? null,
+      lastMessageAt: r.last_message_at ? new Date(r.last_message_at) : null,
+      unreadCount: Number(r.unread_count) || 0,
+      callerConsentStatus: r.caller_consent_status,
+      invitedByMinistryName: r.invited_by_ministry_name ?? null,
+    })) as BranchListRow[];
+  }, []);
+
+  // Full load — shows loading spinner. Used on initial mount and on
+  // explicit user-triggered retries (e.g. error retry tap).
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcErr } = await supabase.rpc('get_branch_list');
-      if (rpcErr) throw rpcErr;
-      const mapped: BranchListRow[] = (data ?? []).map((r: any) => ({
-        branchId: r.branch_id,
-        name: r.name,
-        status: r.status,
-        memberCount: Number(r.member_count) || 0,
-        ministryCount: Number(r.ministry_count) || 0,
-        lastMessagePreview: r.last_message_preview ?? null,
-        lastMessageAt: r.last_message_at ? new Date(r.last_message_at) : null,
-        unreadCount: Number(r.unread_count) || 0,
-        callerConsentStatus: r.caller_consent_status,
-        invitedByMinistryName: r.invited_by_ministry_name ?? null,
-      }));
-      setRows(mapped);
+      setRows(await fetchRows());
     } catch (e) {
       setError(e as Error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchRows]);
+
+  // Silent refresh — does NOT touch loading state. Used for
+  // trigger-driven refetches (e.g. returning from BranchThreadView,
+  // Realtime events) so the list updates in-place without a blank
+  // flash. Errors are swallowed — if the silent refresh fails, the
+  // user still sees the last-known rows; they can pull-to-refresh or
+  // navigate away and back for a full reload.
+  const silentRefresh = useCallback(async () => {
+    try {
+      setRows(await fetchRows());
+    } catch {
+      // Silent — keep showing existing rows.
+    }
+  }, [fetchRows]);
 
   useEffect(() => { void load(); }, [load]);
 
   // Refetch when the host bumps refreshTrigger (e.g. after returning from
-  // BranchCreate → BranchThreadView). Skips the initial value so it only
-  // fires on genuine changes, not mount.
+  // BranchCreate → BranchThreadView). Silent so rows update in-place
+  // without a loading flash. Skips on mount (hasRefreshTrigger guard).
   const hasRefreshTrigger = refreshTrigger !== undefined;
   useEffect(() => {
     if (!hasRefreshTrigger) return;
-    void load();
+    void silentRefresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
@@ -313,7 +332,7 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
     let timer: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { void load(); }, 250);
+      timer = setTimeout(() => { void silentRefresh(); }, 250);
     };
     const channel = supabase
       .channel('ministries-list-realtime')
