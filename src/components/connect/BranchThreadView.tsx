@@ -201,9 +201,12 @@ function AlertIcon() {
 // muted, mono — distinct from a chat bubble. A quiet, grace-filled
 // record that a leader consented to and joined this branch.
 function SystemNotice({ text }: { text: string }) {
+  const displayText = text
+    .replace(/ joined this branch\.?/i, ' joined.')
+    .toUpperCase();
   return (
     <View style={styles.systemNotice}>
-      <Text style={styles.systemNoticeText}>{text}</Text>
+      <Text style={styles.systemNoticeText}>{displayText}</Text>
     </View>
   );
 }
@@ -313,6 +316,14 @@ function MembersSheet({
   // maxHeight, yoga has no upper bound to shrink the ScrollView against.
   const { height: windowHeight } = useWindowDimensions();
 
+  // Host-only edit mode. Normal view hides all Remove affordances and the
+  // Delete branch action; "Edit branch" enters edit mode. Reset whenever
+  // the sheet closes so it always reopens in the calm, read-only state.
+  const [editMode, setEditMode] = useState(false);
+  useEffect(() => {
+    if (!visible) setEditMode(false);
+  }, [visible]);
+
   // Group members by ministry_id, preserving insertion order.
   const byMinistry = useMemo(() => {
     const map = new Map<string, BranchMember[]>();
@@ -397,7 +408,14 @@ function MembersSheet({
             Explicit height so flex:1 on ScrollView resolves correctly. */}
         <View style={[styles.sheet, { height: sheetHeight }]}>
           <View style={styles.sheetGrab} />
-          <Text style={styles.sheetTitle}>{branchName}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+            <Text style={styles.sheetTitle}>{branchName}</Text>
+            {callerIsHost && editMode && (
+              <Pressable onPress={confirmDelete} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.6 }}>
+                <Text style={styles.sheetDeleteInline}>Delete</Text>
+              </Pressable>
+            )}
+          </View>
           <Text style={styles.sheetSub}>{ministryCount} ministries · {memberCount} leaders</Text>
           {membersError && members.length === 0 ? (
             <Pressable onPress={onRetryMembers} style={styles.retryRow}>
@@ -417,7 +435,7 @@ function MembersSheet({
                     <View style={styles.ministryNameRow}>
                       <Text style={styles.ministryName}>{ministryLabel}</Text>
                       {isCallerMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
-                      {callerIsHost && mid !== hostMinistryId && (
+                      {callerIsHost && editMode && mid !== hostMinistryId && (
                         <Pressable
                           onPress={() => confirmRemoveMinistry(mid)}
                           hitSlop={6}
@@ -437,7 +455,7 @@ function MembersSheet({
                               : [roleLabel, m.fullName].filter(Boolean).join(' ') || 'Leader';
                           })()}
                         </Text>
-                        {callerIsHost && !m.isHost && (
+                        {callerIsHost && editMode && !m.isHost && (
                           <Pressable
                             onPress={() => confirmRemoveLeader(m.userId)}
                             hitSlop={6}
@@ -468,21 +486,21 @@ function MembersSheet({
               })}
             </ScrollView>
           )}
-          {callerIsHost && (
-            <>
-              <Pressable
-                onPress={promptRename}
-                style={({ pressed }) => [styles.sheetActionRename, pressed && { opacity: 0.7 }]}
-              >
-                <Text style={styles.sheetActionRenameText}>Rename branch</Text>
-              </Pressable>
-              <Pressable
-                onPress={confirmDelete}
-                style={({ pressed }) => [styles.sheetActionDelete, pressed && { opacity: 0.7 }]}
-              >
-                <Text style={styles.sheetActionDeleteText}>Delete branch</Text>
-              </Pressable>
-            </>
+          {callerIsHost && !editMode && (
+            <Pressable
+              onPress={() => setEditMode(true)}
+              style={({ pressed }) => [styles.sheetActionRename, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={styles.sheetActionRenameText}>Edit branch</Text>
+            </Pressable>
+          )}
+          {callerIsHost && editMode && (
+            <Pressable
+              onPress={promptRename}
+              style={({ pressed }) => [styles.sheetActionRename, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={styles.sheetActionRenameText}>Rename branch</Text>
+            </Pressable>
           )}
           {!callerIsHost && (
             <Pressable
@@ -492,12 +510,21 @@ function MembersSheet({
               <Text style={styles.sheetActionLeaveText}>Leave this branch</Text>
             </Pressable>
           )}
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.sheetClose, pressed && { opacity: 0.7 }]}
-          >
-            <Text style={styles.sheetCloseText}>Close</Text>
-          </Pressable>
+          {callerIsHost && editMode ? (
+            <Pressable
+              onPress={() => setEditMode(false)}
+              style={({ pressed }) => [styles.sheetClose, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={styles.sheetCloseText}>Done — return to view</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => [styles.sheetClose, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={styles.sheetCloseText}>Close</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </Modal>
@@ -1057,14 +1084,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
           }
           renderItem={({ item, index }) => {
             if (item.isSystem) {
-              return (
-                <View>
-                  <SystemNotice text={item.text} />
-                  {item.groupLabel && (
-                    <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
-                  )}
-                </View>
-              );
+              return <SystemNotice text={item.text} />;
             }
             const member = memberByUserId.get(item.senderId) ?? null;
             const nextOlder = displayData[index + 1];
@@ -1133,7 +1153,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
               placeholder="Message the branch"
               placeholderTextColor={Colors.textSubtle}
               multiline
-              scrollEnabled
+              scrollEnabled={false}
               onContentSizeChange={(e) => {
                 const h = Math.min(MAX_COMPOSER_HEIGHT, Math.max(MIN_COMPOSER_HEIGHT, e.nativeEvent.contentSize.height + 12));
                 setComposerHeight(h);
@@ -1445,6 +1465,13 @@ const styles = StyleSheet.create({
     fontFamily: Typography.displayMedium,
     fontSize: 21,
     color: Colors.text,
+  },
+  sheetDeleteInline: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: Colors.red,
+    textTransform: 'uppercase',
   },
   sheetSub: {
     fontFamily: Typography.mono,

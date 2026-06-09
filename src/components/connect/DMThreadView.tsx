@@ -872,7 +872,7 @@ export default function DMThreadView({
             placeholder={isSecure ? 'Reply to the Replant Team' : 'Write a message'}
             placeholderTextColor={Colors.textSubtle}
             multiline
-            scrollEnabled
+            scrollEnabled={false}
             onContentSizeChange={(e) => {
               const h = Math.min(
                 MAX_COMPOSER_HEIGHT,
