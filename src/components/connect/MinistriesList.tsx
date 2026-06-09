@@ -1,18 +1,18 @@
-// MinistriesList — KAN-69 §7.2 / HANDOFF §7.
+// MinistriesList -- KAN-69 §7.2 / HANDOFF §7.
 //
-// Branch list — group chats connecting up to 7 ministries (John 15:5).
+// Branch list -- group chats connecting up to 7 ministries (John 15:5).
 // Surfaces:
-//   - Empty state (MinistriesEmpty) — "What would you like to start today?"
+//   - Empty state (MinistriesEmpty) -- "What would you like to start today?"
 //     + full John 15:5 verse + Start a branch CTA.
-//   - InviteCard rows — branches where caller_consent_status='invited'.
+//   - InviteCard rows -- branches where caller_consent_status='invited'.
 //     Decline → DeclineConfirm modal → respond_to_branch_invite RPC.
 //     Join → respond_to_branch_invite RPC directly.
-//   - BranchRow rows — forming + active branches, sorted recency.
+//   - BranchRow rows -- forming + active branches, sorted recency.
 //   - CovenantFooter at the bottom of the list.
 //
 // Data: public.get_branch_list() RPC (KAN-214) returns caller-scoped
 // rows with member_count, ministry_count, last_message_preview,
-// last_message_at, unread_count (0 at MVP — read-receipts is a
+// last_message_at, unread_count (0 at MVP -- read-receipts is a
 // follow-up), caller_consent_status, and invited_by_ministry_name
 // (populated only when caller_consent_status='invited').
 
@@ -150,7 +150,7 @@ function InviteCard({
       </View>
       <Text style={styles.inviteBody}>
         <Text style={styles.inviteBodyStrong}>{row.invitedByMinistryName ?? 'Another ministry'}</Text>
-        <Text>{' '}invited your ministry to join — </Text>
+        <Text>{' '}invited your ministry to join -- </Text>
         <Text>{row.ministryCount} ministries, {row.memberCount} leaders in all. Everyone joins only by consent.</Text>
       </Text>
       <View style={styles.inviteActions}>
@@ -194,7 +194,7 @@ function DeclineConfirm({
         <Pressable style={styles.confirmCard} onPress={() => {}}>
           <Text style={styles.confirmTitle}>Decline this invitation?</Text>
           <Text style={styles.confirmBody}>
-            Your ministry won't join "{branch?.name ?? ''}." {branch?.invitedByMinistryName ?? 'They'} can invite you again later — no harm, no foul.
+            Your ministry won't join "{branch?.name ?? ''}." {branch?.invitedByMinistryName ?? 'They'} can invite you again later -- no harm, no foul.
           </Text>
           <View style={styles.confirmActions}>
             <Pressable onPress={onCancel} disabled={inFlight}
@@ -223,7 +223,7 @@ function MinistriesEmpty({ onStart }: { onStart: () => void }) {
       <Text style={styles.emptyTitle}>What would you like to start today?</Text>
       <Text style={styles.emptyBody}>
         Open a church-to-church conversation. You can bring up to seven ministries
-        together into one branch — everyone joins by consent.
+        together into one branch -- everyone joins by consent.
       </Text>
       <Pressable onPress={onStart} style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.85 }]}>
         <Text style={styles.btnPrimaryText}>Start a branch</Text>
@@ -242,7 +242,7 @@ function MinistriesEmpty({ onStart }: { onStart: () => void }) {
 
 // ── main ──────────────────────────────────────────────────────────────
 export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, refreshTrigger }: Props) {
-  // Explicit badge refresh after accepting/declining — mirrors the DM thread
+  // Explicit badge refresh after accepting/declining -- mirrors the DM thread
   // pattern. Realtime will eventually update the count, but calling refresh()
   // immediately after the RPC success guarantees the pendingInvites badge
   // clears without waiting for a Realtime round-trip.
@@ -293,7 +293,7 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
-  // Realtime list refresh — Fix 3 (KAN-68 fix pass). Mirrors the
+  // Realtime list refresh -- Fix 3 (KAN-68 fix pass). Mirrors the
   // Leaders pattern with the right published-table targets for
   // Ministries:
   //   - `branches` UPDATE: fires when send-branch-message bumps
@@ -339,26 +339,26 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
     };
   }, [load]);
 
-  const respondToInvite = useCallback(async (branchId: string, response: ‘joined’ | ‘declined’) => {
+  const respondToInvite = useCallback(async (branchId: string, response: 'joined' | 'declined') => {
     setBusyByBranchId((p) => ({ ...p, [branchId]: true }));
     try {
-      const { error: rpcErr } = await supabase.rpc(‘respond_to_branch_invite’, {
+      const { error: rpcErr } = await supabase.rpc('respond_to_branch_invite', {
         p_branch_id: branchId,
         p_response: response,
       });
       if (rpcErr) throw rpcErr;
       // Optimistic update + then reload to pull updated status.
-      if (response === ‘declined’) {
+      if (response === 'declined') {
         setRows((prev) => prev.filter((r) => r.branchId !== branchId));
-        onToast(‘Invitation declined.’);
+        onToast('Invitation declined.');
       } else {
         await load();
       }
-      // Explicit badge refresh — drops pendingInvites immediately without
+      // Explicit badge refresh -- drops pendingInvites immediately without
       // waiting for the Realtime branch_members UPDATE to propagate.
       void refreshConnectBadge();
     } catch {
-      onToast("Couldn’t update your response. Try again.");
+      onToast("Couldn't update your response. Try again.");
     } finally {
       setBusyByBranchId((p) => ({ ...p, [branchId]: false }));
     }
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   // InviteCard row context (where it sits next to a `flex: 1` ghost
   // button) into the MinistriesEmpty standalone usage. In a column
   // container `flex: 1.4` blows the button to ~200pt vertical height
-  // and pushes the text out of the visible region — leaving a blank
+  // and pushes the text out of the visible region -- leaving a blank
   // sky rectangle. Base style now has no flex; the InviteCard usage
   // adds `flex: 1.4` inline.
   btnPrimary: {
