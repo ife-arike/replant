@@ -311,7 +311,6 @@ function MembersSheet({
   // the list can actually use before the sheet clips. Without a concrete pixel
   // maxHeight, yoga has no upper bound to shrink the ScrollView against.
   const { height: windowHeight } = useWindowDimensions();
-  const listMaxHeight = Math.max(windowHeight * 0.76 - 240, 80);
 
   // Group members by ministry_id, preserving insertion order.
   const byMinistry = useMemo(() => {
@@ -379,13 +378,23 @@ function MembersSheet({
     );
   };
 
+  // Explicit pixel height — same pattern as ChurchProfileBottomSheet.
+  // The sheet and backdrop are SIBLINGS (not nested), so ScrollView
+  // receives scroll gestures freely. flex:1 on the list works because
+  // the sheet has a committed height.
+  const sheetHeight = windowHeight * 0.76;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.sheetScrim} onPress={onClose}>
-        {/* View + onStartShouldSetResponder stops scrim-close from firing
-            when touching the sheet, without intercepting ScrollView scroll
-            gestures. Pressable here ate those gestures — scroll was broken. */}
-        <View style={styles.sheet} onStartShouldSetResponder={() => true}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {/* Dim backdrop — tapping it closes the sheet */}
+        <Pressable
+          style={[StyleSheet.absoluteFill, styles.sheetScrim]}
+          onPress={onClose}
+        />
+        {/* Sheet — sibling of backdrop, NOT nested inside it.
+            Explicit height so flex:1 on ScrollView resolves correctly. */}
+        <View style={[styles.sheet, { height: sheetHeight }]}>
           <View style={styles.sheetGrab} />
           <Text style={styles.sheetTitle}>{branchName}</Text>
           <Text style={styles.sheetSub}>{ministryCount} ministries · {memberCount} leaders</Text>
@@ -394,69 +403,69 @@ function MembersSheet({
               <Text style={styles.retryText}>Couldn't load members · Tap to retry</Text>
             </Pressable>
           ) : (
-          <ScrollView style={[styles.membersList, { maxHeight: listMaxHeight }]} showsVerticalScrollIndicator={false}>
-            {byMinistry.map(([mid, list]) => {
-              const ministryName = list[0]?.ministryName ?? 'Ministry';
-              const ministryLabel = (() => {
-                const locationStr = [list[0]?.ministryCity, list[0]?.ministryCountry].filter(Boolean).join(', ');
-                return locationStr ? `${ministryName} · ${locationStr}` : ministryName;
-              })();
-              const isCallerMinistry = mid === callerMinistryId;
-              return (
-                <View key={mid} style={styles.ministryBlock}>
-                  <View style={styles.ministryNameRow}>
-                    <Text style={styles.ministryName}>{ministryLabel}</Text>
-                    {isCallerMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
-                    {callerIsHost && mid !== hostMinistryId && (
-                      <Pressable
-                        onPress={() => confirmRemoveMinistry(mid)}
-                        hitSlop={6}
-                        style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}
-                      >
-                        <Text style={styles.removeMinistryText}>Remove ministry</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                  {list.map((m) => (
-                    <View key={m.userId} style={styles.memberLeader}>
-                      <Text style={styles.mlName} numberOfLines={1}>
-                        {(() => {
-                          const roleLabel = getRoleLabel(m.role);
-                          return m.anonymous
-                            ? (roleLabel || 'Leader')
-                            : [roleLabel, m.fullName].filter(Boolean).join(' ') || 'Leader';
-                        })()}
-                      </Text>
-                      {callerIsHost && !m.isHost && (
+            <ScrollView style={styles.membersList} showsVerticalScrollIndicator={false}>
+              {byMinistry.map(([mid, list]) => {
+                const ministryName = list[0]?.ministryName ?? 'Ministry';
+                const ministryLabel = (() => {
+                  const locationStr = [list[0]?.ministryCity, list[0]?.ministryCountry].filter(Boolean).join(', ');
+                  return locationStr ? `${ministryName} · ${locationStr}` : ministryName;
+                })();
+                const isCallerMinistry = mid === callerMinistryId;
+                return (
+                  <View key={mid} style={styles.ministryBlock}>
+                    <View style={styles.ministryNameRow}>
+                      <Text style={styles.ministryName}>{ministryLabel}</Text>
+                      {isCallerMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
+                      {callerIsHost && mid !== hostMinistryId && (
                         <Pressable
-                          onPress={() => confirmRemoveLeader(m.userId)}
+                          onPress={() => confirmRemoveMinistry(mid)}
                           hitSlop={6}
-                          style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                          style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}
                         >
-                          <Text style={styles.removeLeaderText}>Remove</Text>
+                          <Text style={styles.removeMinistryText}>Remove ministry</Text>
                         </Pressable>
                       )}
-                      {m.consentStatus === 'joined' && (
-                        <View style={styles.consent}>
-                          <CheckMini /><Text style={styles.consentTextJoined}>Joined</Text>
-                        </View>
-                      )}
-                      {m.consentStatus === 'declined' && (
-                        <View style={styles.consent}>
-                          <XMini /><Text style={styles.consentTextDeclined}>Declined</Text>
-                        </View>
-                      )}
-                      {m.consentStatus === 'invited' && (
-                        <View style={styles.consent}>
-                          <Text style={styles.consentTextInvited}>Invited</Text>
-                        </View>
-                      )}
                     </View>
-                  ))}
-                </View>
-              );
-            })}
-          </ScrollView>
+                    {list.map((m) => (
+                      <View key={m.userId} style={styles.memberLeader}>
+                        <Text style={styles.mlName} numberOfLines={1}>
+                          {(() => {
+                            const roleLabel = getRoleLabel(m.role);
+                            return m.anonymous
+                              ? (roleLabel || 'Leader')
+                              : [roleLabel, m.fullName].filter(Boolean).join(' ') || 'Leader';
+                          })()}
+                        </Text>
+                        {callerIsHost && !m.isHost && (
+                          <Pressable
+                            onPress={() => confirmRemoveLeader(m.userId)}
+                            hitSlop={6}
+                            style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                          >
+                            <Text style={styles.removeLeaderText}>Remove</Text>
+                          </Pressable>
+                        )}
+                        {m.consentStatus === 'joined' && (
+                          <View style={styles.consent}>
+                            <CheckMini /><Text style={styles.consentTextJoined}>Joined</Text>
+                          </View>
+                        )}
+                        {m.consentStatus === 'declined' && (
+                          <View style={styles.consent}>
+                            <XMini /><Text style={styles.consentTextDeclined}>Declined</Text>
+                          </View>
+                        )}
+                        {m.consentStatus === 'invited' && (
+                          <View style={styles.consent}>
+                            <Text style={styles.consentTextInvited}>Invited</Text>
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                );
+              })}
+            </ScrollView>
           )}
           {callerIsHost && (
             <>
@@ -489,7 +498,7 @@ function MembersSheet({
             <Text style={styles.sheetCloseText}>Close</Text>
           </Pressable>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -1397,13 +1406,20 @@ const styles = StyleSheet.create({
   sendActive: { backgroundColor: Colors.accent },
   sendDisabled: { backgroundColor: Colors.surfaceElevated },
   // ── members sheet ──
+  // Sibling pattern (matches ChurchProfileBottomSheet):
+  //   backdrop (absoluteFill Pressable) + sheet (absoluteFill sibling, bottom-anchored)
+  //   are NOT nested. The sheet has an explicit pixel height (set inline from
+  //   windowHeight * 0.76) so that flex:1 on the ScrollView resolves correctly.
   sheetScrim: {
-    flex: 1,
+    // absoluteFill applied in JSX — just needs the dim colour.
     backgroundColor: 'rgba(4,4,4,0.55)',
-    justifyContent: 'flex-end',
   },
   sheet: {
-    maxHeight: '76%',
+    // height applied inline (windowHeight * 0.76) — no maxHeight.
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
@@ -1434,8 +1450,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   membersList: {
-    // maxHeight applied inline via listMaxHeight (windowHeight-derived) so
-    // yoga has a concrete pixel bound to scroll within.
+    // flex:1 works here because the sheet parent now has an explicit
+    // pixel height (windowHeight * 0.76 set inline). No maxHeight needed.
+    flex: 1,
   },
   ministryBlock: {
     paddingVertical: 12,
