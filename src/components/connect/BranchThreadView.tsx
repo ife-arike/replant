@@ -43,6 +43,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
@@ -304,6 +305,14 @@ function MembersSheet({
   onEditName: (newName: string) => void;
   onDeleteBranch: () => void;
 }) {
+  // Concrete pixel cap for the scrollable members list.
+  // The sheet is maxHeight 76% of screen. Fixed chrome (grab + title + sub +
+  // padding + action buttons) takes ~240pt. Subtracting that gives the space
+  // the list can actually use before the sheet clips. Without a concrete pixel
+  // maxHeight, yoga has no upper bound to shrink the ScrollView against.
+  const { height: windowHeight } = useWindowDimensions();
+  const listMaxHeight = Math.max(windowHeight * 0.76 - 240, 80);
+
   // Group members by ministry_id, preserving insertion order.
   const byMinistry = useMemo(() => {
     const map = new Map<string, BranchMember[]>();
@@ -382,7 +391,7 @@ function MembersSheet({
               <Text style={styles.retryText}>Couldn't load members · Tap to retry</Text>
             </Pressable>
           ) : (
-          <ScrollView style={styles.membersList} showsVerticalScrollIndicator={false}>
+          <ScrollView style={[styles.membersList, { maxHeight: listMaxHeight }]} showsVerticalScrollIndicator={false}>
             {byMinistry.map(([mid, list]) => {
               const ministryName = list[0]?.ministryName ?? 'Ministry';
               const ministryLabel = (() => {
@@ -1422,7 +1431,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   membersList: {
-    flexShrink: 1,  // flex:1 collapses to 0 when parent has maxHeight but no explicit height (yoga)
+    // maxHeight applied inline via listMaxHeight (windowHeight-derived) so
+    // yoga has a concrete pixel bound to scroll within.
   },
   ministryBlock: {
     paddingVertical: 12,
@@ -1557,7 +1567,7 @@ const styles = StyleSheet.create({
     color: Colors.red,
   },
   sheetActionLeave: {
-    marginTop: 16,
+    marginTop: 28,
     marginBottom: 8,
     paddingVertical: 13,
     paddingHorizontal: 18,
