@@ -40,6 +40,14 @@ const SEND_ERROR_DISPLAY_MESSAGES: Record<string, string> = {
   request_not_pending: 'This request has already been resolved.',
   not_sender: "You can't modify a request you didn't send.",
   request_not_removable: 'This request can only be removed once declined or expired.',
+  // ── get_or_create_conversation_if_permitted (20260609000006) ──
+  // requires_connection_request is NOT an error — it's a routing signal.
+  // It is intentionally NOT in the opaque enumeration-defence bucket: the
+  // FE MUST be able to distinguish it to fall back to the request flow.
+  // We still surface it through ConnectionRequestError (the catch site
+  // branches on `.code === 'requires_connection_request'`), so it carries
+  // a neutral non-alarming message in case it ever reaches a toast.
+  requires_connection_request: 'A connection request is needed to reach this leader.',
 };
 
 function extractErrorCode(error: unknown): string {
@@ -109,6 +117,34 @@ export async function respondToRequest(
   });
   if (error) throw toDisplayError(error);
   return (data as string | null) ?? null;
+}
+
+// ── getOrCreateConversationIfPermitted ────────────────────────────────
+// Same-network bypass (20260609000006). When the caller and recipient are
+// already in-network (same church OR a shared active branch) the
+// connection-request consent layer is unnecessary — this RPC find-or-
+// creates the conversation directly and returns its conversation_id.
+//
+// When the pair is NOT in-network the RPC raises `requires_connection_request`.
+// We throw a ConnectionRequestError carrying that code so the navigation
+// layer can branch: code === 'requires_connection_request' → open the
+// thread in request mode; otherwise → open the existing conversation.
+//
+// Returns the conversation_id (uuid) on success.
+// Throws ConnectionRequestError on every failure (including the
+// requires_connection_request routing signal).
+export async function getOrCreateConversationIfPermitted(
+  recipientId: string,
+): Promise<string> {
+  const { data, error } = await supabase.rpc(
+    'get_or_create_conversation_if_permitted',
+    { p_recipient_id: recipientId },
+  );
+  if (error) throw toDisplayError(error);
+  if (!data) {
+    throw new ConnectionRequestError('unknown', 'Something went wrong. Please try again.');
+  }
+  return data as string;
 }
 
 // ── withdrawRequest ───────────────────────────────────────────────────

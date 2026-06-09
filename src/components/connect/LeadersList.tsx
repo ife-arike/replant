@@ -34,7 +34,7 @@
 //     'request_declined'  — sender sees declined row (NOT tappable)
 //     'request_expired'   — sender sees expired row (NOT tappable)
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -101,6 +101,11 @@ interface Props {
   // KAN-69: open an incoming request thread. If not provided, falls
   // back to onOpenThread (which carries rowKind in the thread object).
   onOpenRequestThread?: (thread: LeaderThread) => void;
+  // Increment to force a re-fetch (e.g. after navigating back from a
+  // thread where the leader declined a request). The initial mount
+  // tick (0) is skipped — the component already fetches on mount via
+  // its main useEffect / useFocusEffect.
+  refreshTrigger?: number;
 }
 
 const PAGE_SIZE = 25;
@@ -644,7 +649,7 @@ function EmptyView({ onFind }: { onFind: () => void }) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────
-export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestThread }: Props) {
+export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestThread, refreshTrigger }: Props) {
   const { session } = useAuth();
   const [allThreads, setAllThreads] = useState<LeaderThread[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -684,6 +689,19 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
   }, [allThreads.length]);
 
   useEffect(() => { void loadInitial(); }, [loadInitial]);
+
+  // Refresh whenever the parent increments refreshTrigger (e.g. after a
+  // decline navigates back to the list). The ref skips the initial mount
+  // tick (0) so we don't double-fetch on first render — the main
+  // useEffect above already handles mount.
+  const hasMountedRef = useRef(false);
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    void loadInitial();
+  }, [refreshTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // connect-polish-2 Fix 1b: refetch on screen focus return.
   //
@@ -743,6 +761,17 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
+        queueRefresh,
+      )
+      // connection_requests changes: INSERT (a request the caller sent or
+      // received) + UPDATE (accept/decline flips status). Refreshes the
+      // list so the PENDING row appears immediately on the sender side
+      // without a tab switch, and clears on the recipient side once
+      // accepted/declined. RLS on connection_requests gates events to the
+      // caller's own rows — no cross-leader leakage.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'connection_requests' },
         queueRefresh,
       )
       .subscribe();

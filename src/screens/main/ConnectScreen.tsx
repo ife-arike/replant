@@ -55,6 +55,10 @@ import Segmented from '../../components/connect/Segmented';
 import LeadersList from '../../components/connect/LeadersList';
 import LeaderSearch, { type SearchedLeader } from '../../components/connect/LeaderSearch';
 import DMThreadView from '../../components/connect/DMThreadView';
+import {
+  getOrCreateConversationIfPermitted,
+  ConnectionRequestError,
+} from '../../hooks/useConnectionRequest';
 import MinistriesList from '../../components/connect/MinistriesList';
 import BranchCreate from '../../components/connect/BranchCreate';
 import BranchThreadView from '../../components/connect/BranchThreadView';
@@ -229,6 +233,7 @@ export default function ConnectScreen() {
   const [subTab, setSubTab] = useState<SubTab>('leaders');
   const [view, setView] = useState<ConnectView>({ kind: 'list' });
   const [ministriesRefreshTick, setMinistriesRefreshTick] = useState(0);
+  const [leadersRefreshTick, setLeadersRefreshTick] = useState(0);
   const [covenantAck, setCovenantAck] = useState(false);
   const { show: showToast, node: toastNode } = useToast();
   const { width } = useWindowDimensions();
@@ -278,6 +283,7 @@ export default function ConnectScreen() {
           setPushVisible(null);
           setView({ kind: 'list' });
           setMinistriesRefreshTick((t) => t + 1);
+          setLeadersRefreshTick((t) => t + 1);
         }
       });
       return;
@@ -305,10 +311,19 @@ export default function ConnectScreen() {
     }
   }, [subTab, goTo]);
 
-  // ── leader picked from search — branch to existing or request ───
-  // KAN-69: if no existing conversation, open with isConnectionRequest=true
-  // instead of a bare lazy thread. The send path inside DMThreadView
-  // will call send_connection_request rather than send-message.
+  // ── leader picked from search — branch to existing, bypass, or request ─
+  // KAN-69 + same-network bypass (20260609000006):
+  //   1. Existing conversation → open it normally.
+  //   2. No conversation yet → ask the server (via
+  //      getOrCreateConversationIfPermitted) whether the two leaders are
+  //      in-network (same church OR a shared active branch):
+  //        - returns a conversation_id → in-network, open a normal DM
+  //          (isConnectionRequest: false) with that conversation.
+  //        - throws ConnectionRequestError('requires_connection_request')
+  //          → strangers, open the thread in request mode (existing flow).
+  // The bypass decision belongs HERE at the navigation layer so the DM
+  // thread opens in the right mode from the first frame — never inside
+  // DMThreadView.
   const onPickLeader = useCallback(async (leader: SearchedLeader) => {
     if (!callerUserId) return;
     // Canonical UUID-sorted participant pair (matches the conversations
@@ -326,6 +341,12 @@ export default function ConnectScreen() {
       ? (roleLabel || 'Leader')
       : (roleLabel ? `${roleLabel} ${leader.fullName}`.trim() : leader.fullName);
     const churchName = leader.underground ? 'Underground Church' : leader.churchName;
+    const initialProfile = {
+      displayName,
+      fullName: leader.fullName,
+      churchName,
+      isSecure: false,
+    };
 
     if (existing?.id) {
       // Existing conversation — open normally.
@@ -333,35 +354,51 @@ export default function ConnectScreen() {
         kind: 'thread',
         conversationId: existing.id,
         recipientUserId: null,
-        initialProfile: {
-          displayName,
-          fullName: leader.fullName,
-          churchName,
-          isSecure: false,
-        },
+        initialProfile,
       });
-    } else {
-      // No conversation yet — open as a connection request.
+      return;
+    }
+
+    // No conversation yet — let the server decide whether the consent
+    // layer applies. In-network pairs bypass the request flow.
+    try {
+      const convId = await getOrCreateConversationIfPermitted(leader.userId);
+      // In-network — open a normal DM with the (find-or-created) conversation.
       goTo({
         kind: 'thread',
-        conversationId: null,
-        recipientUserId: leader.userId,
-        initialProfile: {
-          displayName,
-          fullName: leader.fullName,
-          churchName,
-          isSecure: false,
-        },
-        isConnectionRequest: true,
+        conversationId: convId,
+        recipientUserId: null,
+        initialProfile,
+        isConnectionRequest: false,
       });
+    } catch (err) {
+      if (
+        err instanceof ConnectionRequestError &&
+        err.code === 'requires_connection_request'
+      ) {
+        // Strangers — open the thread in connection-request mode.
+        goTo({
+          kind: 'thread',
+          conversationId: null,
+          recipientUserId: leader.userId,
+          initialProfile,
+          isConnectionRequest: true,
+        });
+      } else {
+        // Any other failure (not_authorized, recipient_not_found, etc.).
+        // Surface a neutral toast and stay on the search surface rather
+        // than opening a half-formed thread.
+        showToast("This leader can't be reached right now.");
+      }
     }
-  }, [callerUserId, goTo]);
+  }, [callerUserId, goTo, showToast]);
 
   // ── render the active list surface (Leaders or Ministries) ──────
   const listSurface = useMemo(() => {
     if (subTab === 'leaders') {
       return (
         <LeadersList
+          refreshTrigger={leadersRefreshTick}
           onOpenThread={(thread) =>
             goTo({
               kind: 'thread',
@@ -411,7 +448,7 @@ export default function ConnectScreen() {
         refreshTrigger={ministriesRefreshTick}
       />
     );
-  }, [subTab, goTo, showToast, ministriesRefreshTick]);
+  }, [subTab, goTo, showToast, ministriesRefreshTick, leadersRefreshTick]);
 
   // ── render the active push surface (when applicable) ─────────────
   const pushSurface = useMemo(() => {

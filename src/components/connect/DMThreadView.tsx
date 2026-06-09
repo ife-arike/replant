@@ -52,6 +52,7 @@ import CovenantNotice from './CovenantNotice';
 import AttachmentPopover from './AttachmentPopover';
 import RequestNote from './RequestNote';
 import SentRequestModal from './SentRequestModal';
+import DeclineRequestModal from './DeclineRequestModal';
 import RequestActionsBar from './RequestActionsBar';
 import {
   sendConnectionRequest,
@@ -424,6 +425,8 @@ export default function DMThreadView({
 
   // SentRequestModal shown after successful send_connection_request.
   const [sentRequestModalVisible, setSentRequestModalVisible] = useState(false);
+  // DeclineRequestModal — shown before firing the decline RPC.
+  const [declineModalVisible, setDeclineModalVisible] = useState(false);
   // recipientDisplayName for the modal copy. Derived from initialProfile.
   const requestRecipientName =
     initialProfile?.fullName ||
@@ -694,8 +697,15 @@ export default function DMThreadView({
       // response. The send-message edge function returns the field but
       // the leader's UI is identical regardless of its value — per
       // KAN-70 leader-opacity.
-      setMessages((prev) =>
-        assignGroupLabels(prev.map((m) =>
+      //
+      // Sync messagesRef INSIDE the updater so the Realtime INSERT
+      // handler (which reads messagesRef for dedup) sees the real UUID
+      // immediately — before the async useEffect that normally syncs
+      // the ref can run. Without this, the handler checks the stale
+      // ref (still holding the opt- ID), misses the dedup, and inserts
+      // a second row with the same real UUID → duplicate key error.
+      setMessages((prev) => {
+        const next = assignGroupLabels(prev.map((m) =>
           m.id === optId
             ? {
               ...m,
@@ -704,8 +714,10 @@ export default function DMThreadView({
               createdAt: new Date(result.created_at),
             }
             : m,
-        )),
-      );
+        ));
+        messagesRef.current = next;
+        return next;
+      });
     } catch {
       setMessages((prev) =>
         prev.map((m) => m.id === optId ? { ...m, state: 'failed' } : m),
@@ -834,23 +846,41 @@ export default function DMThreadView({
     if (!requestId || requestActionBusy) return;
     setRequestActionBusy(true);
     try {
-      const conversationId = await respondToRequest(requestId, 'accept');
-      if (conversationId) {
-        // Transition from request thread to normal conversation:
-        // update conversationId ref so subsequent Realtime + sends work.
-        conversationIdRef.current = conversationId;
-        setConversationId(conversationId);
-        onConversationCreated?.(conversationId);
+      // KAN-69 consent-layer accept path. The accept-connection-request
+      // edge fn owns the whole flow server-side: it FLAG_TAXONOMY-scans the
+      // request message, flips the request to 'accepted', then seeds the
+      // already-scanned message ATTRIBUTED TO THE ORIGINAL REQUESTER (not
+      // to us, the accepter — the prior send-message call mis-attributed
+      // it). We never call respondToRequest or send-message directly here.
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/accept-connection-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ request_id: requestId }),
+        },
+      );
+      const { conversation_id: convId } = await res.json() as {
+        conversation_id?: string;
+      };
+      if (res.ok && convId) {
+        // Transition from request thread to normal conversation.
+        conversationIdRef.current = convId;
+        setConversationId(convId);
+        onConversationCreated?.(convId);
       }
-      // Show the acceptance system message at the top of the thread.
+      // Acceptance system message — RECIPIENT perspective (we accepted).
       const senderLabel = requestSenderName ?? other?.displayName ?? 'They';
-      setAcceptedSystemMsg(`${senderLabel} accepted your request`);
+      setAcceptedSystemMsg(`You accepted ${senderLabel}'s request to connect`);
     } catch {
       // Silent — let the user retry.
     } finally {
       setRequestActionBusy(false);
     }
-  }, [requestId, requestActionBusy, onConversationCreated, requestSenderName, other?.displayName]);
+  }, [requestId, requestActionBusy, session?.access_token, onConversationCreated, requestSenderName, other?.displayName]);
 
   const handleDecline = useCallback(async () => {
     if (!requestId || requestActionBusy) return;
@@ -1013,7 +1043,7 @@ export default function DMThreadView({
         {isIncomingRequest && !acceptedSystemMsg && (
           <RequestActionsBar
             onAccept={handleAccept}
-            onDecline={handleDecline}
+            onDecline={() => { setDeclineModalVisible(true); return Promise.resolve(); }}
             busy={requestActionBusy}
           />
         )}
@@ -1081,6 +1111,18 @@ export default function DMThreadView({
           setSentRequestModalVisible(false);
           onBack();
         }}
+      />
+
+      {/* KAN-69: DeclineRequestModal — confirmation before firing decline RPC */}
+      <DeclineRequestModal
+        visible={declineModalVisible}
+        senderName={requestSenderName ?? other?.displayName ?? 'this leader'}
+        onKeep={() => setDeclineModalVisible(false)}
+        onConfirmDecline={() => {
+          setDeclineModalVisible(false);
+          void handleDecline();
+        }}
+        declining={requestActionBusy}
       />
     </View>
   );
