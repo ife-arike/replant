@@ -112,7 +112,6 @@ const BRANCH_SYSTEM_USER_ID = '028be745-8014-4314-a7cf-36b0a4d52b46';
 
 const PAGE_SIZE = 30;
 const FIVE_MIN_MS = 5 * 60 * 1000;
-const MAX_COMPOSER_HEIGHT = 124;
 // connect-polish-3 Fix B: branch-thread composer was retained at the
 // pre-polish-1 42pt size while the DM composer shrank to 36pt across
 // polish-1 Fix B + polish-2 Fix 3. Founder-reported visual mismatch
@@ -265,6 +264,18 @@ function GroupBubble({
           </View>
         </Pressable>
       )}
+    </View>
+  );
+}
+
+// ── remove affordance (edit mode) ────────────────────────────────────
+// Muted minus-in-circle icon, replacing the earlier red "Remove" /
+// "Remove ministry" text. Calm, non-alarming — the destructive intent
+// is confirmed via the Alert that follows the tap.
+function RemoveCircle() {
+  return (
+    <View style={styles.removeCircle}>
+      <Text style={styles.removeCircleGlyph}>{'−'}</Text>
     </View>
   );
 }
@@ -438,10 +449,11 @@ function MembersSheet({
                       {callerIsHost && editMode && mid !== hostMinistryId && (
                         <Pressable
                           onPress={() => confirmRemoveMinistry(mid)}
-                          hitSlop={6}
-                          style={({ pressed }) => [{ marginLeft: 'auto' }, pressed && { opacity: 0.7 }]}
+                          hitSlop={10}
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove ministry"
                         >
-                          <Text style={styles.removeMinistryText}>Remove ministry</Text>
+                          <RemoveCircle />
                         </Pressable>
                       )}
                     </View>
@@ -458,10 +470,11 @@ function MembersSheet({
                         {callerIsHost && editMode && !m.isHost && (
                           <Pressable
                             onPress={() => confirmRemoveLeader(m.userId)}
-                            hitSlop={6}
-                            style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+                            hitSlop={10}
+                            accessibilityRole="button"
+                            accessibilityLabel="Remove leader"
                           >
-                            <Text style={styles.removeLeaderText}>Remove</Text>
+                            <RemoveCircle />
                           </Pressable>
                         )}
                         {m.consentStatus === 'joined' && (
@@ -580,7 +593,6 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [draft, setDraft] = useState('');
-  const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   const [showMembers, setShowMembers] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [resolvedDecline, setResolvedDecline] = useState(false);
@@ -946,7 +958,6 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
     const text = draft.trim();
     if (!text) return;
     setDraft('');
-    setComposerHeight(42);
     void sendNow(text);
   }, [draft, sendNow, summary?.status]);
 
@@ -1147,17 +1158,13 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
               </Pressable>
             </View>
             <TextInput
-              style={[styles.field, { height: composerHeight }]}
+              style={styles.field}
               value={draft}
               onChangeText={setDraft}
               placeholder="Message the branch"
               placeholderTextColor={Colors.textSubtle}
               multiline
               scrollEnabled={false}
-              onContentSizeChange={(e) => {
-                const h = Math.min(MAX_COMPOSER_HEIGHT, Math.max(MIN_COMPOSER_HEIGHT, e.nativeEvent.contentSize.height + 12));
-                setComposerHeight(h);
-              }}
             />
             <Pressable
               onPress={attemptSend}
@@ -1408,6 +1415,8 @@ const styles = StyleSheet.create({
   attachWrap: { position: 'relative' },
   field: {
     flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
@@ -1470,7 +1479,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.mono,
     fontSize: 10,
     letterSpacing: 0.8,
-    color: Colors.red,
+    color: Colors.textMuted,
     textTransform: 'uppercase',
   },
   sheetSub: {
@@ -1571,17 +1580,23 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   // ── host admin + leave actions in MembersSheet ──
-  removeMinistryText: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    color: Colors.red,
-    textAlign: 'right',
+  // Muted minus-in-circle remove affordance (edit mode). Replaces the
+  // earlier red "Remove" / "Remove ministry" text.
+  removeCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: Colors.textSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  removeLeaderText: {
-    fontFamily: Typography.mono,
-    fontSize: 9,
-    color: Colors.red,
-    marginRight: 6,
+  removeCircleGlyph: {
+    fontFamily: Typography.body,
+    fontSize: 16,
+    lineHeight: 20,
+    color: Colors.textSubtle,
+    includeFontPadding: false,
   },
   sheetActionRename: {
     marginTop: 16,

@@ -108,7 +108,6 @@ const PAGE_SIZE = 30;
 // Timestamp grouping threshold. iMessage uses ~60-minute gaps; a 5-minute
 // window put a divider between every tight cluster of replies.
 const GROUP_GAP_MS = 60 * 60 * 1000;
-const MAX_COMPOSER_HEIGHT = 124;
 // connect-polish-1 Fix B → connect-polish-2 Fix 3 follow-up: with the
 // field collapsed to 36pt, the 42pt attach + send buttons looked larger
 // than the field they framed (visual misalignment in the device pass).
@@ -366,7 +365,6 @@ export default function DMThreadView({
     };
   }, [initialFetchComplete, refreshConnectBadge]);
   const [draft, setDraft] = useState('');
-  const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   // Fix 8 (KAN-68 §15.3): paperclip → anticipatory popover (NOT a
   // toast / alert). Visible flag is toggled by the paperclip tap;
   // backdrop tap closes; a non-empty draft also closes (the user is
@@ -668,7 +666,6 @@ export default function DMThreadView({
       return;
     }
     setDraft('');
-    setComposerHeight(MIN_COMPOSER_HEIGHT);
     // B3 (device pass): dismiss the keyboard the moment the message
     // leaves the composer. The optimistic bubble takes over the
     // visual feedback; staying keyboard-up makes the leader feel like
@@ -685,7 +682,6 @@ export default function DMThreadView({
     pendingTextRef.current = '';
     if (text) {
       setDraft('');
-      setComposerHeight(MIN_COMPOSER_HEIGHT);
       // Same B3 dismiss on the covenant-gated first-send path.
       Keyboard.dismiss();
       void sendNow(text);
@@ -866,20 +862,13 @@ export default function DMThreadView({
             </Pressable>
           </View>
           <TextInput
-            style={[styles.field, { height: composerHeight }]}
+            style={styles.field}
             value={draft}
             onChangeText={setDraft}
             placeholder={isSecure ? 'Reply to the Replant Team' : 'Write a message'}
             placeholderTextColor={Colors.textSubtle}
             multiline
             scrollEnabled={false}
-            onContentSizeChange={(e) => {
-              const h = Math.min(
-                MAX_COMPOSER_HEIGHT,
-                Math.max(MIN_COMPOSER_HEIGHT, e.nativeEvent.contentSize.height + 12),
-              );
-              setComposerHeight(h);
-            }}
           />
           <Pressable
             onPress={attemptSend}
@@ -1062,6 +1051,8 @@ const styles = StyleSheet.create({
   },
   field: {
     flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
