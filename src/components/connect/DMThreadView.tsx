@@ -119,7 +119,7 @@ const GROUP_GAP_MS = 60 * 60 * 1000;
 // (which sits at the composer's flex-end floor regardless of the
 // button's height). Grow-on-input + textAlignVertical untouched.
 const MIN_COMPOSER_HEIGHT = 36;
-const COMPOSER_BUTTON_SIZE = 36;
+const COMPOSER_BUTTON_SIZE = 40;
 
 // ── inline icons ──────────────────────────────────────────────────────
 function BackIcon() {
@@ -766,7 +766,7 @@ export default function DMThreadView({
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />
         </Pressable>
-        <LeaderInitialIcon initial={(initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />
+        <LeaderInitialIcon initial={(other?.displayName?.charAt(0) ?? '?').toUpperCase()} />
         <View style={styles.who}>
           {/* B2 (device pass): never render a partial header. While the
               other party's profile is still resolving (lazy thread, race

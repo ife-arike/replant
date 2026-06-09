@@ -117,7 +117,7 @@ const FIVE_MIN_MS = 5 * 60 * 1000;
 // between branch-thread and DM-thread composers. Matching values here
 // so both surfaces feel identical. textAlignVertical untouched.
 const MIN_COMPOSER_HEIGHT = 36;
-const COMPOSER_BUTTON_SIZE = 36;
+const COMPOSER_BUTTON_SIZE = 40;
 
 // ── icons (subset specific to this view) ─────────────────────────────
 function BackIcon() {
@@ -466,16 +466,6 @@ function MembersSheet({
                               : [roleLabel, m.fullName].filter(Boolean).join(' ') || 'Leader';
                           })()}
                         </Text>
-                        {callerIsHost && editMode && !m.isHost && (
-                          <Pressable
-                            onPress={() => confirmRemoveLeader(m.userId)}
-                            hitSlop={10}
-                            accessibilityRole="button"
-                            accessibilityLabel="Remove leader"
-                          >
-                            <RemoveCircle />
-                          </Pressable>
-                        )}
                         {m.consentStatus === 'joined' && (
                           <View style={styles.consent}>
                             <CheckMini /><Text style={styles.consentTextJoined}>Joined</Text>
