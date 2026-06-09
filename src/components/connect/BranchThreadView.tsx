@@ -46,7 +46,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
@@ -130,7 +129,7 @@ function BackIcon() {
 }
 function UsersIcon() {
   return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Circle cx={9} cy={8} r={3} stroke={Colors.text} strokeWidth={1.4} />
       <Path d="M3.5 19a5.5 5.5 0 0 1 11 0" stroke={Colors.text} strokeWidth={1.4} strokeLinecap="round" />
       <Path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 19a5.5 5.5 0 0 0-2.3-4.5" stroke={Colors.text} strokeWidth={1.4} strokeLinecap="round" />
@@ -577,7 +576,6 @@ function computeTally(members: BranchMember[]) {
 // ── main ─────────────────────────────────────────────────────────────
 export default function BranchThreadView({ branchId, callerUserId, onBack, onSwipeBack }: Props) {
   const { session } = useAuth();
-  const insets = useSafeAreaInsets();
   // Mirror of DMThreadView connect-polish-1 Fix E: explicit badge refresh
   // on unmount so the Connect tab count clears immediately when the leader
   // navigates away after reading the branch. mark_branch_read writes
@@ -1026,7 +1024,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
           <Text style={styles.whoName} numberOfLines={1}>{summary?.name ?? '…'}</Text>
           {summary && (
             <Text style={styles.whoSub}>
-              {summary.ministryCount} ministries · {summary.memberCount} leaders
+              {summary.ministryCount} MINISTRIES · {summary.memberCount} LEADERS
             </Text>
           )}
         </View>
@@ -1133,14 +1131,14 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         <CovenantStrip />
 
         {forming ? (
-          <View style={[styles.composer, styles.composerLocked, { paddingBottom: Math.max(8, insets.bottom) }]}>
+          <View style={[styles.composer, styles.composerLocked, { paddingBottom: 8 }]}>
             <Text style={styles.lockedNote}>Messaging opens once everyone has joined</Text>
             <View style={[styles.send, styles.sendDisabled]}>
               <SendIcon color={Colors.textSubtle} />
             </View>
           </View>
         ) : (
-          <View style={[styles.composer, { paddingBottom: Math.max(8, insets.bottom) }]}>
+          <View style={[styles.composer, { paddingBottom: 8 }]}>
             <View style={styles.attachWrap}>
               <AttachmentPopover
                 visible={attachPopoverVisible}
@@ -1395,9 +1393,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   // ── composer ──
-  // paddingBottom applied inline as Math.max(8, insets.bottom) so the bar
-  // hugs the keyboard when it's up and respects the home indicator when
-  // it's down.
+  // paddingBottom applied inline as a flat 8pt — the Connect tab bar below
+  // already accounts for the bottom safe area, so reserving insets.bottom
+  // here created a large dead gap under the composer.
   composer: {
     paddingTop: 8,
     paddingHorizontal: 14,

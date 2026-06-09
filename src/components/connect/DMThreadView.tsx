@@ -42,7 +42,6 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
@@ -299,6 +298,18 @@ function LazyEmpty() {
   );
 }
 
+// ── leader-initial header icon ────────────────────────────────────────
+// Mirrors BranchThreadView's 28×28 branchHeadIcon — a small rounded glyph
+// between the back arrow and the who-block. Renders the other party's
+// first initial so the DM header has the same spatial rhythm as branches.
+function LeaderInitialIcon({ initial }: { initial: string }) {
+  return (
+    <View style={styles.dmHeadIcon}>
+      <Text style={styles.dmHeadInitial}>{initial}</Text>
+    </View>
+  );
+}
+
 // ── main ──────────────────────────────────────────────────────────────
 export default function DMThreadView({
   conversationId: initialConversationId,
@@ -312,7 +323,6 @@ export default function DMThreadView({
   onConversationCreated,
 }: Props) {
   const { session } = useAuth();
-  const insets = useSafeAreaInsets();
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   // Seed `other` from the initial profile snapshot (Fix 1) so the
   // header renders cleanly on first frame. The header-only church
@@ -756,6 +766,7 @@ export default function DMThreadView({
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />
         </Pressable>
+        <LeaderInitialIcon initial={(initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />
         <View style={styles.who}>
           {/* B2 (device pass): never render a partial header. While the
               other party's profile is still resolving (lazy thread, race
@@ -844,7 +855,7 @@ export default function DMThreadView({
 
         <CovenantStrip />
 
-        <View style={[styles.composer, { paddingBottom: Math.max(8, insets.bottom) }]}>
+        <View style={[styles.composer, { paddingBottom: 8 }]}>
           <View style={styles.attachWrap}>
             <AttachmentPopover
               visible={attachPopoverVisible}
@@ -903,6 +914,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+  },
+  dmHeadIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(240,237,230,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(240,237,230,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dmHeadInitial: {
+    fontFamily: Typography.displayMedium,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   who: { flex: 1, minWidth: 0 },
   whoNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -1023,9 +1049,9 @@ const styles = StyleSheet.create({
   },
   loaderBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // ── composer ── (Fix 4: restored to HANDOFF §6.3 spec)
-  // paddingBottom applied inline as Math.max(8, insets.bottom) so the bar
-  // hugs the keyboard when it's up (no dead 28pt) and respects the home
-  // indicator when it's down.
+  // paddingBottom applied inline as a flat 8pt — the Connect tab bar below
+  // already accounts for the bottom safe area, so reserving insets.bottom
+  // here created a large dead gap under the composer.
   composer: {
     paddingTop: 8,
     paddingHorizontal: 14,
