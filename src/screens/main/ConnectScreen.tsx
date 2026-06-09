@@ -48,6 +48,7 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase } from '../../lib/supabase';
+import { getRoleLabel } from '../../utils/displayHelpers';
 
 import ConnectHeader from '../../components/connect/ConnectHeader';
 import Segmented from '../../components/connect/Segmented';
@@ -88,6 +89,13 @@ export type ConnectView =
       conversationId: string | null;
       recipientUserId: string | null;
       initialProfile?: InitialThreadProfile;
+      // KAN-69 request-flow: set true when sending the first message to
+      // an unconnected leader. Routes Send through send_connection_request.
+      isConnectionRequest?: boolean;
+      // Set when the current leader is the recipient of a pending request.
+      requestId?: string | null;
+      requestMessage?: string | null;
+      requestSenderName?: string;
     }
   | { kind: 'branch'; branchId: string }
   | { kind: 'create' };
@@ -160,7 +168,7 @@ function ConnectGateView({ churchVerified }: { churchVerified: boolean | null })
       <Text style={styles.gateBody}>
         {isLeaderPending
           ? "Your church is already part of the Replant network. Once the team confirms your account, you'll unlock Connect and be able to reach leaders directly."
-          : "Once your church is confirmed by a Replant team member, you'll unlock Connect — private, sealed letters between leaders around the world."}
+          : "Once your church is confirmed by a Replant team member, you'll unlock Connect — letters between verified leaders around the world."}
       </Text>
       <Text style={styles.gateTiny}>
         {isLeaderPending
@@ -297,7 +305,10 @@ export default function ConnectScreen() {
     }
   }, [subTab, goTo]);
 
-  // ── leader picked from search — branch to existing or lazy ──────
+  // ── leader picked from search — branch to existing or request ───
+  // KAN-69: if no existing conversation, open with isConnectionRequest=true
+  // instead of a bare lazy thread. The send path inside DMThreadView
+  // will call send_connection_request rather than send-message.
   const onPickLeader = useCallback(async (leader: SearchedLeader) => {
     if (!callerUserId) return;
     // Canonical UUID-sorted participant pair (matches the conversations
@@ -309,10 +320,40 @@ export default function ConnectScreen() {
       .eq('participant_a', pa)
       .eq('participant_b', pb)
       .maybeSingle();
+    // Compose displayName from role + fullName (same rule as LeadersList).
+    const roleLabel = leader.role ? getRoleLabel(leader.role) : '';
+    const displayName = leader.anonymous
+      ? (roleLabel || 'Leader')
+      : (roleLabel ? `${roleLabel} ${leader.fullName}`.trim() : leader.fullName);
+    const churchName = leader.underground ? 'Underground Church' : leader.churchName;
+
     if (existing?.id) {
-      goTo({ kind: 'thread', conversationId: existing.id, recipientUserId: null });
+      // Existing conversation — open normally.
+      goTo({
+        kind: 'thread',
+        conversationId: existing.id,
+        recipientUserId: null,
+        initialProfile: {
+          displayName,
+          fullName: leader.fullName,
+          churchName,
+          isSecure: false,
+        },
+      });
     } else {
-      goTo({ kind: 'thread', conversationId: null, recipientUserId: leader.userId });
+      // No conversation yet — open as a connection request.
+      goTo({
+        kind: 'thread',
+        conversationId: null,
+        recipientUserId: leader.userId,
+        initialProfile: {
+          displayName,
+          fullName: leader.fullName,
+          churchName,
+          isSecure: false,
+        },
+        isConnectionRequest: true,
+      });
     }
   }, [callerUserId, goTo]);
 
@@ -340,6 +381,25 @@ export default function ConnectScreen() {
               },
             })}
           onFindLeader={() => goTo({ kind: 'search' })}
+          // KAN-69: incoming request rows open with the request props so
+          // DMThreadView renders the in-thread accept/decline view.
+          onOpenRequestThread={(thread) =>
+            goTo({
+              kind: 'thread',
+              conversationId: null,
+              recipientUserId: thread.otherUserId,
+              initialProfile: {
+                displayName: thread.displayName,
+                fullName: thread.fullName,
+                churchName: thread.churchName,
+                isSecure: thread.isSecure,
+              },
+              requestId: thread.requestId,
+              // The preview from get_leader_thread_list contains the
+              // request message body (LEFT 60 chars).
+              requestMessage: thread.preview || null,
+              requestSenderName: thread.displayName,
+            })}
         />
       );
     }
@@ -385,6 +445,11 @@ export default function ConnectScreen() {
                   : cur,
               );
             }}
+            // KAN-69 request-flow props (undefined when not applicable).
+            isConnectionRequest={pushVisible.isConnectionRequest}
+            requestId={pushVisible.requestId}
+            requestMessage={pushVisible.requestMessage}
+            requestSenderName={pushVisible.requestSenderName}
           />
         );
       case 'branch':

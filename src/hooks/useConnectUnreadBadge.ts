@@ -53,12 +53,14 @@ export interface ConnectUnreadBadge {
 }
 
 const REFRESH_DEBOUNCE_MS = 350;
-const CAP = 99;
-
 function formatBadgeLabel(count: number): string | undefined {
   if (count <= 0) return undefined;
-  if (count > CAP) return `${CAP}+`;
-  return String(count);
+  if (count < 10) return String(count);
+  // For counts ≥ 10 show decade-floor label ("10+", "20+", "30+", ...).
+  // Avoids narrow-badge text truncation and keeps the badge readable at
+  // small sizes without exposing an exact count that could feel anxious.
+  const floor = Math.floor(count / 10) * 10;
+  return `${floor}+`;
 }
 
 async function fetchTotalUnread(): Promise<{ messages: number; pendingInvites: number }> {
@@ -70,6 +72,11 @@ async function fetchTotalUnread(): Promise<{ messages: number; pendingInvites: n
     supabase.rpc('get_leader_thread_list'),
     supabase.rpc('get_branch_list'),
   ]);
+  // KAN-69: get_leader_thread_list now returns request_incoming rows with
+  // unread_count = 1 so incoming requests contribute to the badge.
+  // request_pending / request_declined / request_expired rows have
+  // unread_count = 0, so sender-side rows correctly don't inflate the
+  // badge. No change needed — the sum below already handles this correctly.
   const leaderSum = Array.isArray(leadersRes.data)
     ? (leadersRes.data as any[]).reduce(
         (acc, r) => acc + (Number(r?.unread_count) || 0),
