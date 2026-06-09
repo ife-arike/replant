@@ -42,6 +42,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
@@ -104,7 +105,9 @@ interface OtherParty {
 }
 
 const PAGE_SIZE = 30;
-const FIVE_MIN_MS = 5 * 60 * 1000;
+// Timestamp grouping threshold. iMessage uses ~60-minute gaps; a 5-minute
+// window put a divider between every tight cluster of replies.
+const GROUP_GAP_MS = 60 * 60 * 1000;
 const MAX_COMPOSER_HEIGHT = 124;
 // connect-polish-1 Fix B → connect-polish-2 Fix 3 follow-up: with the
 // field collapsed to 36pt, the 42pt attach + send buttons looked larger
@@ -177,7 +180,7 @@ export function formatMessageTime(date: Date): string {
   const isYesterday = yesterday.toDateString() === date.toDateString();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
   const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  if (sameDay) return time;
+  if (sameDay) return 'Today ' + time;
   if (isYesterday) return `Yesterday ${time}`;
   if (diffDays < 7) {
     const weekday = date.toLocaleDateString([], { weekday: 'short' });
@@ -196,7 +199,7 @@ export function assignGroupLabels<M extends { createdAt: Date; groupLabel?: stri
   let prevTs: number | null = null;
   return msgs.map((m) => {
     const t = m.createdAt.getTime();
-    if (prevTs === null || t - prevTs > FIVE_MIN_MS) {
+    if (prevTs === null || t - prevTs > GROUP_GAP_MS) {
       prevTs = t;
       return { ...m, groupLabel: formatMessageTime(m.createdAt) };
     }
@@ -219,24 +222,25 @@ function Bubble({
 }) {
   const mine = msg.mine;
   const tightTail = prevSameAuthor;
-  // Bubble radius per HANDOFF §6.3: sent 16/16/5/16, recv 16/16/16/5.
-  // Tail tightens the inner corner radius on consecutive same-author rows.
+  // Bubble radius: all corners stay clearly rounded (14) regardless of
+  // grouping so consecutive same-author bubbles still feel iMessage-tight
+  // but never get a sharp inner corner.
   const radii = mine
     ? {
         borderTopLeftRadius: 16,
-        borderTopRightRadius: tightTail ? 5 : 16,
-        borderBottomRightRadius: 5,
+        borderTopRightRadius: tightTail ? 14 : 16,
+        borderBottomRightRadius: 14,
         borderBottomLeftRadius: 16,
       }
     : {
-        borderTopLeftRadius: tightTail ? 5 : 16,
+        borderTopLeftRadius: tightTail ? 14 : 16,
         borderTopRightRadius: 16,
         borderBottomRightRadius: 16,
-        borderBottomLeftRadius: 5,
+        borderBottomLeftRadius: 14,
       };
 
   return (
-    <View style={{ marginTop: tightTail ? 2 : 6 }}>
+    <View style={{ marginTop: tightTail ? 2 : 10 }}>
       <View
         style={[
           styles.bubbleRow,
@@ -309,6 +313,7 @@ export default function DMThreadView({
   onConversationCreated,
 }: Props) {
   const { session } = useAuth();
+  const insets = useSafeAreaInsets();
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   // Seed `other` from the initial profile snapshot (Fix 1) so the
   // header renders cleanly on first frame. The header-only church
@@ -843,7 +848,7 @@ export default function DMThreadView({
 
         <CovenantStrip />
 
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: Math.max(8, insets.bottom) }]}>
           <View style={styles.attachWrap}>
             <AttachmentPopover
               visible={attachPopoverVisible}
@@ -1029,8 +1034,11 @@ const styles = StyleSheet.create({
   },
   loaderBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // ── composer ── (Fix 4: restored to HANDOFF §6.3 spec)
+  // paddingBottom applied inline as Math.max(8, insets.bottom) so the bar
+  // hugs the keyboard when it's up (no dead 28pt) and respects the home
+  // indicator when it's down.
   composer: {
-    paddingTop: 10,
+    paddingTop: 8,
     paddingHorizontal: 14,
     paddingBottom: 28,
     flexDirection: 'row',

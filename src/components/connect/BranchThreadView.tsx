@@ -46,6 +46,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
@@ -222,11 +223,11 @@ function GroupBubble({
   const mine = msg.mine;
   const tail = prevSameSender;
   const radii = mine
-    ? { borderTopLeftRadius: 16, borderTopRightRadius: tail ? 5 : 16, borderBottomRightRadius: 5, borderBottomLeftRadius: 16 }
-    : { borderTopLeftRadius: tail ? 5 : 16, borderTopRightRadius: 16, borderBottomRightRadius: 16, borderBottomLeftRadius: 5 };
+    ? { borderTopLeftRadius: 16, borderTopRightRadius: tail ? 14 : 16, borderBottomRightRadius: 14, borderBottomLeftRadius: 16 }
+    : { borderTopLeftRadius: tail ? 14 : 16, borderTopRightRadius: 16, borderBottomRightRadius: 16, borderBottomLeftRadius: 14 };
 
   return (
-    <View style={{ marginTop: tail ? 2 : 6 }}>
+    <View style={{ marginTop: tail ? 2 : 10 }}>
       {!mine && !prevSameSender && member && (
         <View style={styles.authorRow}>
           <Text style={styles.authorName}>{member.displayName.split(' · ')[0] ?? member.displayName}</Text>
@@ -536,6 +537,7 @@ function computeTally(members: BranchMember[]) {
 // ── main ─────────────────────────────────────────────────────────────
 export default function BranchThreadView({ branchId, callerUserId, onBack, onSwipeBack }: Props) {
   const { session } = useAuth();
+  const insets = useSafeAreaInsets();
   // Mirror of DMThreadView connect-polish-1 Fix E: explicit badge refresh
   // on unmount so the Connect tab count clears immediately when the leader
   // navigates away after reading the branch. mark_branch_read writes
@@ -1100,14 +1102,14 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         <CovenantStrip />
 
         {forming ? (
-          <View style={[styles.composer, styles.composerLocked]}>
+          <View style={[styles.composer, styles.composerLocked, { paddingBottom: Math.max(8, insets.bottom) }]}>
             <Text style={styles.lockedNote}>Messaging opens once everyone has joined</Text>
             <View style={[styles.send, styles.sendDisabled]}>
               <SendIcon color={Colors.textSubtle} />
             </View>
           </View>
         ) : (
-          <View style={styles.composer}>
+          <View style={[styles.composer, { paddingBottom: Math.max(8, insets.bottom) }]}>
             <View style={styles.attachWrap}>
               <AttachmentPopover
                 visible={attachPopoverVisible}
@@ -1366,8 +1368,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   // ── composer ──
+  // paddingBottom applied inline as Math.max(8, insets.bottom) so the bar
+  // hugs the keyboard when it's up and respects the home indicator when
+  // it's down.
   composer: {
-    paddingTop: 10,
+    paddingTop: 8,
     paddingHorizontal: 14,
     paddingBottom: 28,
     flexDirection: 'row',
