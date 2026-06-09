@@ -358,7 +358,7 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
       // waiting for the Realtime branch_members UPDATE to propagate.
       void refreshConnectBadge();
     } catch {
-      onToast(‘Couldn’t update your response. Try again.’);
+      onToast("Couldn’t update your response. Try again.");
     } finally {
       setBusyByBranchId((p) => ({ ...p, [branchId]: false }));
     }
