@@ -382,7 +382,10 @@ function MembersSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.sheetScrim} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+        {/* View + onStartShouldSetResponder stops scrim-close from firing
+            when touching the sheet, without intercepting ScrollView scroll
+            gestures. Pressable here ate those gestures — scroll was broken. */}
+        <View style={styles.sheet} onStartShouldSetResponder={() => true}>
           <View style={styles.sheetGrab} />
           <Text style={styles.sheetTitle}>{branchName}</Text>
           <Text style={styles.sheetSub}>{ministryCount} ministries · {memberCount} leaders</Text>
@@ -485,7 +488,7 @@ function MembersSheet({
           >
             <Text style={styles.sheetCloseText}>Close</Text>
           </Pressable>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
@@ -1502,7 +1505,7 @@ const styles = StyleSheet.create({
   retryRow: { marginTop: 20, alignItems: 'center', paddingVertical: 12 },
   retryText: { fontFamily: Typography.mono, fontSize: 10.5, color: Colors.accent, letterSpacing: 0.4 },
   sheetClose: {
-    marginTop: 16,
+    marginTop: 6,
     paddingVertical: 13,
     paddingHorizontal: 18,
     borderRadius: 8,
