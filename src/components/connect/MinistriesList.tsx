@@ -28,6 +28,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
+import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase } from '../../lib/supabase';
 import CovenantFooter from './CovenantFooter';
 
@@ -241,6 +242,11 @@ function MinistriesEmpty({ onStart }: { onStart: () => void }) {
 
 // ── main ──────────────────────────────────────────────────────────────
 export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, refreshTrigger }: Props) {
+  // Explicit badge refresh after accepting/declining — mirrors the DM thread
+  // pattern. Realtime will eventually update the count, but calling refresh()
+  // immediately after the RPC success guarantees the pendingInvites badge
+  // clears without waiting for a Realtime round-trip.
+  const { refresh: refreshConnectBadge } = useConnectBadge();
   const [rows, setRows] = useState<BranchListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -333,27 +339,30 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
     };
   }, [load]);
 
-  const respondToInvite = useCallback(async (branchId: string, response: 'joined' | 'declined') => {
+  const respondToInvite = useCallback(async (branchId: string, response: ‘joined’ | ‘declined’) => {
     setBusyByBranchId((p) => ({ ...p, [branchId]: true }));
     try {
-      const { error: rpcErr } = await supabase.rpc('respond_to_branch_invite', {
+      const { error: rpcErr } = await supabase.rpc(‘respond_to_branch_invite’, {
         p_branch_id: branchId,
         p_response: response,
       });
       if (rpcErr) throw rpcErr;
       // Optimistic update + then reload to pull updated status.
-      if (response === 'declined') {
+      if (response === ‘declined’) {
         setRows((prev) => prev.filter((r) => r.branchId !== branchId));
-        onToast('Invitation declined.');
+        onToast(‘Invitation declined.’);
       } else {
         await load();
       }
+      // Explicit badge refresh — drops pendingInvites immediately without
+      // waiting for the Realtime branch_members UPDATE to propagate.
+      void refreshConnectBadge();
     } catch {
-      onToast('Couldn’t update your response. Try again.');
+      onToast(‘Couldn’t update your response. Try again.’);
     } finally {
       setBusyByBranchId((p) => ({ ...p, [branchId]: false }));
     }
-  }, [load, onToast]);
+  }, [load, onToast, refreshConnectBadge]);
 
   // Split: invites surface above the rest.
   const invites = rows.filter((r) => r.callerConsentStatus === 'invited');

@@ -47,6 +47,7 @@ import {
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
+import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
 import { getLeaderDisplayName } from '../../utils/getLeaderDisplayName';
 import { getRoleLabel } from '../../utils/displayHelpers';
@@ -514,6 +515,14 @@ function computeTally(members: BranchMember[]) {
 // ── main ─────────────────────────────────────────────────────────────
 export default function BranchThreadView({ branchId, callerUserId, onBack, onSwipeBack }: Props) {
   const { session } = useAuth();
+  // Mirror of DMThreadView connect-polish-1 Fix E: explicit badge refresh
+  // on unmount so the Connect tab count clears immediately when the leader
+  // navigates away after reading the branch. mark_branch_read writes
+  // branch_members.last_read_at (which IS in the Realtime publication),
+  // but the Realtime→refresh path is async and unreliable under rapid
+  // navigation. The explicit cleanup call guarantees a correct count after
+  // navigating away — same pattern as DM threads.
+  const { refresh: refreshConnectBadge } = useConnectBadge();
   const [summary, setSummary] = useState<BranchSummary | null>(null);
   const [members, setMembers] = useState<BranchMember[]>([]);
   const [messages, setMessages] = useState<BranchMessage[]>([]);
@@ -637,6 +646,18 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   }, [branchId]);
 
   useEffect(() => { void loadMembersAndSummary(); }, [loadMembersAndSummary]);
+
+  // Refresh the Connect tab badge on unmount (leader navigated away after
+  // reading). Gated on !loadingMessages so an errored load (before
+  // mark_branch_read was called) doesn't fire a spurious refresh.
+  // Cleanup runs on both dep-change and unmount — both are useful moments.
+  useEffect(() => {
+    return () => {
+      if (!loadingMessages) {
+        void refreshConnectBadge();
+      }
+    };
+  }, [loadingMessages, refreshConnectBadge]);
 
   // ── Branch member action handlers (KAN-69) ────────────────────────
   const handleLeave = useCallback(async () => {

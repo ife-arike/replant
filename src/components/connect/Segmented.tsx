@@ -74,12 +74,16 @@ export default function Segmented({ value, onChange, badges }: Props) {
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
           >
-            <Text style={[styles.label, on && styles.labelOn]}>{o.label}</Text>
-            {(badges?.[o.value] ?? 0) > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{Math.min(badges![o.value]!, 9)}</Text>
-              </View>
-            )}
+            {/* Inline row so the badge sits beside the label text,
+                vertically centred with it — not floating above. */}
+            <View style={styles.labelRow}>
+              <Text style={[styles.label, on && styles.labelOn]}>{o.label}</Text>
+              {(badges?.[o.value] ?? 0) > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{Math.min(badges![o.value]!, 9)}</Text>
+                </View>
+              )}
+            </View>
           </Pressable>
         );
       })}
@@ -113,12 +117,14 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+  },
+  // Row that holds the label + inline badge side by side.
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   badge: {
-    position: 'absolute',
-    top: 6,
-    right: 18,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
