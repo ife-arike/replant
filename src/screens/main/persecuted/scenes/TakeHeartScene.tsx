@@ -173,11 +173,11 @@ export default function TakeHeartScene() {
         </Text>
         <Pressable
           onPress={() => {
-            // Route to Connect tab → Branches/Ministries sub-tab
-            // TODO: Location-based "nearest to you" filtering is post-MVP
-            (navigation as any).navigate('Tabs', {
+            // Route to Connect tab → Ministries sub-tab (EAP branch creation/list).
+            // Location-based "nearest to you" filtering is post-MVP.
+            navigation.navigate('Tabs', {
               screen: 'Connect',
-              params: { screen: 'Ministries' },
+              params: { initialSubTab: 'ministries' },
             });
           }}
           accessibilityRole="button"

@@ -29,6 +29,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { TabsParamList } from '../../navigation/types';
 import {
   Animated,
   Easing,
@@ -301,6 +304,33 @@ export default function ConnectScreen() {
   }, [pushAnim]);
 
   const backToList = useCallback(() => goTo({ kind: 'list' }), [goTo]);
+
+  // ── deep-link param consumption — one-shot on focus ─────────────
+  // ConnectScreen is a state-machine host (no nested Stack.Navigator).
+  // Cross-tab navigations pass params on the Connect tab route; we
+  // consume them here on first focus after navigation so the tab bar
+  // doesn't need to know anything about internal Connect surfaces.
+  const route = useRoute<RouteProp<TabsParamList, 'Connect'>>();
+  const consumedConvRef = useRef<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const params = route.params;
+      if (!params) return;
+
+      // conversationId → open DM thread directly
+      if (params.conversationId && consumedConvRef.current !== params.conversationId) {
+        consumedConvRef.current = params.conversationId;
+        goTo({ kind: 'thread', conversationId: params.conversationId, recipientUserId: null });
+        return; // don't also switch sub-tab
+      }
+
+      // initialSubTab → switch sub-tab (only on list view, not mid-thread)
+      if (params.initialSubTab && view.kind === 'list') {
+        setSubTab(params.initialSubTab);
+      }
+    }, [route.params, view.kind, goTo]),
+  );
 
   // ── compose handler — depends on subTab ──────────────────────────
   const handleCompose = useCallback(() => {

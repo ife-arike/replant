@@ -14,7 +14,7 @@ export type TabsParamList = {
   "The Church": undefined;
   Persecuted: undefined;
   "Prayer Wall": { initialView?: 'journal'; pendingChurch?: string } | undefined;
-  Connect: undefined;
+  Connect: { initialSubTab?: 'ministries' | 'leaders'; conversationId?: string } | undefined;
 };
 
 // MainStackParamList = the active-branch native-stack: Tabs + pushed screens.

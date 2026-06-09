@@ -64,10 +64,12 @@ export default function MyHeartcriesScene() {
       row={item}
       onOpenMessage={() => {
         if (item.thread_id) {
-          // Navigate to DM thread in Connect tab
-          (navigation as any).navigate('Connect', {
-            screen: 'DM',
-            params: { threadId: item.thread_id },
+          // Navigate to Connect tab and open the DM thread by conversationId.
+          // ConnectScreen reads the conversationId param on focus and calls
+          // goTo({ kind: 'thread', conversationId }) into its state machine.
+          navigation.navigate('Tabs', {
+            screen: 'Connect',
+            params: { conversationId: item.thread_id },
           });
         }
       }}
