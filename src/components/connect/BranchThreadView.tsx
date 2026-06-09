@@ -444,7 +444,8 @@ function MembersSheet({
                   <View key={mid} style={styles.ministryBlock}>
                     <View style={styles.ministryNameRow}>
                       <Text style={styles.ministryName}>{ministryLabel}</Text>
-                      {isCallerMinistry && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
+                      {mid === hostMinistryId && <Text style={styles.hostTag}>HOST</Text>}
+                      {isCallerMinistry && mid !== hostMinistryId && <Text style={styles.youTag}>YOUR MINISTRY</Text>}
                       {callerIsHost && editMode && mid !== hostMinistryId && (
                         <Pressable
                           onPress={() => confirmRemoveMinistry(mid)}
@@ -1502,6 +1503,20 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     borderWidth: 0.5,
     borderColor: 'rgba(107,181,232,0.35)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  // HOST pill — same shape as youTag but amber, matching the host /
+  // forming visual language used elsewhere in this view (formingBanner,
+  // formingTag). Distinguishes the host ministry row at a glance.
+  hostTag: {
+    fontFamily: Typography.mono,
+    fontSize: 8,
+    letterSpacing: 1.28,
+    color: Colors.amber,
+    borderWidth: 0.5,
+    borderColor: 'rgba(212,168,85,0.35)',
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 2,

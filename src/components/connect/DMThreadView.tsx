@@ -766,7 +766,7 @@ export default function DMThreadView({
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />
         </Pressable>
-        <LeaderInitialIcon initial={(other?.displayName?.charAt(0) ?? '?').toUpperCase()} />
+        <LeaderInitialIcon initial={(initialProfile?.fullName?.charAt(0) ?? initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />
         <View style={styles.who}>
           {/* B2 (device pass): never render a partial header. While the
               other party's profile is still resolving (lazy thread, race
