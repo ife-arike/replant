@@ -828,15 +828,15 @@ export default function DMThreadView({
                 !!nextOlder && nextOlder.mine === item.mine && !item.groupLabel;
               return (
                 <View>
+                  {item.groupLabel && (
+                    <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
+                  )}
                   <Bubble
                     msg={item}
                     prevSameAuthor={prevSameAuthor}
                     secure={isSecure}
                     onRetry={retry}
                   />
-                  {item.groupLabel && (
-                    <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
-                  )}
                 </View>
               );
             }}

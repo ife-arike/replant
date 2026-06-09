@@ -1092,15 +1092,15 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
               && !item.groupLabel;
             return (
               <View>
+                {item.groupLabel && (
+                  <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
+                )}
                 <GroupBubble
                   msg={item}
                   member={member}
                   prevSameSender={prevSameSender}
                   onRetry={retry}
                 />
-                {item.groupLabel && (
-                  <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
-                )}
               </View>
             );
           }}
