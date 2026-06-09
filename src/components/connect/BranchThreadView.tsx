@@ -803,7 +803,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       // a last_read_at cursor written, which is correct — they
       // aren't reading anything yet.
       void supabase.rpc('mark_branch_read', { p_branch_id: branchId })
-        .then(() => undefined, () => undefined);
+        .then(() => { void refreshConnectBadge(); }, () => undefined);
     })();
     return () => { cancelled = true; };
   }, [branchId, callerUserId]);
