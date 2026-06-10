@@ -2,7 +2,7 @@
 // ThresholdPreamble, ActionCard, paginated heartcry feed, entry points.
 // Now includes NotifBar, HeartcryCard read-on/fold, pagination.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -82,26 +82,29 @@ export default function FeedScene({ onNavigateToTab }: FeedSceneProps) {
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [round, setRound] = useState(0);
   const [showNotif, setShowNotif] = useState(false);
+  const hasFetchedRef = useRef(false);
 
   // ── Feed fetch ──
-  const loadFeed = useCallback(async (regionId: string) => {
-    setFeedLoading(true);
+  // silent=true skips the loading spinner so data updates in-place on
+  // tab re-focus without a visible flash. Region-filter changes and
+  // first-ever load always pass silent=false.
+  const loadFeed = useCallback(async (regionId: string, silent?: boolean) => {
+    if (!silent) setFeedLoading(true);
     const { data, error } = await supabase.rpc('get_heartcry_feed', {
       p_limit: FEED_PAGE_SIZE,
       p_offset: 0,
       p_region: regionId === 'all' ? null : regionId,
     });
-    if (error) {
-      setFeedRows([]);
-    } else {
+    hasFetchedRef.current = true;
+    if (!error) {
       setFeedRows((data ?? []) as HeartcryFeedRow[]);
     }
-    setFeedLoading(false);
+    if (!silent) setFeedLoading(false);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void loadFeed(selectedRegion);
+      void loadFeed(selectedRegion, hasFetchedRef.current);
     }, [loadFeed, selectedRegion]),
   );
 

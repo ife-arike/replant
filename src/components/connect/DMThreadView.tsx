@@ -1000,10 +1000,6 @@ export default function DMThreadView({
           </View>
         ) : !conversationId && !loading && messages.length === 0 ? (
           <LazyEmpty />
-        ) : loading ? (
-          <View style={styles.loaderBox}>
-            <ActivityIndicator color={Colors.textSubtle} />
-          </View>
         ) : (
           <FlatList
             inverted
@@ -1287,7 +1283,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 18,
   },
-  loaderBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // ── composer ── (Fix 4: restored to HANDOFF §6.3 spec)
   // paddingBottom applied inline as a flat 8pt — the Connect tab bar below
   // already accounts for the bottom safe area, so reserving insets.bottom

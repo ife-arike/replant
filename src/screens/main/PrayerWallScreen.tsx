@@ -407,7 +407,6 @@ export default function PrayerWallScreen() {
         setDetailRow(null);
         setDeepLinkTestimonyId(null);
         setSelectedTestimony(null);
-        hasFetchedOnce.current = false;
       };
     }, [navigation]),
   );
@@ -584,9 +583,9 @@ export default function PrayerWallScreen() {
         />
       )}
 
-      {view === 'my_prayers' && (
+      <View style={{ flex: 1, display: view === 'my_prayers' ? 'flex' : 'none' }}>
         <MyOpenPrayersView onBackToLanding={() => { setView('feed'); setActivePill('feed'); }} />
-      )}
+      </View>
 
       {view === 'revelation' && (
         <RevelationView onNavigateToPersecuted={() => navigation.navigate('Persecuted')} />

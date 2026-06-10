@@ -1105,9 +1105,9 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
             );
           }}
           ListFooterComponent={
-            loadingMessages
+            loadingMessages && messages.length > 0
               ? <View style={styles.loadingOlder}><ActivityIndicator color={Colors.textSubtle} /></View>
-              : loadingOlder
+              : !loadingMessages && loadingOlder
                 ? <View style={styles.loadingOlder}>
                     <ActivityIndicator color={Colors.textSubtle} />
                     <Text style={styles.loadingOlderText}>Loading earlier</Text>

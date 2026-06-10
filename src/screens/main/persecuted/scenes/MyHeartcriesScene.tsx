@@ -1,7 +1,7 @@
 // MyHeartcriesScene — Surface 2: Own heartcry submissions with severity + status track.
 // FlatList with estimatedItemSize 186. Severity tags, StatusTrack, Responded CTA.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -40,22 +40,26 @@ export default function MyHeartcriesScene() {
   const [rows, setRows] = useState<MyHeartcryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const hasFetchedRef = useRef(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setLoadError(false);
+  const loadData = useCallback(async (silent?: boolean) => {
+    if (!silent) {
+      setLoading(true);
+      setLoadError(false);
+    }
     const { data, error } = await supabase.rpc('get_my_heartcries');
+    hasFetchedRef.current = true;
     if (error) {
-      setLoadError(true);
+      if (!silent) setLoadError(true);
     } else {
       setRows((data ?? []) as MyHeartcryRow[]);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void loadData();
+      void loadData(hasFetchedRef.current);
     }, [loadData]),
   );
 

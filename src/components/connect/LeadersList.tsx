@@ -671,17 +671,19 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
   // supplements the initial data, never replaces it.
   const [initialFetchComplete, setInitialFetchComplete] = useState(false);
 
-  const loadInitial = useCallback(async () => {
+  const loadInitial = useCallback(async (silent?: boolean) => {
     if (!sessionReady) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const list = await fetchThreadList();
       setAllThreads(list);
     } catch (e) {
-      setError(e as Error);
+      if (!silent) setError(e as Error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setInitialFetchComplete(true);
     }
   }, [sessionReady]);
@@ -702,7 +704,7 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
       hasMountedRef.current = true;
       return;
     }
-    void loadInitial();
+    void loadInitial(true);
   }, [refreshTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // connect-polish-2 Fix 1b: refetch on screen focus return.
@@ -723,7 +725,7 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
   // for the Connect tab badge specifically.
   useFocusEffect(
     useCallback(() => {
-      void loadInitial();
+      void loadInitial(true);
     }, [loadInitial]),
   );
 
@@ -756,7 +758,7 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
     let timer: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { void loadInitial(); }, 250);
+      timer = setTimeout(() => { void loadInitial(true); }, 250);
     };
     const channel = supabase
       .channel(`leaders-list-realtime-${session?.user?.id ?? 'anon'}`)

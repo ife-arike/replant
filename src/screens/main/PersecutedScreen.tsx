@@ -14,7 +14,7 @@
 // Navigation pattern: Pill tabs (Option B) — pill chips below the NavBar.
 // Red accent (never sky) — Persecuted is the only tab with red as its accent.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -60,6 +60,12 @@ export default function PersecutedScreen() {
   const [gateState, setGateState] = useState<GateState>('loading');
   const [activeTab, setActiveTab] = useState(0);
 
+  // Keep a ref in sync so useFocusEffect can read current gate state
+  // without including it in the dependency array (which would re-subscribe
+  // the effect on every state change).
+  const gateStateRef = useRef<GateState>('loading');
+  useEffect(() => { gateStateRef.current = gateState; }, [gateState]);
+
   // ── Gate check ──
   const loadVerification = useCallback(async () => {
     const { data: userData } = await supabase.auth.getUser();
@@ -84,9 +90,15 @@ export default function PersecutedScreen() {
     setGateState('verified');
   }, []);
 
+  // Only re-check verification when not already verified. Once verified,
+  // skip the re-check on every tab focus to avoid the loading spinner
+  // flash and scene unmount/remount cycle. Gated/error states still
+  // re-check (the admin may have approved the leader since last visit).
   useFocusEffect(
     useCallback(() => {
-      void loadVerification();
+      if (gateStateRef.current !== 'verified') {
+        void loadVerification();
+      }
     }, [loadVerification]),
   );
 
@@ -138,10 +150,18 @@ export default function PersecutedScreen() {
         onTabPress={setActiveTab}
       />
       <View style={styles.sceneContainer}>
-        {activeTab === 0 && <FeedScene onNavigateToTab={handleNavigateToTab} />}
-        {activeTab === 1 && <MyHeartcriesScene />}
-        {activeTab === 2 && <BearWitnessScene />}
-        {activeTab === 3 && <TakeHeartScene />}
+        <View style={{ flex: 1, display: activeTab === 0 ? 'flex' : 'none' }}>
+          <FeedScene onNavigateToTab={handleNavigateToTab} />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 1 ? 'flex' : 'none' }}>
+          <MyHeartcriesScene />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 2 ? 'flex' : 'none' }}>
+          <BearWitnessScene />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 3 ? 'flex' : 'none' }}>
+          <TakeHeartScene />
+        </View>
       </View>
     </SafeAreaView>
   );

@@ -276,7 +276,10 @@ export default function ConnectScreen() {
   // ── view transitions ─────────────────────────────────────────────
   const goTo = useCallback((next: ConnectView) => {
     if (next.kind === 'list') {
-      // Animate the current push surface out, then unmount.
+      // Restore list state immediately so Segmented + compose button
+      // are visible as the push layer slides away. pushVisible stays
+      // set until animation finishes so the push surface keeps animating.
+      setView({ kind: 'list' });
       Animated.timing(pushAnim, {
         toValue: 0,
         duration: PUSH_DURATION_MS,
@@ -285,7 +288,6 @@ export default function ConnectScreen() {
       }).start(({ finished }) => {
         if (finished) {
           setPushVisible(null);
-          setView({ kind: 'list' });
           setMinistriesRefreshTick((t) => t + 1);
           setLeadersRefreshTick((t) => t + 1);
         }
@@ -428,10 +430,17 @@ export default function ConnectScreen() {
     }
   }, [callerUserId, goTo, showToast]);
 
-  // ── render the active list surface (Leaders or Ministries) ──────
-  const listSurface = useMemo(() => {
-    if (subTab === 'leaders') {
-      return (
+  // ── always-mounted list surfaces — hidden with display:'none' ──────
+  // Both lists stay mounted regardless of which sub-tab is active.
+  // Switching sub-tabs toggles visibility only; neither list ever
+  // unmounts, so they never hit their initial loading state on a
+  // tab switch. display:'none' removes from layout (like CSS) without
+  // unmounting the React subtree.
+  const leadersVisible = subTab === 'leaders';
+  const ministriesVisible = subTab === 'ministries';
+  const listSurface = useMemo(() => (
+    <>
+      <View style={{ flex: 1, display: leadersVisible ? 'flex' : 'none' }}>
         <LeadersList
           refreshTrigger={leadersRefreshTick}
           onOpenThread={(thread) =>
@@ -475,17 +484,17 @@ export default function ConnectScreen() {
               requestSenderName: thread.displayName,
             })}
         />
-      );
-    }
-    return (
-      <MinistriesList
-        onOpenBranch={(branchId) => goTo({ kind: 'branch', branchId })}
-        onStartBranch={() => goTo({ kind: 'create' })}
-        onToast={showToast}
-        refreshTrigger={ministriesRefreshTick}
-      />
-    );
-  }, [subTab, goTo, showToast, ministriesRefreshTick, leadersRefreshTick]);
+      </View>
+      <View style={{ flex: 1, display: ministriesVisible ? 'flex' : 'none' }}>
+        <MinistriesList
+          onOpenBranch={(branchId) => goTo({ kind: 'branch', branchId })}
+          onStartBranch={() => goTo({ kind: 'create' })}
+          onToast={showToast}
+          refreshTrigger={ministriesRefreshTick}
+        />
+      </View>
+    </>
+  ), [leadersVisible, ministriesVisible, leadersRefreshTick, ministriesRefreshTick, goTo, showToast]);
 
   // ── render the active push surface (when applicable) ─────────────
   const pushSurface = useMemo(() => {
@@ -570,13 +579,11 @@ export default function ConnectScreen() {
           showCompose={view.kind === 'list' && verified}
           onCompose={handleCompose}
         />
-        {view.kind === 'list' && (
-          <Segmented
-            value={subTab}
-            onChange={setSubTab}
-            badges={{ ministries: pendingInvites }}
-          />
-        )}
+        <Segmented
+          value={subTab}
+          onChange={setSubTab}
+          badges={{ ministries: pendingInvites }}
+        />
         <View style={styles.listBody}>
           {listSurface}
         </View>
