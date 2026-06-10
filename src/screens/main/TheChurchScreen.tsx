@@ -120,6 +120,10 @@ export default function TheChurchScreen() {
   const {
     dots, undergroundCount, ownChurchId, viewerCountry, loading, error, refetch,
   } = useChurchesGlobal();
+  const ownChurchCoords = useMemo(() => {
+    const d = dots.find(dot => dot.id === ownChurchId);
+    return d ? { lat: d.lat, lng: d.lng } : null;
+  }, [dots, ownChurchId]);
 
   // ── KAN-213: Church profile completion gate ─────────────────────────
   // Resolved once on mount (when branch flips to 'active') via a single
@@ -455,6 +459,7 @@ export default function TheChurchScreen() {
           <CamlView
             isActive={page === 0}
             ownChurchId={ownChurchId}
+            ownChurchCoords={ownChurchCoords}
             viewerVerified={viewerVerified}
             onChurchSelect={handleChurchSelect}
             onCityResolved={setCamlCity}
@@ -494,29 +499,30 @@ export default function TheChurchScreen() {
             onFaceRegion={setCalFacedRegion}
           />
 
-          {/* Count stats chip — top-left of globe area (CD app.jsx) */}
-          <View style={styles.countChip} pointerEvents="none">
-            <Text style={styles.countChipText}>
-              <Text style={styles.countSky}>{verifiedCount}</Text>
-              <Text style={styles.countMuted}> VERIFIED · </Text>
-              <Text style={styles.countRed}>{urgentCount}</Text>
-              <Text style={styles.countMuted}> URGENT · </Text>
-              <Text style={styles.countOffWhite}>+{undergroundCount}</Text>
-              <Text style={styles.countMuted}> HIDDEN</Text>
-            </Text>
+          {/* Top row — count chip (left) + Regions button (right).
+              Wrapped in a row so they share horizontal space and never
+              overlap on narrow screens (e.g. iPhone 17 Pro vs Pro Max). */}
+          <View style={styles.globeTopRow}>
+            <View style={styles.countChip} pointerEvents="none">
+              <Text style={styles.countChipText} numberOfLines={1}>
+                <Text style={styles.countSky}>{verifiedCount}</Text>
+                <Text style={styles.countMuted}> VERIFIED · </Text>
+                <Text style={styles.countRed}>{urgentCount}</Text>
+                <Text style={styles.countMuted}> URGENT · </Text>
+                <Text style={styles.countOffWhite}>+{undergroundCount}</Text>
+                <Text style={styles.countMuted}> HIDDEN</Text>
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleRegionsPress}
+              style={styles.regionsBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Regions"
+            >
+              <View style={styles.regionsDot} />
+              <Text style={styles.regionsText}>REGIONS</Text>
+            </Pressable>
           </View>
-
-          {/* Regions button — top-right of globe area. STUB per Step 0
-              halt (KAN-21 c.14810) — opens the RegionalPanel shell. */}
-          <Pressable
-            onPress={handleRegionsPress}
-            style={styles.regionsBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Regions"
-          >
-            <View style={styles.regionsDot} />
-            <Text style={styles.regionsText}>REGIONS</Text>
-          </Pressable>
 
           {/* KAN-223: RegionalPanel — full build. onPickChurch closes the
               panel and opens the profile sheet for the selected church. */}
@@ -713,38 +719,43 @@ const styles = StyleSheet.create({
   // so the chip is legible on-device. CD CSS reads 8.5px for web; RN
   // renders the same numeric size noticeably smaller, so a clean bump
   // restores legibility without breaking the visual rhythm.
-  countChip: {
+  globeTopRow: {
     position: 'absolute',
-    top: 16, left: 16,
+    top: 16, left: 16, right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 8,
+  },
+  countChip: {
+    flexShrink: 1,
     paddingVertical: 9, paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(8, 8, 8, 0.7)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
-    zIndex: 8,
+    marginRight: 8,
   },
   countChipText: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.6, // ~0.16em × 10
-    lineHeight: 14,
+    fontSize: 9,
+    letterSpacing: 1.44,
+    lineHeight: 13,
   },
   countSky:      { color: Colors.accent },
   countRed:      { color: Colors.red },
   countOffWhite: { color: Colors.text },
   countMuted:    { color: Colors.textMuted },
 
-  // Regions button — top-right of globe area (CD: top:16, right:16)
+  // Regions button — right side of globeTopRow
   regionsBtn: {
-    position: 'absolute',
-    top: 16, right: 16,
+    flexShrink: 0,
     flexDirection: 'row', alignItems: 'center', gap: 7,
     paddingVertical: 9, paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(8, 8, 8, 0.7)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
-    zIndex: 8,
   },
   regionsDot: {
     width: 10, height: 10, borderRadius: 5,
