@@ -1152,7 +1152,6 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
               placeholder="Message the branch"
               placeholderTextColor={Colors.textSubtle}
               multiline
-              scrollEnabled={false}
             />
             <Pressable
               onPress={attemptSend}

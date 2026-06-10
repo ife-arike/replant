@@ -29,7 +29,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useRoute, useFocusEffect } from '@react-navigation/native';
+import { useRoute, useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { TabsParamList } from '../../navigation/types';
 import {
@@ -312,6 +312,7 @@ export default function ConnectScreen() {
   // consume them here on first focus after navigation so the tab bar
   // doesn't need to know anything about internal Connect surfaces.
   const route = useRoute<RouteProp<TabsParamList, 'Connect'>>();
+  const navigation = useNavigation();
   const consumedConvRef = useRef<string | null>(null);
 
   useFocusEffect(
@@ -326,9 +327,11 @@ export default function ConnectScreen() {
         return; // don't also switch sub-tab
       }
 
-      // initialSubTab → switch sub-tab (only on list view, not mid-thread)
+      // initialSubTab → switch sub-tab (only on list view, not mid-thread).
+      // Clear after consuming so it doesn't re-apply on every tab focus.
       if (params.initialSubTab && view.kind === 'list') {
         setSubTab(params.initialSubTab);
+        navigation.setParams({ initialSubTab: undefined } as never);
       }
     }, [route.params, view.kind, goTo]),
   );
@@ -557,7 +560,6 @@ export default function ConnectScreen() {
 
   // ── animated push container styles ────────────────────────────────
   const pushTranslate = pushAnim.interpolate({ inputRange: [0, 1], outputRange: [width, 0] });
-  const pushOpacity = pushAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -585,10 +587,7 @@ export default function ConnectScreen() {
         <Animated.View
           style={[
             styles.pushLayer,
-            {
-              transform: [{ translateX: pushTranslate }],
-              opacity: pushOpacity,
-            },
+            { transform: [{ translateX: pushTranslate }] },
           ]}
         >
           {pushSurface}

@@ -1097,7 +1097,6 @@ export default function DMThreadView({
             }
             placeholderTextColor={Colors.textSubtle}
             multiline
-            scrollEnabled={false}
             editable={!isIncomingRequest || !!acceptedSystemMsg}
           />
           <Pressable
