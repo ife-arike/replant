@@ -27,12 +27,12 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
@@ -89,7 +89,6 @@ const GLOW_DURATION_MS = 1600;
 
 // Prayer Wall redesign — testimony green token (README --green).
 const TESTIMONY_GREEN = '#6B9E7A';
-const REJOICE_ICON = require('../../../assets/rejoice-icon.png');
 
 // Thousands-separated count for the "N rejoicing" footer label
 // (e.g. 1289 → "1,289"). Keeps the card from showing a bare 1289.
@@ -130,7 +129,7 @@ export default function TestimonyCard({
     ]).start();
   }, [isHighlighted, reduced, glow]);
 
-  const glowColor = green ? 'rgba(107, 158, 122, 0.55)' : 'rgba(107, 181, 232, 0.55)';
+  const glowColor = green ? 'rgba(240, 237, 230, 0.25)' : 'rgba(107, 181, 232, 0.55)';
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
 
   const locationLine = getLocationLine(row.church_name, row.country);
@@ -208,8 +207,18 @@ export default function TestimonyCard({
             accessible
             accessibilityLabel={`${formatRejoiceCount(row.celebrated_count)} rejoicing`}
           >
-            <Image source={REJOICE_ICON} style={styles.rejoiceIcon} resizeMode="contain" />
-            <Text style={styles.rejoiceLabel}>Rejoice</Text>
+            {row.i_celebrated ? (
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path d="M5 12l5 5L19 7" stroke={Colors.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            ) : (
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path d="M12 5v14M5 12h14" stroke={Colors.text} strokeWidth={2} strokeLinecap="round" />
+              </Svg>
+            )}
+            <Text style={[styles.rejoiceLabel, row.i_celebrated && styles.rejoiceLabelActive]}>
+              {row.i_celebrated ? 'Rejoicing' : 'Rejoice'}
+            </Text>
           </View>
           <Text style={styles.rejoiceCount}>
             {`${formatRejoiceCount(row.celebrated_count)} rejoicing`}
@@ -224,7 +233,7 @@ export default function TestimonyCard({
           >
             <CelebrateIcon
               size={16}
-              color={row.i_celebrated ? Colors.green : Colors.textMuted}
+              color={row.i_celebrated ? Colors.accent : Colors.textMuted}
             />
             <Text
               style={[
@@ -258,10 +267,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardGreen: {
-    // Prayer Wall redesign — Testimonies pill green variant.
+    // Prayer Wall redesign — Testimonies pill white-border variant.
     backgroundColor: '#121214',
     borderLeftWidth: 2,
-    borderLeftColor: TESTIMONY_GREEN,
+    borderLeftColor: Colors.text,
     borderColor: 'rgba(240, 237, 230, 0.08)',
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
@@ -288,11 +297,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: TESTIMONY_GREEN,
+    backgroundColor: Colors.text,
   },
   locationGreen: {
     flex: 1,
-    color: TESTIMONY_GREEN,
+    color: Colors.text,
     fontFamily: Typography.mono,
     fontSize: 9,
     letterSpacing: 1.62, // 0.18em × 9
@@ -305,18 +314,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  rejoiceIcon: {
-    width: 28,
-    height: 28,
-    marginVertical: -4,
-    marginRight: -1,
-  },
   rejoiceLabel: {
     fontFamily: Typography.mono,
     fontSize: 8.5,
-    letterSpacing: 1.19, // 0.14em × 8.5
+    letterSpacing: 1.19,
     textTransform: 'uppercase',
-    color: TESTIMONY_GREEN,
+    color: Colors.text,
+  },
+  rejoiceLabelActive: {
+    color: Colors.accent,
   },
   rejoiceCount: {
     // Device-pass rework — "N rejoicing" pinned to the far right.

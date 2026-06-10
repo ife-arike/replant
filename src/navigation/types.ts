@@ -30,6 +30,13 @@ export type MainStackParamList = {
   GuidanceReader: { slug: string };
   StoryArchive: undefined;
   WitnessArchive: undefined;
+  // Hamburger sprint (CD v5 final, Founder-locked 2026-06-09) — four new
+  // screens pushed from the Home-tab hamburger panel. TheVision / Outreach /
+  // FAQ slide_from_right; InviteToReplant presents as a full-screen modal.
+  TheVision: undefined;
+  OutreachMissions: undefined;
+  InviteToReplant: undefined;
+  FAQ: undefined;
 };
 
 // RootStackParamList = the conditional union across all auth branches.

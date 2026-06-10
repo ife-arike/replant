@@ -369,7 +369,7 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
       try {
         const { data: userRow, error: userErr } = await supabase
           .from('users')
-          .select('full_name, church_id, role, anonymous')
+          .select('full_name, church_id, role, anonymous, display_name_preference')
           .eq('id', authorId)
           .maybeSingle();
         if (cancelled || userErr || !userRow) return;
@@ -378,6 +378,10 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
         const role = (userRow.role as string | null) ?? null;
         const churchId = userRow.church_id as string | null;
         const isAnon = !!userRow.anonymous;
+        const displayNamePref = (userRow as any).display_name_preference as
+          | 'first_name_only'
+          | 'full_name'
+          | null;
 
         if (!churchId) return; // no church → stay masked
 
@@ -423,7 +427,7 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
         if (!cancelled) {
           setAuthor({
             initial: fullName ? fullName.charAt(0).toUpperCase() : '·',
-            name: resolveDisplayName(fullName || null, role),
+            name: resolveDisplayName(fullName || null, role, displayNamePref ?? undefined),
             church: (churchRow.name as string | null) ?? '',
           });
         }

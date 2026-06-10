@@ -50,7 +50,6 @@ import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
-import { getLeaderDisplayName } from '../../utils/getLeaderDisplayName';
 import { getRoleLabel } from '../../utils/displayHelpers';
 import {
   assignGroupLabels,
@@ -662,14 +661,14 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
     }
     const mapped: BranchMember[] = (memRes.data ?? []).map((r: any) => {
       const fullName: string = r.full_name ?? '';
-      const [first = '', ...rest] = fullName.split(' ');
-      const display = getLeaderDisplayName({
-        firstName: first,
-        lastName: rest.join(' '),
-        roleLabel: getRoleLabel(r.role),
-        churchName: r.ministry_name ?? '',
-        anonymous: !!r.anonymous,
-      });
+      const [first = ''] = fullName.split(' ');
+      const pref: string | null = r.display_name_preference ?? null;
+      const nameToken = pref === 'full_name' ? fullName : first;
+      const roleLabel = getRoleLabel(r.role);
+      const churchName = r.ministry_name ?? '';
+      const display = !!r.anonymous
+        ? `${roleLabel} · ${churchName}`
+        : `${nameToken} · ${churchName}`;
       return {
         userId: r.user_id,
         ministryId: r.ministry_id,

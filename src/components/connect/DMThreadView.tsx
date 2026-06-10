@@ -81,6 +81,7 @@ interface Props {
     fullName: string;
     churchName: string;
     isSecure: boolean;
+    isAnon?: boolean;
   };
   callerUserId: string | null;
   covenantAcknowledged: boolean;
@@ -330,6 +331,17 @@ function LeaderInitialIcon({ initial }: { initial: string }) {
   return (
     <View style={styles.dmHeadIcon}>
       <Text style={styles.dmHeadInitial}>{initial}</Text>
+    </View>
+  );
+}
+
+function AnonHeadIcon() {
+  return (
+    <View style={styles.dmHeadIcon}>
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Circle cx={12} cy={8.5} r={3.5} stroke={Colors.textMuted} strokeWidth={1.4} />
+        <Path d="M5.5 19a6.5 6.5 0 0 1 13 0" stroke={Colors.textMuted} strokeWidth={1.4} strokeLinecap="round" />
+      </Svg>
     </View>
   );
 }
@@ -924,7 +936,9 @@ export default function DMThreadView({
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />
         </Pressable>
-        <LeaderInitialIcon initial={(initialProfile?.fullName?.charAt(0) ?? initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />
+        {initialProfile?.isAnon
+          ? <AnonHeadIcon />
+          : <LeaderInitialIcon initial={(initialProfile?.fullName?.charAt(0) ?? initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />}
         <View style={styles.who}>
           {/* B2 (device pass): never render a partial header. While the
               other party's profile is still resolving (lazy thread, race

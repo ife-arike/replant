@@ -550,7 +550,9 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
       // Anonymous stays role-only — protects identity.
       displayName = roleLabel || 'Leader';
     } else {
-      displayName = roleLabel ? `${roleLabel} ${fullName}`.trim() : fullName;
+      const pref: string | null = r.other_display_name_preference ?? null;
+      const nameToken = pref === 'full_name' ? fullName : (fullName.split(' ')[0] ?? fullName);
+      displayName = roleLabel ? `${roleLabel} ${nameToken}`.trim() : nameToken;
     }
     // Church line — just the church name. No role suffix here; the
     // role is now baked into the name line above.

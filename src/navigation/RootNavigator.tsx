@@ -41,6 +41,10 @@ import ArticleReaderScreen from "../screens/main/persecuted/readers/ArticleReade
 import GuidanceReaderScreen from "../screens/main/persecuted/readers/GuidanceReaderScreen";
 import StoryArchiveScreen from "../screens/main/persecuted/readers/StoryArchiveScreen";
 import WitnessArchiveScreen from "../screens/main/persecuted/readers/WitnessArchiveScreen";
+import TheVisionScreen from "../screens/main/hamburger/TheVisionScreen";
+import OutreachMissionsScreen from "../screens/main/hamburger/OutreachMissionsScreen";
+import InviteScreen from "../screens/main/hamburger/InviteScreen";
+import FAQScreen from "../screens/main/hamburger/FAQScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
@@ -81,6 +85,29 @@ export default function RootNavigator() {
           <Stack.Screen
             name="WitnessArchive"
             component={WitnessArchiveScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          {/* Hamburger sprint (CD v5 final) — pushed from Home-tab panel.
+              Vision / Outreach / FAQ slide in from the right; Invite presents
+              as a full-screen modal that slides up from the bottom. */}
+          <Stack.Screen
+            name="TheVision"
+            component={TheVisionScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="OutreachMissions"
+            component={OutreachMissionsScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="InviteToReplant"
+            component={InviteScreen}
+            options={{ presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="FAQ"
+            component={FAQScreen}
             options={{ animation: 'slide_from_right' }}
           />
         </>

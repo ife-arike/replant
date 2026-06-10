@@ -83,6 +83,7 @@ export interface InitialThreadProfile {
   fullName: string;
   churchName: string;
   isSecure: boolean;
+  isAnon?: boolean;
 }
 
 // ConnectView — the single source of truth for which surface is active.
@@ -376,6 +377,7 @@ export default function ConnectScreen() {
       fullName: leader.fullName,
       churchName,
       isSecure: false,
+      isAnon: leader.anonymous,
     };
 
     if (existing?.id) {
@@ -445,6 +447,7 @@ export default function ConnectScreen() {
                 fullName: thread.fullName,
                 churchName: thread.churchName,
                 isSecure: thread.isSecure,
+                isAnon: thread.anonymous,
               },
             })}
           onFindLeader={() => goTo({ kind: 'search' })}
@@ -460,6 +463,7 @@ export default function ConnectScreen() {
                 fullName: thread.fullName,
                 churchName: thread.churchName,
                 isSecure: thread.isSecure,
+                isAnon: thread.anonymous,
               },
               requestId: thread.requestId,
               // The preview from get_leader_thread_list contains the

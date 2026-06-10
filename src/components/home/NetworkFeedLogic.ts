@@ -50,21 +50,26 @@ export const ROLE_DISPLAY: Record<string, string> = {
 export const MASKED_LEADER_NAME = 'A leader in the network';
 
 // Resolve a display name from a full name + raw role enum value.
-// Format: "{RoleDisplay} {firstName}" — e.g. "Minister Ruth".
-// First name = first whitespace-delimited token of full_name.
+// Format: "{RoleDisplay} {name}" — e.g. "Minister Ruth" or "Minister Ruth James".
+// Respects display_name_preference: 'full_name' uses the full name;
+// 'first_name_only' (default when omitted) uses the first token only.
 //
-// A first name is required: without one we fall back to the masked
+// A non-empty name is required: without one we fall back to the masked
 // constant rather than surface a bare title ("Pastor" with no name is
 // not a valid attribution — and an absent name is treated as held).
 // Masking is the safe default on every leader-resolution path.
 export function resolveDisplayName(
   fullName: string | null,
   role: string | null,
+  displayNamePreference?: 'first_name_only' | 'full_name',
 ): string {
-  const first = fullName?.split(' ')[0] ?? '';
-  if (!first) return MASKED_LEADER_NAME;
+  const useFullName = displayNamePreference === 'full_name';
+  const nameToken = useFullName
+    ? (fullName ?? '')
+    : (fullName?.split(' ')[0] ?? '');
+  if (!nameToken) return MASKED_LEADER_NAME;
   const title = role ? (ROLE_DISPLAY[role] ?? '') : '';
-  return [title, first].filter(Boolean).join(' ');
+  return [title, nameToken].filter(Boolean).join(' ');
 }
 
 // ─── Pagination (AC: cursor-based, 20 per page, cursor on published_at) ─

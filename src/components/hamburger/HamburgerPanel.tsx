@@ -68,7 +68,7 @@ import RpLogo from '../home/RpLogo';
 
 // Responsive panel width — 75% mobile / 50% tablet / 360 fixed desktop.
 const { width: WIN_W } = Dimensions.get('window');
-const PANEL_W = WIN_W >= 1280 ? 360 : WIN_W >= 768 ? WIN_W * 0.5 : WIN_W * 0.75;
+const PANEL_W = WIN_W >= 1280 ? 360 : WIN_W >= 768 ? WIN_W * 0.5 : WIN_W * 0.70;
 
 const LOGOUT_COLOR = 'rgba(240, 237, 230, 0.3)';
 const ICON_SIZE = 22;
@@ -107,7 +107,7 @@ function getInitials(fullName: string | null): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-type IconKey = 'vision' | 'outreach' | 'language' | 'settings' | 'faq';
+type IconKey = 'vision' | 'outreach' | 'language' | 'invite' | 'settings' | 'faq';
 
 function MenuIcon({ icon }: { icon: IconKey }) {
   const stroke = Colors.accent;
@@ -145,6 +145,13 @@ function MenuIcon({ icon }: { icon: IconKey }) {
           />
         </Svg>
       );
+    case 'invite':
+      return (
+        <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none">
+          <Path d="M21.5 2.5L11 13" stroke={stroke} strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M21.5 2.5L15 21.5l-4-8.5-8.5-4 19-6.5z" stroke={stroke} strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
     case 'settings':
       return (
         <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none">
@@ -180,9 +187,11 @@ interface MenuItemProps {
   label: string;
   onPress: () => void;
   last?: boolean;
+  // CD v5 — Invite row labels in accent (sky). Optional; defaults to text.
+  labelColor?: string;
 }
 
-function MenuItem({ icon, label, onPress, last }: MenuItemProps) {
+function MenuItem({ icon, label, onPress, last, labelColor }: MenuItemProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -191,7 +200,7 @@ function MenuItem({ icon, label, onPress, last }: MenuItemProps) {
       accessibilityLabel={label}
     >
       <MenuIcon icon={icon} />
-      <Text style={styles.menuLabel}>{label}</Text>
+      <Text style={[styles.menuLabel, labelColor ? { color: labelColor } : null]}>{label}</Text>
     </Pressable>
   );
 }
@@ -347,19 +356,37 @@ export default function HamburgerPanel() {
     }, CLOSE_DURATION_MS + 50);
   }, [close]);
 
-  const handleComingSoon = useCallback(
-    (label: string) => {
-      // Vision / Outreach & Missions / FAQ — KAN-28b not yet built.
-      // Mirror the Language defensive-routing pattern: close panel
-      // first, then surface the placeholder. Swap to navigationRef
-      // when KAN-28b ships.
-      close();
-      setTimeout(() => {
-        Alert.alert(label, 'This section is coming in a future update.');
-      }, CLOSE_DURATION_MS + 50);
-    },
-    [close],
-  );
+  // Hamburger sprint (CD v5 final) — Vision / Outreach / Invite / FAQ now
+  // route to real screens. Same close-then-navigate pattern as Settings:
+  // close panel (animated), then push after the slide-out completes so the
+  // underlying screen surfaces clean.
+  const handleVision = useCallback(() => {
+    close();
+    setTimeout(() => {
+      if (navigationRef.isReady()) navigationRef.navigate('TheVision');
+    }, CLOSE_DURATION_MS + 50);
+  }, [close]);
+
+  const handleOutreach = useCallback(() => {
+    close();
+    setTimeout(() => {
+      if (navigationRef.isReady()) navigationRef.navigate('OutreachMissions');
+    }, CLOSE_DURATION_MS + 50);
+  }, [close]);
+
+  const handleInvite = useCallback(() => {
+    close();
+    setTimeout(() => {
+      if (navigationRef.isReady()) navigationRef.navigate('InviteToReplant');
+    }, CLOSE_DURATION_MS + 50);
+  }, [close]);
+
+  const handleFAQ = useCallback(() => {
+    close();
+    setTimeout(() => {
+      if (navigationRef.isReady()) navigationRef.navigate('FAQ');
+    }, CLOSE_DURATION_MS + 50);
+  }, [close]);
 
   const handleLogout = useCallback(() => {
     // KAN-76 AC — panel STAYS OPEN when Logout is tapped. Alert mounts
@@ -415,15 +442,12 @@ export default function HamburgerPanel() {
         </View>
 
         <View style={styles.menuList}>
-          <MenuItem icon="vision" label="The Vision" onPress={() => handleComingSoon('The Vision')} />
-          <MenuItem
-            icon="outreach"
-            label="Outreach & Missions"
-            onPress={() => handleComingSoon('Outreach & Missions')}
-          />
+          <MenuItem icon="vision" label="The Vision" onPress={handleVision} />
+          <MenuItem icon="outreach" label="Outreach & Missions" onPress={handleOutreach} />
           <MenuItem icon="language" label="Language" onPress={handleLanguage} />
+          <MenuItem icon="invite" label="Invite to Replant" onPress={handleInvite} labelColor={Colors.accent} />
           <MenuItem icon="settings" label="Settings" onPress={handleSettings} />
-          <MenuItem icon="faq" label="FAQ" onPress={() => handleComingSoon('FAQ')} last />
+          <MenuItem icon="faq" label="FAQ" onPress={handleFAQ} last />
         </View>
 
         <View style={styles.footer}>
@@ -432,13 +456,12 @@ export default function HamburgerPanel() {
               <Text style={styles.avatarText}>{getInitials(card?.fullName ?? null)}</Text>
             </View>
             <View style={styles.identityText}>
-              {/* B31 — line 1 format: "${roleLabel} ${firstName} · ${churchOrFallback}".
+              {/* CD v5 final (Founder ruling — name/church/city must align and
+                  fit): two lines, smaller type, so nothing truncates.
+                  Line 1 = "${roleLabel} ${firstName}" only.
                   role === 'other' maps to "Minister" (ministry_leader label,
-                  interim display per B15). When roleLabel resolves to null
-                  (role missing mid-fetch), the format collapses to
-                  "${firstName} · ${churchOrFallback}". Church fallback
-                  is "No Church Registered" so the dot separator never
-                  reads as a trailing artifact. */}
+                  interim per B15). When roleLabel resolves to null (role
+                  missing mid-fetch), line 1 collapses to "${firstName}". */}
               <Text style={styles.identityName} numberOfLines={1}>
                 {(() => {
                   const firstName = card?.firstName ?? '…';
@@ -448,33 +471,25 @@ export default function HamburgerPanel() {
                     : rawRole
                       ? (ROLES.find(r => r.value === rawRole)?.label ?? null)
                       : null;
-                  const churchOrFallback = card?.churchName ?? 'No Church Registered';
-                  return roleLabel
-                    ? `${roleLabel} ${firstName} · ${churchOrFallback}`
-                    : `${firstName} · ${churchOrFallback}`;
+                  return roleLabel ? `${roleLabel} ${firstName}` : firstName;
                 })()}
               </Text>
-              {/* B31 — line 2: location.
-                  - Underground churches: not rendered (KAN-76 privacy rule —
-                    underground geographic data is excluded from all surfaces).
-                  - No church linked OR neither city nor country present:
-                    'No location found'.
-                  - Otherwise: city, country (or whichever is non-null). */}
-              {card?.churchType !== 'underground' && (() => {
-                if (!card?.churchName) {
-                  return (
-                    <Text style={styles.identityLocation} numberOfLines={1}>
-                      No location found
-                    </Text>
-                  );
-                }
-                const parts = [card.city, card.country].filter(Boolean);
-                return (
-                  <Text style={styles.identityLocation} numberOfLines={1}>
-                    {parts.length > 0 ? parts.join(', ') : 'No location found'}
-                  </Text>
-                );
-              })()}
+              {/* CD v5 final — line 2 = "${churchOrFallback} · ${locationPart}".
+                  - Underground churches: church name only, no location
+                    (KAN-76 privacy rule — underground geographic data is
+                    excluded from all surfaces).
+                  - No church linked: 'No Church Registered'.
+                  - locationPart = city/country (whichever is non-null); the
+                    " · " separator is omitted when there's no location. */}
+              <Text style={styles.identityLocation} numberOfLines={1}>
+                {(() => {
+                  const churchOrFallback = card?.churchName ?? 'No Church Registered';
+                  if (card?.churchType === 'underground') return churchOrFallback;
+                  const parts = [card?.city, card?.country].filter(Boolean);
+                  const locationPart = parts.length > 0 ? parts.join(', ') : '';
+                  return locationPart ? `${churchOrFallback} · ${locationPart}` : churchOrFallback;
+                })()}
+              </Text>
             </View>
           </View>
 
@@ -591,6 +606,9 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: Colors.surfaceElevated,
+    // CD v5 — sky-25 ring around the avatar.
+    borderWidth: 0.5,
+    borderColor: Colors.borderAccent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -604,17 +622,18 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   identityName: {
-    fontFamily: Typography.body,
-    // B31 — 17 → 15 so the longer "${role} ${firstName} · ${church}"
-    // format reads at a calmer size and is less likely to truncate
-    // on narrow devices.
-    fontSize: 15,
+    fontFamily: Typography.bodyMedium,
+    // CD v5 final — 15 → 13. Line 1 now carries only "${role} ${firstName}"
+    // (church moved to line 2), so it fits without truncation.
+    fontSize: 13,
     fontWeight: '500',
     color: Colors.text,
   },
   identityLocation: {
-    fontFamily: Typography.body,
-    fontSize: 14,
+    fontFamily: Typography.sansLight,
+    // CD v5 final — 14 → 11.5 / weight 300. Line 2 = "church · location".
+    fontSize: 11.5,
+    fontWeight: '300',
     color: Colors.textMuted,
   },
   logoutRow: {

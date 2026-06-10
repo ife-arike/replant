@@ -24,15 +24,22 @@ import React, { useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
+  LayoutAnimation,
   Linking,
+  Modal,
+  Platform,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { Colors, Spacing, Typography } from '../../constants/theme';
@@ -115,17 +122,59 @@ const toggleStyles = StyleSheet.create({
   },
 });
 
+// Android requires explicit opt-in for LayoutAnimation.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────
 
-function SectionHeader({ number, title }: { number: string; title: string }) {
+function SectionHeader({
+  number,
+  title,
+  isOpen,
+  onPress,
+  alwaysOpen,
+}: {
+  number: string;
+  title: string;
+  isOpen: boolean;
+  onPress: () => void;
+  alwaysOpen?: boolean;
+}) {
+  if (alwaysOpen) {
+    return (
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeadRow}>
+          <Text style={styles.sectionNum}>{number}</Text>
+          <Text style={[styles.sectionTitle, { flex: 1 }]}>{title}</Text>
+        </View>
+        <View style={styles.sectionRule} />
+      </View>
+    );
+  }
   return (
-    <View style={styles.sectionHeader}>
+    <Pressable
+      style={styles.sectionHeader}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${isOpen ? 'expanded' : 'collapsed'}`}
+    >
       <View style={styles.sectionHeadRow}>
         <Text style={styles.sectionNum}>{number}</Text>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionTitle, { flex: 1 }]}>{title}</Text>
+        <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+          <Path
+            d={isOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'}
+            stroke={isOpen ? Colors.accent : Colors.textSubtle}
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
       </View>
       <View style={styles.sectionRule} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -162,6 +211,7 @@ export default function SettingsScreen({
 }: SettingsScreenProps) {
   const navigation = useNavigation();
   const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [displayNamePref, setDisplayNamePref] = useState<DisplayNamePreference>(
     initialDisplayNamePreference ?? 'first_name_only',
@@ -170,6 +220,23 @@ export default function SettingsScreen({
   const [ragStatusState, setRagStatusState] = useState<RagStatus | null>(ragStatus);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [churchIdCopied, setChurchIdCopied] = useState<boolean>(false);
+
+  // Collapsible section accordion — all collapsed by default (About is permanently expanded).
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+  const toggleSection = (num: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenSections(prev => {
+      const next = new Set(prev);
+      if (next.has(num)) { next.delete(num); } else { next.add(num); }
+      return next;
+    });
+  };
+
+  const [faithModalVisible, setFaithModalVisible] = useState(false);
+  const [signOutModalVisible, setSignOutModalVisible] = useState(false);
+
   // 05 Notifications — single preference at MVP. Source of truth is
   // connect-prefs (SecureStore-backed, local-only until DBA lands the
   // BE column). Optimistic toggle UX matches the Anonymous-mode row.
@@ -310,19 +377,7 @@ export default function SettingsScreen({
   // branch flip drives RootNavigator back to Login.
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign out',
-          style: 'destructive',
-          onPress: () => { void signOut(); },
-        },
-      ],
-      { cancelable: true },
-    );
+    setSignOutModalVisible(true);
   };
 
   // ─── Routes that don't exist yet — alert + TODO marker ───
@@ -338,6 +393,9 @@ export default function SettingsScreen({
   // TODO: wire to PrivacyPolicy screen when route exists.
   const handlePrivacyTap = () => {
     Alert.alert('Coming soon', 'Privacy policy will be available soon.');
+  };
+  const handleCommunityCovenantTap = () => {
+    Alert.alert('Coming soon', 'Community covenant will be available soon.');
   };
   // TODO: wire to DeactivateAccount screen when route exists (step-up reauth flow).
   const handleDeactivateTap = () => {
@@ -383,7 +441,15 @@ export default function SettingsScreen({
           activeOpacity={0.6}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.headerBackText}>‹</Text>
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M15 18l-6-6 6-6"
+              stroke={Colors.accent}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.headerMark}>
@@ -401,8 +467,9 @@ export default function SettingsScreen({
         <View style={styles.epigraphRule} />
 
         {/* ── 01 ACCOUNT ── */}
-        <SectionHeader number="01" title="Account" />
-
+        <SectionHeader number="01" title="Account" isOpen={openSections.has('01')} onPress={() => toggleSection('01')} />
+        {openSections.has('01') && (
+        <>
         {/* Email — read-only. Bottom hairline carries through whether the
             Display Name row below is shown or hidden. */}
         <View style={styles.row} accessibilityLabel={`Email: ${email ?? 'not set'}`}>
@@ -502,10 +569,13 @@ export default function SettingsScreen({
         {savedSection === 'account' && (
           <Text style={styles.savedFlash}>Saved</Text>
         )}
+        </>
+        )}
 
         {/* ── 02 PRIVACY ── */}
-        <SectionHeader number="02" title="Privacy" />
-
+        <SectionHeader number="02" title="Privacy" isOpen={openSections.has('02')} onPress={() => toggleSection('02')} />
+        {openSections.has('02') && (
+        <>
         {/* Anonymous mode — toggle + italic-serif helper */}
         <View style={styles.rowLast}>
           <Text style={styles.rowLabel}>Anonymous mode</Text>
@@ -522,10 +592,13 @@ export default function SettingsScreen({
         {savedSection === 'privacy' && (
           <Text style={styles.savedFlash}>Saved</Text>
         )}
+        </>
+        )}
 
         {/* ── 03 CHURCH ── */}
-        <SectionHeader number="03" title="Church" />
-
+        <SectionHeader number="03" title="Church" isOpen={openSections.has('03')} onPress={() => toggleSection('03')} />
+        {openSections.has('03') && (
+        <>
         {/* Church name — read-only */}
         <View
           style={styles.row}
@@ -618,16 +691,21 @@ export default function SettingsScreen({
         {savedSection === 'church' && (
           <Text style={styles.savedFlash}>Saved</Text>
         )}
+        </>
+        )}
 
         {/* ── 04 LANGUAGE ── */}
-        <SectionHeader number="04" title="Language" />
-
+        <SectionHeader number="04" title="Language" isOpen={openSections.has('04')} onPress={() => toggleSection('04')} />
+        {openSections.has('04') && (
+        <>
         <View style={styles.rowLast} accessibilityLabel="App language, coming soon">
           <Text style={styles.rowLabel}>App language</Text>
           <View style={styles.rowValueRow}>
             <Text style={[styles.rowValue, styles.languageComingSoon]}>Coming soon</Text>
           </View>
         </View>
+        </>
+        )}
 
         {/* ── 05 NOTIFICATIONS — HANDOFF §15.2 ── */}
         {/* First notification preference in the app. On by default.
@@ -636,8 +714,9 @@ export default function SettingsScreen({
             Preference is persisted to SecureStore (per-device today)
             via setNotifBadgeEnabled; when DBA lands the column + a
             write RPC, the swap is a single helper in connect-prefs. */}
-        <SectionHeader number="05" title="Notifications" />
-
+        <SectionHeader number="05" title="Notifications" isOpen={openSections.has('05')} onPress={() => toggleSection('05')} />
+        {openSections.has('05') && (
+        <>
         <View style={styles.rowLast}>
           <Text style={styles.rowLabel}>New message badge</Text>
           <View style={styles.toggleRow}>
@@ -649,13 +728,14 @@ export default function SettingsScreen({
           </View>
           <Text style={styles.rowHelper}>{NOTIF_BADGE_HELPER}</Text>
         </View>
+        </>
+        )}
 
-        {/* ── 06 ABOUT ── */}
-        <SectionHeader number="06" title="About" />
-
+        {/* ── 06 ABOUT — permanently expanded, no collapse option ── */}
+        <SectionHeader number="06" title="About" isOpen={true} onPress={() => {}} alwaysOpen />
         <TouchableOpacity
           style={styles.row}
-          onPress={() => (navigation as unknown as { navigate: (n: string) => void }).navigate('DeclarationOfFaith')}
+          onPress={() => setFaithModalVisible(true)}
           activeOpacity={0.6}
           accessibilityRole="button"
         >
@@ -678,13 +758,25 @@ export default function SettingsScreen({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.rowLast}
+          style={styles.row}
           onPress={handlePrivacyTap}
           activeOpacity={0.6}
           accessibilityRole="button"
         >
           <View style={styles.rowValueRow}>
             <Text style={styles.rowValue}>Privacy policy</Text>
+            <Text style={styles.rowChev}>›</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.rowLast}
+          onPress={handleCommunityCovenantTap}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+        >
+          <View style={styles.rowValueRow}>
+            <Text style={styles.rowValue}>Community covenant</Text>
             <Text style={styles.rowChev}>›</Text>
           </View>
         </TouchableOpacity>
@@ -751,6 +843,118 @@ export default function SettingsScreen({
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* ── SIGN OUT CONFIRMATION — centered overlay modal ── */}
+      <Modal
+        visible={signOutModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setSignOutModalVisible(false)}
+      >
+        <Pressable
+          style={styles.signOutOverlay}
+          onPress={() => setSignOutModalVisible(false)}
+        >
+          <Pressable style={styles.signOutCard} onPress={() => {}}>
+            <Text style={styles.signOutModalTitle}>Sign out</Text>
+            <Text style={styles.signOutModalBody}>
+              You'll need to sign in again to access your account.
+            </Text>
+            <View style={styles.signOutModalActions}>
+              <TouchableOpacity
+                onPress={() => setSignOutModalVisible(false)}
+                style={styles.signOutModalCancel}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
+                <Text style={styles.signOutModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setSignOutModalVisible(false);
+                  void signOut();
+                }}
+                style={styles.signOutModalConfirm}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
+              >
+                <Text style={styles.signOutModalConfirmText}>Sign out</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── DECLARATION OF FAITH — reference modal ── */}
+      <Modal
+        visible={faithModalVisible}
+        animationType="slide"
+        onRequestClose={() => setFaithModalVisible(false)}
+      >
+        <View style={[styles.faithModalRoot, { paddingTop: insets.top }]}>
+          <View style={styles.faithModalBar}>
+            <TouchableOpacity
+              onPress={() => setFaithModalVisible(false)}
+              style={styles.faithModalClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={12}
+            >
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M18 6L6 18M6 6l12 12"
+                  stroke={Colors.textMuted}
+                  strokeWidth={1.6}
+                  strokeLinecap="round"
+                />
+              </Svg>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.faithModalBody}
+          >
+            <View style={styles.faithCross}>
+              <View style={styles.faithCrossV} />
+              <View style={styles.faithCrossH} />
+            </View>
+            <Text style={styles.faithTitle}>A Declaration of Faith</Text>
+            <Text style={styles.faithSubtitle}>
+              {'Before you enter, we ask that you affirm\nwhat we stand on.'}
+            </Text>
+            <View style={styles.faithCard}>
+              <Text style={[styles.faithPara, styles.faithParaSpaced]}>
+                I believe that Jesus Christ is the Word of God made flesh — the
+                Lamb of God slain for our sins. He came down from heaven, was
+                born of a virgin, was crucified, buried, and ascended to the
+                right hand of God, then gave to us the gift of the Holy Spirit.
+              </Text>
+              <Text style={[styles.faithPara, styles.faithParaSpaced]}>
+                He is the image of the invisible God. He is our only Lord and
+                Saviour.
+              </Text>
+              <Text style={styles.faithPara}>
+                The Holy Bible is our only source of truth.
+              </Text>
+              <Text style={styles.faithScripture}>
+                Jesus saith unto him, I am the way, the truth, and the life: no
+                man cometh unto the Father, but by me. If ye had known me, ye
+                should have known my Father also: and from henceforth ye know
+                him, and have seen him. — John 14:6-7 KJV
+              </Text>
+              <View style={styles.faithDivider} />
+              <Text style={styles.faithAttribution}>
+                By continuing, I personally affirm this testament as my own.
+              </Text>
+            </View>
+            <Text style={styles.faithFooter}>
+              {'This is not a legal agreement. This is a test of the spirits.\n1 John 4:1'}
+            </Text>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -781,14 +985,8 @@ const styles = StyleSheet.create({
   headerBack: {
     width: 28,
     height: 28,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerBackText: {
-    fontFamily: Typography.body,
-    fontSize: 22,
-    color: Colors.textMuted,
-    lineHeight: 22,
   },
   headerTitle: {
     fontFamily: Typography.display,
@@ -814,7 +1012,7 @@ const styles = StyleSheet.create({
   // ─── Epigraph + rule ───
   epigraph: {
     fontFamily: Typography.displayMediumItalic,
-    fontSize: 15,
+    fontSize: 20,
     color: Colors.accent,
     textAlign: 'center',
     paddingTop: 16,
@@ -1131,4 +1329,181 @@ const styles = StyleSheet.create({
   },
 
   bottomSpacer: { height: Spacing.xxxl },
+
+  // ─── Sign-out confirmation modal ───
+  signOutOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  signOutCard: {
+    width: '100%',
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    padding: 24,
+  },
+  signOutModalTitle: {
+    fontFamily: Typography.display,
+    fontSize: 22,
+    letterSpacing: 0.4,
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  signOutModalBody: {
+    fontFamily: Typography.sansLight,
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  signOutModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  signOutModalCancel: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  signOutModalCancelText: {
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.textMuted,
+  },
+  signOutModalConfirm: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 53, 69, 0.12)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(220, 53, 69, 0.30)',
+    alignItems: 'center',
+  },
+  signOutModalConfirmText: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 15,
+    color: Colors.red,
+  },
+
+  // ─── Declaration of Faith reference modal ───
+  faithModalRoot: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  faithModalBar: {
+    paddingTop: 20,
+    paddingHorizontal: 22,
+    paddingBottom: 8,
+    alignItems: 'flex-end',
+  },
+  faithModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  faithModalBody: {
+    paddingHorizontal: 22,
+    paddingBottom: 48,
+    alignItems: 'center',
+  },
+  faithCross: {
+    width: 28,
+    height: 28,
+    position: 'relative',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  faithCrossV: {
+    position: 'absolute',
+    left: 13,
+    top: 0,
+    width: 2,
+    height: 28,
+    backgroundColor: Colors.accent,
+  },
+  faithCrossH: {
+    position: 'absolute',
+    left: 0,
+    top: 9.8,
+    width: 28,
+    height: 2,
+    backgroundColor: Colors.accent,
+  },
+  faithTitle: {
+    fontFamily: Typography.display,
+    fontSize: 26,
+    letterSpacing: 0.05 * 26,
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  faithSubtitle: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.textMuted,
+    lineHeight: 13 * 1.5,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  faithCard: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    borderTopWidth: 1.5,
+    borderTopColor: Colors.accent,
+    borderRadius: 6,
+    padding: 16,
+    marginBottom: 24,
+  },
+  faithPara: {
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 18,
+    color: Colors.text,
+    lineHeight: 18 * 1.6,
+  },
+  faithParaSpaced: {
+    marginBottom: 14,
+  },
+  faithScripture: {
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 15,
+    color: Colors.textMuted,
+    lineHeight: 15 * 1.6,
+    marginTop: 18,
+    marginBottom: 12,
+  },
+  faithDivider: {
+    height: 0.5,
+    backgroundColor: Colors.border,
+    marginVertical: 10,
+  },
+  faithAttribution: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 12 * 1.6,
+  },
+  faithFooter: {
+    fontFamily: Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 11 * 1.5,
+  },
 });
