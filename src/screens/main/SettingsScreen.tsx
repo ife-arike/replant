@@ -42,7 +42,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
 import { ROLES } from '../../utils/displayHelpers';
@@ -70,7 +70,7 @@ const SUFFIX_OTHER_MAX_LEN = 12;
 // Inlined colors per design_handoff_settings_name_fields (the handoff offers
 // these as inline values OR theme tokens; inlining keeps theme.ts untouched).
 const TEXT_SOFT = 'rgba(240, 237, 230, 0.65)';
-const HAIRLINE = 'rgba(240, 237, 230, 0.18)';
+const NF_HAIRLINE = 'rgba(240, 237, 230, 0.18)';
 const ACCENT_TINT = 'rgba(107, 181, 232, 0.10)';
 
 // ─── KAN-229 sub-components ────────────────────────────────────────────
@@ -79,7 +79,7 @@ const ACCENT_TINT = 'rgba(107, 181, 232, 0.10)';
 
 // Restyled checkbox per design_handoff_settings_name_fields:
 //   - 14×14 square, Radius.sm
-//   - Off: 0.5 px HAIRLINE border on Colors.background
+//   - Off: 0.5 px NF_HAIRLINE border on Colors.background
 //   - On: 0.5 px Colors.accent border on ACCENT_TINT fill + sky tick
 //   - Sky tick drawn with two borders rotated −45° (no asset)
 //   - Label sits 12 px to the right, body 13 px, soft-alpha when off
@@ -2089,7 +2089,7 @@ const nameFieldStyles = StyleSheet.create({
     height: 14,
     borderRadius: Radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: HAIRLINE,
+    borderColor: NF_HAIRLINE,
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2177,7 +2177,7 @@ const nameFieldStyles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: HAIRLINE,
+    backgroundColor: NF_HAIRLINE,
     marginBottom: 14,
   },
   sheetEyebrowRow: {
@@ -2283,7 +2283,7 @@ const nameFieldStyles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderRadius: Radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: HAIRLINE,
+    borderColor: NF_HAIRLINE,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: Typography.displayMediumItalic,
