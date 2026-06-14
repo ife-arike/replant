@@ -2120,10 +2120,12 @@ const nameFieldStyles = StyleSheet.create({
   },
 
   // ── Honorific / Suffix row ──
+  // Design handoff calls for a 14 px gap between label + value and a
+  // 6 px gap between value + chevron — flexbox `gap` can only give us
+  // one number across all children, so we use margins instead.
   fieldRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 14,
     minHeight: 38,
     paddingVertical: 6,
   },
@@ -2134,6 +2136,7 @@ const nameFieldStyles = StyleSheet.create({
     color: Colors.textMuted,
     textTransform: 'uppercase',
     minWidth: 64,
+    marginRight: 14,
   },
   fieldRowValue: {
     fontFamily: Typography.displayMediumItalic,
