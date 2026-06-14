@@ -43,6 +43,7 @@ import ArticleCard from './ArticleCard';
 import EncouragementCard from './EncouragementCard';
 import TogetherCard from './TogetherCard';
 import CallToActionCard from './CallToActionCard';
+import HomeSectionLabel from './HomeSectionLabel';
 import {
   PAGE_SIZE,
   ROLE_DISPLAY,
@@ -156,7 +157,10 @@ export default function NetworkFeed() {
   if (loadState === 'error') {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>No updates yet. Check back soon.</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>The wall is still for now.</Text>
+          <Text style={styles.emptyBody}>Check back soon for an update from the Network.</Text>
+        </View>
         <Pressable
           onPress={loadInitial}
           accessibilityRole="button"
@@ -180,7 +184,10 @@ export default function NetworkFeed() {
   if (rows.length === 0) {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>No updates yet. Check back soon.</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>The wall is still for now.</Text>
+          <Text style={styles.emptyBody}>Check back soon for an update from the Network.</Text>
+        </View>
       </View>
     );
   }
@@ -192,6 +199,7 @@ export default function NetworkFeed() {
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={Separator}
+      ListHeaderComponent={<HomeSectionLabel>Network updates</HomeSectionLabel>}
       onEndReached={loadMore}
       onEndReachedThreshold={0.5}
       refreshControl={
@@ -369,12 +377,16 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
       try {
         const { data: userRow, error: userErr } = await supabase
           .from('users')
-          .select('full_name, church_id, role, anonymous, display_name_preference')
+          .select('first_name, middle_name, last_name, honorific, last_name_first, church_id, role, anonymous, display_name_preference')
           .eq('id', authorId)
           .maybeSingle();
         if (cancelled || userErr || !userRow) return;
 
-        const fullName = (userRow.full_name ?? '').trim();
+        const firstName = ((userRow as any).first_name as string | null) ?? '';
+        const middleName = ((userRow as any).middle_name as string | null) ?? '';
+        const lastName = ((userRow as any).last_name as string | null) ?? '';
+        const honorific = ((userRow as any).honorific as string | null) ?? null;
+        const lastNameFirst = !!(userRow as any).last_name_first;
         const role = (userRow.role as string | null) ?? null;
         const churchId = userRow.church_id as string | null;
         const isAnon = !!userRow.anonymous;
@@ -426,8 +438,16 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
 
         if (!cancelled) {
           setAuthor({
-            initial: fullName ? fullName.charAt(0).toUpperCase() : '·',
-            name: resolveDisplayName(fullName || null, role, displayNamePref ?? undefined),
+            initial: firstName ? firstName.charAt(0).toUpperCase() : '·',
+            name: resolveDisplayName({
+              firstName: firstName || null,
+              middleName,
+              lastName: lastName || null,
+              honorific,
+              role,
+              displayNamePreference: displayNamePref ?? null,
+              lastNameFirst,
+            }),
             church: (churchRow.name as string | null) ?? '',
           });
         }
@@ -498,6 +518,32 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 13,
     color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  emptyCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderWidth: 0.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(240,237,230,0.14)',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 22,
+    width: '85%',
+  },
+  emptyTitle: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.17,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
     textAlign: 'center',
   },
   retryText: {

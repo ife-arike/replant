@@ -660,15 +660,16 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       setMembersError(null);
     }
     const mapped: BranchMember[] = (memRes.data ?? []).map((r: any) => {
+      // KAN-229: get_branch_members now returns full_name as the fully
+      // composed display string (honorific OR role + given names per
+      // preference + family + last_name_first toggle). Drop the local
+      // split-and-prefix logic.
       const fullName: string = r.full_name ?? '';
-      const [first = ''] = fullName.split(' ');
-      const pref: string | null = r.display_name_preference ?? null;
-      const nameToken = pref === 'full_name' ? fullName : first;
       const roleLabel = getRoleLabel(r.role);
       const churchName = r.ministry_name ?? '';
       const display = !!r.anonymous
         ? `${roleLabel} · ${churchName}`
-        : `${nameToken} · ${churchName}`;
+        : `${fullName} · ${churchName}`;
       return {
         userId: r.user_id,
         ministryId: r.ministry_id,

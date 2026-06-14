@@ -461,6 +461,9 @@ export default function PrayerWallScreen() {
   if (view === 'feed_list') {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
+        {/* Left-edge sky accent — anchor the feed view like the landing. */}
+        <View pointerEvents="none" style={styles.leftEdgeAccent} />
+
         <View style={styles.topBar}>
           <Pressable
             onPress={() => { setView('feed'); setActivePill('feed'); }}
@@ -485,6 +488,13 @@ export default function PrayerWallScreen() {
           )}
         </View>
 
+        {/* Closing sky hairline below the topBar — mirrors the landing
+            view's tabHeader pattern so the feed top reads as anchored,
+            not floating. Separate from headerHairline (which has a
+            14px marginTop tuned for the tabHeader context — would
+            compound here with topBar.paddingBottom). */}
+        <View style={styles.feedListHairline} />
+
         <PrayerWallFilterBar
           selectedCategories={selectedCategories}
           urgency={urgency}
@@ -493,6 +503,13 @@ export default function PrayerWallScreen() {
           onUrgencyChange={setUrgency}
           onClear={handleClearFilters}
         />
+
+        {/* Faint grey closing hairline under the filter bar. Filters need
+            their own visual polish (Founder note 2026-06-10 round 3),
+            but for now this prevents the filters from bleeding straight
+            into the feed cards below. */}
+        <View style={styles.filterBarHairline} />
+
         {renderFeedBody({
           loadState,
           hasFetchedOnce: hasFetchedOnce.current,
@@ -548,6 +565,11 @@ export default function PrayerWallScreen() {
   // the tab header + pill nav chrome. Each renders its own body below.
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
+      {/* Left-edge sky accent — mirrors PersecutedScreen.leftEdgeAccent
+          (which uses red). Anchors the screen visually so the top header
+          reads as framed, not floating. */}
+      <View pointerEvents="none" style={styles.leftEdgeAccent} />
+
       <View style={styles.tabHeader}>
         <Text style={styles.title}>Prayer Wall</Text>
         <Text style={styles.landingSubtitle}>THE BODY GATHERED · IN ONE ACCORD</Text>
@@ -580,6 +602,7 @@ export default function PrayerWallScreen() {
           setRows={setTestimonyRows}
           hasFetchedOnce={testimonyHasFetchedOnce}
           onCelebratedChange={handleCelebratedChange}
+          onPublishTestimony={() => { setView('my_prayers'); setActivePill('my_prayers'); }}
         />
       )}
 
@@ -685,15 +708,32 @@ function renderFeedBody(args: FeedBodyArgs) {
     if (isVerified) {
       return (
         <View style={styles.stateContainer}>
-          <Text style={styles.emptyCopy}>No prayer requests match this filter.</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>The wall is quiet.</Text>
+            <Text style={styles.emptyBody}>
+              When churches share burdens, their prayers will appear here.
+            </Text>
+          </View>
+          <Pressable
+            onPress={onPostPress}
+            accessibilityRole="button"
+            accessibilityLabel="Post a prayer request"
+            style={({ pressed }) => [styles.emptyCta, pressed && styles.emptyCtaPressed]}
+            hitSlop={6}
+          >
+            <Text style={styles.emptyCtaLabel}>POST A PRAYER REQUEST</Text>
+          </Pressable>
         </View>
       );
     }
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>
-          Prayer requests from verified churches will appear here.
-        </Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>The wall is quiet.</Text>
+          <Text style={styles.emptyBody}>
+            Prayer requests from verified churches will appear here.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -754,6 +794,37 @@ function renderFeedBody(args: FeedBodyArgs) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
+
+  // Left-edge sky accent — matches PersecutedScreen's red equivalent.
+  // 1.5px wide, 25% opacity sky, full-height absolute. zIndex 1 puts
+  // it above the background but below sheets/modals (which lift to 10+).
+  leftEdgeAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 1.5,
+    backgroundColor: Colors.accent,
+    opacity: 0.25,
+    zIndex: 1,
+  },
+
+  // Sky closing hairline below the feed_list topBar. No marginTop —
+  // topBar.paddingBottom (18) already provides the breathing space.
+  feedListHairline: {
+    height: 0.5,
+    backgroundColor: 'rgba(107,181,232,0.30)',
+    width: '100%',
+  },
+
+  // FAINT grey closing hairline below the filter bar — sits between
+  // the filters and the prayer-request cards. Founder ruling 2026-06-10:
+  // filters need a stronger visual polish later, this is the holding pattern.
+  filterBarHairline: {
+    height: 0.5,
+    backgroundColor: 'rgba(240,237,230,0.08)',
+    width: '100%',
+  },
 
   // KAN-24 — submit confirmation toast. Mirrors the
   // IntercessionJournalView toast (dark pill, faint hairline, off-white
@@ -859,6 +930,48 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptyCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderWidth: 0.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(240,237,230,0.14)',
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  emptyTitle: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.17,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  emptyCta: {
+    marginTop: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.35)',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  emptyCtaPressed: { opacity: 0.7 },
+  emptyCtaLabel: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 1.61,
+    color: Colors.accent,
   },
   retryText: {
     fontFamily: Typography.mono,

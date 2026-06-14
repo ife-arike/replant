@@ -204,33 +204,48 @@ describe('formatRelativeTime — AC #2', () => {
   });
 });
 
-describe('resolveDisplayName — KAN-201 card system (role humanisation)', () => {
-  it('formats as "{RoleDisplay} {firstName}"', () => {
-    expect(resolveDisplayName('Ruth James', 'ministry_leader')).toBe('Minister Ruth');
-    expect(resolveDisplayName('Ife Arike', 'evangelist')).toBe('Evangelist Ife');
-    expect(resolveDisplayName('Daniel Okoro', 'pastor')).toBe('Pastor Daniel');
+describe('resolveDisplayName — KAN-229 structured-name display', () => {
+  it('formats as "{role-label} {first} {last}" by default (first_name_only)', () => {
+    expect(resolveDisplayName({ firstName: 'Ruth',   lastName: 'James',  role: 'ministry_leader' })).toBe('Minister Ruth James');
+    expect(resolveDisplayName({ firstName: 'Ife',    lastName: 'Arike',  role: 'evangelist' })).toBe('Evangelist Ife Arike');
+    expect(resolveDisplayName({ firstName: 'Daniel', lastName: 'Okoro',  role: 'pastor' })).toBe('Pastor Daniel Okoro');
   });
 
-  it('takes only the first whitespace-delimited token as the first name', () => {
-    expect(resolveDisplayName('Grace Mary Mbeki', 'bishop')).toBe('Bishop Grace');
+  it('includes middle name when displayNamePreference="full_name"', () => {
+    expect(resolveDisplayName({
+      firstName: 'Grace', middleName: 'Mary', lastName: 'Mbeki', role: 'bishop',
+      displayNamePreference: 'full_name',
+    })).toBe('Bishop Grace Mary Mbeki');
+  });
+
+  it('honours last_name_first toggle', () => {
+    expect(resolveDisplayName({
+      firstName: 'Dirk', middleName: 'Daniel', lastName: 'Van Wyk',
+      role: 'reverend', displayNamePreference: 'full_name', lastNameFirst: true,
+    })).toBe('Reverend Van Wyk Dirk Daniel');
+  });
+
+  it('honorific overrides role prefix', () => {
+    expect(resolveDisplayName({
+      firstName: 'Boutros', lastName: 'Mikhail', honorific: 'Anba', role: 'pastor',
+    })).toBe('Anba Boutros Mikhail');
   });
 
   it("maps 'other' role per the Founder ruling (Minister prefix)", () => {
-    // Founder ruling 2026-06-02: 'other' displays the same as ministry_leader.
-    expect(resolveDisplayName('Sam Lee', 'other')).toBe('Minister Sam');
+    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: 'other' })).toBe('Minister Sam Lee');
   });
 
-  it('renders first name only when role is null (no prefix)', () => {
-    expect(resolveDisplayName('Sam Lee', null)).toBe('Sam');
+  it('renders without prefix when role is null', () => {
+    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: null })).toBe('Sam Lee');
   });
 
-  it('renders first name only for an unknown role (defensive — no crash)', () => {
-    expect(resolveDisplayName('Sam Lee', 'archdeacon')).toBe('Sam');
+  it('renders without prefix for unknown role (defensive — no crash)', () => {
+    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: 'archdeacon' })).toBe('Sam Lee');
   });
 
   it('falls back to the masked constant when no name remains', () => {
-    expect(resolveDisplayName(null, 'pastor')).toBe('A leader in the network');
-    expect(resolveDisplayName('', 'pastor')).toBe('A leader in the network');
-    expect(resolveDisplayName(null, null)).toBe('A leader in the network');
+    expect(resolveDisplayName({ firstName: null, lastName: null, role: 'pastor' })).toBe('A leader in the network');
+    expect(resolveDisplayName({ firstName: '',   lastName: '',   role: 'pastor' })).toBe('A leader in the network');
+    expect(resolveDisplayName({ firstName: null, lastName: null, role: null })).toBe('A leader in the network');
   });
 });

@@ -468,9 +468,9 @@ function HeartcryCard({
 function HeartcryEmpty() {
   return (
     <View style={styles.empty}>
-      <Svg width={36} height={36} viewBox="0 0 36 36" style={styles.emptyGlyph}>
-        <Circle cx={18} cy={18} r={16} fill="none" stroke="rgba(217,89,79,0.75)" strokeWidth={1.2} strokeDasharray="2 3" />
-        <Path d="M18 11v8M18 23v.5" stroke="#D9594F" strokeWidth={1.4} strokeLinecap="round" />
+      <Svg width={42} height={42} viewBox="0 0 42 42" style={styles.emptyGlyph}>
+        <Circle cx={21} cy={21} r={19} fill="none" stroke={Colors.red} strokeWidth={1.4} strokeDasharray="2.5 3.5" />
+        <Path d="M21 13v9M21 26v.5" stroke={Colors.red} strokeWidth={1.6} strokeLinecap="round" />
       </Svg>
       <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
       <Text style={styles.emptyBody}>{EMPTY_BODY}</Text>
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
 
   // Empty
   empty: { paddingVertical: 40, paddingHorizontal: 24, alignItems: 'center' },
-  emptyGlyph: { marginBottom: 18, opacity: 0.6 },
+  emptyGlyph: { marginBottom: 18, opacity: 0.95 },
   emptyTitle: {
     fontFamily: Typography.scriptureItalic,
     fontSize: 19,

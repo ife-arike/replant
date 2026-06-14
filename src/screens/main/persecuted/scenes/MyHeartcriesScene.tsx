@@ -218,7 +218,7 @@ function MyHeartcryEmpty({ onShare }: { onShare: () => void }) {
           strokeWidth={1}
         />
       </Svg>
-      <Text style={styles.emptyTitle}>You have shared nothing here, and that is fine.</Text>
+      <Text style={styles.emptyTitle}>No Heartcries written.</Text>
       <Text style={styles.emptyBody}>
         If a day comes when you need to be heard, this space will hold it. Until then, the body is praying around you.
       </Text>

@@ -65,12 +65,6 @@ const HERO_TITLE = 'Make intercession';
 const HERO_SUB = 'Pray through the wall of requests from churches around the world.';
 const HERO_CTA = 'ENTER THE PRAYER WALL';
 
-// MVP — counts are not live yet. The CD makes them feel like they should
-// be ticking, so they're surfaced as hardcoded values that match the CD
-// at this snapshot. KAN-XXX (future) will wire a live counter.
-const HERO_STAT_INTERCEDING = '1,247';
-const HERO_STAT_HOUR_ADDS = '12';
-
 const RECEIVE_LOCKED_TITLE = 'Receive intercession';
 const RECEIVE_LOCKED_SUB = 'Let the body lift your church in prayer.';
 const RECEIVE_LOCKED_BADGE = 'AVAILABLE ON VERIFICATION';
@@ -146,6 +140,7 @@ export default function PrayerWallLanding({
   const isVerified = branch === 'active';
 
   const [previewRows, setPreviewRows] = useState<PrayerRow[]>([]);
+  const [previewLoaded, setPreviewLoaded] = useState<boolean>(false);
   const [churchId, setChurchId] = useState<string | null>(null);
   const [ownRequests, setOwnRequests] = useState<OpenPrayerRow[]>([]);
   const [testimonyRows, setTestimonyRows] = useState<TestimonyRow[]>([]);
@@ -162,9 +157,11 @@ export default function PrayerWallLanding({
       if (cancelled) return;
       if (error || !data) {
         setPreviewRows([]);
+        setPreviewLoaded(true);
         return;
       }
       setPreviewRows((data as PrayerRow[]).slice(0, PREVIEW_LIMIT));
+      setPreviewLoaded(true);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -236,7 +233,7 @@ export default function PrayerWallLanding({
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.bodyPad}>
-        <HeroPrayerCard previewRows={previewRows} onEnterFeed={onEnterFeed} />
+        <HeroPrayerCard previewRows={previewRows} previewLoaded={previewLoaded} onEnterFeed={onEnterFeed} />
 
         {/* Device-pass — sky hairline closing the hero section, matching
             the Persecuted tab's header hairline pattern (0.5 pt, 30%
@@ -308,14 +305,19 @@ function LiveDot() {
 
 function HeroPrayerCard({
   previewRows,
+  previewLoaded,
   onEnterFeed,
 }: {
   previewRows: PrayerRow[];
+  previewLoaded: boolean;
   onEnterFeed: () => void;
 }) {
-  // Skeleton placeholders before the RPC settles — same shape so the
-  // hero card doesn't jump.
-  const showSkeletons = previewRows.length === 0;
+  // Three states:
+  //   not loaded  → skeleton placeholders (RPC in-flight)
+  //   loaded + 0  → soft empty note (no fake skeletons that look like loading)
+  //   loaded + N  → live preview rows
+  const showSkeletons = !previewLoaded;
+  const showEmpty = previewLoaded && previewRows.length === 0;
   return (
     <View style={styles.hero}>
       <View style={styles.heroEyebrowRow}>
@@ -326,24 +328,25 @@ function HeroPrayerCard({
       <Text style={styles.heroSub}>{HERO_SUB}</Text>
 
       <View style={styles.previewList}>
-        {showSkeletons
-          ? [0, 1].map((i) => <PreviewSkeleton key={i} />)
-          : previewRows.map((row) => (
-              <PreviewRow
-                key={row.id}
-                primary={row.prayer_text}
-                meta={`${getLocationLine(row.church_name, row.country)} · ${formatRelativeTime(row.created_at)}`}
-                onPress={onEnterFeed}
-              />
-            ))}
-      </View>
-
-      <View style={styles.heroStats}>
-        <Text style={styles.heroStatNumSky}>{HERO_STAT_INTERCEDING}</Text>
-        <Text style={styles.heroStatTextMuted}> interceding now</Text>
-        <Text style={styles.heroStatDot}>·</Text>
-        <Text style={styles.heroStatNumSky}>{HERO_STAT_HOUR_ADDS}</Text>
-        <Text style={styles.heroStatTextMuted}> added this hour</Text>
+        {showSkeletons ? (
+          [0, 1].map((i) => <PreviewSkeleton key={i} />)
+        ) : showEmpty ? (
+          <View style={styles.previewEmpty}>
+            <Text style={styles.previewEmptyTitle}>Quiet now.</Text>
+            <Text style={styles.previewEmptyBody}>
+              When churches share burdens, their prayers will be the first you see.
+            </Text>
+          </View>
+        ) : (
+          previewRows.map((row) => (
+            <PreviewRow
+              key={row.id}
+              primary={row.prayer_text}
+              meta={`${getLocationLine(row.church_name, row.country)} · ${formatRelativeTime(row.created_at)}`}
+              onPress={onEnterFeed}
+            />
+          ))
+        )}
       </View>
 
       <Pressable
@@ -634,10 +637,17 @@ function TestimonyCardView({
 function TestimonyEmpty() {
   return (
     <View style={styles.testimonyEmpty}>
-      <Svg width={36} height={36} viewBox="0 0 36 36" style={styles.testimonyEmptyGlyph}>
-        <Circle cx={18} cy={18} r={16} fill="none" stroke="rgba(107,181,232,0.3)" strokeWidth={0.8} strokeDasharray="2 3" />
-        <Path d="M11 22c0-3 7-3 7 0M18 22c0-3 7-3 7 0M14 17l4-3 4 3" stroke="rgba(107,181,232,0.6)" strokeWidth={1.2} fill="none" strokeLinecap="round" />
-      </Svg>
+      {/* Variant E (Founder pick 2026-06-10): first-fruit sprout — stem +
+          two leaves rising. Used here on the "Testimonies from the wall"
+          section of the landing only (TestimoniesView standalone has no
+          glyph per Founder ruling 2026-06-10 round 3). */}
+      <View style={styles.testimonyEmptyGlyphCircle}>
+        <Svg width={28} height={28} viewBox="0 0 28 28" fill="none">
+          <Path d="M14 23V11" stroke={Colors.accent} strokeWidth={1.4} strokeLinecap="round" />
+          <Path d="M14 13c-3 0-6-2-6-6 3 0 6 2 6 6z" stroke={Colors.accent} strokeWidth={1.3} fill="none" strokeLinejoin="round" />
+          <Path d="M14 13c3 0 6-2 6-6-3 0-6 2-6 6z" stroke={Colors.accent} strokeWidth={1.3} fill="none" strokeLinejoin="round" />
+        </Svg>
+      </View>
       <Text style={styles.testimonyEmptyTitle}>{TESTIMONY_EMPTY_TITLE}</Text>
       <Text style={styles.testimonyEmptyBody}>{TESTIMONY_EMPTY_BODY}</Text>
     </View>
@@ -705,12 +715,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   heroHairline: {
-    // Device-pass — sky hairline mirroring the Persecuted tab's
-    // headerHairline (height 0.5, 30% brand alpha). Hero card already
-    // carries marginBottom:20, so this sits ~4 pt below it then leaves
-    // 16 pt of air before the Receive card.
+    // Divider between Make Intercession (hero) and Receive Intercession
+    // cards. Founder ruling 2026-06-10: stay neutral grey here — sky was
+    // pulling visual weight away from the cards.
     height: 0.5,
-    backgroundColor: 'rgba(107,181,232,0.30)',
+    backgroundColor: FAINT,
     marginTop: -4,
     marginBottom: 16,
   },
@@ -744,6 +753,31 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   previewList: { gap: 8, marginBottom: 16 },
+  previewEmpty: {
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderWidth: 0.5,
+    borderStyle: 'dashed',
+    borderColor: FAINT,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  previewEmptyTitle: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.17,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  previewEmptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1165,7 +1199,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: 'center',
   },
-  testimonyEmptyGlyph: { marginBottom: 18, opacity: 0.6 },
+  testimonyEmptyGlyph: { marginBottom: 18, opacity: 1 },
+  testimonyEmptyGlyphCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.30)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
   testimonyEmptyTitle: {
     fontFamily: Typography.displayRegular,
     fontSize: 19,

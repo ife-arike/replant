@@ -503,6 +503,9 @@ export default function DMThreadView({
       if (!row) return;
       const isSec = !!row.is_secure_replant_thread;
       const anon = !!row.other_anonymous;
+      // KAN-229: get_leader_thread_list now pre-resolves other_full_name
+      // (honorific OR role prefix + given names per preference + family +
+      // last_name_first). FE no longer re-derives.
       const fullName: string = row.other_full_name ?? '';
       const churchName: string = isSec
         ? 'Replant · admin-monitored'

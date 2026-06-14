@@ -18,14 +18,19 @@
 // is never blank or broken. Initial render shows the fallback
 // synchronously; if a DB row arrives, it replaces the fallback.
 //
-// Non-tappable at MVP per AC. Display format: italic-Cormorant verse
-// followed by mono-uppercase "reference · translation" — matches the
-// wireframe scripture-strip block (Replant Wireframes v4.html lines
-// 1080-1082).
+// Display: italic-Cormorant verse followed by mono "reference · translation",
+// with a 2px sky-accent left rule (CD "rule" variant per home-tab-handoff
+// ScriptureStrip — Founder pick 2026-06-11, replacing the prior hanging-
+// quote "open" variant). Verse caps at COLLAPSED_LINES so the strip's
+// resting height stays consistent regardless of passage length; tapping
+// expands/collapses with a 220ms ease. The "read on" / "fold" cue and tap
+// affordance only appear when the verse actually overflows the cap
+// (measured via an offscreen mirror Text).
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import type { TextLayoutEventData, NativeSyntheticEvent } from 'react-native';
+import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import {
@@ -57,6 +62,13 @@ export function _resetCacheForTesting(): void {
   sessionCache = null;
 }
 
+// Founder ruling 2026-06-11: cap resting height to ~half of what a long
+// passage would otherwise grow to. 3 lines @ 33 lineHeight ≈ 99px verse
+// area — matches AnnouncementCard collapse and keeps daily vertical
+// rhythm consistent. Cue + tap affordance only surface when the verse
+// actually exceeds this cap.
+const COLLAPSED_LINES = 3;
+
 // ─── Component ─────────────────────────────────────────────────────────
 
 export default function DailyScriptureStrip() {
@@ -71,6 +83,34 @@ export default function DailyScriptureStrip() {
     }
     return pickFallbackForDate(now);
   });
+
+  // Overflow detection — natural (uncapped) line count for the current
+  // verse, measured via an offscreen mirror Text. null = not yet measured;
+  // until measured, we don't show the cue (avoids a flash). Resets on
+  // every verse change (day-rollover or DB row arrival).
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  const measuredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+    measuredForRef.current = null;
+  }, [display.content]);
+
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    if (measuredForRef.current === display.content) return;
+    measuredForRef.current = display.content;
+    setNaturalLines(e.nativeEvent.lines.length);
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
+  // Tap-to-expand. New verse starts collapsed.
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => { setExpanded(false); }, [display.reference]);
+  const toggleExpanded = () => {
+    if (!overflows) return;
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
 
   useEffect(() => {
     // Cache hit — no fetch needed; ensure display matches the cache.
@@ -122,46 +162,94 @@ export default function DailyScriptureStrip() {
     };
   }, [today]);
 
-  // KAN-201 home redesign 2026-06-01 — "open" variant (Founder pick):
-  // unboxed, with a faint hanging quote mark. The old bordered box was
-  // removed; the open style now creates the visual separation from the
-  // top bar (which dropped its hairline). Render layer only — all fetch /
-  // cache / fallback logic above is unchanged.
   return (
-    <View
+    <Pressable
+      onPress={toggleExpanded}
+      disabled={!overflows}
       style={styles.wrap}
       accessible
+      accessibilityRole={overflows ? 'button' : undefined}
+      accessibilityState={overflows ? { expanded } : undefined}
       accessibilityLabel={`${display.content} ${display.reference} ${display.translation}`}
+      accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
     >
-      <Text style={styles.quote}>{'“'}</Text>
-      <Text style={styles.verse}>{display.content}</Text>
+      <View style={styles.rule} />
+      <Text style={styles.verse} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
+        {display.content}
+      </Text>
+      {/* Offscreen mirror — measures the natural (uncapped) line count
+          so we can decide whether to show the read-on cue. Identical
+          text styles to the visible verse so wrapping matches. */}
+      <Text
+        style={[styles.verse, styles.mirror]}
+        onTextLayout={handleMirrorLayout}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        pointerEvents="none"
+      >
+        {display.content}
+      </Text>
+      {/* Sky-rule "more" signal — when the verse overflows the 3-line
+          clamp, the left sky rule visually continues past the verse
+          with a tiny sky pip sitting just below the reference line.
+          The pip is the "tap to read more" cue; tapping anywhere on
+          the strip expands the verse and hides the pip + extension.
+          When the verse already fits in ≤3 lines, neither element
+          renders — the strip stays quiet. */}
+      {overflows && !expanded ? <View style={styles.ruleExt} /> : null}
+      {overflows && !expanded ? <View style={styles.rulePip} /> : null}
       <Text style={styles.ref}>
         <Text style={styles.refBook}>{display.reference}</Text>
         {` · ${display.translation}`}
       </Text>
-    </View>
+      <View style={styles.hairline} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'relative', paddingHorizontal: 4, paddingTop: 24, paddingBottom: 18 },
-  // Faint hanging quote mark — Cormorant 500 Medium at 64, sky at 12%.
-  quote: {
+  // "rule" variant: 24px left padding to clear the rule + the original
+  // 4px horizontal breathing room on the right. paddingTop trimmed from
+  // 24 → 12 (2026-06-11) to tighten the gap between the TODAY label and
+  // the verse — the quote-mark variant needed the extra top room; the
+  // rule doesn't.
+  // paddingBottom: 0 — the hairline child owns the closing rhythm now
+  // (its marginTop creates the breathing room between ref and rule).
+  wrap: { position: 'relative', paddingLeft: 24, paddingRight: 4, paddingTop: 12, paddingBottom: 0 },
+  // 2px sky-accent vertical bar, spanning verse → just above the reference
+  // line (matches CD home-tab-handoff ScriptureStrip "rule" variant).
+  rule: {
     position: 'absolute',
-    top: -8,
-    left: -4,
-    fontFamily: Typography.displayMedium,
-    fontSize: 64,
-    lineHeight: 64,
-    color: 'rgba(107,181,232,0.12)',
+    left: 4,
+    top: 16,
+    bottom: 34,
+    width: 2,
+    borderRadius: 2,
+    backgroundColor: Colors.accent,
   },
-  // Verse — Cormorant 300 Light Italic, 23 / 33.
+  // Verse — 2026-06-11 experiment: matches NetworkFeed card title
+  // (displayRegular 21/26 ls 0.1, non-italic). Overrides the prior
+  // scriptureItalic 300 23/33 0.2 — keep this comment so the rollback is
+  // a single edit if Founder reinstates the italic-for-scripture rule.
   verse: {
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 23,
-    lineHeight: 33,
-    letterSpacing: 0.2,
+    fontFamily: Typography.displayRegular,
+    fontSize: 21,
+    lineHeight: 26,
+    letterSpacing: 0.1,
     color: Colors.text,
+  },
+  // Offscreen mirror — measured at the visible verse's column width so
+  // its line wrapping matches. Positioned way offscreen vertically so it
+  // never paints into the user-visible area, but allowed to lay out
+  // normally (NOT height:0) — RN skips text layout / onTextLayout when
+  // the element is collapsed to zero, which silently breaks the
+  // overflow-detection signal.
+  mirror: {
+    position: 'absolute',
+    left: 24,
+    right: 4,
+    top: -10000,
+    opacity: 0,
   },
   // Reference line — mono; book in sky, " · translation" muted.
   ref: {
@@ -169,7 +257,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.5,
     color: Colors.textMuted,
-    marginTop: 18,
+    marginTop: 10,
   },
   refBook: { color: Colors.accent },
+  // Sky-rule extension — sits below the main rule, slightly faded, when
+  // the verse overflows. Pairs with the pip to telegraph "more is
+  // beneath the clamp; tap the strip to expand."
+  ruleExt: {
+    position: 'absolute',
+    left: 4,
+    bottom: 22,
+    width: 2,
+    height: 12,
+    borderRadius: 2,
+    backgroundColor: Colors.accent,
+    opacity: 0.5,
+  },
+  // Sky pip — small solid dot below the rule extension. The visible
+  // tap-affordance signal; hidden once the strip is expanded.
+  rulePip: {
+    position: 'absolute',
+    left: 3,
+    bottom: 14,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.accent,
+  },
+  // Faint grey hairline closing the scripture block — sits a touch below
+  // the reference line so the "fixed header" zone (top bar + TODAY +
+  // verse) ends cleanly here, with scrolling content beginning under it.
+  hairline: {
+    marginTop: 16,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(240,237,230,0.18)',
+  },
 });

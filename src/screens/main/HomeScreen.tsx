@@ -4,10 +4,13 @@
 //   HomeTopBar          — Rp mark + "Replant" wordmark + hamburger
 //   VerificationBanner  — only when branch === 'pending' (KAN-35)
 //   "TODAY"             — section label
-//   DailyScriptureStrip — open variant (KAN-16)
-//   "NETWORK UPDATES"   — section label
-//   NetworkFeed         — FlatList; owns its own scroll + the
-//                         "— held in prayer —" footer (KAN-17)
+//   DailyScriptureStrip — rule variant + closing hairline (KAN-16)
+//   NetworkFeed         — FlatList owns its own scroll, including the
+//                         "NETWORK UPDATES" section label (2026-06-11)
+//                         and "— held in prayer —" footer (KAN-17).
+//
+// The fixed top zone ends at the DailyScriptureStrip hairline — the
+// "NETWORK UPDATES" label scrolls with the feed beneath it.
 //
 // The screen uses a View (not a ScrollView) at the top level because
 // NetworkFeed is a FlatList and must own the scroll — the feed fills the
@@ -62,7 +65,6 @@ export default function HomeScreen() {
         <HomeSectionLabel>Today</HomeSectionLabel>
         <DailyScriptureStrip />
 
-        <HomeSectionLabel>Network updates</HomeSectionLabel>
         <View style={styles.feedZone}>
           <NetworkFeed />
         </View>

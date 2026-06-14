@@ -538,11 +538,10 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
     const role: string | null = r.other_role ?? null;
     const rawChurchName: string = r.other_church_name ?? '';
     const roleLabel = role ? getRoleLabel(role) : '';
-    // Name line per data.jsx leaderName() canonical rule. In the
-    // CD prototype `fullName` already starts with the role ("Pastor
-    // Wangari Mwangi"). Our schema stores `full_name` without the
-    // prefix, so we compose `${RoleLabel} ${fullName}` to match the
-    // prototype's rendering.
+    // KAN-229: get_leader_thread_list now returns other_full_name as the
+    // fully composed display string (honorific OR role prefix + given
+    // names per preference + family name + last_name_first toggle).
+    // FE no longer re-derives the split-and-prefix logic here.
     let displayName: string;
     if (isSecure) {
       displayName = 'Replant Team';
@@ -550,9 +549,7 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
       // Anonymous stays role-only — protects identity.
       displayName = roleLabel || 'Leader';
     } else {
-      const pref: string | null = r.other_display_name_preference ?? null;
-      const nameToken = pref === 'full_name' ? fullName : (fullName.split(' ')[0] ?? fullName);
-      displayName = roleLabel ? `${roleLabel} ${nameToken}`.trim() : nameToken;
+      displayName = fullName || (roleLabel || 'Leader');
     }
     // Church line — just the church name. No role suffix here; the
     // role is now baked into the name line above.
@@ -803,6 +800,16 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
 
   const hasMore = visibleCount < allThreads.length;
 
+  // Replant Team welcome DM is system-managed and should not satisfy the
+  // "you have leader connections" condition. When the only rows are
+  // Replant Team threads, render them at the top and show the empty
+  // state with the "Find a Leader" CTA below.
+  const realThreadsCount = useMemo(
+    () => filtered.filter((t) => !t.isSecure).length,
+    [filtered],
+  );
+  const showEmptyBelowSecure = realThreadsCount === 0 && filtered.length > 0 && query.trim().length < 2;
+
   return (
     <View style={styles.root}>
       <View style={[styles.search, focused && styles.searchFocused]}>
@@ -916,7 +923,16 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
               </Text>
             </View>
           }
-          ListFooterComponent={<CovenantFooter />}
+          ListFooterComponent={
+            showEmptyBelowSecure ? (
+              <>
+                <EmptyView onFind={onFindLeader} />
+                <CovenantFooter />
+              </>
+            ) : (
+              <CovenantFooter />
+            )
+          }
         />
       )}
     </View>

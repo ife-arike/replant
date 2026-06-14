@@ -36,15 +36,15 @@
 //   - No expo-blur — overlays are dim-only by convention.
 //
 // KAN-223 additions:
-//   - Region pill (top-right) — names the currently faced region; tapping
-//     it opens the RegionalPanel via onPickRegion.
 //   - Faced-region detection — computed each rotation tick and on map-idle;
 //     fires onFaceRegion only when the RegionKey changes (key-change guard
-//     on facedKeyRef), avoiding redundant parent re-renders.
-//   - Globe-body tap → onPickRegion — detects a tap (dx/dy < 12 px, not a
-//     drag) on the globe body (not a dot) and fires onPickRegion for the
-//     currently faced region. dotPressedRef guards: if a dot was pressed,
-//     the body-tap handler skips so onChurchSelect wins.
+//     on facedKeyRef), avoiding redundant parent re-renders. The host uses
+//     this to keep the REGIONS pill pointed at the currently faced region.
+//   - Globe-body tap does NOT open the regional panel.
+//     Founder ruling 2026-06-11: the REGIONS pill (TheChurchScreen) is the
+//     SOLE entry point to the regional panel. Globe-body and cluster taps
+//     do not open it. A dot tap opens the church sheet; a cluster tap
+//     zooms; anywhere else is a no-op (rotation pause/resume only).
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -127,9 +127,6 @@ interface Props {
       Handled internally (pill state); forwarded to host for any host-level
       tracking. Pass undefined if no host-side tracking is needed. */
   onFaceRegion?: (region: RegionDef) => void;
-  /** KAN-223: Fires when the user taps the globe body (not a dot) or the
-      region pill. The host should open the RegionalPanel for this region. */
-  onPickRegion?: (region: RegionDef) => void;
 }
 
 export default function GlobeView({
@@ -144,7 +141,6 @@ export default function GlobeView({
   forcePaused = false,
   bottomInset = 88,
   onFaceRegion,
-  onPickRegion,
 }: Props) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -183,18 +179,9 @@ export default function GlobeView({
   const [facedRegion, setFacedRegion] = useState<RegionDef | null>(null);
   const facedKeyRef = useRef<string | null>(null);
 
-  // KAN-223: Globe-body tap guard. Set to true in handleSourcePress when a
-  // non-cluster dot is pressed. handleTouchEnd checks this ref; if true, the
-  // body-tap→onPickRegion path is skipped so onChurchSelect always wins.
-  const dotPressedRef = useRef(false);
-  // Touch start position — used to distinguish a tap (small delta) from a drag.
-  const touchStartCoordRef = useRef<{ x: number; y: number } | null>(null);
-  // KAN-223 race fix (2026-06-05): defer onPickRegion by 250ms so the Mapbox
-  // feature-press (handleSourcePress) — which fires AFTER RN's handleTouchEnd
-  // — has a window to set dotPressedRef and cancel this pending region open.
-  // Combined with the zoom gate, this prevents a pin tap at INITIAL_ZOOM from
-  // also opening the regional panel under the church sheet.
-  const pendingRegionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 2026-06-11: globe-body tap no longer triggers onPickRegion (Founder
+  // ruling — REGIONS pill is the sole entry point). The dot/touch refs and
+  // 250ms defer that disambiguated dot vs. body taps have been removed.
 
   // KAN-223: Internal faced-region handler. Sets pill state AND forwards to
   // the optional host prop. Guards on key change (facedKeyRef).
@@ -280,71 +267,30 @@ export default function GlobeView({
 
   useEffect(() => () => {
     clearResumeCycle();
-    if (pendingRegionRef.current) clearTimeout(pendingRegionRef.current);
   }, [clearResumeCycle]);
 
   // ── Touch + Mapbox events ──
-  // Fix 3: pause/resume is driven by RN core onTouchStart/onTouchEnd on
-  // MapView. These fire only on real user touches (not on programmatic
-  // setCamera ticks), which removes the runaway-rotation + drag-glitch
-  // we saw with the prior isProgrammatic flag pattern.
+  // Pause/resume is driven by RN core onTouchStart/onTouchEnd on MapView.
+  // These fire only on real user touches (not on programmatic setCamera
+  // ticks), which removes the runaway-rotation + drag-glitch seen with
+  // the prior isProgrammatic flag pattern.
   //
-  // Contract per globe.jsx:
+  // Contract:
   //   onPointerDown → pauseRotation (immediate, clears timers)
   //   onPointerUp   → scheduleResume (3.5s → 600ms cue → resume)
   //
-  // KAN-223: handleTouchStart also records the touch position so
-  // handleTouchEnd can detect a tap (dx/dy < 12 px) vs. a drag.
-  // A globe-body tap fires onPickRegion for the currently faced region.
-  // dotPressedRef guards: if a dot triggered handleSourcePress first,
-  // onPickRegion is skipped and onChurchSelect wins.
-  const handleTouchStart = useCallback(
-    (e: { nativeEvent: { locationX: number; locationY: number } }) => {
-      touchStartCoordRef.current = {
-        x: e.nativeEvent.locationX,
-        y: e.nativeEvent.locationY,
-      };
-      setPaused(true);
-      setResuming(false);
-      clearResumeCycle();
-    },
-    [clearResumeCycle],
-  );
+  // 2026-06-11: globe-body and cluster taps no longer open the regional
+  // panel. The REGIONS pill is the sole entry point. Touch handlers now
+  // own pause/resume only.
+  const handleTouchStart = useCallback(() => {
+    setPaused(true);
+    setResuming(false);
+    clearResumeCycle();
+  }, [clearResumeCycle]);
 
-  const handleTouchEnd = useCallback(
-    (e: { nativeEvent: { locationX: number; locationY: number } }) => {
-      const start = touchStartCoordRef.current;
-      // Globe-body tap detection — only fires onPickRegion when:
-      //   1. We have a recorded start position.
-      //   2. A dot was NOT pressed (dotPressedRef guards; resets below).
-      //   3. The globe is at/near the wide world view (zoom < REGIONAL_ZOOM).
-      //      Zoom-level gate (2026-06-05): once zoomed into regional density
-      //      or beyond, the user is browsing individual pins, not regions —
-      //      so body taps do nothing and a pin tap opens ONLY the church
-      //      sheet. This replaces the prior 100ms pendingRegionRef defer,
-      //      which raced unreliably against the Mapbox feature-press.
-      //   4. Movement is < 12 px in both axes (tap, not drag).
-      if (start && !dotPressedRef.current && currentZoomRef.current < REGIONAL_ZOOM) {
-        const dx = Math.abs(e.nativeEvent.locationX - start.x);
-        const dy = Math.abs(e.nativeEvent.locationY - start.y);
-        if (dx < 12 && dy < 12) {
-          const faced = facedRegionForCenter(currentLngRef.current, currentLatRef.current);
-          // 250ms defer (2026-06-05): handleSourcePress fires after this
-          // handler; if a dot was hit it cancels this timer (see below), so
-          // a pin tap opens ONLY the church sheet. 100ms was too short and
-          // raced unreliably.
-          pendingRegionRef.current = setTimeout(() => {
-            pendingRegionRef.current = null;
-            onPickRegion?.(faced);
-          }, 250);
-        }
-      }
-      dotPressedRef.current = false;
-      touchStartCoordRef.current = null;
-      scheduleResume();
-    },
-    [scheduleResume, onPickRegion],
-  );
+  const handleTouchEnd = useCallback(() => {
+    scheduleResume();
+  }, [scheduleResume]);
 
   // onMapIdle captures the user's final zoom/center for refs so the
   // resumed rotation continues from where they left the map. Also drives
@@ -441,18 +387,6 @@ export default function GlobeView({
       return;
     }
     if (typeof props.id === 'string') {
-      // KAN-223: flag that a dot was pressed so the handleTouchEnd
-      // body-tap guard skips onPickRegion and onChurchSelect wins. The
-      // zoom-level gate in handleTouchEnd is the primary defense against
-      // a pin tap also opening the regional panel; dotPressedRef remains
-      // the same-zoom-level body-vs-dot disambiguator.
-      dotPressedRef.current = true;
-      // Cancel any deferred region open queued by handleTouchEnd — a dot was
-      // pressed, so the church sheet wins and the regional panel must NOT open.
-      if (pendingRegionRef.current) {
-        clearTimeout(pendingRegionRef.current);
-        pendingRegionRef.current = null;
-      }
       onChurchSelect(props.id);
     }
   }, [onChurchSelect, reduced]);
@@ -584,8 +518,8 @@ export default function GlobeView({
       {/* KAN-223: Region pill removed — Founder ruling 2026-06-04.
           The existing "REGIONS" button in the host header chrome is the
           sole entry point for the panel; it reads the faced region via
-          onFaceRegion forwarded to TheChurchScreen. Globe-body tap still
-          fires onPickRegion for the currently faced region (unchanged). */}
+          onFaceRegion forwarded to TheChurchScreen. 2026-06-11: globe-body
+          taps no longer open the regional panel either — pill-only. */}
 
       {/* Zoom-out pill — mirrors RE-CENTER ME on CAML for visual parity.
           Hidden while any overlay is open (forcePaused) so it doesn't

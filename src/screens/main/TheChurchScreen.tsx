@@ -351,7 +351,8 @@ export default function TheChurchScreen() {
   );
 
   // KAN-223: Open the regional panel for the given RegionDef.
-  // Called from GlobeView's onPickRegion (globe-body tap or pill tap).
+  // 2026-06-11: pill-only entry. Called from handleRegionsPress when the
+  // user taps the REGIONS button in the CAL header.
   const handlePickRegion = useCallback(
     (def: RegionDef) => {
       setRegional(buildRegion(def));
@@ -493,9 +494,9 @@ export default function TheChurchScreen() {
             // globe stops rotating + pulsing the moment they swap surfaces.
             forcePaused={anyOverlayOpen || page !== 1}
             bottomInset={88}
-            // KAN-223: globe-body tap → open panel for the currently faced
-            // region. onFaceRegion tracks the facing for the REGIONS button.
-            onPickRegion={handlePickRegion}
+            // 2026-06-11: globe-body tap no longer opens the regional panel
+            // (Founder ruling — pill-only). onFaceRegion still tracks the
+            // facing so the REGIONS button opens the correct region.
             onFaceRegion={setCalFacedRegion}
           />
 

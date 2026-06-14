@@ -68,18 +68,19 @@ const MASKED_NAME = 'A leader in the network';
 
 // Resolve the rendered author name for a comment row.
 //
-// mask_reason === 'none'  → "{RoleDisplay} {firstName}" (e.g. "Minister Ruth").
-//                           A first name is required — without one we fall back
-//                           to the masked constant (masking is the safe default).
+// mask_reason === 'none'  → use author_name as-is. The server-side helper
+//                           public.resolve_display_name() already returns
+//                           the fully-composed string with honorific/role
+//                           prefix + first/middle/last per the leader's
+//                           display_name_preference + last_name_first
+//                           toggle. The FE no longer adds a prefix here.
 // mask_reason === 'anon' or 'underground' with a role → "A fellow {role}"
 //                           (lowercase role, e.g. "A fellow minister").
 // No role or 'no_church'  → MASKED_NAME constant.
 function displayName(c: Comment): string {
   if (c.mask_reason === 'none') {
-    const first = c.author_name?.split(' ')[0] ?? '';
-    if (!first) return MASKED_NAME;
-    const title = c.role ? (ROLE_DISPLAY[c.role] ?? '') : '';
-    return [title, first].filter(Boolean).join(' ');
+    const name = c.author_name?.trim() ?? '';
+    return name || MASKED_NAME;
   }
   if (c.role) {
     return 'A fellow ' + (ROLE_DISPLAY[c.role] ?? 'leader').toLowerCase();
