@@ -23,7 +23,6 @@
 import React, { useRef, useState } from 'react';
 import {
   AccessibilityInfo,
-  Alert,
   LayoutAnimation,
   Linking,
   Modal,
@@ -33,6 +32,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   UIManager,
   View,
@@ -47,6 +47,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
 import { ROLES } from '../../utils/displayHelpers';
 import RpMark from '../../components/icons/RpMark';
+import ComingSoonModal from '../../components/common/ComingSoonModal';
 import {
   setNotifBadgeEnabled,
   useNotifBadgeEnabled,
@@ -58,12 +59,212 @@ type DisplayNamePreference = 'first_name_only' | 'full_name';
 type RagStatus = 'green' | 'amber' | 'red';
 type SavedSection = 'account' | 'privacy' | 'church' | null;
 
+// KAN-229 — name-fields fix (design_handoff_settings_name_fields, 2026-06-14).
+// Honorific list trimmed to the canonical 6 per the design (no "Other" — the
+// suffix picker carries the free-form branch). "Not set" is rendered as a
+// neutral cleared state (sans, not italic) at the top of the picker, and is
+// stored as null in users.honorific.
+const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch'] as const;
+const SUFFIXES = ['PhD', 'MDiv', 'DMin', 'ThD', 'DD'] as const;
+const SUFFIX_OTHER_MAX_LEN = 12;
+// Inlined colors per design_handoff_settings_name_fields (the handoff offers
+// these as inline values OR theme tokens; inlining keeps theme.ts untouched).
+const TEXT_SOFT = 'rgba(240, 237, 230, 0.65)';
+const HAIRLINE = 'rgba(240, 237, 230, 0.18)';
+const ACCENT_TINT = 'rgba(107, 181, 232, 0.10)';
+
+// ─── KAN-229 sub-components ────────────────────────────────────────────
+// Inlined here because they're private to Settings; not reusable elsewhere
+// in the app (the design treats them as 01 Account-specific UI primitives).
+
+// Restyled checkbox per design_handoff_settings_name_fields:
+//   - 14×14 square, Radius.sm
+//   - Off: 0.5 px HAIRLINE border on Colors.background
+//   - On: 0.5 px Colors.accent border on ACCENT_TINT fill + sky tick
+//   - Sky tick drawn with two borders rotated −45° (no asset)
+//   - Label sits 12 px to the right, body 13 px, soft-alpha when off
+function NameFieldCheckbox({
+  checked,
+  label,
+  onPress,
+}: {
+  checked: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={nameFieldStyles.checkboxRow}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+    >
+      <View
+        style={[
+          nameFieldStyles.checkboxBox,
+          checked && nameFieldStyles.checkboxBoxOn,
+        ]}
+      >
+        {checked && <View style={nameFieldStyles.checkboxTick} />}
+      </View>
+      <Text
+        style={[
+          nameFieldStyles.checkboxLabel,
+          !checked && nameFieldStyles.checkboxLabelOff,
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// Honorific / Suffix row chassis. Mono uppercase label LEFT (min-width 64
+// so the labels stack-align), italic-serif sky value, sky chevron. Whole
+// row is one tappable target (~38 px tall) that opens the picker sheet.
+function NameFieldRow({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: string | null;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={nameFieldStyles.fieldRow}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, currently ${value ?? 'Not set'}`}
+    >
+      <Text style={nameFieldStyles.fieldRowLabel}>{label}</Text>
+      <Text style={nameFieldStyles.fieldRowValue}>{value ?? 'Not set'}</Text>
+      <Text style={nameFieldStyles.fieldRowChev}>{'›'}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// Shared picker-sheet chassis. Bottom-anchored Modal with:
+//   - Backdrop scrim, tap-to-dismiss
+//   - Grip handle (36×4)
+//   - Mono eyebrow flanked by hairline rules
+//   - Italic-serif title (22pt)
+//   - Italic-serif sub-line (12.5pt, soft alpha)
+//   - 28×0.5 px sky-mid centred rule
+//   - Children (options list OR Other free-text branch)
+//   - Foot copy (mono, sky)
+function NameFieldPickerSheet({
+  visible,
+  eyebrow,
+  title,
+  subline,
+  footCopy,
+  onClose,
+  children,
+}: {
+  visible: boolean;
+  eyebrow: string;
+  title: string;
+  subline: string;
+  footCopy: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <Pressable style={nameFieldStyles.sheetScrim} onPress={onClose}>
+        <Pressable style={nameFieldStyles.sheetCard} onPress={() => {}}>
+          <View style={nameFieldStyles.sheetGrip} />
+          <View style={nameFieldStyles.sheetEyebrowRow}>
+            <View style={nameFieldStyles.sheetEyebrowRule} />
+            <Text style={nameFieldStyles.sheetEyebrow}>{eyebrow}</Text>
+            <View style={nameFieldStyles.sheetEyebrowRule} />
+          </View>
+          <Text style={nameFieldStyles.sheetTitle}>{title}</Text>
+          <Text style={nameFieldStyles.sheetSubline}>{subline}</Text>
+          <View style={nameFieldStyles.sheetTitleRule} />
+          {children}
+          <Text style={nameFieldStyles.sheetFoot}>{footCopy}</Text>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// Single picker-option row. Glyph column + italic-serif title (or sans
+// for the "Not set" neutral cleared state per the handoff).
+function NameFieldPickerOption({
+  selected,
+  label,
+  onPress,
+  isNotSet,
+  isLast,
+}: {
+  selected: boolean;
+  label: string;
+  onPress: () => void;
+  isNotSet?: boolean;
+  isLast?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        nameFieldStyles.optionRow,
+        !isLast && nameFieldStyles.optionRowDivider,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.6}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+    >
+      <Text
+        style={[
+          nameFieldStyles.optionGlyph,
+          selected && nameFieldStyles.optionGlyphSelected,
+        ]}
+      >
+        {selected ? '◉' : '◯'}
+      </Text>
+      <Text
+        style={[
+          isNotSet ? nameFieldStyles.optionLabelNeutral : nameFieldStyles.optionLabel,
+          selected && nameFieldStyles.optionLabelSelected,
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 interface SettingsScreenProps {
   userId: string;
   email?: string | null;
   initialDisplayNamePreference?: DisplayNamePreference;
+  // KAN-229 — name-field modifiers (live preview + persistence).
+  initialLastNameFirst?: boolean;
+  initialIncludeMiddleName?: boolean;
+  initialHonorific?: string | null;
+  initialSuffix?: string | null;
   anonymousMode?: boolean;
   fullName?: string | null;
+  // KAN-229 — structured name parts. Container fetches these from
+  // users.first_name / middle_name / last_name so previews don't need
+  // to whitespace-split fullName as a heuristic. fullName is still
+  // accepted for back-compat.
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
   userRole?: string | null;
   churchCode?: string | null;
   churchName?: string | null;
@@ -201,8 +402,15 @@ export default function SettingsScreen({
   userId,
   email,
   initialDisplayNamePreference = 'first_name_only',
+  initialLastNameFirst = false,
+  initialIncludeMiddleName = false,
+  initialHonorific = null,
+  initialSuffix = null,
   anonymousMode = false,
   fullName = null,
+  firstName: firstNameProp = null,
+  middleName: middleNameProp = null,
+  lastName: lastNameProp = null,
   userRole = null,
   churchCode = null,
   churchName = null,
@@ -215,6 +423,22 @@ export default function SettingsScreen({
 
   const [displayNamePref, setDisplayNamePref] = useState<DisplayNamePreference>(
     initialDisplayNamePreference ?? 'first_name_only',
+  );
+  // KAN-229 — name-field modifier state.
+  const [lastNameFirst, setLastNameFirst] = useState<boolean>(initialLastNameFirst);
+  const [includeMiddleName, setIncludeMiddleName] = useState<boolean>(initialIncludeMiddleName);
+  const [honorific, setHonorific] = useState<string | null>(initialHonorific);
+  const [suffix, setSuffix] = useState<string | null>(initialSuffix);
+  const [honorificPickerVisible, setHonorificPickerVisible] = useState(false);
+  const [suffixPickerVisible, setSuffixPickerVisible] = useState(false);
+  // Suffix "Other…" branch — when the leader picks Other from the suffix
+  // sheet, the options list is swapped for a small text input. otherDraft
+  // holds the in-progress value; Confirm validates (trim, max 12) and writes.
+  const [suffixOtherMode, setSuffixOtherMode] = useState<boolean>(false);
+  const [suffixOtherDraft, setSuffixOtherDraft] = useState<string>(
+    initialSuffix && !(SUFFIXES as readonly string[]).includes(initialSuffix)
+      ? initialSuffix
+      : '',
   );
   const [anonymousModeState, setAnonymousModeState] = useState<boolean>(anonymousMode);
   const [ragStatusState, setRagStatusState] = useState<RagStatus | null>(ragStatus);
@@ -262,19 +486,43 @@ export default function SettingsScreen({
     savedTimer.current = setTimeout(() => setSavedSection(null), 1500);
   };
 
-  // ─── Derived specimens — first name + role from public.users ───
+  // ─── Derived specimens — KAN-229 live preview ───
   // ROLES is the canonical source of truth for role display labels
   // (displayHelpers.ts). All 12 user_role enum values map cleanly,
   // including ministry_leader → "Minister" per Founder ruling 2026-05-20.
-  // Falls back to 'Minister' when role is null (newly-created users
-  // mid-onboarding) or somehow not in the canonical 12.
+  // Falls back to 'Minister' when role is null.
   const roleLabel =
     ROLES.find((r) => r.value === userRole)?.label ?? 'Minister';
-  // First name = first whitespace-split token of full_name. Falls back to
-  // a neutral 'You' when full_name is null.
-  const firstName = fullName?.split(' ')[0] ?? 'You';
-  const SPECIMEN_FIRST = `${roleLabel} ${firstName}`;
-  const SPECIMEN_FULL = fullName ? `${roleLabel} ${fullName}` : SPECIMEN_FIRST;
+  // Structured name parts (Container fetches users.first_name / middle_name
+  // / last_name). Falls back to the legacy fullName-whitespace-split heuristic
+  // when the Container hasn't been updated to pass structured parts yet.
+  const fallbackFirst = fullName?.split(' ')[0] ?? 'You';
+  const fallbackLast = fullName?.split(' ').slice(1).join(' ') ?? '';
+  const safeFirst = (firstNameProp && firstNameProp.trim()) || fallbackFirst;
+  const safeMiddle = (middleNameProp && middleNameProp.trim()) || '';
+  const safeLast = (lastNameProp && lastNameProp.trim()) || fallbackLast;
+  // buildPreview composes the network-display string per
+  // design_handoff_settings_name_fields rules:
+  //   honorific + role + namePart [+ ', ' + suffix]
+  // namePart depends on `lastNameFirst` and `includeMiddleName`.
+  const buildPreview = (mode: 'first' | 'full'): string => {
+    let namePart: string;
+    if (mode === 'first') {
+      namePart = lastNameFirst ? safeLast : safeFirst;
+    } else {
+      const middleSlot = includeMiddleName && safeMiddle ? ` ${safeMiddle}` : '';
+      namePart = lastNameFirst
+        ? `${safeLast}, ${safeFirst}${middleSlot}`
+        : `${safeFirst}${middleSlot} ${safeLast}`.replace(/\s+/g, ' ').trim();
+    }
+    const head = [honorific, roleLabel, namePart].filter(Boolean).join(' ');
+    return suffix ? `${head}, ${suffix}` : head;
+  };
+  const SPECIMEN_FIRST = buildPreview('first');
+  const SPECIMEN_FULL = buildPreview('full');
+  // Radio 1's label flips on lastNameFirst — "First name + role" ⇄
+  // "Last name + role". Radio 2 always reads "Full name + role".
+  const radio1Label = lastNameFirst ? 'Last name + role' : 'First name + role';
 
   // ─── Write handlers — optimistic, single-flight, flashSaved on success ───
 
@@ -297,6 +545,122 @@ export default function SettingsScreen({
       setWriteError("Couldn't save. Check your connection and try again.");
       AccessibilityInfo.announceForAccessibility(
         "Couldn't save your display name preference. Check your connection.",
+      );
+    } finally {
+      writeInFlight.current = false;
+    }
+  };
+
+  // KAN-229: persist last_name_first toggle. Optimistic + revert pattern.
+  // Fires AccessibilityInfo.announceForAccessibility on success so a
+  // screen-reader user hears the flipped radio label without re-navigating
+  // (design_handoff_settings_name_fields accessibility note).
+  const handleLastNameFirstToggle = async (newValue: boolean) => {
+    if (newValue === lastNameFirst) return;
+    if (writeInFlight.current) return;
+    const previousValue = lastNameFirst;
+    setLastNameFirst(newValue);
+    setWriteError(null);
+    writeInFlight.current = true;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ last_name_first: newValue })
+        .eq('auth_id', userId);
+      if (error) throw error;
+      flashSaved('account');
+      AccessibilityInfo.announceForAccessibility(
+        newValue
+          ? 'Display name now reads as Last name plus role.'
+          : 'Display name now reads as First name plus role.',
+      );
+    } catch {
+      setLastNameFirst(previousValue);
+      setWriteError("Couldn't save. Check your connection and try again.");
+      AccessibilityInfo.announceForAccessibility(
+        "Couldn't save your last-name-first preference. Check your connection.",
+      );
+    } finally {
+      writeInFlight.current = false;
+    }
+  };
+
+  // KAN-229: persist include_middle_name toggle. Only affects the
+  // "Full name + role" preview when middle_name is non-empty.
+  const handleIncludeMiddleNameToggle = async (newValue: boolean) => {
+    if (newValue === includeMiddleName) return;
+    if (writeInFlight.current) return;
+    const previousValue = includeMiddleName;
+    setIncludeMiddleName(newValue);
+    setWriteError(null);
+    writeInFlight.current = true;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ include_middle_name: newValue })
+        .eq('auth_id', userId);
+      if (error) throw error;
+      flashSaved('account');
+    } catch {
+      setIncludeMiddleName(previousValue);
+      setWriteError("Couldn't save. Check your connection and try again.");
+      AccessibilityInfo.announceForAccessibility(
+        "Couldn't save your middle-name preference. Check your connection.",
+      );
+    } finally {
+      writeInFlight.current = false;
+    }
+  };
+
+  // KAN-229: persist honorific. null clears it (role-label prefix only).
+  const handleHonorificChange = async (newValue: string | null) => {
+    const normalised = newValue?.trim() || null;
+    if (normalised === honorific) return;
+    if (writeInFlight.current) return;
+    const previousValue = honorific;
+    setHonorific(normalised);
+    setWriteError(null);
+    writeInFlight.current = true;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ honorific: normalised })
+        .eq('auth_id', userId);
+      if (error) throw error;
+      flashSaved('account');
+    } catch {
+      setHonorific(previousValue);
+      setWriteError("Couldn't save. Check your connection and try again.");
+      AccessibilityInfo.announceForAccessibility(
+        "Couldn't save your honorific. Check your connection.",
+      );
+    } finally {
+      writeInFlight.current = false;
+    }
+  };
+
+  // KAN-229: persist suffix. null clears it. Free-form values land via the
+  // Suffix sheet's "Other…" branch (trimmed, max SUFFIX_OTHER_MAX_LEN chars).
+  const handleSuffixChange = async (newValue: string | null) => {
+    const normalised = newValue?.trim() || null;
+    if (normalised === suffix) return;
+    if (writeInFlight.current) return;
+    const previousValue = suffix;
+    setSuffix(normalised);
+    setWriteError(null);
+    writeInFlight.current = true;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ suffix: normalised })
+        .eq('auth_id', userId);
+      if (error) throw error;
+      flashSaved('account');
+    } catch {
+      setSuffix(previousValue);
+      setWriteError("Couldn't save. Check your connection and try again.");
+      AccessibilityInfo.announceForAccessibility(
+        "Couldn't save your suffix. Check your connection.",
       );
     } finally {
       writeInFlight.current = false;
@@ -380,29 +744,41 @@ export default function SettingsScreen({
     setSignOutModalVisible(true);
   };
 
-  // ─── Routes that don't exist yet — alert + TODO marker ───
+  // ─── Routes that don't exist yet — canonical ComingSoonModal ───
+  // Single piece of comingSoon state with title/body so we share one
+  // modal instance across every Settings row that needs the pattern.
 
-  // TODO: wire to ChangePassword screen when route exists (Screen 06A reset flow).
+  const [comingSoon, setComingSoon] = useState<{ title: string; body: string } | null>(null);
+
   const handleChangePassword = () => {
-    Alert.alert('Coming soon', 'Password change will be available soon.');
+    setComingSoon({
+      title: 'Password change is on the way.',
+      body: 'You\'ll be able to update your password from this screen shortly.',
+    });
   };
-  // TODO: wire to TermsOfUse screen when route exists.
   const handleTermsTap = () => {
-    Alert.alert('Coming soon', 'Terms of use will be available soon.');
+    setComingSoon({
+      title: 'Terms of use are on the way.',
+      body: 'The full terms will appear here before launch.',
+    });
   };
-  // TODO: wire to PrivacyPolicy screen when route exists.
   const handlePrivacyTap = () => {
-    Alert.alert('Coming soon', 'Privacy policy will be available soon.');
+    setComingSoon({
+      title: 'Privacy policy is on the way.',
+      body: 'Our privacy commitment will be linked here before launch.',
+    });
   };
   const handleCommunityCovenantTap = () => {
-    Alert.alert('Coming soon', 'Community covenant will be available soon.');
+    setComingSoon({
+      title: 'Community covenant is on the way.',
+      body: 'You\'ll be able to read the full covenant from this screen shortly.',
+    });
   };
-  // TODO: wire to DeactivateAccount screen when route exists (step-up reauth flow).
   const handleDeactivateTap = () => {
-    Alert.alert(
-      'Deactivate account',
-      'Account deactivation will be available before launch.',
-    );
+    setComingSoon({
+      title: 'Account deactivation is on the way.',
+      body: 'A guided deactivation flow will be available before launch.',
+    });
   };
 
   // ─── Static copy (preserved from KAN-138 dispatch) ───
@@ -496,7 +872,7 @@ export default function SettingsScreen({
                 activeOpacity={0.7}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: displayNamePref === 'first_name_only' }}
-                accessibilityLabel="First name plus role"
+                accessibilityLabel={`${radio1Label} — option`}
               >
                 <Text
                   style={[
@@ -512,7 +888,7 @@ export default function SettingsScreen({
                     displayNamePref !== 'first_name_only' && styles.radioLabelOff,
                   ]}
                 >
-                  First name + role
+                  {radio1Label}
                 </Text>
               </TouchableOpacity>
               {displayNamePref === 'first_name_only' && (
@@ -548,6 +924,46 @@ export default function SettingsScreen({
                 <Text style={styles.radioSpecimen}>{SPECIMEN_FULL}</Text>
               )}
             </View>
+
+            {/* KAN-229 — Format eyebrow + modifier checkboxes
+                (design_handoff_settings_name_fields). Mini-eyebrow sits
+                14 px below the last radio specimen and labels the
+                checkbox group as modifiers applied to whichever radio
+                is selected. */}
+            <Text style={styles.formatEyebrow}>Format</Text>
+            <NameFieldCheckbox
+              checked={lastNameFirst}
+              label="Show last name first"
+              onPress={() => { void handleLastNameFirstToggle(!lastNameFirst); }}
+            />
+            <NameFieldCheckbox
+              checked={includeMiddleName}
+              label="Include middle name in full name"
+              onPress={() => { void handleIncludeMiddleNameToggle(!includeMiddleName); }}
+            />
+
+            {/* Dashed hairline separates the Format checkboxes from the
+                Honorific + Suffix picker rows. Per the handoff this is
+                rgba(240,237,230,0.07) at 1px; we draw it with a thin
+                semi-transparent View since RN doesn't support CSS dashed
+                cleanly cross-platform. */}
+            <View style={styles.nameFieldDivider} />
+
+            <NameFieldRow
+              label="Honorific"
+              value={honorific}
+              onPress={() => setHonorificPickerVisible(true)}
+            />
+            <NameFieldRow
+              label="Suffix"
+              value={suffix}
+              onPress={() => {
+                setSuffixOtherMode(
+                  suffix !== null && !(SUFFIXES as readonly string[]).includes(suffix),
+                );
+                setSuffixPickerVisible(true);
+              }}
+            />
           </View>
         )}
 
@@ -844,6 +1260,120 @@ export default function SettingsScreen({
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
+      {/* ── HONORIFIC PICKER SHEET — KAN-229 (design_handoff_settings_name_fields) ── */}
+      <NameFieldPickerSheet
+        visible={honorificPickerVisible}
+        eyebrow="Choose one"
+        title="Honorific"
+        subline="A prefix shown before your name in the network."
+        footCopy="Tap a name to confirm"
+        onClose={() => setHonorificPickerVisible(false)}
+      >
+        <NameFieldPickerOption
+          selected={honorific === null}
+          label="Not set"
+          isNotSet
+          onPress={() => {
+            void handleHonorificChange(null);
+            setHonorificPickerVisible(false);
+          }}
+        />
+        {HONORIFICS.map((h, idx) => (
+          <NameFieldPickerOption
+            key={h}
+            selected={honorific === h}
+            label={h}
+            isLast={idx === HONORIFICS.length - 1}
+            onPress={() => {
+              void handleHonorificChange(h);
+              setHonorificPickerVisible(false);
+            }}
+          />
+        ))}
+      </NameFieldPickerSheet>
+
+      {/* ── SUFFIX PICKER SHEET — KAN-229 ── */}
+      <NameFieldPickerSheet
+        visible={suffixPickerVisible}
+        eyebrow="Choose one"
+        title="Suffix"
+        subline="Earned or honorary letters shown after your name. PhD, MDiv, ThD…"
+        footCopy={
+          suffixOtherMode
+            ? 'Type letters · then Confirm'
+            : 'Tap to confirm · "Other" opens a text field'
+        }
+        onClose={() => {
+          setSuffixPickerVisible(false);
+          setSuffixOtherMode(false);
+        }}
+      >
+        {suffixOtherMode ? (
+          <View style={nameFieldStyles.otherBranch}>
+            <TextInput
+              style={nameFieldStyles.otherInput}
+              value={suffixOtherDraft}
+              onChangeText={(t) => setSuffixOtherDraft(t.slice(0, SUFFIX_OTHER_MAX_LEN))}
+              placeholder="ThM, EdD, Hon…"
+              placeholderTextColor={Colors.textSubtle}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={SUFFIX_OTHER_MAX_LEN}
+              accessibilityLabel="Custom suffix"
+            />
+            <TouchableOpacity
+              style={[
+                nameFieldStyles.otherConfirm,
+                !suffixOtherDraft.trim() && nameFieldStyles.otherConfirmDisabled,
+              ]}
+              disabled={!suffixOtherDraft.trim()}
+              onPress={() => {
+                const trimmed = suffixOtherDraft.trim();
+                if (!trimmed) return;
+                void handleSuffixChange(trimmed);
+                setSuffixPickerVisible(false);
+                setSuffixOtherMode(false);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm custom suffix"
+            >
+              <Text style={nameFieldStyles.otherConfirmText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <NameFieldPickerOption
+              selected={suffix === null}
+              label="Not set"
+              isNotSet
+              onPress={() => {
+                void handleSuffixChange(null);
+                setSuffixPickerVisible(false);
+              }}
+            />
+            {SUFFIXES.map((s) => (
+              <NameFieldPickerOption
+                key={s}
+                selected={suffix === s}
+                label={s}
+                onPress={() => {
+                  void handleSuffixChange(s);
+                  setSuffixPickerVisible(false);
+                }}
+              />
+            ))}
+            <NameFieldPickerOption
+              selected={
+                suffix !== null && !(SUFFIXES as readonly string[]).includes(suffix)
+              }
+              label="Other…"
+              isLast
+              onPress={() => setSuffixOtherMode(true)}
+            />
+          </>
+        )}
+      </NameFieldPickerSheet>
+
       {/* ── SIGN OUT CONFIRMATION — centered overlay modal ── */}
       <Modal
         visible={signOutModalVisible}
@@ -955,6 +1485,14 @@ export default function SettingsScreen({
           </ScrollView>
         </View>
       </Modal>
+
+      {/* ── Canonical Coming Soon modal — shared instance, state-driven copy ── */}
+      <ComingSoonModal
+        visible={!!comingSoon}
+        onDismiss={() => setComingSoon(null)}
+        title={comingSoon?.title ?? ''}
+        body={comingSoon?.body ?? ''}
+      />
     </View>
   );
 }
@@ -1157,6 +1695,30 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     lineHeight: 15 * 1.3,
     letterSpacing: 0.1,
+  },
+
+  // KAN-229 — "Format" mini-eyebrow labelling the modifier checkboxes.
+  // Same mono register as rowLabel but slightly smaller (10 vs 11) so it
+  // reads as a sub-section header inside the display-name row, not a
+  // peer to the row's primary label.
+  formatEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    letterSpacing: 2,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  // KAN-229 — dashed-feel hairline between the Format checkboxes and the
+  // Honorific/Suffix picker rows. RN doesn't render CSS-dashed cleanly
+  // cross-platform; a 1 px low-alpha rule reads as a divider without
+  // visual noise.
+  nameFieldDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(240, 237, 230, 0.07)',
+    marginTop: 12,
+    marginBottom: 8,
   },
 
   // ─── RAG line — plain body (no colored word). The radio glyph is the
@@ -1505,5 +2067,245 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 11 * 1.5,
+  },
+});
+
+// ─── KAN-229 — Name-field sub-component styles ─────────────────────────
+// Kept in a separate StyleSheet so the main `styles` block stays scoped
+// to Settings primitives. All values lift from design_handoff_settings_
+// name_fields tokens (mapped 1:1 onto theme.ts where possible; inlined
+// for the three values the handoff explicitly offers as inline).
+const nameFieldStyles = StyleSheet.create({
+  // ── Checkbox row ──
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 32,
+    paddingVertical: 4,
+  },
+  checkboxBox: {
+    width: 14,
+    height: 14,
+    borderRadius: Radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HAIRLINE,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxBoxOn: {
+    borderColor: Colors.accent,
+    backgroundColor: ACCENT_TINT,
+  },
+  // Sky tick drawn with two borders rotated −45° (no asset; per handoff).
+  // Sits 1 px above geometric centre so the rotation looks centred.
+  checkboxTick: {
+    width: 7,
+    height: 4,
+    borderLeftWidth: 1.2,
+    borderBottomWidth: 1.2,
+    borderColor: Colors.accent,
+    transform: [{ rotate: '-45deg' }],
+    marginTop: -1,
+  },
+  checkboxLabel: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    color: Colors.text,
+    flexShrink: 1,
+  },
+  checkboxLabelOff: {
+    color: TEXT_SOFT,
+  },
+
+  // ── Honorific / Suffix row ──
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 14,
+    minHeight: 38,
+    paddingVertical: 6,
+  },
+  fieldRowLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.8, // ~ 0.2em
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    minWidth: 64,
+  },
+  fieldRowValue: {
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 14.5,
+    color: Colors.accent,
+    letterSpacing: 0.15,
+    flexShrink: 1,
+  },
+  fieldRowChev: {
+    fontFamily: Typography.body,
+    fontSize: 11,
+    color: Colors.accent,
+    opacity: 0.8,
+    marginLeft: 6,
+  },
+
+  // ── Sheet chassis ──
+  sheetScrim: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  sheetCard: {
+    backgroundColor: '#131313',
+    borderRadius: Radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(240, 237, 230, 0.06)',
+    marginHorizontal: 14,
+    marginBottom: 14,
+    paddingTop: 22,
+    paddingHorizontal: 22,
+    paddingBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 28 },
+    shadowOpacity: 0.7,
+    shadowRadius: 60,
+    elevation: 24,
+  },
+  sheetGrip: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: HAIRLINE,
+    marginBottom: 14,
+  },
+  sheetEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  sheetEyebrowRule: {
+    width: 16,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.borderAccent,
+  },
+  sheetEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 2,
+    color: Colors.accent,
+    textTransform: 'uppercase',
+  },
+  sheetTitle: {
+    fontFamily: Typography.displayItalic,
+    fontSize: 22,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  sheetSubline: {
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 12.5,
+    color: TEXT_SOFT,
+    textAlign: 'center',
+    lineHeight: 12.5 * 1.55,
+    maxWidth: 230,
+    alignSelf: 'center',
+    marginTop: 4,
+  },
+  sheetTitleRule: {
+    width: 28,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.borderAccent,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  sheetFoot: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.9, // ~ 0.22em
+    color: Colors.accent,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    paddingTop: 14,
+  },
+
+  // ── Picker option ──
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
+  },
+  optionRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  optionGlyph: {
+    width: 22,
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  optionGlyphSelected: {
+    color: Colors.accent,
+  },
+  optionLabel: {
+    fontFamily: Typography.displayItalic,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.2,
+    flexShrink: 1,
+  },
+  optionLabelNeutral: {
+    fontFamily: Typography.body,
+    fontSize: 13.5,
+    color: Colors.text,
+    flexShrink: 1,
+  },
+  optionLabelSelected: {
+    color: Colors.accent,
+  },
+
+  // ── Suffix "Other…" branch ──
+  otherBranch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  otherInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: Radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HAIRLINE,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: Typography.displayMediumItalic,
+    fontSize: 17,
+    color: Colors.accent,
+  },
+  otherConfirm: {
+    backgroundColor: ACCENT_TINT,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+  },
+  otherConfirmDisabled: {
+    opacity: 0.4,
+  },
+  otherConfirmText: {
+    fontFamily: Typography.mono,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.accent,
+    textTransform: 'uppercase',
   },
 });
