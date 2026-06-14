@@ -27,8 +27,15 @@ export interface OnboardingLoopbackChurch {
 
 interface PersonalDetails {
   firstName: string;
+  // KAN-229: optional middle name. Empty string is the canonical "no
+  // middle" value (~75% of leaders); preserved through the write path
+  // and stored as '' in users.middle_name (NOT NULL).
+  middleName?: string;
   lastName: string;
   email: string;
+  // KAN-231: optional personal phone. Empty string == not provided.
+  // Replant team contact fallback only; never surfaced to other leaders.
+  phone?: string;
   password: string;
   role: string;
   country: string;

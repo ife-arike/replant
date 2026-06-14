@@ -17,8 +17,6 @@ import {
   FlatList,
   StyleSheet,
   StatusBar,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -309,10 +307,16 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    // KAN-192 layout pattern (mirrors AccountSetupPage2Screen).
+    // See ASP2Screen.tsx for the full rationale. Three rules:
+    //   1. NO KeyboardAvoidingView.
+    //   2. Footer in flex flow at end of root (NOT position: absolute).
+    //   3. ScrollView with `automaticallyAdjustKeyboardInsets={false}`
+    //      + `contentInsetAdjustmentBehavior="never"` to kill iOS's
+    //      phantom keyboard contentInset that lingers from the
+    //      previous screen and would otherwise let the user scroll
+    //      the entire body off the top of the viewport.
+    <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
       <View style={styles.header}>
@@ -329,6 +333,9 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        automaticallyAdjustKeyboardInsets={false}
+        contentInsetAdjustmentBehavior="never"
       >
         {/* Church Name */}
         <View style={styles.fieldGroup}>
@@ -697,7 +704,7 @@ export default function RegisterChurchPage1Screen({ navigation, route }: Props) 
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -827,6 +834,32 @@ const styles = StyleSheet.create({
     color: Colors.textSubtle,
     lineHeight: 18,
   },
+  // KAN-197 — textarea variant of the standard input. Allows multiline
+  // entry of needs / offerings with vertical-top alignment.
+  textarea: {
+    minHeight: 96,
+    paddingTop: 12,
+  },
+  // KAN-197 — counter + helper note share a row below the textarea.
+  needsMeta: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  charCounter: {
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    color: Colors.textSubtle,
+    minWidth: 56,
+    textAlign: 'right',
+  },
+  charCounterAmber: {
+    color: '#D9A91A',
+  },
+  charCounterRed: {
+    color: '#D9534F',
+  },
 
   input: {
     backgroundColor: Colors.surface,
@@ -927,7 +960,14 @@ const styles = StyleSheet.create({
 
   bottomSpacer: { height: Spacing.xxxl },
 
+  // KAN-192 (Session 4) — footer back in flex flow at the end of root.
+  // ScrollView's flex:1 fills the space between header and footer, so
+  // content cannot scroll into a phantom overlay region. No KAV — the
+  // keyboard naturally overlays the footer; user dismisses (drag-down
+  // on scroll) to access Next. Background matches the page so the
+  // footer reads as one continuous surface.
   footer: {
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.xl,
     paddingBottom: 48,
     paddingTop: Spacing.md,

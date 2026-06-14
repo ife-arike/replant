@@ -1,11 +1,18 @@
 // ─────────────────────────────────────────────
 // Replant — Onboarding Navigator
 // Back navigation rules:
-//   Splash → DoF: no back (headerLeft removed)
-//   DoF → Page1: no back (agreement must stand)
-//   Page1 → Page2: back allowed (first reversible step post-DoF)
-//   Page2 → ChurchReg: back allowed (cancel returns here)
-//   ChurchReg pages: back allowed within registration flow
+//   Splash → DoF:   no system back; DoF renders its own "Back" → Splash
+//                   (Founder ruling 2026-06-12: leaders who tap Sign Up
+//                   by mistake must have a visible way out before they
+//                   affirm).
+//   DoF → Page1:    no system back; Page 1 renders its own "Back" →
+//                   Splash and calls OnboardingContext.reset() so the
+//                   in-memory affirmation is discarded. Re-entry shows
+//                   DoF clean.
+//   Page1 → Page2:  back allowed via swipe / system back (first
+//                   reversible step post-DoF).
+//   Page2 → ChurchReg: back allowed (cancel returns here).
+//   ChurchReg pages: back allowed within registration flow.
 //
 // KAN-196 (D-63, 2026-05-22): the standalone AnonymousModeScreen was
 // removed; the anonymous toggle now lives inline on AccountSetupPage1.

@@ -45,6 +45,13 @@ const REGISTER_CHURCH_URL = `${SUPABASE_URL}/functions/v1/register-church`;
 // edit endpoint requires JWT (verify_jwt=true) and verifies caller
 // ownership of the church_id server-side before updating.
 const UPDATE_CHURCH_URL = `${SUPABASE_URL}/functions/v1/update-church`;
+// KAN-192 — pre-auth edit fallback. When a leader hits "Edit" from the
+// sign-up bypass card, they don't yet have a Supabase session, so the
+// JWT'd UPDATE path 401s. We delete the just-registered row via
+// register-church-delete, then fall through to register-church to
+// create the edited row. Behaviour matches a "Delete + register again"
+// without the user having to do it manually.
+const REGISTER_CHURCH_DELETE_URL = `${SUPABASE_URL}/functions/v1/register-church-delete`;
 
 interface RegisterChurchSuccessResponse {
   success: true;
@@ -65,8 +72,15 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
   // pre-fill here either.
   const isEditMode = route.params?.isEditMode ?? false;
 
-  // Finalization — needs split into two required free-text fields with
-  // context persistence on every change so back-nav restores state.
+  // Finalization (Founder ruling 2026-06-12, full revert of SPEC c.13818
+  // additions ACs 8/9/11) — "What we have" + "What we need" back as a
+  // symmetric paired set on Page 2. Both REQUIRED; leaders without a
+  // concrete answer guided to type "N/A" via the shared note below
+  // the fields (preserves the data-quality signal — "explicitly
+  // didn't answer" vs ambiguous blank). The 500-char counter is
+  // dropped. Placeholder voice keeps the "your ministry" framing
+  // SPEC c.13818 AC 13 introduced, applied symmetrically to both
+  // fields so the pair reads as one ask.
   const [hasText, setHasText] = useState(state.churchDetails.hasText ?? '');
   const [needsText, setNeedsText] = useState(state.churchDetails.needsText ?? '');
   // KAN-13 finalization — Current Status now lives on Page 2 for
@@ -88,9 +102,9 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Submit gate — RAG selected AND both have/need fields non-empty.
-  // Leaders without a concrete answer are guided to type "N/A" via the
-  // info note below the fields (rather than leaving them blank).
+  // Submit gate — RAG selected AND BOTH have/need fields non-empty.
+  // Leaders without a concrete answer are guided to type "N/A" via
+  // the shared note below the fields.
   const canSubmit =
     !submitting && !!ragStatus && !!hasText.trim() && !!needsText.trim();
 
@@ -117,8 +131,9 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
       return;
     }
 
-    // Finalization — both have/need fields are required at submit.
-    // Empty fields surface a gentle prompt rather than a hard reject.
+    // Both "What we have" and "What we need" required at submit.
+    // Leaders without an answer type "N/A" per the shared note below
+    // the fields — preserves the data signal vs an ambiguous blank.
     if (!hasText.trim() || !needsText.trim()) {
       setSubmitError('Please fill in both fields, or type N/A if you cannot answer now.');
       return;
@@ -128,11 +143,12 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
     setSubmitting(true);
 
     // Comma-split → trim per entry → drop empties. BE re-normalises
-    // defensively but the FE delivers a clean array. Same shape applied
-    // to both the "what we have" (resources) and "what we need" (needs)
-    // textareas. Leaders who type "N/A" send ['N/A'] — a meaningful
-    // signal at the data layer ("explicitly didn't answer") rather than
-    // a blank that's ambiguous between unanswered and missing.
+    // defensively but the FE delivers a clean array. Same shape
+    // applied to both "What we have" (resources) and "What we need"
+    // (needs) textareas. Leaders who type "N/A" send ['N/A'] — a
+    // meaningful signal at the data layer ("explicitly didn't
+    // answer") rather than a blank that's ambiguous between
+    // unanswered and missing.
     const needsArr = needsText
       .split(',')
       .map((s) => s.trim())
@@ -181,14 +197,54 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
 
       const editChurchId = route.params?.editChurch?.churchId;
       if (isEditMode && editChurchId) {
+        // Resolve session first — branches the edit path between the
+        // authed update-church endpoint (post-signup edit from Church
+        // Profile) and the pre-auth delete-then-register fallback
+        // (sign-up bypass Edit, no session yet). KAN-192.
         const { data: { session } } = await supabase.auth.getSession();
-        url = UPDATE_CHURCH_URL;
-        headers = {
-          apikey: SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token ?? ''}`,
-        };
-        body = { ...payload, church_id: editChurchId };
+        if (session?.access_token) {
+          url = UPDATE_CHURCH_URL;
+          headers = {
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          };
+          body = { ...payload, church_id: editChurchId };
+        } else {
+          // Pre-auth Edit from the sign-up bypass card. Delete the
+          // just-registered row first, then fall through to register-
+          // church to create the edited row. Contact email from
+          // context is the proof-of-ownership signal the delete
+          // endpoint requires (set at the original register-church
+          // call); without a match, the delete 403s and we surface
+          // the same generic error.
+          const deleteEmail = cd.contactEmail?.trim();
+          if (!deleteEmail) {
+            throw new Error('Church registration failed. Please try again.');
+          }
+          const delResp = await fetch(REGISTER_CHURCH_DELETE_URL, {
+            method: 'POST',
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              churchId: editChurchId,
+              contactEmail: deleteEmail,
+            }),
+          });
+          // 404 = already gone (treat as success — proceed to register).
+          // 200 = deleted (success). Any other status = surface error.
+          if (!delResp.ok && delResp.status !== 404) {
+            throw new Error('Church registration failed. Please try again.');
+          }
+          url = REGISTER_CHURCH_URL;
+          headers = {
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          };
+          body = payload as unknown as Record<string, unknown>;
+        }
       } else {
         url = REGISTER_CHURCH_URL;
         headers = {
@@ -208,11 +264,19 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
 
       if (!response.ok) {
         let beError: string | null = null;
+        let beCode: string | null = null;
         try {
-          const body = (await response.json()) as { error?: unknown };
+          const body = (await response.json()) as { error?: unknown; code?: unknown };
           if (typeof body?.error === 'string') beError = body.error;
-        } catch {
-          // ignore body-parse errors — fall through to generic
+          if (typeof body?.code === 'string') beCode = body.code;
+          console.log('[RegCP2] BE !ok', { status: response.status, beError, beCode });
+        } catch (parseErr) {
+          console.log('[RegCP2] BE !ok parse-fail', { status: response.status, parseErr });
+        }
+        // KAN-230 — 409 with code 'contact_email_taken' carries the
+        // Founder-locked copy in beError; surface it verbatim.
+        if (response.status === 409 && beCode === 'contact_email_taken') {
+          throw new Error(beError ?? 'This email is already registered to another church.');
         }
         throw new Error(beError ?? 'Church registration failed. Please try again.');
       }
@@ -254,6 +318,7 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
         }),
       );
     } catch (err) {
+      console.log('[RegCP2] submit caught error:', err);
       setSubmitError(
         err instanceof Error ? err.message : 'Church registration failed. Please try again.',
       );
@@ -332,10 +397,13 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
           </View>
         </View>
 
-        {/* Finalization — needs split into a paired "what we have" /
-            "what we need" set of required fields. Both persist to
-            context on every change so back-nav restores the leader's
-            work without forcing a re-type. */}
+        {/* Founder ruling 2026-06-12 — "What we have" + "What we need"
+            paired required fields, "your ministry" voice applied
+            symmetrically to both placeholders so the pair reads as
+            one ask. Shared N/A note sits under the pair (not under
+            each field) to anchor the guidance once, not twice. Both
+            persist to context on every change so back-nav restores
+            the leader's work. */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>What we have</Text>
           <TextInput
@@ -345,7 +413,7 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
               setHasText(v);
               setChurchDetails({ hasText: v });
             }}
-            placeholder="Skills, space, manpower, resources…"
+            placeholder="e.g. skills, space, manpower, resources — what does your ministry already have to offer?"
             placeholderTextColor={Colors.textSubtle}
             multiline
             numberOfLines={3}
@@ -362,14 +430,14 @@ export default function RegisterChurchPage2Screen({ navigation, route }: Props) 
               setNeedsText(v);
               setChurchDetails({ needsText: v });
             }}
-            placeholder="Prayer, funding, training, connections…"
+            placeholder="e.g. prayer support, theological training, hospitality — what does your ministry need most right now?"
             placeholderTextColor={Colors.textSubtle}
             multiline
             numberOfLines={3}
             textAlignVertical="top"
           />
           <Text style={styles.fieldNote}>
-            If you cannot answer now, type N/A. This can always be updated later in your Church Profile and helps us better connect you.
+            If you cannot answer now, type N/A — you can update this later in your Church Profile.
           </Text>
         </View>
 
@@ -595,8 +663,14 @@ const styles = StyleSheet.create({
     color: Colors.text,
     minHeight: 44,
   },
+  // Founder ruling 2026-06-12 — the paired "What we have" / "What we
+  // need" textareas use an explicit `height` (not minHeight) so iOS
+  // can't grow one taller than the other when the placeholder copy
+  // wraps to a different number of lines. Both render at the same
+  // visual height regardless of content; users still type freely and
+  // the field scrolls internally past the visible 4 lines.
   textarea: {
-    minHeight: 80,
+    height: 110,
     paddingTop: 14,
   },
 

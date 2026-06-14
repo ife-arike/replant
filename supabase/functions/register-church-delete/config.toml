@@ -1,0 +1,33 @@
+# KAN-192 — register-church-delete Edge Function config
+#
+# verify_jwt = false is LOAD-BEARING — this function backs the bypass-
+# card "Delete and search again" affordance on AccountSetupPage2. The
+# submitter does NOT yet have a Supabase Auth user (their auth.users
+# row is created later, at create-account on the same screen). A JWT
+# requirement here would block the entire delete-after-loopback flow.
+#
+# Mirrors register-church's auth posture exactly. Any change to
+# verify_jwt here requires a fresh SEC ruling.
+#
+# Defense-in-depth at the function layer — invariants checked server-side:
+#   - POST + JSON only — every other method/body returns 400 / 405.
+#   - Strict payload validator (logic.ts) rejects malformed fields
+#     before any DB call.
+#   - Proof-of-ownership: contact_email in payload MUST match the
+#     contact_email on the church row (set by the leader at register-
+#     church time and held in OnboardingContext.churchDetails).
+#   - Session window: the row's created_at MUST be within the last
+#     SESSION_WINDOW_SECONDS (3600 / 1 hour). Older rows cannot be
+#     deleted by this function — they're auto-scrubbed by KAN-202
+#     pg_cron orphan sweep if abandoned.
+#   - Zero-leader invariant: the row MUST have no associated users
+#     (active OR inactive). The users.church_id FK is NO ACTION;
+#     the BE re-checks defensively before attempting DELETE and
+#     catches 23503 in case of a race with create-account.
+#   - Per-IP rate limit via Upstash (same pattern as search-churches)
+#     prevents enumeration of church_id / contact_email combinations.
+#   - No SECURITY DEFINER RPC calls, no audit_log writes from this
+#     function (the deleted row's full lifecycle is captured by the
+#     prior register-church audit entry; this is the user-initiated
+#     undo of an in-session registration, not an admin action).
+verify_jwt = false

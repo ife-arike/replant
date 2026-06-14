@@ -74,7 +74,23 @@ function makeDeps(): Deps {
         .select("id")
         .single();
       if (error || !data) {
-        throw new Error(`churches insert failed: ${error?.code ?? error?.message ?? "no row returned"}`);
+        // KAN-230: preserve the supabase-js error shape (code/message/details)
+        // on the thrown object so the handler can detect typed failures
+        // (e.g. the partial unique index on contact_email) without parsing
+        // wrapped strings. The constraint name lives in error.message
+        // ("duplicate key value violates unique constraint
+        // \"churches_contact_email_unique_excl_campus\"") — surface it
+        // verbatim in the wrapped error's .message so the handler's
+        // isContactEmailUniqueViolation haystack check can find it.
+        // Earlier this used `error?.code ?? error?.message` which dropped
+        // the message whenever a code was present, masking 23505 collisions
+        // as generic 500s.
+        const wrapped = new Error(
+          error?.message ?? error?.code ?? "no row returned",
+        ) as Error & { code?: string; details?: string };
+        if (error?.code) wrapped.code = error.code;
+        if (error?.details) wrapped.details = error.details;
+        throw wrapped;
       }
       return { id: data.id as string };
     },

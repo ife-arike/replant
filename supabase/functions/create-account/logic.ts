@@ -64,8 +64,16 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export interface CreateAccountPayload {
   firstName: string;
+  // KAN-229: optional middle name. Empty string is the canonical "no
+  // middle" value (~75% of leaders); stored as '' in users.middle_name
+  // which is NOT NULL.
+  middleName?: string;
   lastName: string;
   email: string;
+  // KAN-231: optional personal phone. Empty string when not provided
+  // (stored as NULL in users.phone). Used by the Replant team as a
+  // fallback reach when the church contact email doesn't answer.
+  phone?: string;
   password: string;
   role: Role;
   anonymous?: boolean;
@@ -88,7 +96,14 @@ export interface ValidatedAccountInput {
   email: string;       // canonicalised lowercase
   password: string;    // unchanged
   // public.users surface
-  fullName: string;    // `${firstName.trim()} ${lastName.trim()}` per DBA c.13321 Q3
+  fullName: string;    // legacy concat; phased out as RPCs migrate to structured fields (KAN-229).
+  // KAN-229 structured-name surface — written to public.users alongside
+  // fullName until full_name is dropped. middleName is '' when absent.
+  firstName: string;   // → users.first_name (NOT NULL)
+  middleName: string;  // → users.middle_name (NOT NULL; '' default)
+  lastName: string;    // → users.last_name (NOT NULL)
+  // KAN-231 — null when not provided; not normalised at MVP.
+  phone: string | null;
   role: Role;
   anonymous: boolean;  // defaulted to false if absent
   // Finalization fix 4 — churchId is nullable. null = skip-flow path;
@@ -96,9 +111,6 @@ export interface ValidatedAccountInput {
   churchId: string | null;
   // Side-effect controls
   isNewChurch: boolean; // defaulted to false; controls Step 7 email
-  // Display-only — kept for Resend templating (KAN-31), not written to DB
-  firstName: string;
-  lastName: string;
 }
 
 export type ParseResult =
@@ -188,21 +200,42 @@ export function parsePayload(body: unknown): ParseResult {
 
   const firstName = (p.firstName as string).trim();
   const lastName = (p.lastName as string).trim();
+  // KAN-229: middleName is optional. Trimmed; missing / non-string /
+  // empty-after-trim all collapse to '' which is the canonical "no
+  // middle" value for users.middle_name (NOT NULL).
+  const middleNameRaw = typeof p.middleName === "string" ? p.middleName : "";
+  if (middleNameRaw.length > MAX_NAME_PART) {
+    return { ok: false, error: "middleName is too long" };
+  }
+  const middleName = middleNameRaw.trim();
+
+  // KAN-231: phone is optional. Trim; empty / missing / non-string
+  // collapses to null (users.phone is nullable). No format validation
+  // at MVP — that's KAN-156's scope.
+  const phoneRaw = typeof p.phone === "string" ? p.phone.trim() : "";
+  if (phoneRaw.length > 64) {
+    return { ok: false, error: "phone is too long" };
+  }
+  const phone: string | null = phoneRaw.length > 0 ? phoneRaw : null;
 
   return {
     ok: true,
     input: {
       email: trimmedEmail.toLowerCase(),
       password: p.password,
-      // DBA c.13321 Q3 — single ASCII space; per-part .trim() on FE side
-      // already done above for safety. No DB-side trim.
-      fullName: `${firstName} ${lastName}`,
+      // Legacy: full_name carries the full composed string (first + middle
+      // + last) until the column is dropped (KAN-229 follow-up).
+      fullName: middleName
+        ? `${firstName} ${middleName} ${lastName}`
+        : `${firstName} ${lastName}`,
+      firstName,
+      middleName,
+      lastName,
+      phone,
       role: p.role as Role,
       anonymous,
       churchId,
       isNewChurch,
-      firstName,
-      lastName,
     },
   };
 }

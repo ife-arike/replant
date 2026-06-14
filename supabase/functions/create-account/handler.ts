@@ -36,7 +36,16 @@ export interface AuthUserRef {
 
 export interface InsertPublicUserRow {
   auth_id: string;
+  // Legacy concat — phased out as RPCs migrate to structured fields.
   full_name: string;
+  // KAN-229 structured-name surface — NOT NULL on schema. middle_name
+  // is '' when no middle name was entered (the canonical "no middle"
+  // value, not NULL).
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+  // KAN-231 — optional. null = not provided.
+  phone: string | null;
   email: string;
   role: Role;
   // Finalization fix 4 — nullable for the skip-flow path. public.users.
@@ -285,6 +294,10 @@ export function createHandler(deps: Deps) {
       const row: InsertPublicUserRow = {
         auth_id: authUserId,
         full_name: input.fullName,
+        first_name: input.firstName,
+        middle_name: input.middleName,
+        last_name: input.lastName,
+        phone: input.phone,
         email: input.email,
         role: input.role,
         church_id: input.churchId,

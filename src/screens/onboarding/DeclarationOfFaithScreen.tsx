@@ -18,7 +18,12 @@
 //     (the next sibling route inside OnboardingNavigator).
 //     navigation.replace (not push) — agreement must stand.
 //   - declaration_affirmed DB write is NOT performed here; KAN-12 owns it.
-//   - No back gesture (gestureEnabled: false on the route in RootNavigator).
+//   - 2026-06-12: explicit back affordance (top-left chevron + "Back")
+//     returns the user to Splash and resets the in-memory onboarding
+//     state. No forward path exists without affirming — back is the
+//     only exit and is intentional for leaders who tapped Sign Up by
+//     mistake. The route-level gestureEnabled: false stays in place;
+//     swipe-back would feel under-specified for an agreement surface.
 //   - Portrait orientation + Android predictive-back locked at app.json level
 //     globally.
 //
@@ -40,9 +45,10 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Typography } from "../../constants/theme";
 import type { OnboardingStackParamList } from "../../navigation/OnboardingNavigator";
+import { useOnboarding } from "../../context/OnboardingContext";
 
 const SCROLL_BOTTOM_OFFSET_PX = 20;
 
@@ -54,9 +60,28 @@ type Nav = NativeStackNavigationProp<OnboardingStackParamList>;
 
 export default function DeclarationOfFaithScreen() {
   const navigation = useNavigation<Nav>();
+  const { reset } = useOnboarding();
+  // 2026-06-12 fix: position: absolute children inside SafeAreaView
+  // anchor to the SafeAreaView's BORDER box, not its padded content
+  // box — so absolute top: N would otherwise sit under the Dynamic
+  // Island on iPhone 17 Pro. Add insets.top + 4 to drop the affordance
+  // safely below the island where touches register.
+  const insets = useSafeAreaInsets();
+  const backTop = insets.top + 4;
   const [affirmEnabled, setAffirmEnabled] = useState(false);
   const [scrollViewHeight, setScrollViewHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
+
+  // 2026-06-12: visible back affordance per Founder ruling. User can leave
+  // the declaration before affirming if they tapped Sign Up by mistake.
+  // No forward path exists without affirming (the scroll-gate + disabled
+  // affirm button enforce that), but back to Splash is always permitted.
+  // Resets any in-memory onboarding state so a fresh entry re-shows DoF
+  // clean.
+  const handleBack = () => {
+    reset();
+    navigation.replace("Splash");
+  };
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
@@ -103,6 +128,23 @@ export default function DeclarationOfFaithScreen() {
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
+      {/* Back affordance — top-left, muted. Sole way to leave this screen
+          without affirming. Forward path remains gated by the scroll-read
+          + affirm button (unchanged). top resolved at render time from
+          useSafeAreaInsets so the affordance always sits below the
+          Dynamic Island / notch on the host device. */}
+      <TouchableOpacity
+        style={[styles.backButton, { top: backTop }]}
+        onPress={handleBack}
+        accessibilityRole="button"
+        accessibilityLabel="Back to start"
+        accessibilityHint="Cancels sign-up and returns to the welcome screen."
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+      >
+        <Text style={styles.backGlyph}>{"‹"}</Text>
+        <Text style={styles.backLabel}>Back</Text>
+      </TouchableOpacity>
+
       <View style={styles.content}>
         {/* Top section — centered cross + title + subtitle */}
         <View style={styles.topSection}>
@@ -137,8 +179,9 @@ export default function DeclarationOfFaithScreen() {
             <Text style={[styles.bodyParagraph, styles.bodyParagraphSpaced]}>
               I believe that Jesus Christ is the Word of God made flesh — the
               Lamb of God slain for our sins. He came down from heaven, was
-              born of a virgin, was crucified, buried, and ascended to the
-              right hand of God, then gave to us the gift of the Holy Spirit.
+              born of a virgin, lived a sinless life, was crucified, buried,
+              and ascended to the right hand of God, then gave to us the gift
+              of the Holy Spirit.
             </Text>
             <Text style={[styles.bodyParagraph, styles.bodyParagraphSpaced]}>
               He is the image of the invisible God. He is our only Lord and
@@ -235,6 +278,36 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
 
+  // Back affordance — sits in the top-left pocket. Quiet, muted colour
+  // so it does not compete with the centered cross + title for
+  // attention; visible enough that a leader who tapped Sign Up by
+  // mistake can find it without hunting. `top` is set dynamically at
+  // the call site (insets.top + 4) so the affordance clears the
+  // Dynamic Island / notch.
+  backButton: {
+    position: "absolute",
+    left: 12,
+    zIndex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  backGlyph: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 24,
+    color: Colors.textMuted,
+    marginRight: 4,
+    marginTop: -3,
+  },
+  backLabel: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 13,
+    letterSpacing: 1.6,
+    color: Colors.textMuted,
+    textTransform: "uppercase",
+  },
+
   // .ack-cross — 28×28, two 2px sky bars, centered above title.
   // Iteration-4: bumped 1.5 → 2 for crisper rendering on dense displays
   // (1.5px subpixels can read soft after anti-aliasing). Bars at full
@@ -304,11 +377,13 @@ const styles = StyleSheet.create({
   // Iteration-4: body confession bumped 19 → 20pt; lineHeight ratio 1.65 → 1.6.
   // Color stays Colors.text (#F0EDE6) at 100% opacity per iteration-4 spec —
   // this is the screen's centerpiece and must read bright, not muted.
-  // 500 Medium Italic preserved (founder brief: "not too bold but legible").
+  // 2026-06-12: roman (non-italic) per Founder ruling. The scripture quote
+  // below keeps italic — only the declaration body de-italicises so the
+  // distinction between confession and citation reads clearly.
   bodyParagraph: {
-    fontFamily: Typography.displayMediumItalic,
+    fontFamily: Typography.displayMedium,
     fontSize: 20,
-    color: Colors.text, // --off-white
+    color: Colors.text,
     lineHeight: 20 * 1.6,
   },
   bodyParagraphSpaced: {

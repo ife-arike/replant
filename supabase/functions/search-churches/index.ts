@@ -79,20 +79,70 @@ function makeDeps(): Deps {
 
   return {
     async searchChurches(query: string): Promise<ChurchResult[]> {
-      // Round 1 — substring search on churches_public (name OR city).
-      // ILIKE bracket-escapes via the supabase-js .or() / .ilike() helpers
-      // — the user input is bound, not concatenated, so wildcards in the
-      // user's typed string are treated as literal `%` / `_` characters
-      // only against the substring delimiters (`%query%`) that we control.
-      const pattern = `%${escapeLikeWildcards(query)}%`;
-      const { data: churches, error: searchErr } = await adminClient
-        .from("churches_public")
-        .select(
-          "id, name, type, city, country, rag_status, verification_status",
-        )
-        .or(`name.ilike.${pattern},city.ilike.${pattern}`)
-        .order("name", { ascending: true })
-        .limit(SEARCH_RESULT_LIMIT);
+      // KAN-192 — RPL Network ID format detect. Founder confirmed
+      // (2026-06-12, c.15743) that the church-search input also accepts
+      // the canonical RPL-XXXXX church_code. When the query matches the
+      // format we route through a two-step lookup: first resolve the
+      // church_code → id against public.churches (church_code is NOT
+      // exposed on the churches_public view), then SELECT the church
+      // row from churches_public by id. The second step still filters
+      // out underground / inactive churches because churches_public
+      // bakes that filter into its definition — i.e. a leader searching
+      // an underground RPL ID gets zero results, same as a search by
+      // name/city.
+      let churches:
+        | Array<{
+          id: string;
+          name: string;
+          type: string;
+          city: string;
+          country: string;
+          rag_status: string;
+          verification_status: string;
+        }>
+        | null = null;
+      let searchErr: { message?: string } | null = null;
+
+      if (RPL_ID_RE.test(query.trim())) {
+        const normalised = query.trim().toUpperCase();
+        const { data: codeMatch, error: codeErr } = await adminClient
+          .from("churches")
+          .select("id")
+          .eq("church_code", normalised)
+          .maybeSingle();
+        if (codeErr) {
+          searchErr = codeErr;
+        } else if (!codeMatch) {
+          churches = [];
+        } else {
+          const { data: rows, error: rowErr } = await adminClient
+            .from("churches_public")
+            .select("id, name, type, city, country, rag_status, verification_status")
+            .eq("id", codeMatch.id as string)
+            .limit(1);
+          churches = rows ?? null;
+          searchErr = rowErr ?? null;
+        }
+      } else {
+        // KAN-192 (Founder, 2026-06-12) — search is church-name-only
+        // (or RPL Network ID via the branch above). City matches were
+        // dropped on Founder's call so the search surface stays focused
+        // on the two canonical identifiers a leader knows about.
+        // ILIKE bracket-escapes via the supabase-js .ilike() helper —
+        // the user input is bound, not concatenated, so wildcards in
+        // the user's typed string are treated as literal `%` / `_`
+        // characters only against the substring delimiters (`%query%`)
+        // that we control.
+        const pattern = `%${escapeLikeWildcards(query)}%`;
+        const { data: rows, error: rowErr } = await adminClient
+          .from("churches_public")
+          .select("id, name, type, city, country, rag_status, verification_status")
+          .ilike("name", pattern)
+          .order("name", { ascending: true })
+          .limit(SEARCH_RESULT_LIMIT);
+        churches = rows ?? null;
+        searchErr = rowErr ?? null;
+      }
 
       if (searchErr) {
         throw new Error(`churches_public search: ${searchErr.message}`);
@@ -212,6 +262,13 @@ function makeDeps(): Deps {
 function escapeLikeWildcards(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
+
+// KAN-192 — RPL Network ID format. Mirrors FE detection in
+// AccountSetupPage2Screen.tsx (isRplIdQuery). Format: `RPL-` followed
+// by 4+ alphanumeric chars, case-insensitive. The lookup against
+// churches.church_code is case-insensitive via uppercase normalisation
+// because admin-dash displays IDs uppercase and seeds enforce that.
+const RPL_ID_RE = /^RPL-[A-Z0-9]{4,}$/i;
 
 const handler = createHandler(makeDeps());
 

@@ -31,7 +31,21 @@ const json = (status: number, body: unknown) =>
 
 const error400 = (msg: string) => json(400, { error: msg });
 const error405 = () => json(405, { error: "Method not allowed" });
+const error409 = (code: string, msg: string) => json(409, { error: msg, code });
 const error500 = () => json(500, { error: "Church registration failed" });
+
+// KAN-230: detect the partial unique index 23505 from the new
+// churches_contact_email_unique_excl_campus constraint. The supabase-js
+// surface puts the Postgres error code in `.code` and the constraint
+// detail in `.message` / `.details`. Any 23505 mentioning this constraint
+// is a contact-email collision against a non-campus church.
+function isContactEmailUniqueViolation(e: unknown): boolean {
+  const err = e as { code?: string; message?: string; details?: string } | null;
+  if (!err) return false;
+  if (err.code !== "23505") return false;
+  const haystack = `${err.message ?? ""} ${err.details ?? ""}`;
+  return haystack.includes("churches_contact_email_unique_excl_campus");
+}
 
 export function createHandler(deps: Deps) {
   return async (req: Request): Promise<Response> => {
@@ -54,6 +68,19 @@ export function createHandler(deps: Deps) {
       try {
         inserted = await deps.insertChurch(parsed.row, verificationDeadline);
       } catch (e) {
+        // KAN-230 — typed surface for the contact-email partial unique
+        // index. Lets the FE map to the Founder-locked inline copy
+        // without parsing raw Postgres text.
+        if (isContactEmailUniqueViolation(e)) {
+          deps.log("warn", "register_church_contact_email_taken", {
+            type: parsed.row.type,
+            name_length: parsed.row.name.length,
+          });
+          return error409(
+            "contact_email_taken",
+            "This email is already registered to another church. If this is your parent campus, change your church type to Main Campus or Branch. Otherwise use a different contact email.",
+          );
+        }
         // Never surface raw Postgres errors to the caller. Log structured for
         // observability; return a generic 500. (Validation has already happened
         // upstream — anything that lands here is a server-side fault.)

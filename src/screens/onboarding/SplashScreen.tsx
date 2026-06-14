@@ -432,6 +432,8 @@ export default function SplashScreen({ navigation }: Props) {
             style={styles.primaryButton}
             onPress={() => navigation.replace('DeclarationOfFaith')}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Create Account"
           >
             <Text style={styles.primaryButtonText}>Create Account</Text>
           </TouchableOpacity>
@@ -440,6 +442,8 @@ export default function SplashScreen({ navigation }: Props) {
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Sign In"
           >
             <Text style={styles.secondaryButtonText}>Sign In</Text>
           </TouchableOpacity>
