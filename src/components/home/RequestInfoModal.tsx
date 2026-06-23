@@ -38,11 +38,13 @@ interface Props {
 }
 
 function ReplantMark() {
-  // Small brand mark, NOT an alert glyph. This is a message, not a warning.
+  // Envelope glyph — matches RequestInfoBanner for visual continuity
+  // (Founder ruling 2026-06-22). A message, not a warning.
   return (
     <View style={styles.glyph}>
-      <Svg width={18} height={18} viewBox="0 0 16 16" fill="none" stroke={Colors.accent} strokeWidth={1.3}>
-        <Path d="M8 14V6M8 6C8 4 6.5 2.5 4.5 2.5 4.5 5 6 6 8 6ZM8 6c0-2 1.5-3.5 3.5-3.5C11.5 5 10 6 8 6Z" />
+      <Svg width={18} height={18} viewBox="0 0 16 16" fill="none" stroke={Colors.accent} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+        <Path d="M2.5 4.5h11v7h-11z" />
+        <Path d="M2.5 4.5l5.5 4 5.5-4" />
       </Svg>
     </View>
   );
