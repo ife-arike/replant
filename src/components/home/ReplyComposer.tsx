@@ -26,10 +26,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -86,73 +83,58 @@ export default function ReplyComposer({ question, onSend, onDone, onBack }: Prop
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      {/* KeyboardAvoidingView shifts the Send button above the keyboard so
-          the leader isn't stuck typing with no way to submit (2026-06-22
-          smoke-test fix). TouchableWithoutFeedback on the body dismisses
-          the keyboard when the leader taps outside the field — the second
-          escape route alongside the system keyboard "down" arrow. */}
-      <KeyboardAvoidingView
-        style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <View style={styles.head}>
-          <TouchableOpacity
-            onPress={onBack}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-          >
-            <Text style={styles.back}>‹ Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.eyebrow}>Reply to the team</Text>
-          <Text style={styles.title} accessibilityRole="header">Your reply</Text>
-        </View>
-
-        <ScrollView
-          style={styles.bodyScroll}
-          contentContainerStyle={styles.bodyContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          showsVerticalScrollIndicator={false}
+      <View style={styles.head}>
+        <TouchableOpacity
+          onPress={onBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View style={styles.body}>
-              {/* Question kept in view for context — scriptureItalic, quiet */}
-              <Text style={styles.context}>“{question}”</Text>
+          <Text style={styles.back}>‹ Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.eyebrow}>Reply to the team</Text>
+        <Text style={styles.title} accessibilityRole="header">Your reply</Text>
+      </View>
 
-              <TextInput
-                style={styles.field}
-                value={text}
-                onChangeText={setText}
-                multiline
-                placeholder="Write your reply…"
-                placeholderTextColor={Colors.textSubtle}
-                textAlignVertical="top"
-                accessibilityLabel="Your reply"
-              />
-              <Text style={styles.footNote}>
-                Only the Replant team will see this. Take your time — there’s no rush.
-              </Text>
-            </View>
-          </TouchableWithoutFeedback>
-        </ScrollView>
+      {/* Tap outside the field dismisses the keyboard. Send button stays
+          at the bottom (keyboard will cover it while typing — leader taps
+          outside to dismiss, then taps Send). 2026-06-22 — per Founder:
+          no layout shift; the only behavior added is tap-outside-collapse. */}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.body}>
+          {/* Question kept in view for context — scriptureItalic, quiet */}
+          <Text style={styles.context}>“{question}”</Text>
 
-        <View style={styles.foot}>
-          <TouchableOpacity
-            style={[styles.cta, !canSend && styles.ctaOff]}
-            onPress={handleSend}
-            disabled={!canSend}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Send reply"
-          >
-            <Text style={[styles.ctaText, !canSend && styles.ctaTextOff]}>
-              {sending ? 'Sending…' : 'Send reply'}
-            </Text>
-          </TouchableOpacity>
+          <TextInput
+            style={styles.field}
+            value={text}
+            onChangeText={setText}
+            multiline
+            placeholder="Write your reply…"
+            placeholderTextColor={Colors.textSubtle}
+            textAlignVertical="top"
+            accessibilityLabel="Your reply"
+          />
+          <Text style={styles.footNote}>
+            Only the Replant team will see this. Take your time — there’s no rush.
+          </Text>
         </View>
-      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+
+      <View style={styles.foot}>
+        <TouchableOpacity
+          style={[styles.cta, !canSend && styles.ctaOff]}
+          onPress={handleSend}
+          disabled={!canSend}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Send reply"
+        >
+          <Text style={[styles.ctaText, !canSend && styles.ctaTextOff]}>
+            {sending ? 'Sending…' : 'Send reply'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -164,9 +146,7 @@ const styles = StyleSheet.create({
   eyebrow: { fontFamily: Typography.bodyMedium, fontSize: 11, letterSpacing: 1.98, textTransform: 'uppercase', color: Colors.accent, marginBottom: 8 },
   title: { fontFamily: Typography.displayMedium, fontSize: 26, color: Colors.text },
 
-  bodyScroll: { flex: 1 },
-  bodyContent: { flexGrow: 1 },
-  body: { flex: 1, paddingHorizontal: 22, paddingTop: Spacing.md, gap: Spacing.md, paddingBottom: 16 },
+  body: { flex: 1, paddingHorizontal: 22, paddingTop: Spacing.md, gap: Spacing.md },
   context: { fontFamily: Typography.scriptureItalic, fontSize: 14.5, color: Colors.textMuted, lineHeight: 22, borderLeftWidth: 1.5, borderLeftColor: Colors.borderAccent, paddingLeft: 14 },
   field: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(240,237,230,0.08)', borderRadius: Radius.lg, padding: 15, fontFamily: Typography.body, fontSize: 14, color: Colors.text, minHeight: 130, lineHeight: 22 },
   footNote: { fontFamily: Typography.body, fontSize: 11.5, color: Colors.textSubtle, lineHeight: 17, textAlign: 'center' },
