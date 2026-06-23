@@ -263,7 +263,7 @@ export function RequestInfoBanner({ onOpen }: RequestInfoBannerProps) {
       <View style={requestInfoStyles.main}>
         <Text style={requestInfoStyles.head}>A question from the Replant team</Text>
         <Text style={requestInfoStyles.detail}>
-          They’d like a little more before continuing your verification. Reply when you’re ready — there’s no rush.
+          We have a question to help complete your verification. Reply when you’re ready.
         </Text>
         <Pressable
           onPress={onOpen}
