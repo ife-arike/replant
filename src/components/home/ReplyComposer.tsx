@@ -116,7 +116,7 @@ export default function ReplyComposer({ question, onSend, onDone, onBack }: Prop
             accessibilityLabel="Your reply"
           />
           <Text style={styles.footNote}>
-            Only the Replant team will see this. Take your time — there’s no rush.
+            Only the Replant team will see this.
           </Text>
         </View>
       </TouchableWithoutFeedback>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: 22, paddingTop: Spacing.md, gap: Spacing.md },
   context: { fontFamily: Typography.scriptureItalic, fontSize: 14.5, color: Colors.textMuted, lineHeight: 22, borderLeftWidth: 1.5, borderLeftColor: Colors.borderAccent, paddingLeft: 14 },
   field: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: 'rgba(240,237,230,0.08)', borderRadius: Radius.lg, padding: 15, fontFamily: Typography.body, fontSize: 14, color: Colors.text, minHeight: 130, lineHeight: 22 },
-  footNote: { fontFamily: Typography.body, fontSize: 11.5, color: Colors.textSubtle, lineHeight: 17, textAlign: 'center' },
+  footNote: { fontFamily: Typography.body, fontSize: 11.5, color: Colors.textSubtle, lineHeight: 17, textAlign: 'center', alignSelf: 'stretch' },
 
   foot: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 8 },
   cta: { minHeight: 54, borderRadius: Radius.lg, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
