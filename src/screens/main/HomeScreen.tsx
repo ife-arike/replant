@@ -84,7 +84,7 @@ interface ShouldFireResp {
 }
 
 export default function HomeScreen() {
-  const { branch, undergroundJoinCodePendingReveal, session } = useAuth();
+  const { branch, undergroundJoinCodePendingReveal, session, refresh } = useAuth();
   // Distinguish church-pending vs leader-pending so the right banner variant
   // is shown. null while the check is in flight — defaults to 'church' variant.
   const churchVerified = useChurchVerifiedStatus();
@@ -203,6 +203,13 @@ export default function HomeScreen() {
   // Reply send — fn_send_reply_to_team (manifest §2). Wraps the question
   // id from the cadence payload. If the BE shape uses a different param
   // name on a later iteration, surface the error to the composer.
+  // 2026-06-22: after the reply lands, fire useAuth().refresh() so the
+  // local branch state catches up to the BE (migration 0013 clears
+  // churches.last_outcome_modal_kind → branch_substate reverts to plain
+  // 'pending'). Without this refetch the leader sees NO banner between
+  // reply and next app launch (RequestInfoBanner unmounts because we
+  // cleared modalPayload, VerificationBanner doesn't mount because the
+  // cached branch is still 'request_info').
   const sendReply = useCallback(
     async (replyText: string) => {
       const questionId = modalPayload?.question_id ?? null;
@@ -211,6 +218,10 @@ export default function HomeScreen() {
         p_reply_text: replyText,
       });
       if (error) throw error;
+      // Fire-and-forget refresh — onDone takes over the UI; the auth-status-
+      // check completing in the background swaps branch in time for the
+      // user's next focus event without blocking the sent-confirmation.
+      void refresh();
     },
     [modalPayload?.question_id],
   );

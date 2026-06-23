@@ -72,10 +72,10 @@ export default function ReplyComposer({ question, onSend, onDone, onBack }: Prop
           </Svg>
         </View>
         <Text style={styles.sentTitle} accessibilityRole="header">
-          Your reply was sent to the team.
+          Your reply was sent.
         </Text>
         <Text style={styles.sentSub}>
-          They’ll review it with care. You can close the app — we’ll let you know here.
+          We’ll be in touch here once we’ve reviewed it.
         </Text>
       </SafeAreaView>
     );
