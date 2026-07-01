@@ -119,6 +119,15 @@ interface ThreadMessage {
   state?: 'pending' | 'sent' | 'failed';
   // Stable groupLabel decided once per 5-min window (see buildGroupLabels).
   groupLabel?: string | null;
+  // KAN-296 Task #21 — human-first attribution on Replant-Team-authored
+  // messages. When set on an inbound message inside a secure Replant Team
+  // thread, the renderer surfaces `"<First> · Replant Team"` as an eyebrow
+  // above the bubble so the leader in distress sees the warmth of a real
+  // person's first name (e.g. "Sarah") instead of a faceless system label.
+  // NULL / empty → render the bubble alone (backwards-compat with all
+  // pre-KAN-296 rows and with any Replant Team send that omitted the
+  // attribution deliberately).
+  attributionDisplayName?: string | null;
 }
 
 interface OtherParty {
@@ -245,6 +254,21 @@ function Bubble({
 }) {
   const mine = msg.mine;
   const tightTail = prevSameAuthor;
+  // KAN-296 Task #21 — Replant Team attribution eyebrow.
+  // Gated on: inbound (!mine) + secure Replant Team thread + non-empty
+  // attribution_display_name. In a secure thread, every non-mine message
+  // is authored by the Replant Team system user; the SYSTEM_USER_ID lives
+  // in Vault and is intentionally never shipped to the client (SEC posture
+  // — matches send-message index.ts comment 3c). The triple-gate is the
+  // safe client-side proxy for "sender is the Replant Team system user".
+  // Renders ONLY on the first bubble of a same-author cluster so a burst
+  // of consecutive replies from the same admin doesn't repeat the eyebrow
+  // on every row.
+  const attribName =
+    !mine && secure && !prevSameAuthor
+      ? (msg.attributionDisplayName ?? '').trim()
+      : '';
+  const showAttribution = attribName.length > 0;
   // Bubble radius: all corners stay clearly rounded (14) regardless of
   // grouping so consecutive same-author bubbles still feel iMessage-tight
   // but never get a sharp inner corner.
@@ -264,6 +288,11 @@ function Bubble({
 
   return (
     <View style={{ marginTop: tightTail ? 2 : 10 }}>
+      {showAttribution && (
+        <Text style={styles.attributionEyebrow} numberOfLines={1}>
+          {`${attribName} · REPLANT TEAM`}
+        </Text>
+      )}
       <View
         style={[
           styles.bubbleRow,
@@ -542,7 +571,7 @@ export default function DMThreadView({
       setLoading(true);
       const { data, error } = await supabase
         .from('messages')
-        .select('id, content, sender_id, created_at')
+        .select('id, content, sender_id, created_at, attribution_display_name')
         .eq('conversation_id', conversationId)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -561,6 +590,8 @@ export default function DMThreadView({
           mine: m.sender_id === callerUserId,
           text: m.content,
           createdAt: new Date(m.created_at),
+          // KAN-296 Task #21 — nullable; NULL rows render as they do today.
+          attributionDisplayName: m.attribution_display_name ?? null,
         }))
         .reverse();
       setMessages(assignGroupLabels(ordered));
@@ -603,6 +634,8 @@ export default function DMThreadView({
             mine: row.sender_id === callerUserId,
             text: row.content,
             createdAt: new Date(row.created_at),
+            // KAN-296 Task #21 — Realtime payload carries the full row shape.
+            attributionDisplayName: row.attribution_display_name ?? null,
           };
           // Dedupe — if we already have this id (Realtime + send round-trip
           // race), skip. Optimistic 'pending' rows have local ids prefixed
@@ -640,7 +673,7 @@ export default function DMThreadView({
       if (!cursor) { setLoadingOlder(false); return; }
       const { data } = await supabase
         .from('messages')
-        .select('id, content, sender_id, created_at')
+        .select('id, content, sender_id, created_at, attribution_display_name')
         .eq('conversation_id', conversationId)
         .eq('is_active', true)
         .lt('created_at', cursor.toISOString())
@@ -655,6 +688,8 @@ export default function DMThreadView({
         mine: m.sender_id === callerUserId,
         text: m.content,
         createdAt: new Date(m.created_at),
+        // KAN-296 Task #21 — nullable; NULL rows render as they do today.
+        attributionDisplayName: m.attribution_display_name ?? null,
       })).reverse();
       const combined = [...older, ...messages];
       setMessages(assignGroupLabels(combined));
@@ -725,7 +760,7 @@ export default function DMThreadView({
             ? {
               ...m,
               id: result.id,
-              state: 'sent',
+              state: 'sent' as const,
               createdAt: new Date(result.created_at),
             }
             : m,
@@ -844,7 +879,7 @@ export default function DMThreadView({
         setMessages((prev) =>
           assignGroupLabels(prev.map((m) =>
             m.id === optId
-              ? { ...m, id: result.id, state: 'sent', createdAt: new Date(result.created_at) }
+              ? { ...m, id: result.id, state: 'sent' as const, createdAt: new Date(result.created_at) }
               : m,
           )),
         );
@@ -1211,6 +1246,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 6,
+  },
+  // KAN-296 Task #21 — Replant Team attribution eyebrow above the bubble.
+  // Utility register (mono, small caps by upper-casing at the source, muted
+  // color, tight letter-spacing) — never italicized per [[typography-ruling]]
+  // (attribution is utility text, not scripture / editorial / witness).
+  // Left-aligned to hug the received-bubble alignment. 4pt gap above the
+  // bubble comes from marginBottom below; the outer wrapper's marginTop
+  // (10pt for a new-author group, 2pt for a same-author tail) handles the
+  // top gap. `showAttribution` in Bubble() only fires when !prevSameAuthor,
+  // so the 10pt spacing always applies here.
+  attributionEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 0.9, // 0.10em × 9pt — matches requestSystemLabel register
+    color: Colors.textMuted,
+    marginBottom: 4,
+    marginLeft: 2,
   },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowSent: { justifyContent: 'flex-end' },
