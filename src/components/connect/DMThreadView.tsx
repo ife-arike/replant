@@ -54,6 +54,7 @@ import RequestNote from './RequestNote';
 import SentRequestModal from './SentRequestModal';
 import DeclineRequestModal from './DeclineRequestModal';
 import RequestActionsBar from './RequestActionsBar';
+import RpMark from '../icons/RpMark';
 import {
   sendConnectionRequest,
   respondToRequest,
@@ -289,9 +290,10 @@ function Bubble({
   return (
     <View style={{ marginTop: tightTail ? 2 : 10 }}>
       {showAttribution && (
-        <Text style={styles.attributionEyebrow} numberOfLines={1}>
-          {`${attribName} · REPLANT TEAM`}
-        </Text>
+        <View style={styles.attributionRow}>
+          <Text style={styles.attributionName} numberOfLines={1}>{attribName}</Text>
+          <Text style={styles.attributionSuffix} numberOfLines={1}>FROM REPLANT TEAM</Text>
+        </View>
       )}
       <View
         style={[
@@ -375,6 +377,17 @@ function AnonHeadIcon() {
   );
 }
 
+// Secure Replant Team head icon — mirrors the thread-list monogram
+// treatment (canonical RpMark, blue-tinted background) so the identity
+// carries through from list to detail view.
+function SecureHeadIcon() {
+  return (
+    <View style={styles.dmHeadIconSecure}>
+      <RpMark size={20} />
+    </View>
+  );
+}
+
 // ── main ──────────────────────────────────────────────────────────────
 export default function DMThreadView({
   conversationId: initialConversationId,
@@ -405,7 +418,7 @@ export default function DMThreadView({
         ? 'Replant Team — Secure Message'
         : initialProfile.displayName,
       churchLabel: initialProfile.isSecure
-        ? 'Replant · admin-monitored'
+        ? 'Official · admin-monitored'
         : initialProfile.churchName,
       isSecure: initialProfile.isSecure,
     };
@@ -537,7 +550,7 @@ export default function DMThreadView({
       // last_name_first). FE no longer re-derives.
       const fullName: string = row.other_full_name ?? '';
       const churchName: string = isSec
-        ? 'Replant · admin-monitored'
+        ? 'Official · admin-monitored'
         : (row.other_church_name ?? '');
       setOther({
         userId: row.other_user_id,
@@ -974,9 +987,11 @@ export default function DMThreadView({
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />
         </Pressable>
-        {initialProfile?.isAnon
-          ? <AnonHeadIcon />
-          : <LeaderInitialIcon initial={(initialProfile?.fullName?.charAt(0) ?? initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />}
+        {isSecure
+          ? <SecureHeadIcon />
+          : initialProfile?.isAnon
+            ? <AnonHeadIcon />
+            : <LeaderInitialIcon initial={(initialProfile?.fullName?.charAt(0) ?? initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />}
         <View style={styles.who}>
           {/* B2 (device pass): never render a partial header. While the
               other party's profile is still resolving (lazy thread, race
@@ -1199,6 +1214,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dmHeadIconSecure: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(107,181,232,0.10)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dmHeadInitial: {
     fontFamily: Typography.displayMedium,
     fontSize: 13,
@@ -1263,6 +1288,28 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginBottom: 4,
     marginLeft: 2,
+  },
+  // 2026-07-01 morning smoke — mirror BranchThreadView.authorRow so the
+  // leader sees the same "name blue + attribution grey" register on
+  // both secure Replant Team messages AND branch messages. Consistent
+  // authorship signal across the two multi-party surfaces they see.
+  attributionRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  attributionName: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11.5,
+    color: Colors.accent,
+  },
+  attributionSuffix: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 0.68,
+    color: Colors.textMuted,
   },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowSent: { justifyContent: 'flex-end' },
