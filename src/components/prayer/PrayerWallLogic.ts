@@ -78,7 +78,10 @@ export interface PrayerRow {
   prayer_text: string;
   urgency: boolean;
   created_at: string;
-  church_id: string;
+  // NULL for underground rows (masked alongside church_name + country +
+  // rag_status). Pre-UAT audit 2026-07-01: get_prayer_wall stops emitting the
+  // real UG church_id — it was the harvest seed into get_open_prayers.
+  church_id: string | null;
   leader_display_name: string | null;
   leader_role: string | null;
   prayed_count: number;

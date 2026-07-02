@@ -302,7 +302,8 @@ function makeDeps(): Deps {
           level: "warn", event: "upstash-failed", message: (e as Error).message,
           ts: new Date().toISOString(),
         }));
-        return { allowed: true, count: 0 };
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open — reject on Upstash outage.
+        return { allowed: false, backendError: true };
       }
     },
     async perIpRateLimit(ip) {
@@ -321,7 +322,8 @@ function makeDeps(): Deps {
           level: "warn", event: "upstash-per-ip-failed", message: (e as Error).message,
           ts: new Date().toISOString(),
         }));
-        return { allowed: true, count: 0 };
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open — reject on Upstash outage.
+        return { allowed: false, backendError: true };
       }
     },
     async idempotencyCacheGet(k: string): Promise<string | null> {

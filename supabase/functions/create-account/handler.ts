@@ -93,12 +93,14 @@ export interface Deps {
   rateLimit(ip: string, email: string): Promise<
     | { allowed: true; count: number }
     | { allowed: false; retryAfterSeconds: number }
+    | { allowed: false; backendError: true }
   >;
   // Per-IP-only rate limit (SEC-required) — defeats email-rotation
   // enumeration. Looser budget than per-IP-per-email.
   perIpRateLimit(ip: string): Promise<
     | { allowed: true; count: number }
     | { allowed: false; retryAfterSeconds: number }
+    | { allowed: false; backendError: true }
   >;
   // v8 idempotency cache (Founder ruling #28). cacheGet returns the
   // cached JSON-encoded response body on replay (status always 200 since
@@ -214,6 +216,11 @@ export function createHandler(deps: Deps) {
       // bypassed by an attacker cycling through emails).
       const perIp = await deps.perIpRateLimit(ip);
       if (!perIp.allowed) {
+        // Strict fail-closed (pre-UAT audit 2026-07-01): Upstash unreachable -> reject, don't proceed.
+        if ("backendError" in perIp) {
+          deps.log("error", "create_account_rate_limit_unavailable", { ip_hash: djb2(ip) });
+          return json(503, { error: "rate_limit_unavailable", message: "Service temporarily unavailable — please try again in a moment." });
+        }
         deps.log("warn", "rate_limited_per_ip", {
           ip_hash: djb2(ip),
           retry_after_seconds: perIp.retryAfterSeconds,
@@ -227,6 +234,9 @@ export function createHandler(deps: Deps) {
       } catch {
         const rl = await deps.rateLimit(ip, "_invalid_body_");
         if (!rl.allowed) {
+          if ("backendError" in rl) {
+            return json(503, { error: "rate_limit_unavailable", message: "Service temporarily unavailable — please try again in a moment." });
+          }
           return json(429, { error: "rate_limited", retry_after_seconds: rl.retryAfterSeconds });
         }
         return err(400, ERROR_CODES.VALIDATION_ERROR, "Request body must be valid JSON");
@@ -277,6 +287,10 @@ export function createHandler(deps: Deps) {
 
       const rl = await deps.rateLimit(ip, input.email);
       if (!rl.allowed) {
+        if ("backendError" in rl) {
+          deps.log("error", "create_account_rate_limit_unavailable", { ip_hash: djb2(ip) });
+          return json(503, { error: "rate_limit_unavailable", message: "Service temporarily unavailable — please try again in a moment." });
+        }
         deps.log("warn", "rate_limited", {
           ip_hash: djb2(ip),
           email_hash: djb2(input.email),

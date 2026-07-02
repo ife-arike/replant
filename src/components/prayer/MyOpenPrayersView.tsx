@@ -146,9 +146,9 @@ export default function MyOpenPrayersView({ onBackToLanding }: Props) {
   const loadInitial = useCallback(async () => {
     if (!churchId) return;
     setLoadState('initial');
-    const { data, error } = await supabase.rpc('get_open_prayers', {
-      p_church_id: churchId,
-    });
+    // get_open_prayers derives the caller's church from auth.uid() (own-church only);
+    // no p_church_id arg since the pre-UAT audit hardening (2026-07-01).
+    const { data, error } = await supabase.rpc('get_open_prayers');
     if (error) {
       setLoadState('error');
       return;

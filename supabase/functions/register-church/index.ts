@@ -103,7 +103,9 @@ function makeDeps(): Deps {
           message: (e as Error).message,
           ts: new Date().toISOString(),
         }));
-        return { allowed: true, count: 0 };
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open {allowed:true} — an Upstash
+        // outage silently disabled rate limiting on this anon write RPC. Reject (503) instead.
+        return { allowed: false, backendError: true };
       }
     },
     getIp(req) {

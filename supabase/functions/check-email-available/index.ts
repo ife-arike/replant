@@ -130,7 +130,8 @@ function makeDeps(): Deps {
         }
         return { allowed: true, count };
       } catch (e) {
-        // Upstash unavailable mid-flight — fail-open + warn (handler logs).
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open — an Upstash outage silently
+        // disabled this email-enumeration rate limit. Reject (503) instead; the FE surfaces "try again".
         console.warn(
           JSON.stringify({
             level: "warn",
@@ -139,7 +140,7 @@ function makeDeps(): Deps {
             ts: new Date().toISOString(),
           }),
         );
-        return { allowed: true, count: 0 };
+        return { allowed: false, backendError: true };
       }
     },
 

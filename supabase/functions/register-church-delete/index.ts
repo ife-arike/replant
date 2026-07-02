@@ -187,7 +187,8 @@ function makeDeps(): Deps {
             ts: new Date().toISOString(),
           }),
         );
-        return { allowed: true, count: 0 };
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open — reject on Upstash outage.
+        return { allowed: false, backendError: true };
       }
     },
 
