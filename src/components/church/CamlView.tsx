@@ -78,7 +78,17 @@ interface NearbyResponse {
 interface CamlViewProps {
   isActive: boolean;
   ownChurchId: string | null;       // kept for parity though server flags is_own
+  ownChurchCoords?: { lat: number; lng: number } | null;
   viewerVerified: boolean;
+  // Defense-in-depth (Founder lock 2026-06-21 #5). The parent does NOT
+  // mount CamlView at all for underground viewers; this prop is a
+  // belt-and-suspenders guard. If a future regression ever caused
+  // CamlView to mount for an underground caller, an early-return at the
+  // top of the component fires BEFORE locationManager.start(), BEFORE
+  // resolveCity()'s Mapbox geocode, BEFORE any get-nearby-churches
+  // call. The edge function ALSO returns 403 for underground callers
+  // independently — three layers, none load-bearing alone.
+  viewerIsUnderground?: boolean;
   onChurchSelect: (churchId: string) => void;
   // Fix 6 — once data lands, CAML reports the resolved area city so the
   // host header can render "The Church at <city>" dynamically. Prefer
@@ -172,9 +182,25 @@ async function resolveCity(lng: number, lat: number, token: string): Promise<str
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function CamlView({
-  isActive, ownChurchId, viewerVerified, onChurchSelect, onCityResolved, onLeaderCountResolved,
+  isActive, ownChurchId, ownChurchCoords, viewerVerified,
+  viewerIsUnderground = false,
+  onChurchSelect, onCityResolved, onLeaderCountResolved,
   refreshTrigger = 0, panToChurchTrigger = 0, recenterToGPSTrigger = 0,
 }: CamlViewProps) {
+  // Defense-in-depth (Founder lock 2026-06-21 #5): if CamlView ever gets
+  // mounted for an underground caller despite the parent gate, fall out
+  // BEFORE any hook fires. No locationManager.start(), no Mapbox
+  // geocode, no get-nearby-churches call. The check happens at the very
+  // top of the component body so React hooks below this point are not
+  // even registered for an underground render path. (Note: in this
+  // repo's posture underground viewers re-render this component
+  // identically across the session, so the hook-order rule is
+  // preserved — the component is either always-skipped or always-run
+  // per session.)
+  if (viewerIsUnderground) {
+    return null;
+  }
+
   // ownChurchId is part of the dispatched contract for symmetry with the
   // CAL surface, but on CAML the server is authoritative — `is_own` is
   // already set per row inside get-nearby-churches. The prop stays
@@ -594,6 +620,7 @@ export default function CamlView({
   const snapTo = useCallback((open: boolean) => {
     setSheetOpen(open);
     sheetOpenRef.current = open;
+    if (!open) scrollOffsetRef.current = 0;
     const target = yFor(open);
     if (reduced) translateY.setValue(target);
     else Animated.timing(translateY, {
@@ -618,7 +645,7 @@ export default function CamlView({
         // PanResponder stealing the gesture and snapping the sheet
         // closed. Upward gestures always claim (sheet-pull from peek).
         const isDownward = g.dy > 0;
-        const atScrollTop = scrollOffsetRef.current <= 0;
+        const atScrollTop = scrollOffsetRef.current < 1;
         const shouldClaim = Math.abs(g.dy) > 6
           && Math.abs(g.dy) > Math.abs(g.dx)
           && (isDownward ? atScrollTop : true);
@@ -654,14 +681,21 @@ export default function CamlView({
   // [null, null]. INITIAL_ZOOM is held by Camera.defaultSettings; flyTo
   // preserves zoom intentionally so a recenter from a zoomed-in pan
   // doesn't snap the leader back to the wide view.
+  const churchLng = ownChurch?.lng ?? ownChurchCoords?.lng;
+  const churchLat = ownChurch?.lat ?? ownChurchCoords?.lat;
   const ownChurchPinReady =
-    !!ownChurch &&
-    typeof ownChurch.lng === 'number' && !isNaN(ownChurch.lng) &&
-    typeof ownChurch.lat === 'number' && !isNaN(ownChurch.lat);
+    typeof churchLng === 'number' && !isNaN(churchLng) &&
+    typeof churchLat === 'number' && !isNaN(churchLat);
   const recenter = useCallback(() => {
-    if (!ownChurch) return;
-    cameraRef.current?.flyTo([ownChurch.lng, ownChurch.lat], (ownChurch.distance_km ?? 0) >= 80 ? 350 : 1000);
-  }, [ownChurch]);
+    if (!ownChurchPinReady || churchLng == null || churchLat == null) return;
+    const distKm = viewerCoord ? haversineKm(viewerCoord, [churchLng, churchLat]) : 9999;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [churchLng, churchLat],
+      zoomLevel: 14,
+      animationMode: distKm > 200 ? 'none' : 'easeTo',
+      animationDuration: distKm > 200 ? 0 : 800,
+    });
+  }, [ownChurchPinReady, churchLng, churchLat, viewerCoord]);
 
   // Tutorial pan-to-church — fires once per trigger increment. If
   // ownChurch is not yet loaded when the trigger fires, the effect
@@ -819,11 +853,18 @@ export default function CamlView({
             />
           </ShapeSource>
 
-          {/* Own church MarkerView (sky pin + halo + YOUR CHURCH label) */}
-          {ownChurch ? (
-            <MarkerView coordinate={[ownChurch.lng, ownChurch.lat]} anchor={{ x: 0.5, y: 0.5 }}>
+          {/* Own church MarkerView (sky pin + halo + YOUR CHURCH label).
+              Primary: API returned is_own (within range).
+              Fallback: API didn't return the church (far away) but we have
+              coords from the global dots — render a static version so the
+              dot is visible when the user taps MY CHURCH LOCATION. */}
+          {(ownChurch || (!ownChurch && ownChurchPinReady && churchLng != null && churchLat != null)) ? (
+            <MarkerView
+              coordinate={ownChurch ? [ownChurch.lng, ownChurch.lat] : [churchLng!, churchLat!]}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
               <Pressable
-                onPress={() => onChurchSelect(ownChurch.id)}
+                onPress={() => onChurchSelect(ownChurch ? ownChurch.id : (ownChurchId ?? ''))}
                 accessibilityRole="button"
                 accessibilityLabel="Your church"
               >
@@ -854,12 +895,6 @@ export default function CamlView({
                   <View style={styles.ownDot} />
                 </View>
                 <View style={styles.ownLabel} pointerEvents="none">
-                  {/* KAN-18 R4 — numberOfLines={1} prevents the marker
-                      label from wrapping character-by-character when the
-                      MarkerView's native child measures narrow on the
-                      device. That wrap was rendering the dark pill as a
-                      vertical column of stacked letters extending
-                      downward from the GPS puck. */}
                   <Text style={styles.ownLabelText} numberOfLines={1}>YOUR CHURCH</Text>
                 </View>
               </Pressable>

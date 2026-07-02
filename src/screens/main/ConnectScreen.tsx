@@ -29,6 +29,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useRoute, useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { TabsParamList } from '../../navigation/types';
 import {
   Animated,
   Easing,
@@ -48,12 +51,18 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase } from '../../lib/supabase';
+import { getRoleLabel, viewerOrgCopy } from '../../utils/displayHelpers';
+import { useViewerChurch } from '../../hooks/useViewerChurch';
 
 import ConnectHeader from '../../components/connect/ConnectHeader';
 import Segmented from '../../components/connect/Segmented';
 import LeadersList from '../../components/connect/LeadersList';
 import LeaderSearch, { type SearchedLeader } from '../../components/connect/LeaderSearch';
 import DMThreadView from '../../components/connect/DMThreadView';
+import {
+  getOrCreateConversationIfPermitted,
+  ConnectionRequestError,
+} from '../../hooks/useConnectionRequest';
 import MinistriesList from '../../components/connect/MinistriesList';
 import BranchCreate from '../../components/connect/BranchCreate';
 import BranchThreadView from '../../components/connect/BranchThreadView';
@@ -75,6 +84,7 @@ export interface InitialThreadProfile {
   fullName: string;
   churchName: string;
   isSecure: boolean;
+  isAnon?: boolean;
 }
 
 // ConnectView — the single source of truth for which surface is active.
@@ -88,6 +98,13 @@ export type ConnectView =
       conversationId: string | null;
       recipientUserId: string | null;
       initialProfile?: InitialThreadProfile;
+      // KAN-69 request-flow: set true when sending the first message to
+      // an unconnected leader. Routes Send through send_connection_request.
+      isConnectionRequest?: boolean;
+      // Set when the current leader is the recipient of a pending request.
+      requestId?: string | null;
+      requestMessage?: string | null;
+      requestSenderName?: string;
     }
   | { kind: 'branch'; branchId: string }
   | { kind: 'create' };
@@ -143,8 +160,17 @@ function useToast() {
 //
 // NOT dismissible — this is a protection layer, not an info sheet.
 // Copy is Connect-specific (not "The Church tab" language).
-function ConnectGateView({ churchVerified }: { churchVerified: boolean | null }) {
+function ConnectGateView({ churchVerified, viewerChurchType }: { churchVerified: boolean | null; viewerChurchType: string | null | undefined }) {
   const isLeaderPending = churchVerified === true;
+  const viewer = viewerOrgCopy(viewerChurchType);
+  // Founder ruling #6 (locked 2026-06-21) is PRESERVED: the timeline
+  // copy is the SAME phrase for surface and underground — no
+  // differential, no fingerprint. The phrase now states both the
+  // 30-day max AND the 24-72hr typical window universally.
+  // viewerChurchType is intentionally NOT branched on here.
+  // para-ministry copy swap (church → organization) still applies via
+  // viewer.yourChurchOrOrg per BA-para #1.
+  void viewerChurchType;
   return (
     <View style={styles.gate}>
       {/* Sky cross glyph — identical to TheChurchScreen */}
@@ -159,20 +185,12 @@ function ConnectGateView({ churchVerified }: { churchVerified: boolean | null })
       </Text>
       <Text style={styles.gateBody}>
         {isLeaderPending
-          ? "Your church is already part of the Replant network. Once the team confirms your account, you'll unlock Connect and be able to reach leaders directly."
-          : "Once your church is confirmed by a Replant team member, you'll unlock Connect — private, sealed letters between leaders around the world."}
+          ? `${viewer.yourChurchOrOrgCap} is already part of the Replant network. Once the team confirms your account, you'll unlock Connect and reach verified leaders around the world.`
+          : `Once ${viewer.yourChurchOrOrg} is confirmed by a Replant team member, you'll unlock Connect and reach verified leaders around the world.`}
       </Text>
       <Text style={styles.gateTiny}>
-        {isLeaderPending
-          ? 'Confirmation usually takes 24–72 hours.'
-          : 'Most verifications complete in 24–72 hours.'}
+        This process may take up to 30 days, but reviews are typically complete within 24-72 hours.
       </Text>
-      <View style={styles.gateScripture}>
-        <Text style={styles.gateScriptureText}>
-          "For the vision is yet for an appointed time, but at the end it shall speak, and not lie: though it tarry, wait for it; because it will surely come, it will not tarry."
-        </Text>
-        <Text style={styles.gateScriptureRef}>HABAKKUK 2:3</Text>
-      </View>
     </View>
   );
 }
@@ -211,16 +229,27 @@ function useCallerIdentity() {
 export default function ConnectScreen() {
   const { branch } = useAuth();
   const verified = branch === 'active';
+  // Underground Verification Queue (manifest 2026-06-22) — a soft-deleted
+  // leader can READ existing threads + ministries but cannot WRITE.
+  // - Compose hidden (no new DM / branch).
+  // - Gate overlay NOT mounted (would block reading the leader's own
+  //   threads, which is the explicit read-only experience the queue
+  //   guarantees during the 30-day window).
+  // RLS enforces write-block server-side; this is FE defense-in-depth.
+  const isSoftDeleted = branch === 'soft_deleted';
   // Distinguish church-pending vs leader-pending for the gate copy.
   // useChurchVerifiedStatus only fires a DB query when branch === 'pending';
   // it is a no-op (returns null) for active leaders — zero extra cost.
   const churchVerified = useChurchVerifiedStatus();
   const { pendingInvites } = useConnectBadge();
   const { callerUserId, callerChurchId, callerChurchName } = useCallerIdentity();
+  // Para-ministry copy swap on the unverified gate (BA-para #1).
+  const { church: viewerChurch } = useViewerChurch();
 
   const [subTab, setSubTab] = useState<SubTab>('leaders');
   const [view, setView] = useState<ConnectView>({ kind: 'list' });
   const [ministriesRefreshTick, setMinistriesRefreshTick] = useState(0);
+  const [leadersRefreshTick, setLeadersRefreshTick] = useState(0);
   const [covenantAck, setCovenantAck] = useState(false);
   const { show: showToast, node: toastNode } = useToast();
   const { width } = useWindowDimensions();
@@ -259,7 +288,10 @@ export default function ConnectScreen() {
   // ── view transitions ─────────────────────────────────────────────
   const goTo = useCallback((next: ConnectView) => {
     if (next.kind === 'list') {
-      // Animate the current push surface out, then unmount.
+      // Restore list state immediately so Segmented + compose button
+      // are visible as the push layer slides away. pushVisible stays
+      // set until animation finishes so the push surface keeps animating.
+      setView({ kind: 'list' });
       Animated.timing(pushAnim, {
         toValue: 0,
         duration: PUSH_DURATION_MS,
@@ -268,8 +300,8 @@ export default function ConnectScreen() {
       }).start(({ finished }) => {
         if (finished) {
           setPushVisible(null);
-          setView({ kind: 'list' });
           setMinistriesRefreshTick((t) => t + 1);
+          setLeadersRefreshTick((t) => t + 1);
         }
       });
       return;
@@ -288,6 +320,36 @@ export default function ConnectScreen() {
 
   const backToList = useCallback(() => goTo({ kind: 'list' }), [goTo]);
 
+  // ── deep-link param consumption — one-shot on focus ─────────────
+  // ConnectScreen is a state-machine host (no nested Stack.Navigator).
+  // Cross-tab navigations pass params on the Connect tab route; we
+  // consume them here on first focus after navigation so the tab bar
+  // doesn't need to know anything about internal Connect surfaces.
+  const route = useRoute<RouteProp<TabsParamList, 'Connect'>>();
+  const navigation = useNavigation();
+  const consumedConvRef = useRef<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const params = route.params;
+      if (!params) return;
+
+      // conversationId → open DM thread directly
+      if (params.conversationId && consumedConvRef.current !== params.conversationId) {
+        consumedConvRef.current = params.conversationId;
+        goTo({ kind: 'thread', conversationId: params.conversationId, recipientUserId: null });
+        return; // don't also switch sub-tab
+      }
+
+      // initialSubTab → switch sub-tab (only on list view, not mid-thread).
+      // Clear after consuming so it doesn't re-apply on every tab focus.
+      if (params.initialSubTab && view.kind === 'list') {
+        setSubTab(params.initialSubTab);
+        navigation.setParams({ initialSubTab: undefined } as never);
+      }
+    }, [route.params, view.kind, goTo]),
+  );
+
   // ── compose handler — depends on subTab ──────────────────────────
   const handleCompose = useCallback(() => {
     if (subTab === 'leaders') {
@@ -297,7 +359,19 @@ export default function ConnectScreen() {
     }
   }, [subTab, goTo]);
 
-  // ── leader picked from search — branch to existing or lazy ──────
+  // ── leader picked from search — branch to existing, bypass, or request ─
+  // KAN-69 + same-network bypass (20260609000006):
+  //   1. Existing conversation → open it normally.
+  //   2. No conversation yet → ask the server (via
+  //      getOrCreateConversationIfPermitted) whether the two leaders are
+  //      in-network (same church OR a shared active branch):
+  //        - returns a conversation_id → in-network, open a normal DM
+  //          (isConnectionRequest: false) with that conversation.
+  //        - throws ConnectionRequestError('requires_connection_request')
+  //          → strangers, open the thread in request mode (existing flow).
+  // The bypass decision belongs HERE at the navigation layer so the DM
+  // thread opens in the right mode from the first frame — never inside
+  // DMThreadView.
   const onPickLeader = useCallback(async (leader: SearchedLeader) => {
     if (!callerUserId) return;
     // Canonical UUID-sorted participant pair (matches the conversations
@@ -309,18 +383,78 @@ export default function ConnectScreen() {
       .eq('participant_a', pa)
       .eq('participant_b', pb)
       .maybeSingle();
-    if (existing?.id) {
-      goTo({ kind: 'thread', conversationId: existing.id, recipientUserId: null });
-    } else {
-      goTo({ kind: 'thread', conversationId: null, recipientUserId: leader.userId });
-    }
-  }, [callerUserId, goTo]);
+    // Compose displayName from role + fullName (same rule as LeadersList).
+    const roleLabel = leader.role ? getRoleLabel(leader.role) : '';
+    const displayName = leader.anonymous
+      ? (roleLabel || 'Leader')
+      : (roleLabel ? `${roleLabel} ${leader.fullName}`.trim() : leader.fullName);
+    const churchName = leader.underground ? 'Underground Church' : leader.churchName;
+    const initialProfile = {
+      displayName,
+      fullName: leader.fullName,
+      churchName,
+      isSecure: false,
+      isAnon: leader.anonymous,
+    };
 
-  // ── render the active list surface (Leaders or Ministries) ──────
-  const listSurface = useMemo(() => {
-    if (subTab === 'leaders') {
-      return (
+    if (existing?.id) {
+      // Existing conversation — open normally.
+      goTo({
+        kind: 'thread',
+        conversationId: existing.id,
+        recipientUserId: null,
+        initialProfile,
+      });
+      return;
+    }
+
+    // No conversation yet — let the server decide whether the consent
+    // layer applies. In-network pairs bypass the request flow.
+    try {
+      const convId = await getOrCreateConversationIfPermitted(leader.userId);
+      // In-network — open a normal DM with the (find-or-created) conversation.
+      goTo({
+        kind: 'thread',
+        conversationId: convId,
+        recipientUserId: null,
+        initialProfile,
+        isConnectionRequest: false,
+      });
+    } catch (err) {
+      if (
+        err instanceof ConnectionRequestError &&
+        err.code === 'requires_connection_request'
+      ) {
+        // Strangers — open the thread in connection-request mode.
+        goTo({
+          kind: 'thread',
+          conversationId: null,
+          recipientUserId: leader.userId,
+          initialProfile,
+          isConnectionRequest: true,
+        });
+      } else {
+        // Any other failure (not_authorized, recipient_not_found, etc.).
+        // Surface a neutral toast and stay on the search surface rather
+        // than opening a half-formed thread.
+        showToast("This leader can't be reached right now.");
+      }
+    }
+  }, [callerUserId, goTo, showToast]);
+
+  // ── always-mounted list surfaces — hidden with display:'none' ──────
+  // Both lists stay mounted regardless of which sub-tab is active.
+  // Switching sub-tabs toggles visibility only; neither list ever
+  // unmounts, so they never hit their initial loading state on a
+  // tab switch. display:'none' removes from layout (like CSS) without
+  // unmounting the React subtree.
+  const leadersVisible = subTab === 'leaders';
+  const ministriesVisible = subTab === 'ministries';
+  const listSurface = useMemo(() => (
+    <>
+      <View style={{ flex: 1, display: leadersVisible ? 'flex' : 'none' }}>
         <LeadersList
+          refreshTrigger={leadersRefreshTick}
           onOpenThread={(thread) =>
             goTo({
               kind: 'thread',
@@ -337,21 +471,42 @@ export default function ConnectScreen() {
                 fullName: thread.fullName,
                 churchName: thread.churchName,
                 isSecure: thread.isSecure,
+                isAnon: thread.anonymous,
               },
             })}
           onFindLeader={() => goTo({ kind: 'search' })}
+          // KAN-69: incoming request rows open with the request props so
+          // DMThreadView renders the in-thread accept/decline view.
+          onOpenRequestThread={(thread) =>
+            goTo({
+              kind: 'thread',
+              conversationId: null,
+              recipientUserId: thread.otherUserId,
+              initialProfile: {
+                displayName: thread.displayName,
+                fullName: thread.fullName,
+                churchName: thread.churchName,
+                isSecure: thread.isSecure,
+                isAnon: thread.anonymous,
+              },
+              requestId: thread.requestId,
+              // The preview from get_leader_thread_list contains the
+              // request message body (LEFT 60 chars).
+              requestMessage: thread.preview || null,
+              requestSenderName: thread.displayName,
+            })}
         />
-      );
-    }
-    return (
-      <MinistriesList
-        onOpenBranch={(branchId) => goTo({ kind: 'branch', branchId })}
-        onStartBranch={() => goTo({ kind: 'create' })}
-        onToast={showToast}
-        refreshTrigger={ministriesRefreshTick}
-      />
-    );
-  }, [subTab, goTo, showToast, ministriesRefreshTick]);
+      </View>
+      <View style={{ flex: 1, display: ministriesVisible ? 'flex' : 'none' }}>
+        <MinistriesList
+          onOpenBranch={(branchId) => goTo({ kind: 'branch', branchId })}
+          onStartBranch={() => goTo({ kind: 'create' })}
+          onToast={showToast}
+          refreshTrigger={ministriesRefreshTick}
+        />
+      </View>
+    </>
+  ), [leadersVisible, ministriesVisible, leadersRefreshTick, ministriesRefreshTick, goTo, showToast]);
 
   // ── render the active push surface (when applicable) ─────────────
   const pushSurface = useMemo(() => {
@@ -385,6 +540,11 @@ export default function ConnectScreen() {
                   : cur,
               );
             }}
+            // KAN-69 request-flow props (undefined when not applicable).
+            isConnectionRequest={pushVisible.isConnectionRequest}
+            requestId={pushVisible.requestId}
+            requestMessage={pushVisible.requestMessage}
+            requestSenderName={pushVisible.requestSenderName}
           />
         );
       case 'branch':
@@ -421,7 +581,6 @@ export default function ConnectScreen() {
 
   // ── animated push container styles ────────────────────────────────
   const pushTranslate = pushAnim.interpolate({ inputRange: [0, 1], outputRange: [width, 0] });
-  const pushOpacity = pushAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -432,13 +591,11 @@ export default function ConnectScreen() {
           showCompose={view.kind === 'list' && verified}
           onCompose={handleCompose}
         />
-        {view.kind === 'list' && (
-          <Segmented
-            value={subTab}
-            onChange={setSubTab}
-            badges={{ ministries: pendingInvites }}
-          />
-        )}
+        <Segmented
+          value={subTab}
+          onChange={setSubTab}
+          badges={{ ministries: pendingInvites }}
+        />
         <View style={styles.listBody}>
           {listSurface}
         </View>
@@ -449,10 +606,7 @@ export default function ConnectScreen() {
         <Animated.View
           style={[
             styles.pushLayer,
-            {
-              transform: [{ translateX: pushTranslate }],
-              opacity: pushOpacity,
-            },
+            { transform: [{ translateX: pushTranslate }] },
           ]}
         >
           {pushSurface}
@@ -462,8 +616,14 @@ export default function ConnectScreen() {
       {/* Unverified gate — full-screen overlay (zIndex 20) matching the
           Church tab gate style. NOT dismissible — protection layer.
           Covers the list AND any push surface that might be behind it.
-          Two copy variants: church-pending vs leader-pending. */}
-      {!verified ? <ConnectGateView churchVerified={churchVerified} /> : null}
+          Two copy variants: church-pending vs leader-pending.
+          Queue §4 (manifest 2026-06-22): soft-deleted leaders SKIP this
+          gate — they get a read-only Connect with compose hidden so
+          their existing threads remain accessible during the 30-day
+          window. RLS enforces write-block server-side. */}
+      {!verified && !isSoftDeleted ? (
+        <ConnectGateView churchVerified={churchVerified} viewerChurchType={viewerChurch?.type} />
+      ) : null}
 
       {/* iOS toast (Android uses ToastAndroid). */}
       {toastNode}
@@ -482,15 +642,18 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   // ── ConnectGateView — full-screen overlay (mirrors TheChurchScreen) ──
+  // Full-screen overlay. Top-aligned (no justifyContent:'center') so
+  // the glyph sits ~marginTop:300 below the screen top, matching the
+  // Persecuted gate's lower-anchored feel. Scripture block removed
+  // 2026-06-22.
   gate: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
     backgroundColor: 'rgba(8,8,8,0.92)',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 28,
   },
-  gateCrossGlyph: { marginBottom: 28 },
+  gateCrossGlyph: { marginTop: 300, marginBottom: 28 },
   gateTitle: {
     fontFamily: Typography.scriptureLight,
     fontSize: 28,
@@ -511,36 +674,12 @@ const styles = StyleSheet.create({
   },
   gateTiny: {
     fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.1,
+    fontSize: 10.5,
+    letterSpacing: 2.31, // 0.22em × 10.5
     textTransform: 'uppercase',
     color: Colors.accent,
-    marginBottom: 28,
-  },
-  gateScripture: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(107,181,232,0.06)',
-    borderWidth: 0.5,
-    borderColor: Colors.borderAccent,
-    borderRadius: 10,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-  },
-  gateScriptureText: {
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 16.5,
-    color: Colors.text,
-    lineHeight: 25,
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  gateScriptureRef: {
-    fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.09,
-    textTransform: 'uppercase',
-    color: Colors.accent,
+    marginBottom: 28,
   },
   // ── toast (iOS only; Android uses ToastAndroid) ──
   toast: {

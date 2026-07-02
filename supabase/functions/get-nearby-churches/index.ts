@@ -192,6 +192,36 @@ async function handler(req: Request): Promise<Response> {
   if (authErr || !userData?.user?.id) return json(401, { error: "invalid_token" });
   const authId = userData.user.id;
 
+  // ── Caller record (verification + own church + church type) ──
+  // Underground 403 gate is checked BEFORE the request body is even
+  // parsed, so an underground caller's GPS coordinates never enter this
+  // function's request-body pipeline, never reach the RPC plan, never
+  // hit the Postgres log, never become the Upstash rate-limit key.
+  // Defense-in-depth pairs with: churches_public view exclusion (KAN-211),
+  // FE hide of CAML for underground viewers (TheChurchScreen), and the
+  // own-church inject predicate further down.
+  const { data: callerRow, error: callerErr } = await admin
+    .from("users")
+    .select("verification_status, church_id, churches!users_church_id_fkey(type)")
+    .eq("auth_id", authId)
+    .single();
+  if (callerErr || !callerRow) {
+    return json(404, { error: "user_not_found" });
+  }
+  const callerVerified  = callerRow.verification_status === "verified";
+  const callerChurchId  = callerRow.church_id as string | null;
+  const callerChurchRel = (callerRow as { churches?: { type?: string } | { type?: string }[] | null }).churches;
+  const callerChurch    = Array.isArray(callerChurchRel) ? callerChurchRel[0] : callerChurchRel;
+  const callerChurchType = callerChurch?.type ?? null;
+
+  // SEC-locked 2026-06-21: underground callers MUST NOT submit GPS to
+  // this function. Return 403 BEFORE body parse so coordinates never
+  // enter the function's processing path. FE routes underground viewers
+  // to get_church_tab_underground_viewer() which takes no coordinates.
+  if (callerChurchType === "underground") {
+    return json(403, { error: "caller_underground_no_nearby" });
+  }
+
   // ── Body ──
   let body: { lat?: unknown; lng?: unknown; radius_km?: unknown } = {};
   try {
@@ -211,18 +241,6 @@ async function handler(req: Request): Promise<Response> {
   const requestedRadiusKm = typeof body.radius_km === "number" && Number.isFinite(body.radius_km)
     ? Math.max(1, Math.min(RADIUS_DEFAULT_KM, body.radius_km))
     : RADIUS_DEFAULT_KM;
-
-  // ── Caller record (verification + own church) ──
-  const { data: callerRow, error: callerErr } = await admin
-    .from("users")
-    .select("verification_status, church_id")
-    .eq("auth_id", authId)
-    .single();
-  if (callerErr || !callerRow) {
-    return json(404, { error: "user_not_found" });
-  }
-  const callerVerified  = callerRow.verification_status === "verified";
-  const callerChurchId  = callerRow.church_id as string | null;
 
   // ── Rate limit (per user_id, AFTER auth) ──
   const rl = await rateLimit(authId);
@@ -274,7 +292,15 @@ async function handler(req: Request): Promise<Response> {
       .select("id, name, type, city, country, lat, lng, rag_status, verification_status, church_code")
       .eq("id", callerChurchId)
       .single();
-    if (ownRow && typeof ownRow.lat === "number" && typeof ownRow.lng === "number") {
+    // Defense-in-depth (SEC-locked 2026-06-21): explicit underground
+    // guard on the own-church inject path. Today the safety holds by
+    // emergence — underground rows carry NULL lat/lng per the
+    // underground_no_location CHECK, so the typeof check rejects them.
+    // The explicit `type !== 'underground'` predicate makes the
+    // safety LOAD-BEARING: even if a schema change ever loosened the
+    // NULL-coord constraint, an underground row would still never be
+    // injected into a surface viewer's nearby list from this code path.
+    if (ownRow && ownRow.type !== "underground" && typeof ownRow.lat === "number" && typeof ownRow.lng === "number") {
       const ownDistKm = haversineKm(viewerLat, viewerLng, ownRow.lat, ownRow.lng);
       // Only inject if within RADIUS_EXPANDED_KM. Beyond that the leader is
       // traveling and their home church should not appear in the nearby list.

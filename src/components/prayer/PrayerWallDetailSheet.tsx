@@ -50,7 +50,7 @@ import {
   hasPrayedStateChanged,
   type PrayerRow,
 } from './PrayerWallLogic';
-import { formatLeaderLine } from '../../utils/displayHelpers';
+import { formatLeaderLine, viewerOrgCopy } from '../../utils/displayHelpers';
 import { HeartIcon, XIcon } from './PrayerIcons';
 import { PRAYER_DETAIL_STYLE } from './PrayerWallCard';
 
@@ -73,6 +73,13 @@ interface Props {
    * church) and the label reads "This is your church".
    */
   viewerChurchId?: string;
+  /**
+   * The viewer's own church type. Drives the para-ministry copy swap on
+   * the "This is your church" CTA label (BA-para #1 — director sees
+   * "This is your organization" instead). Optional; defaults to the
+   * "your church" wording when absent.
+   */
+  viewerChurchType?: string | null;
   now?: Date;
 }
 
@@ -82,7 +89,8 @@ const SHEET_HEIGHT = SCREEN_H * SHEET_MAX_RATIO;
 const ANIM_MS = 320;
 const SWIPE_DISMISS_THRESHOLD = 80;
 
-export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, viewerChurchId, now }: Props) {
+export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, viewerChurchId, viewerChurchType, now }: Props) {
+  const viewer = viewerOrgCopy(viewerChurchType);
   const reduced = useReducedMotion();
   const slideY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -250,7 +258,7 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
   const isOwnChurch = viewerChurchId != null && row.church_id === viewerChurchId;
   const connectDisabled = isUnderground || isAnonymous || isOwnChurch;
   const connectLabel = isOwnChurch
-    ? 'This is your church'
+    ? `This is ${viewer.yourChurchOrOrg}`
     : connectDisabled
       ? 'Direct message unavailable'
       : 'Connect to this church';

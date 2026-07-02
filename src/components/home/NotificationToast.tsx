@@ -10,6 +10,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
+import { useViewerChurch } from '../../hooks/useViewerChurch';
+import { viewerOrgCopy } from '../../utils/displayHelpers';
 import { CheckIcon, InfoIcon, HeartIcon, Chevron } from './banner-icons';
 
 export type ToastType = 'approved' | 'rejected' | 'heartcry';
@@ -22,16 +24,22 @@ type ToastConfig = {
   chevron?: boolean;  // tappable → onPress
 };
 
-export const TOASTS: Record<ToastType, ToastConfig> = {
-  approved: { icon: <CheckIcon />, title: 'Your church has been verified.', sub: 'Welcome to the network.' },
-  rejected: { icon: <InfoIcon color={Colors.textMuted} />, title: "Your verification wasn't approved", sub: 'See the reason and next steps in your profile.', chevron: true },
-  heartcry: { icon: <HeartIcon />, title: 'Someone has responded to your heartcry.', sacred: true, chevron: true },
-};
+// Build the toast config map per-render so the "approved" title can swap
+// "church" → "organization" for para-ministry viewers via viewerOrgCopy.
+function buildToasts(viewer: ReturnType<typeof viewerOrgCopy>): Record<ToastType, ToastConfig> {
+  return {
+    approved: { icon: <CheckIcon />, title: `${viewer.yourChurchOrOrgCap} has been verified.`, sub: 'Welcome to the network.' },
+    rejected: { icon: <InfoIcon color={Colors.textMuted} />, title: "Your verification wasn't approved", sub: 'See the reason and next steps in your profile.', chevron: true },
+    heartcry: { icon: <HeartIcon />, title: 'Someone has responded to your heartcry.', sacred: true, chevron: true },
+  };
+}
 
 const LINGER_MS = 4000;
 
 export function NotificationToast({ type, onPress, onDismiss }: { type: ToastType; onPress?: () => void; onDismiss: () => void }) {
-  const cfg = TOASTS[type];
+  const { church } = useViewerChurch();
+  const viewer = viewerOrgCopy(church?.type);
+  const cfg = buildToasts(viewer)[type];
   const ty = useRef(new Animated.Value(-10)).current;
   const op = useRef(new Animated.Value(0)).current;
 

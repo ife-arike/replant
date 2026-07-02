@@ -30,6 +30,9 @@ function makeDeps(overrides: Partial<Deps> = {}): { deps: Deps; calls: Calls } {
     (async () => ({ wrote: true }));
   const now = overrides.now ?? (() => FIXED_NOW);
 
+  const fetchUndergroundRevealContext = overrides.fetchUndergroundRevealContext ??
+    (async () => null);
+
   const deps: Deps = {
     validateJwt: async (h) => {
       calls.validateJwt++;
@@ -43,6 +46,9 @@ function makeDeps(overrides: Partial<Deps> = {}): { deps: Deps; calls: Calls } {
       calls.deactivateAtomically++;
       calls.deactivateArgs.push({ userId, churchId, nowISO });
       return deactivateAtomically(userId, churchId, nowISO);
+    },
+    fetchUndergroundRevealContext: async (userId, churchId) => {
+      return fetchUndergroundRevealContext(userId, churchId);
     },
     now,
   };

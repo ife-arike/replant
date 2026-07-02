@@ -320,7 +320,12 @@ export default function PrayerWallPullUp({ onSnapChange, collapseTrigger = 0, re
             </View>
           ) : rows.length === 0 && hasFetchedOnce ? (
             <View style={styles.stateBox}>
-              <Text style={styles.emptyText}>No prayer requests on the wall right now.</Text>
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>Quiet across the network.</Text>
+                <Text style={styles.emptyBody}>
+                  When churches share burdens, their prayers will pull up here.
+                </Text>
+              </View>
             </View>
           ) : (
             <ScrollView
@@ -577,6 +582,32 @@ const styles = StyleSheet.create({
   },
   stateBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   emptyText: { fontFamily: Typography.body, fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
+  emptyCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    borderWidth: 0.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(240,237,230,0.14)',
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  emptyTitle: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.17,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   errorText: { fontFamily: Typography.body, fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
   retryText: { fontFamily: Typography.mono, fontSize: 11, letterSpacing: 1.5, color: Colors.accent, textTransform: 'uppercase' },
 

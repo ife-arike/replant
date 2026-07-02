@@ -42,7 +42,6 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
@@ -51,6 +50,16 @@ import { getRoleLabel } from '../../utils/displayHelpers';
 import CovenantStrip from './CovenantStrip';
 import CovenantNotice from './CovenantNotice';
 import AttachmentPopover from './AttachmentPopover';
+import RequestNote from './RequestNote';
+import SentRequestModal from './SentRequestModal';
+import DeclineRequestModal from './DeclineRequestModal';
+import RequestActionsBar from './RequestActionsBar';
+import RpMark from '../icons/RpMark';
+import {
+  sendConnectionRequest,
+  respondToRequest,
+  ConnectionRequestError,
+} from '../../hooks/useConnectionRequest';
 
 interface Props {
   // Either threadId (existing conversation) or recipientUserId (lazy thread).
@@ -73,6 +82,7 @@ interface Props {
     fullName: string;
     churchName: string;
     isSecure: boolean;
+    isAnon?: boolean;
   };
   callerUserId: string | null;
   covenantAcknowledged: boolean;
@@ -84,6 +94,21 @@ interface Props {
   // back button remains; this is an additive gesture path.
   onSwipeBack?: () => void;
   onConversationCreated?: (conversationId: string) => void;
+  // KAN-69 request-flow props.
+  //
+  // isConnectionRequest: true when the thread is being opened for a
+  // NEW message to an unconnected leader. Shows RequestNote above the
+  // composer and routes Send through send_connection_request RPC
+  // instead of the normal send-message edge fn.
+  isConnectionRequest?: boolean;
+  // requestId + requestMessage: populated when the current leader is
+  // the RECIPIENT of a pending connection request (row_kind =
+  // 'request_incoming'). These power the in-thread accept/decline view.
+  requestId?: string | null;
+  requestMessage?: string | null;
+  // requestSenderName: display name of the person who sent the request.
+  // Used in the AcceptSystemMessage label.
+  requestSenderName?: string;
 }
 
 interface ThreadMessage {
@@ -95,6 +120,15 @@ interface ThreadMessage {
   state?: 'pending' | 'sent' | 'failed';
   // Stable groupLabel decided once per 5-min window (see buildGroupLabels).
   groupLabel?: string | null;
+  // KAN-296 Task #21 — human-first attribution on Replant-Team-authored
+  // messages. When set on an inbound message inside a secure Replant Team
+  // thread, the renderer surfaces `"<First> · Replant Team"` as an eyebrow
+  // above the bubble so the leader in distress sees the warmth of a real
+  // person's first name (e.g. "Sarah") instead of a faceless system label.
+  // NULL / empty → render the bubble alone (backwards-compat with all
+  // pre-KAN-296 rows and with any Replant Team send that omitted the
+  // attribution deliberately).
+  attributionDisplayName?: string | null;
 }
 
 interface OtherParty {
@@ -108,7 +142,6 @@ const PAGE_SIZE = 30;
 // Timestamp grouping threshold. iMessage uses ~60-minute gaps; a 5-minute
 // window put a divider between every tight cluster of replies.
 const GROUP_GAP_MS = 60 * 60 * 1000;
-const MAX_COMPOSER_HEIGHT = 124;
 // connect-polish-1 Fix B → connect-polish-2 Fix 3 follow-up: with the
 // field collapsed to 36pt, the 42pt attach + send buttons looked larger
 // than the field they framed (visual misalignment in the device pass).
@@ -121,7 +154,7 @@ const MAX_COMPOSER_HEIGHT = 124;
 // (which sits at the composer's flex-end floor regardless of the
 // button's height). Grow-on-input + textAlignVertical untouched.
 const MIN_COMPOSER_HEIGHT = 36;
-const COMPOSER_BUTTON_SIZE = 36;
+const COMPOSER_BUTTON_SIZE = 40;
 
 // ── inline icons ──────────────────────────────────────────────────────
 function BackIcon() {
@@ -222,6 +255,21 @@ function Bubble({
 }) {
   const mine = msg.mine;
   const tightTail = prevSameAuthor;
+  // KAN-296 Task #21 — Replant Team attribution eyebrow.
+  // Gated on: inbound (!mine) + secure Replant Team thread + non-empty
+  // attribution_display_name. In a secure thread, every non-mine message
+  // is authored by the Replant Team system user; the SYSTEM_USER_ID lives
+  // in Vault and is intentionally never shipped to the client (SEC posture
+  // — matches send-message index.ts comment 3c). The triple-gate is the
+  // safe client-side proxy for "sender is the Replant Team system user".
+  // Renders ONLY on the first bubble of a same-author cluster so a burst
+  // of consecutive replies from the same admin doesn't repeat the eyebrow
+  // on every row.
+  const attribName =
+    !mine && secure && !prevSameAuthor
+      ? (msg.attributionDisplayName ?? '').trim()
+      : '';
+  const showAttribution = attribName.length > 0;
   // Bubble radius: all corners stay clearly rounded (14) regardless of
   // grouping so consecutive same-author bubbles still feel iMessage-tight
   // but never get a sharp inner corner.
@@ -241,6 +289,12 @@ function Bubble({
 
   return (
     <View style={{ marginTop: tightTail ? 2 : 10 }}>
+      {showAttribution && (
+        <View style={styles.attributionRow}>
+          <Text style={styles.attributionName} numberOfLines={1}>{attribName}</Text>
+          <Text style={styles.attributionSuffix} numberOfLines={1}>FROM REPLANT TEAM</Text>
+        </View>
+      )}
       <View
         style={[
           styles.bubbleRow,
@@ -294,8 +348,42 @@ function LazyEmpty() {
       </Text>
       <Text style={styles.lazyRef}>MATTHEW 18:20 · KJV</Text>
       <Text style={styles.lazySub}>
-        Say what is on your heart to begin. Only the two of you will read it.
+        A letter to a fellow leader. Let your words be with grace.
       </Text>
+    </View>
+  );
+}
+
+// ── leader-initial header icon ────────────────────────────────────────
+// Mirrors BranchThreadView's 28×28 branchHeadIcon — a small rounded glyph
+// between the back arrow and the who-block. Renders the other party's
+// first initial so the DM header has the same spatial rhythm as branches.
+function LeaderInitialIcon({ initial }: { initial: string }) {
+  return (
+    <View style={styles.dmHeadIcon}>
+      <Text style={styles.dmHeadInitial}>{initial}</Text>
+    </View>
+  );
+}
+
+function AnonHeadIcon() {
+  return (
+    <View style={styles.dmHeadIcon}>
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Circle cx={12} cy={8.5} r={3.5} stroke={Colors.textMuted} strokeWidth={1.4} />
+        <Path d="M5.5 19a6.5 6.5 0 0 1 13 0" stroke={Colors.textMuted} strokeWidth={1.4} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
+// Secure Replant Team head icon — mirrors the thread-list monogram
+// treatment (canonical RpMark, blue-tinted background) so the identity
+// carries through from list to detail view.
+function SecureHeadIcon() {
+  return (
+    <View style={styles.dmHeadIconSecure}>
+      <RpMark size={20} />
     </View>
   );
 }
@@ -311,9 +399,12 @@ export default function DMThreadView({
   onBack,
   onSwipeBack,
   onConversationCreated,
+  isConnectionRequest = false,
+  requestId = null,
+  requestMessage = null,
+  requestSenderName,
 }: Props) {
   const { session } = useAuth();
-  const insets = useSafeAreaInsets();
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   // Seed `other` from the initial profile snapshot (Fix 1) so the
   // header renders cleanly on first frame. The header-only church
@@ -327,7 +418,7 @@ export default function DMThreadView({
         ? 'Replant Team — Secure Message'
         : initialProfile.displayName,
       churchLabel: initialProfile.isSecure
-        ? 'Replant · admin-monitored'
+        ? 'Official · admin-monitored'
         : initialProfile.churchName,
       isSecure: initialProfile.isSecure,
     };
@@ -366,7 +457,6 @@ export default function DMThreadView({
     };
   }, [initialFetchComplete, refreshConnectBadge]);
   const [draft, setDraft] = useState('');
-  const [composerHeight, setComposerHeight] = useState(MIN_COMPOSER_HEIGHT);
   // Fix 8 (KAN-68 §15.3): paperclip → anticipatory popover (NOT a
   // toast / alert). Visible flag is toggled by the paperclip tap;
   // backdrop tap closes; a non-empty draft also closes (the user is
@@ -382,6 +472,27 @@ export default function DMThreadView({
   useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
 
   const isSecure = other?.isSecure ?? false;
+
+  // ── KAN-69 request-flow state ──────────────────────────────────────
+  // isConnectionRequest=true → send path uses send_connection_request RPC.
+  // requestId != null       → recipient view with accept/decline.
+
+  // SentRequestModal shown after successful send_connection_request.
+  const [sentRequestModalVisible, setSentRequestModalVisible] = useState(false);
+  // DeclineRequestModal — shown before firing the decline RPC.
+  const [declineModalVisible, setDeclineModalVisible] = useState(false);
+  // recipientDisplayName for the modal copy. Derived from initialProfile.
+  const requestRecipientName =
+    initialProfile?.fullName ||
+    initialProfile?.displayName ||
+    'this leader';
+
+  // busy state for accept/decline buttons.
+  const [requestActionBusy, setRequestActionBusy] = useState(false);
+
+  // Once accepted, the request_incoming thread transitions to a normal
+  // conversation. acceptedSystemMsg shows the "[Name] accepted" notice.
+  const [acceptedSystemMsg, setAcceptedSystemMsg] = useState<string | null>(null);
 
   // ── Swipe-left-to-go-back PanResponder ────────────────────────────
   // Only claims the gesture when the move is predominantly horizontal
@@ -434,9 +545,12 @@ export default function DMThreadView({
       if (!row) return;
       const isSec = !!row.is_secure_replant_thread;
       const anon = !!row.other_anonymous;
+      // KAN-229: get_leader_thread_list now pre-resolves other_full_name
+      // (honorific OR role prefix + given names per preference + family +
+      // last_name_first). FE no longer re-derives.
       const fullName: string = row.other_full_name ?? '';
       const churchName: string = isSec
-        ? 'Replant · admin-monitored'
+        ? 'Official · admin-monitored'
         : (row.other_church_name ?? '');
       setOther({
         userId: row.other_user_id,
@@ -470,7 +584,7 @@ export default function DMThreadView({
       setLoading(true);
       const { data, error } = await supabase
         .from('messages')
-        .select('id, content, sender_id, created_at')
+        .select('id, content, sender_id, created_at, attribution_display_name')
         .eq('conversation_id', conversationId)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -489,6 +603,8 @@ export default function DMThreadView({
           mine: m.sender_id === callerUserId,
           text: m.content,
           createdAt: new Date(m.created_at),
+          // KAN-296 Task #21 — nullable; NULL rows render as they do today.
+          attributionDisplayName: m.attribution_display_name ?? null,
         }))
         .reverse();
       setMessages(assignGroupLabels(ordered));
@@ -531,6 +647,8 @@ export default function DMThreadView({
             mine: row.sender_id === callerUserId,
             text: row.content,
             createdAt: new Date(row.created_at),
+            // KAN-296 Task #21 — Realtime payload carries the full row shape.
+            attributionDisplayName: row.attribution_display_name ?? null,
           };
           // Dedupe — if we already have this id (Realtime + send round-trip
           // race), skip. Optimistic 'pending' rows have local ids prefixed
@@ -568,7 +686,7 @@ export default function DMThreadView({
       if (!cursor) { setLoadingOlder(false); return; }
       const { data } = await supabase
         .from('messages')
-        .select('id, content, sender_id, created_at')
+        .select('id, content, sender_id, created_at, attribution_display_name')
         .eq('conversation_id', conversationId)
         .eq('is_active', true)
         .lt('created_at', cursor.toISOString())
@@ -583,6 +701,8 @@ export default function DMThreadView({
         mine: m.sender_id === callerUserId,
         text: m.content,
         createdAt: new Date(m.created_at),
+        // KAN-296 Task #21 — nullable; NULL rows render as they do today.
+        attributionDisplayName: m.attribution_display_name ?? null,
       })).reverse();
       const combined = [...older, ...messages];
       setMessages(assignGroupLabels(combined));
@@ -640,18 +760,27 @@ export default function DMThreadView({
       // response. The send-message edge function returns the field but
       // the leader's UI is identical regardless of its value — per
       // KAN-70 leader-opacity.
-      setMessages((prev) =>
-        assignGroupLabels(prev.map((m) =>
+      //
+      // Sync messagesRef INSIDE the updater so the Realtime INSERT
+      // handler (which reads messagesRef for dedup) sees the real UUID
+      // immediately — before the async useEffect that normally syncs
+      // the ref can run. Without this, the handler checks the stale
+      // ref (still holding the opt- ID), misses the dedup, and inserts
+      // a second row with the same real UUID → duplicate key error.
+      setMessages((prev) => {
+        const next = assignGroupLabels(prev.map((m) =>
           m.id === optId
             ? {
               ...m,
               id: result.id,
-              state: 'sent',
+              state: 'sent' as const,
               createdAt: new Date(result.created_at),
             }
             : m,
-        )),
-      );
+        ));
+        messagesRef.current = next;
+        return next;
+      });
     } catch {
       setMessages((prev) =>
         prev.map((m) => m.id === optId ? { ...m, state: 'failed' } : m),
@@ -659,24 +788,58 @@ export default function DMThreadView({
     }
   }, [session?.access_token, recipientUserId, onConversationCreated]);
 
+  // ── Send connection request (KAN-69) ─────────────────────────────
+  // Called instead of sendNow when isConnectionRequest=true.
+  // Covenant notice fires first (same gate as regular sends) — the
+  // acceptCovenant callback routes here via pendingRequestTextRef.
+  const pendingRequestTextRef = useRef<string>('');
+
+  const sendRequest = useCallback(async (text: string) => {
+    if (!recipientUserId) return;
+    try {
+      await sendConnectionRequest(recipientUserId, text);
+      setSentRequestModalVisible(true);
+    } catch (err) {
+      // Surface the user-friendly message via the failed-send UI.
+      // For requests we don't have an optimistic bubble to mark failed,
+      // so we re-add the draft text and let the leader retry.
+      const msg = err instanceof ConnectionRequestError
+        ? err.message
+        : 'Your request could not be sent. Please try again.';
+      setDraft(text);
+      // Minimal error feedback — a future pass can wire this to the
+      // same toast used by BranchCreate.
+      // eslint-disable-next-line no-console
+      void msg; // suppress unused warning; message is in the Error
+    }
+  }, [recipientUserId]);
+
   const attemptSend = useCallback(() => {
     const text = draft.trim();
     if (!text) return;
     if (!covenantAcknowledged) {
       pendingTextRef.current = text;
+      // For connection requests, also store in the request-specific ref
+      // so acceptCovenant can route correctly.
+      if (isConnectionRequest) {
+        pendingRequestTextRef.current = text;
+      }
       setShowCovenant(true);
       return;
     }
     setDraft('');
-    setComposerHeight(MIN_COMPOSER_HEIGHT);
     // B3 (device pass): dismiss the keyboard the moment the message
     // leaves the composer. The optimistic bubble takes over the
     // visual feedback; staying keyboard-up makes the leader feel like
     // the send didn't land. NOT done on the retry path (failed-send
     // bubbles stay tappable while the keyboard remains visible).
     Keyboard.dismiss();
-    void sendNow(text);
-  }, [draft, covenantAcknowledged, sendNow]);
+    if (isConnectionRequest) {
+      void sendRequest(text);
+    } else {
+      void sendNow(text);
+    }
+  }, [draft, covenantAcknowledged, sendNow, isConnectionRequest, sendRequest]);
 
   const acceptCovenant = useCallback(async () => {
     await onAcknowledgeCovenant();
@@ -685,12 +848,17 @@ export default function DMThreadView({
     pendingTextRef.current = '';
     if (text) {
       setDraft('');
-      setComposerHeight(MIN_COMPOSER_HEIGHT);
       // Same B3 dismiss on the covenant-gated first-send path.
       Keyboard.dismiss();
-      void sendNow(text);
+      // KAN-69: route to request send if this is a connection request.
+      if (isConnectionRequest) {
+        pendingRequestTextRef.current = '';
+        void sendRequest(text);
+      } else {
+        void sendNow(text);
+      }
     }
-  }, [onAcknowledgeCovenant, sendNow]);
+  }, [onAcknowledgeCovenant, sendNow, isConnectionRequest, sendRequest]);
 
   const retry = useCallback((optId: string) => {
     // Find the failed row, mark pending, and re-fire send.
@@ -724,7 +892,7 @@ export default function DMThreadView({
         setMessages((prev) =>
           assignGroupLabels(prev.map((m) =>
             m.id === optId
-              ? { ...m, id: result.id, state: 'sent', createdAt: new Date(result.created_at) }
+              ? { ...m, id: result.id, state: 'sent' as const, createdAt: new Date(result.created_at) }
               : m,
           )),
         );
@@ -735,6 +903,61 @@ export default function DMThreadView({
       }
     })();
   }, [session?.access_token, recipientUserId, onConversationCreated]);
+
+  // ── Accept / Decline (KAN-69 recipient view) ──────────────────────
+  const handleAccept = useCallback(async () => {
+    if (!requestId || requestActionBusy) return;
+    setRequestActionBusy(true);
+    try {
+      // KAN-69 consent-layer accept path. The accept-connection-request
+      // edge fn owns the whole flow server-side: it FLAG_TAXONOMY-scans the
+      // request message, flips the request to 'accepted', then seeds the
+      // already-scanned message ATTRIBUTED TO THE ORIGINAL REQUESTER (not
+      // to us, the accepter — the prior send-message call mis-attributed
+      // it). We never call respondToRequest or send-message directly here.
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/accept-connection-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ request_id: requestId }),
+        },
+      );
+      const { conversation_id: convId } = await res.json() as {
+        conversation_id?: string;
+      };
+      if (res.ok && convId) {
+        // Transition from request thread to normal conversation.
+        conversationIdRef.current = convId;
+        setConversationId(convId);
+        onConversationCreated?.(convId);
+      }
+      // Acceptance system message — RECIPIENT perspective (we accepted).
+      const senderLabel = requestSenderName ?? other?.displayName ?? 'They';
+      setAcceptedSystemMsg(`You accepted ${senderLabel}'s request to connect`);
+    } catch {
+      // Silent — let the user retry.
+    } finally {
+      setRequestActionBusy(false);
+    }
+  }, [requestId, requestActionBusy, session?.access_token, onConversationCreated, requestSenderName, other?.displayName]);
+
+  const handleDecline = useCallback(async () => {
+    if (!requestId || requestActionBusy) return;
+    setRequestActionBusy(true);
+    try {
+      await respondToRequest(requestId, 'decline');
+      // Navigate back to the Leaders list — no thread is created.
+      onBack();
+    } catch {
+      // Silent — let the user retry.
+    } finally {
+      setRequestActionBusy(false);
+    }
+  }, [requestId, requestActionBusy, onBack]);
 
   const handleAttach = () => {
     setAttachPopoverVisible((v) => !v);
@@ -752,7 +975,11 @@ export default function DMThreadView({
   // `messages` oldest→newest for groupLabel correctness, then reverse
   // here for the data prop.
   const displayData = useMemo(() => [...messages].reverse(), [messages]);
-  const canSend = draft.trim().length > 0;
+  // KAN-69: recipient of a pending request cannot send until accepted.
+  // The composer is locked; requestId != null and no conversationId yet
+  // (the conversation is only created on accept).
+  const isIncomingRequest = !!requestId && !conversationId;
+  const canSend = !isIncomingRequest && draft.trim().length > 0;
 
   return (
     <View style={styles.root} {...swipePanResponder.panHandlers}>
@@ -760,6 +987,11 @@ export default function DMThreadView({
         <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon />
         </Pressable>
+        {isSecure
+          ? <SecureHeadIcon />
+          : initialProfile?.isAnon
+            ? <AnonHeadIcon />
+            : <LeaderInitialIcon initial={(initialProfile?.fullName?.charAt(0) ?? initialProfile?.displayName?.charAt(0) ?? '?').toUpperCase()} />}
         <View style={styles.who}>
           {/* B2 (device pass): never render a partial header. While the
               other party's profile is still resolving (lazy thread, race
@@ -797,12 +1029,30 @@ export default function DMThreadView({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
-        {!conversationId && !loading && messages.length === 0 ? (
-          <LazyEmpty />
-        ) : loading ? (
-          <View style={styles.loaderBox}>
-            <ActivityIndicator color={Colors.textSubtle} />
+        {/* KAN-69: incoming request view — show system label + request message
+            bubble + accept/decline bar. The conversation hasn't been created
+            yet (isIncomingRequest = true); the normal messages list is empty. */}
+        {isIncomingRequest ? (
+          <View style={styles.requestThreadBody}>
+            {/* System label: "CONNECTION REQUEST · {time}" */}
+            <Text style={styles.requestSystemLabel}>
+              {`CONNECTION REQUEST`}
+            </Text>
+            {/* Request message as a received bubble */}
+            {requestMessage ? (
+              <View style={styles.requestBubbleWrap}>
+                <View style={[styles.bubble, styles.bubbleRecv, { borderRadius: 16, maxWidth: '80%' }]}>
+                  <Text style={styles.bubbleText}>{requestMessage}</Text>
+                </View>
+              </View>
+            ) : null}
+            {/* Post-accept system message */}
+            {acceptedSystemMsg ? (
+              <Text style={styles.acceptSystemMsg}>{acceptedSystemMsg.toUpperCase()}</Text>
+            ) : null}
           </View>
+        ) : !conversationId && !loading && messages.length === 0 ? (
+          <LazyEmpty />
         ) : (
           <FlatList
             inverted
@@ -821,15 +1071,21 @@ export default function DMThreadView({
                 !!nextOlder && nextOlder.mine === item.mine && !item.groupLabel;
               return (
                 <View>
+                  {/* KAN-69: acceptance system message above the first row */}
+                  {index === displayData.length - 1 && acceptedSystemMsg ? (
+                    <Text style={styles.acceptSystemMsg}>
+                      {acceptedSystemMsg.toUpperCase()}
+                    </Text>
+                  ) : null}
+                  {item.groupLabel && (
+                    <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
+                  )}
                   <Bubble
                     msg={item}
                     prevSameAuthor={prevSameAuthor}
                     secure={isSecure}
                     onRetry={retry}
                   />
-                  {item.groupLabel && (
-                    <Text style={styles.tsDivider}>{item.groupLabel.toUpperCase()}</Text>
-                  )}
                 </View>
               );
             }}
@@ -846,9 +1102,21 @@ export default function DMThreadView({
           />
         )}
 
+        {/* KAN-69: request actions bar for incoming requests */}
+        {isIncomingRequest && !acceptedSystemMsg && (
+          <RequestActionsBar
+            onAccept={handleAccept}
+            onDecline={() => { setDeclineModalVisible(true); return Promise.resolve(); }}
+            busy={requestActionBusy}
+          />
+        )}
+
         <CovenantStrip />
 
-        <View style={[styles.composer, { paddingBottom: Math.max(8, insets.bottom) }]}>
+        {/* KAN-69: RequestNote above composer for outgoing requests */}
+        <RequestNote visible={isConnectionRequest && !conversationId} />
+
+        <View style={[styles.composer, { paddingBottom: 8 }]}>
           <View style={styles.attachWrap}>
             <AttachmentPopover
               visible={attachPopoverVisible}
@@ -866,20 +1134,19 @@ export default function DMThreadView({
             </Pressable>
           </View>
           <TextInput
-            style={[styles.field, { height: composerHeight }]}
+            style={styles.field}
             value={draft}
             onChangeText={setDraft}
-            placeholder={isSecure ? 'Reply to the Replant Team' : 'Write a message'}
+            placeholder={
+              isIncomingRequest && !acceptedSystemMsg
+                ? 'Reply opens when you accept'
+                : isSecure
+                  ? 'Reply to the Replant Team'
+                  : 'Write a message'
+            }
             placeholderTextColor={Colors.textSubtle}
             multiline
-            scrollEnabled={false}
-            onContentSizeChange={(e) => {
-              const h = Math.min(
-                MAX_COMPOSER_HEIGHT,
-                Math.max(MIN_COMPOSER_HEIGHT, e.nativeEvent.contentSize.height + 12),
-              );
-              setComposerHeight(h);
-            }}
+            editable={!isIncomingRequest || !!acceptedSystemMsg}
           />
           <Pressable
             onPress={attemptSend}
@@ -897,6 +1164,28 @@ export default function DMThreadView({
       </KeyboardAvoidingView>
 
       <CovenantNotice visible={showCovenant} onAccept={acceptCovenant} />
+
+      {/* KAN-69: SentRequestModal — shown after successful request send */}
+      <SentRequestModal
+        visible={sentRequestModalVisible}
+        recipientName={requestRecipientName}
+        onBack={() => {
+          setSentRequestModalVisible(false);
+          onBack();
+        }}
+      />
+
+      {/* KAN-69: DeclineRequestModal — confirmation before firing decline RPC */}
+      <DeclineRequestModal
+        visible={declineModalVisible}
+        senderName={requestSenderName ?? other?.displayName ?? 'this leader'}
+        onKeep={() => setDeclineModalVisible(false)}
+        onConfirmDecline={() => {
+          setDeclineModalVisible(false);
+          void handleDecline();
+        }}
+        declining={requestActionBusy}
+      />
     </View>
   );
 }
@@ -914,6 +1203,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+  },
+  dmHeadIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(240,237,230,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(240,237,230,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dmHeadIconSecure: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(107,181,232,0.10)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dmHeadInitial: {
+    fontFamily: Typography.displayMedium,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   who: { flex: 1, minWidth: 0 },
   whoNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -957,6 +1271,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 6,
+  },
+  // KAN-296 Task #21 — Replant Team attribution eyebrow above the bubble.
+  // Utility register (mono, small caps by upper-casing at the source, muted
+  // color, tight letter-spacing) — never italicized per [[typography-ruling]]
+  // (attribution is utility text, not scripture / editorial / witness).
+  // Left-aligned to hug the received-bubble alignment. 4pt gap above the
+  // bubble comes from marginBottom below; the outer wrapper's marginTop
+  // (10pt for a new-author group, 2pt for a same-author tail) handles the
+  // top gap. `showAttribution` in Bubble() only fires when !prevSameAuthor,
+  // so the 10pt spacing always applies here.
+  attributionEyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 0.9, // 0.10em × 9pt — matches requestSystemLabel register
+    color: Colors.textMuted,
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  // 2026-07-01 morning smoke — mirror BranchThreadView.authorRow so the
+  // leader sees the same "name blue + attribution grey" register on
+  // both secure Replant Team messages AND branch messages. Consistent
+  // authorship signal across the two multi-party surfaces they see.
+  attributionRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  attributionName: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11.5,
+    color: Colors.accent,
+  },
+  attributionSuffix: {
+    fontFamily: Typography.mono,
+    fontSize: 8.5,
+    letterSpacing: 0.68,
+    color: Colors.textMuted,
   },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowSent: { justifyContent: 'flex-end' },
@@ -1032,11 +1385,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 18,
   },
-  loaderBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // ── composer ── (Fix 4: restored to HANDOFF §6.3 spec)
-  // paddingBottom applied inline as Math.max(8, insets.bottom) so the bar
-  // hugs the keyboard when it's up (no dead 28pt) and respects the home
-  // indicator when it's down.
+  // paddingBottom applied inline as a flat 8pt — the Connect tab bar below
+  // already accounts for the bottom safe area, so reserving insets.bottom
+  // here created a large dead gap under the composer.
   composer: {
     paddingTop: 8,
     paddingHorizontal: 14,
@@ -1062,6 +1414,8 @@ const styles = StyleSheet.create({
   },
   field: {
     flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(240,237,230,0.14)',
@@ -1088,6 +1442,44 @@ const styles = StyleSheet.create({
   },
   sendActive: { backgroundColor: Colors.accent },
   sendDisabled: { backgroundColor: Colors.surfaceElevated },
+  // ── KAN-69 request thread styles ──
+  // Incoming request view — flex column showing the system label +
+  // request message bubble, centred in the available space.
+  requestThreadBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 24,
+    paddingHorizontal: 18,
+  },
+  requestSystemLabel: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+    color: 'rgba(240,237,230,0.25)',
+    alignSelf: 'center',
+    marginTop: 14,
+    marginBottom: 18,
+  },
+  requestBubbleWrap: {
+    width: '100%',
+    alignItems: 'flex-start',
+    paddingHorizontal: 0,
+  },
+  // System message at top of accepted thread — reuses the branch-event style.
+  acceptSystemMsg: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+    color: 'rgba(240,237,230,0.25)',
+    alignSelf: 'center',
+    textAlign: 'center',
+    maxWidth: '84%',
+    marginVertical: 8,
+    lineHeight: 14,
+  },
   // ── lazy empty ──
   lazyEmpty: {
     flex: 1,

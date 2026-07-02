@@ -36,12 +36,21 @@ interface UsersRowShape {
   display_name_preference: DisplayNamePreference | null;
   anonymous: boolean | null;
   full_name?: string | null;
+  // KAN-229 — name-field modifiers + structured parts (used by live preview).
+  last_name_first?: boolean | null;
+  include_middle_name?: boolean | null;
+  honorific?: string | null;
+  suffix?: string | null;
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
   role?: string | null;
   church?: {
     id: string | null;
     name: string | null;
     church_code: string | null;
     rag_status: RagStatus | null;
+    type: string | null;
   } | null;
 }
 
@@ -58,10 +67,20 @@ export default function SettingsScreenContainer() {
   const [anonymousMode, setAnonymousMode] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  // KAN-229 — name-field modifiers + structured parts.
+  const [lastNameFirst, setLastNameFirst] = useState<boolean>(false);
+  const [includeMiddleName, setIncludeMiddleName] = useState<boolean>(false);
+  const [honorific, setHonorific] = useState<string | null>(null);
+  const [suffix, setSuffix] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [middleName, setMiddleName] = useState<string | null>(null);
+  const [lastName, setLastName] = useState<string | null>(null);
   const [churchName, setChurchName] = useState<string | null>(null);
   const [churchId, setChurchId] = useState<string | null>(null);
   const [churchCode, setChurchCode] = useState<string | null>(null);
   const [ragStatus, setRagStatus] = useState<RagStatus | null>(null);
+  // Para-ministry copy + RAG row hide (BA-para #1, Founder ruling 2026-06-18).
+  const [churchType, setChurchType] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authId) return;
@@ -75,12 +94,20 @@ export default function SettingsScreenContainer() {
           display_name_preference,
           anonymous,
           full_name,
+          first_name,
+          middle_name,
+          last_name,
+          last_name_first,
+          include_middle_name,
+          honorific,
+          suffix,
           role,
           church:church_id(
             id,
             name,
             church_code,
-            rag_status
+            rag_status,
+            type
           )
         `)
         .eq("auth_id", authId)
@@ -102,6 +129,13 @@ export default function SettingsScreenContainer() {
       setAnonymousMode(row.anonymous ?? false);
       setFullName(row.full_name ?? null);
       setUserRole(row.role ?? null);
+      setLastNameFirst(row.last_name_first ?? false);
+      setIncludeMiddleName(row.include_middle_name ?? false);
+      setHonorific(row.honorific ?? null);
+      setSuffix(row.suffix ?? null);
+      setFirstName(row.first_name ?? null);
+      setMiddleName(row.middle_name ?? null);
+      setLastName(row.last_name ?? null);
 
       // Defensive: church may come back as object | array | null.
       const churchField = (row as unknown as { church?: unknown }).church;
@@ -113,6 +147,7 @@ export default function SettingsScreenContainer() {
       setChurchName(cTyped?.name ?? null);
       setChurchCode(cTyped?.church_code ?? null);
       setRagStatus(cTyped?.rag_status ?? null);
+      setChurchType(cTyped?.type ?? null);
     })();
     return () => {
       cancelled = true;
@@ -132,13 +167,21 @@ export default function SettingsScreenContainer() {
       userId={authId}
       email={email}
       initialDisplayNamePreference={initialPref}
+      initialLastNameFirst={lastNameFirst}
+      initialIncludeMiddleName={includeMiddleName}
+      initialHonorific={honorific}
+      initialSuffix={suffix}
       anonymousMode={anonymousMode}
       fullName={fullName}
+      firstName={firstName}
+      middleName={middleName}
+      lastName={lastName}
       userRole={userRole}
       churchCode={churchCode}
       churchName={churchName}
       churchId={churchId}
       ragStatus={ragStatus}
+      viewerChurchType={churchType}
     />
   );
 }

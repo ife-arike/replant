@@ -25,10 +25,19 @@
 // Pagination: 25 threads on mount, scroll-to-end loads next 25.
 // Locally paginated because the RPC returns the caller's full thread
 // set; for MVP this is fine (a leader's thread count is small).
+//
+// Request flow extension (KAN-69):
+//   row_kind values from get_leader_thread_list:
+//     'conversation'      — normal DM thread (existing)
+//     'request_incoming'  — recipient view (tappable, unread indicator)
+//     'request_pending'   — sender waiting for response (NOT tappable)
+//     'request_declined'  — sender sees declined row (NOT tappable)
+//     'request_expired'   — sender sees expired row (NOT tappable)
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -43,6 +52,15 @@ import { supabase } from '../../lib/supabase';
 import { getRoleLabel } from '../../utils/displayHelpers';
 import RpMark from '../icons/RpMark';
 import CovenantFooter from './CovenantFooter';
+import { removeRequest, withdrawRequest } from '../../hooks/useConnectionRequest';
+
+// row_kind values returned by get_leader_thread_list (KAN-69 extension).
+export type ThreadRowKind =
+  | 'conversation'
+  | 'request_incoming'
+  | 'request_pending'
+  | 'request_declined'
+  | 'request_expired';
 
 export interface LeaderThread {
   conversationId: string;
@@ -69,11 +87,25 @@ export interface LeaderThread {
   fullName: string;
   role: string | null;
   churchName: string;
+  // KAN-69 request-flow extension.
+  // Default 'conversation' for rows that don't carry a row_kind
+  // (backwards-compatible: the RPC adds it for all rows).
+  rowKind: ThreadRowKind;
+  requestId: string | null;
+  requestSentAt: string | null; // ISO timestamp from DB
 }
 
 interface Props {
   onOpenThread: (thread: LeaderThread) => void;
   onFindLeader: () => void;
+  // KAN-69: open an incoming request thread. If not provided, falls
+  // back to onOpenThread (which carries rowKind in the thread object).
+  onOpenRequestThread?: (thread: LeaderThread) => void;
+  // Increment to force a re-fetch (e.g. after navigating back from a
+  // thread where the leader declined a request). The initial mount
+  // tick (0) is skipped — the component already fetches on mount via
+  // its main useEffect / useFocusEffect.
+  refreshTrigger?: number;
 }
 
 const PAGE_SIZE = 25;
@@ -216,6 +248,261 @@ function ThreadRow({
   );
 }
 
+// ── request row variants (KAN-69) ────────────────────────────────────
+//
+// PendingRow   — sender waiting for response (NOT tappable)
+// IncomingRow  — recipient sees new request (tappable, unread indicator)
+// DeclinedRow  — declined by recipient (NOT tappable, REMOVE affordance)
+// ExpiredRow   — request expired (NOT tappable, REMOVE affordance)
+
+// Helper: is a request older than 3 days? Used to show the Withdraw link.
+function isOlderThan3Days(isoString: string | null): boolean {
+  if (!isoString) return false;
+  const ms = Date.now() - new Date(isoString).getTime();
+  return ms >= 3 * 24 * 60 * 60 * 1000;
+}
+
+function PendingRow({ thread }: { thread: LeaderThread }) {
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawn, setWithdrawn] = useState(false);
+  if (withdrawn) return null;
+
+  const canWithdraw = isOlderThan3Days(thread.requestSentAt);
+
+  const handleWithdraw = async () => {
+    if (!thread.requestId || withdrawing) return;
+    setWithdrawing(true);
+    try {
+      await withdrawRequest(thread.requestId);
+      setWithdrawn(true);
+    } catch {
+      // Silent fail — the list will refresh on next focus.
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  return (
+    <View style={[styles.row, styles.pendingRow]}>
+      {/* Dashed/dimmed monogram */}
+      <View style={[styles.monogram, styles.monogramPending]}>
+        {(thread.anonymous || thread.underground)
+          ? <AnonGlyph />
+          : <Text style={[styles.monogramInitial, styles.monogramInitialPending]}>
+              {thread.monogramInitial}
+            </Text>}
+      </View>
+      <View style={styles.center}>
+        <View style={styles.nameLine}>
+          <Text numberOfLines={1} style={[styles.name, styles.namePending]}>
+            {thread.displayName}
+          </Text>
+          {/* PENDING chip */}
+          <View style={styles.pendingTag}>
+            <Text style={styles.pendingTagText}>PENDING</Text>
+          </View>
+        </View>
+        {!thread.isSecure && (
+          <Text style={styles.church} numberOfLines={1}>{thread.churchLabel}</Text>
+        )}
+        <Text style={[styles.preview, styles.previewPending]} numberOfLines={1}>
+          Awaiting their reply
+        </Text>
+      </View>
+      <View style={styles.right}>
+        <Text style={styles.time}>{formatThreadTime(thread.requestSentAt ? new Date(thread.requestSentAt) : null)}</Text>
+        {canWithdraw && (
+          <Pressable
+            onPress={handleWithdraw}
+            disabled={withdrawing}
+            hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+          >
+            {withdrawing
+              ? <ActivityIndicator size="small" color={Colors.textSubtle} />
+              : <Text style={styles.withdrawLink}>WITHDRAW</Text>}
+          </Pressable>
+        )}
+      </View>
+      <View style={styles.rowHairline} pointerEvents="none" />
+    </View>
+  );
+}
+
+function IncomingRequestRow({
+  thread,
+  onPress,
+}: {
+  thread: LeaderThread;
+  onPress: () => void;
+}) {
+  // Incoming requests always have unread_count = 1 from the RPC.
+  const unread = thread.unread > 0;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [
+      styles.row,
+      styles.incomingRow,
+      pressed && styles.rowPressed,
+    ]}>
+      <View style={[
+        styles.monogram,
+        (thread.anonymous || thread.underground) && styles.monogramAnon,
+      ]}>
+        {(thread.anonymous || thread.underground)
+          ? <AnonGlyph />
+          : <Text style={styles.monogramInitial}>{thread.monogramInitial}</Text>}
+      </View>
+      <View style={styles.center}>
+        <View style={styles.nameLine}>
+          <Text numberOfLines={1} style={[styles.name, unread && styles.nameUnread]}>
+            {thread.displayName}
+          </Text>
+        </View>
+        {!thread.isSecure && (
+          <Text style={styles.church} numberOfLines={1}>{thread.churchLabel}</Text>
+        )}
+        <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
+          {thread.preview || 'Sent you a connection request'}
+        </Text>
+      </View>
+      <View style={styles.right}>
+        <Text style={styles.time}>{formatThreadTime(thread.requestSentAt ? new Date(thread.requestSentAt) : null)}</Text>
+        {unread && (
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadBadgeText}>{thread.unread}</Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.rowHairline} pointerEvents="none" />
+    </Pressable>
+  );
+}
+
+function DeclinedRow({
+  thread,
+  onRemoved,
+}: {
+  thread: LeaderThread;
+  onRemoved: (requestId: string) => void;
+}) {
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemove = async () => {
+    if (!thread.requestId || removing) return;
+    setRemoving(true);
+    try {
+      await removeRequest(thread.requestId);
+      onRemoved(thread.requestId);
+    } catch {
+      // Silent fail — list refreshes on next focus.
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <View style={[styles.row, styles.declinedRow]}>
+      <View style={[styles.monogram, styles.monogramDeclined]}>
+        {(thread.anonymous || thread.underground)
+          ? <AnonGlyph />
+          : <Text style={[styles.monogramInitial, styles.monogramInitialDeclined]}>
+              {thread.monogramInitial}
+            </Text>}
+      </View>
+      <View style={styles.center}>
+        <View style={styles.nameLine}>
+          <Text numberOfLines={1} style={[styles.name, styles.nameDeclined]}>
+            {thread.displayName}
+          </Text>
+        </View>
+        {!thread.isSecure && (
+          <Text style={[styles.church, styles.churchDeclined]} numberOfLines={1}>
+            {thread.churchLabel}
+          </Text>
+        )}
+        <Text style={styles.declineText} numberOfLines={2}>
+          Declined your invitation to connect.
+        </Text>
+      </View>
+      <View style={styles.right}>
+        <Text style={styles.time}>{formatThreadTime(thread.lastAt)}</Text>
+        <Pressable
+          onPress={handleRemove}
+          disabled={removing}
+          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+        >
+          {removing
+            ? <ActivityIndicator size="small" color={Colors.textSubtle} />
+            : <Text style={styles.removeLink}>REMOVE</Text>}
+        </Pressable>
+      </View>
+      <View style={styles.rowHairline} pointerEvents="none" />
+    </View>
+  );
+}
+
+function ExpiredRow({
+  thread,
+  onRemoved,
+}: {
+  thread: LeaderThread;
+  onRemoved: (requestId: string) => void;
+}) {
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemove = async () => {
+    if (!thread.requestId || removing) return;
+    setRemoving(true);
+    try {
+      await removeRequest(thread.requestId);
+      onRemoved(thread.requestId);
+    } catch {
+      // Silent fail — list refreshes on next focus.
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <View style={[styles.row, styles.declinedRow]}>
+      <View style={[styles.monogram, styles.monogramDeclined]}>
+        {(thread.anonymous || thread.underground)
+          ? <AnonGlyph />
+          : <Text style={[styles.monogramInitial, styles.monogramInitialDeclined]}>
+              {thread.monogramInitial}
+            </Text>}
+      </View>
+      <View style={styles.center}>
+        <View style={styles.nameLine}>
+          <Text numberOfLines={1} style={[styles.name, styles.nameDeclined]}>
+            {thread.displayName}
+          </Text>
+        </View>
+        {!thread.isSecure && (
+          <Text style={[styles.church, styles.churchDeclined]} numberOfLines={1}>
+            {thread.churchLabel}
+          </Text>
+        )}
+        <Text style={styles.declineText} numberOfLines={2}>
+          This request went unanswered.
+        </Text>
+      </View>
+      <View style={styles.right}>
+        <Text style={styles.time}>{formatThreadTime(thread.lastAt)}</Text>
+        <Pressable
+          onPress={handleRemove}
+          disabled={removing}
+          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+        >
+          {removing
+            ? <ActivityIndicator size="small" color={Colors.textSubtle} />
+            : <Text style={styles.removeLink}>REMOVE</Text>}
+        </Pressable>
+      </View>
+      <View style={styles.rowHairline} pointerEvents="none" />
+    </View>
+  );
+}
+
 // ── data loader ───────────────────────────────────────────────────────
 // Single SECURITY DEFINER RPC call. The RPC has already:
 //   - resolved each conversation's "other" participant (no
@@ -251,11 +538,10 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
     const role: string | null = r.other_role ?? null;
     const rawChurchName: string = r.other_church_name ?? '';
     const roleLabel = role ? getRoleLabel(role) : '';
-    // Name line per data.jsx leaderName() canonical rule. In the
-    // CD prototype `fullName` already starts with the role ("Pastor
-    // Wangari Mwangi"). Our schema stores `full_name` without the
-    // prefix, so we compose `${RoleLabel} ${fullName}` to match the
-    // prototype's rendering.
+    // KAN-229: get_leader_thread_list now returns other_full_name as the
+    // fully composed display string (honorific OR role prefix + given
+    // names per preference + family name + last_name_first toggle).
+    // FE no longer re-derives the split-and-prefix logic here.
     let displayName: string;
     if (isSecure) {
       displayName = 'Replant Team';
@@ -263,7 +549,7 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
       // Anonymous stays role-only — protects identity.
       displayName = roleLabel || 'Leader';
     } else {
-      displayName = roleLabel ? `${roleLabel} ${fullName}`.trim() : fullName;
+      displayName = fullName || (roleLabel || 'Leader');
     }
     // Church line — just the church name. No role suffix here; the
     // role is now baked into the name line above.
@@ -283,6 +569,11 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
     // branch.
     const monogramInitial = fullName.trim().charAt(0).toUpperCase() || '·';
     const lastAt = r.last_message_at ? new Date(r.last_message_at) : null;
+    // KAN-69: row_kind from RPC. Default to 'conversation' for
+    // backwards-compat with any RPC version that doesn't return it.
+    const rowKind: ThreadRowKind =
+      (['conversation', 'request_incoming', 'request_pending', 'request_declined', 'request_expired'] as const)
+        .includes(r.row_kind) ? r.row_kind : 'conversation';
     return {
       conversationId: r.conversation_id,
       otherUserId: r.other_user_id,
@@ -301,6 +592,10 @@ async function fetchThreadList(): Promise<LeaderThread[]> {
       // header does NOT include the role; only the row church line
       // does (per §6.3 vs §6.1 distinction).
       churchName: isSecure ? 'Replant · system-managed' : (underground ? 'Underground Church' : rawChurchName),
+      // KAN-69 request-flow extension.
+      rowKind,
+      requestId: r.request_id ?? null,
+      requestSentAt: r.request_sent_at ?? null,
     };
   });
 }
@@ -353,7 +648,7 @@ function EmptyView({ onFind }: { onFind: () => void }) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────
-export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
+export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestThread, refreshTrigger }: Props) {
   const { session } = useAuth();
   const [allThreads, setAllThreads] = useState<LeaderThread[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -373,17 +668,19 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   // supplements the initial data, never replaces it.
   const [initialFetchComplete, setInitialFetchComplete] = useState(false);
 
-  const loadInitial = useCallback(async () => {
+  const loadInitial = useCallback(async (silent?: boolean) => {
     if (!sessionReady) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const list = await fetchThreadList();
       setAllThreads(list);
     } catch (e) {
-      setError(e as Error);
+      if (!silent) setError(e as Error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setInitialFetchComplete(true);
     }
   }, [sessionReady]);
@@ -393,6 +690,19 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   }, [allThreads.length]);
 
   useEffect(() => { void loadInitial(); }, [loadInitial]);
+
+  // Refresh whenever the parent increments refreshTrigger (e.g. after a
+  // decline navigates back to the list). The ref skips the initial mount
+  // tick (0) so we don't double-fetch on first render — the main
+  // useEffect above already handles mount.
+  const hasMountedRef = useRef(false);
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    void loadInitial(true);
+  }, [refreshTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // connect-polish-2 Fix 1b: refetch on screen focus return.
   //
@@ -412,7 +722,7 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   // for the Connect tab badge specifically.
   useFocusEffect(
     useCallback(() => {
-      void loadInitial();
+      void loadInitial(true);
     }, [loadInitial]),
   );
 
@@ -445,13 +755,24 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const queueRefresh = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { void loadInitial(); }, 250);
+      timer = setTimeout(() => { void loadInitial(true); }, 250);
     };
     const channel = supabase
       .channel(`leaders-list-realtime-${session?.user?.id ?? 'anon'}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
+        queueRefresh,
+      )
+      // connection_requests changes: INSERT (a request the caller sent or
+      // received) + UPDATE (accept/decline flips status). Refreshes the
+      // list so the PENDING row appears immediately on the sender side
+      // without a tab switch, and clears on the recipient side once
+      // accepted/declined. RLS on connection_requests gates events to the
+      // caller's own rows — no cross-leader leakage.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'connection_requests' },
         queueRefresh,
       )
       .subscribe();
@@ -478,6 +799,16 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
   }, [allThreads, visibleCount, query]);
 
   const hasMore = visibleCount < allThreads.length;
+
+  // Replant Team welcome DM is system-managed and should not satisfy the
+  // "you have leader connections" condition. When the only rows are
+  // Replant Team threads, render them at the top and show the empty
+  // state with the "Find a Leader" CTA below.
+  const realThreadsCount = useMemo(
+    () => filtered.filter((t) => !t.isSecure).length,
+    [filtered],
+  );
+  const showEmptyBelowSecure = realThreadsCount === 0 && filtered.length > 0 && query.trim().length < 2;
 
   return (
     <View style={styles.root}>
@@ -508,29 +839,79 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(t) => t.conversationId}
-          renderItem={({ item }) => (
-            <ThreadRow
-              thread={item}
-              onPress={() => {
-                // connect-polish-2 Fix 1a: optimistic unread clear.
-                // Zero this thread's unread BEFORE navigating so the
-                // row badge clears instantly without waiting for the
-                // server round-trip. The real count reconciles on
-                // focus return (Fix 1b) — and the Connect tab badge
-                // reconciles on DMThreadView unmount via Fix E from
-                // polish-1 (ConnectBadgeProvider.refresh).
-                setAllThreads((prev) =>
-                  prev.map((t) =>
-                    t.conversationId === item.conversationId
-                      ? { ...t, unread: 0 }
-                      : t,
-                  ),
+          keyExtractor={(t) => t.requestId ?? t.conversationId}
+          renderItem={({ item }) => {
+            // KAN-69: route to appropriate row renderer based on row_kind.
+            switch (item.rowKind) {
+              case 'request_pending':
+                return <PendingRow thread={item} />;
+              case 'request_declined':
+                return (
+                  <DeclinedRow
+                    thread={item}
+                    onRemoved={(rid) => {
+                      // Optimistically remove the row from the local list.
+                      setAllThreads((prev) =>
+                        prev.filter((t) => t.requestId !== rid),
+                      );
+                    }}
+                  />
                 );
-                onOpenThread(item);
-              }}
-            />
-          )}
+              case 'request_expired':
+                return (
+                  <ExpiredRow
+                    thread={item}
+                    onRemoved={(rid) => {
+                      setAllThreads((prev) =>
+                        prev.filter((t) => t.requestId !== rid),
+                      );
+                    }}
+                  />
+                );
+              case 'request_incoming':
+                return (
+                  <IncomingRequestRow
+                    thread={item}
+                    onPress={() => {
+                      // Clear the unread badge optimistically.
+                      setAllThreads((prev) =>
+                        prev.map((t) =>
+                          t.requestId === item.requestId
+                            ? { ...t, unread: 0 }
+                            : t,
+                        ),
+                      );
+                      const handler = onOpenRequestThread ?? onOpenThread;
+                      handler(item);
+                    }}
+                  />
+                );
+              case 'conversation':
+              default:
+                return (
+                  <ThreadRow
+                    thread={item}
+                    onPress={() => {
+                      // connect-polish-2 Fix 1a: optimistic unread clear.
+                      // Zero this thread's unread BEFORE navigating so the
+                      // row badge clears instantly without waiting for the
+                      // server round-trip. The real count reconciles on
+                      // focus return (Fix 1b) — and the Connect tab badge
+                      // reconciles on DMThreadView unmount via Fix E from
+                      // polish-1 (ConnectBadgeProvider.refresh).
+                      setAllThreads((prev) =>
+                        prev.map((t) =>
+                          t.conversationId === item.conversationId
+                            ? { ...t, unread: 0 }
+                            : t,
+                        ),
+                      );
+                      onOpenThread(item);
+                    }}
+                  />
+                );
+            }
+          }}
           contentContainerStyle={styles.listContent}
           onEndReached={hasMore ? loadMore : undefined}
           onEndReachedThreshold={0.4}
@@ -542,7 +923,16 @@ export default function LeadersList({ onOpenThread, onFindLeader }: Props) {
               </Text>
             </View>
           }
-          ListFooterComponent={<CovenantFooter />}
+          ListFooterComponent={
+            showEmptyBelowSecure ? (
+              <>
+                <EmptyView onFind={onFindLeader} />
+                <CovenantFooter />
+              </>
+            ) : (
+              <CovenantFooter />
+            )
+          }
         />
       )}
     </View>
@@ -789,5 +1179,86 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
     textAlign: 'center',
+  },
+
+  // ── request row variants (KAN-69) ──────────────────────────────────
+  // PendingRow — sender waiting; not tappable
+  pendingRow: {
+    opacity: 1, // full-opacity row; individual elements are dimmed below
+  },
+  monogramPending: {
+    opacity: 0.55,
+    borderStyle: 'dashed',
+  },
+  monogramInitialPending: {
+    color: Colors.textMuted,
+  },
+  namePending: {
+    color: Colors.textMuted,
+  },
+  pendingTag: {
+    fontFamily: Typography.mono,
+    fontSize: 8,
+    letterSpacing: 1.28,
+    textTransform: 'uppercase',
+    color: Colors.accent,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.35)',
+    borderRadius: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+  },
+  pendingTagText: {
+    fontFamily: Typography.mono,
+    fontSize: 8,
+    letterSpacing: 1.28,
+    textTransform: 'uppercase',
+    color: Colors.accent,
+  },
+  previewPending: {
+    color: Colors.textSubtle,
+    fontStyle: 'italic',
+  },
+  withdrawLink: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.26,
+    textTransform: 'uppercase',
+    color: Colors.textSubtle,
+  },
+  // IncomingRequestRow — recipient sees new request (tappable)
+  incomingRow: {
+    // No special container styling — same as a normal unread row.
+    // The unread indicator and bold name are driven by unread > 0.
+  },
+  // DeclinedRow / ExpiredRow — dimmed, not tappable
+  declinedRow: {
+    opacity: 0.72,
+  },
+  monogramDeclined: {
+    opacity: 0.4,
+  },
+  monogramInitialDeclined: {
+    color: Colors.textMuted,
+  },
+  nameDeclined: {
+    color: Colors.textMuted,
+  },
+  churchDeclined: {
+    color: Colors.textSubtle,
+  },
+  declineText: {
+    fontFamily: Typography.body,
+    fontSize: 12.5,
+    lineHeight: 19,
+    color: Colors.textMuted,
+    marginTop: 5,
+  },
+  removeLink: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 1.26,
+    textTransform: 'uppercase',
+    color: Colors.textSubtle,
   },
 });

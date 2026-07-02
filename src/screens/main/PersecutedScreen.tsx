@@ -14,7 +14,7 @@
 // Navigation pattern: Pill tabs (Option B) — pill chips below the NavBar.
 // Red accent (never sky) — Persecuted is the only tab with red as its accent.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -25,6 +25,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { useViewerChurch } from '../../hooks/useViewerChurch';
+import { viewerOrgCopy } from '../../utils/displayHelpers';
 import LockIcon from '../../components/icons/LockIcon';
 import PillTabBar, { type PillRoute } from './persecuted/components/PillTabBar';
 import FeedScene from './persecuted/scenes/FeedScene';
@@ -40,8 +42,9 @@ const FAINT = 'rgba(240,237,230,0.08)';
 type GateState = 'loading' | 'verified' | 'gated' | 'error';
 
 // KAN-65 AC 2 — gate copy (Screen 14B) — verbatim from content file.
+// GATE_LINE_2 swaps "church" → "organization" via viewerOrgCopy at render time
+// for para-ministry viewers (BA-para #1).
 const GATE_LINE_1 = 'This section is for verified leaders in the Replant network.';
-const GATE_LINE_2 = "Once your church is verified, you'll have full access.";
 
 // Pill tab routes — Together is feature-flagged off until 5k+ leaders
 const PILL_ROUTES: PillRoute[] = [
@@ -59,6 +62,16 @@ const PILL_ROUTES: PillRoute[] = [
 export default function PersecutedScreen() {
   const [gateState, setGateState] = useState<GateState>('loading');
   const [activeTab, setActiveTab] = useState(0);
+  // Para-ministry copy swap on the gate body line (BA-para #1).
+  const { church: viewerChurch } = useViewerChurch();
+  const viewer = viewerOrgCopy(viewerChurch?.type);
+  const gateLine2 = `Once ${viewer.yourChurchOrOrg} is verified, you'll have full access.`;
+
+  // Keep a ref in sync so useFocusEffect can read current gate state
+  // without including it in the dependency array (which would re-subscribe
+  // the effect on every state change).
+  const gateStateRef = useRef<GateState>('loading');
+  useEffect(() => { gateStateRef.current = gateState; }, [gateState]);
 
   // ── Gate check ──
   const loadVerification = useCallback(async () => {
@@ -84,9 +97,15 @@ export default function PersecutedScreen() {
     setGateState('verified');
   }, []);
 
+  // Only re-check verification when not already verified. Once verified,
+  // skip the re-check on every tab focus to avoid the loading spinner
+  // flash and scene unmount/remount cycle. Gated/error states still
+  // re-check (the admin may have approved the leader since last visit).
   useFocusEffect(
     useCallback(() => {
-      void loadVerification();
+      if (gateStateRef.current !== 'verified') {
+        void loadVerification();
+      }
     }, [loadVerification]),
   );
 
@@ -107,7 +126,7 @@ export default function PersecutedScreen() {
           <View style={styles.gateRule} />
           <View style={styles.gateCopyBlock}>
             <Text style={styles.gateLine1}>{GATE_LINE_1}</Text>
-            <Text style={styles.gateLine2}>{GATE_LINE_2}</Text>
+            <Text style={styles.gateLine2}>{gateLine2}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -138,10 +157,18 @@ export default function PersecutedScreen() {
         onTabPress={setActiveTab}
       />
       <View style={styles.sceneContainer}>
-        {activeTab === 0 && <FeedScene onNavigateToTab={handleNavigateToTab} />}
-        {activeTab === 1 && <MyHeartcriesScene />}
-        {activeTab === 2 && <BearWitnessScene />}
-        {activeTab === 3 && <TakeHeartScene />}
+        <View style={{ flex: 1, display: activeTab === 0 ? 'flex' : 'none' }}>
+          <FeedScene onNavigateToTab={handleNavigateToTab} />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 1 ? 'flex' : 'none' }}>
+          <MyHeartcriesScene />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 2 ? 'flex' : 'none' }}>
+          <BearWitnessScene />
+        </View>
+        <View style={{ flex: 1, display: activeTab === 3 ? 'flex' : 'none' }}>
+          <TakeHeartScene />
+        </View>
       </View>
     </SafeAreaView>
   );

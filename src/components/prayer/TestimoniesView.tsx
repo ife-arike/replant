@@ -21,10 +21,12 @@ import {
   Animated,
   Easing,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import {
@@ -65,6 +67,9 @@ interface Props {
   /** v6 Fix G + v7 Fix 09 — onCelebratedChange propagation. Lives at
    *  the screen so the row swap persists across view-switch unmounts. */
   onCelebratedChange: (id: string, iCelebrated: boolean, count: number) => void;
+  /** Routes the leader to their open prayers (MyOpenPrayersView) where
+   *  Mark-as-Praise is the canonical publish-testimony path. */
+  onPublishTestimony?: () => void;
 }
 
 export default function TestimoniesView({
@@ -76,6 +81,7 @@ export default function TestimoniesView({
   setRows,
   hasFetchedOnce,
   onCelebratedChange,
+  onPublishTestimony,
 }: Props) {
   const [loadState, setLoadState] = useState<LoadState>(
     hasFetchedOnce.current ? 'idle' : 'initial',
@@ -196,7 +202,7 @@ export default function TestimoniesView({
           <ScriptureHeader pillVisible={showFromLandingPill} pillOpacity={pillFade} />
         }
         ListEmptyComponent={
-          loadState === 'idle' && hasFetchedOnce.current ? <EmptyState /> : null
+          loadState === 'idle' && hasFetchedOnce.current ? <EmptyState onPublish={onPublishTestimony} /> : null
         }
         ListFooterComponent={
           loadState === 'paging' ? (
@@ -263,19 +269,35 @@ function ScriptureHeader({
         tone="none"
         text={REV_12_11_KJV}
         reference={REV_12_11_REF}
-        referenceColor="rgba(107, 158, 122, 0.85)"
         bodyFontSize={17}
       />
     </View>
   );
 }
 
-function EmptyState() {
+function EmptyState({ onPublish }: { onPublish?: () => void }) {
   return (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyText}>No testimonies yet — be the first when God moves.</Text>
-      <View style={styles.hairline} />
-      <Text style={styles.emptyRef}>{REV_12_11_REF}</Text>
+      {/* Sprout icon removed from this surface per Founder ruling
+          2026-06-10 — only the "Testimonies from the wall" empty state
+          on PrayerWallLanding keeps the glyph. */}
+      <View style={styles.emptyCard}>
+        <Text style={styles.emptyTitle}>Testify of His mighty works.</Text>
+        <Text style={styles.emptyBody}>
+          As the Lord moves on our behalf, we share them here. Be the first to give Him praise!
+        </Text>
+      </View>
+      {onPublish && (
+        <Pressable
+          onPress={onPublish}
+          accessibilityRole="button"
+          accessibilityLabel="Publish a testimony"
+          style={({ pressed }) => [styles.emptyCta, pressed && styles.emptyCtaPressed]}
+          hitSlop={6}
+        >
+          <Text style={styles.emptyCtaLabel}>PUBLISH A TESTIMONY</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -313,25 +335,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 40,
     paddingHorizontal: 32,
-    gap: 12,
+    gap: 14,
   },
-  emptyText: {
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 15,
-    color: Colors.textMuted,
+  emptyGlyphCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.30)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  emptyCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderWidth: 0.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(240,237,230,0.14)',
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  emptyTitle: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.17,
+    marginBottom: 6,
     textAlign: 'center',
-    lineHeight: 24,
   },
-  hairline: {
-    width: 60,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
+  emptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    textAlign: 'center',
   },
-  emptyRef: {
-    fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.6,
+  emptyCta: {
+    marginTop: 4,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,181,232,0.35)',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  emptyCtaPressed: { opacity: 0.7 },
+  emptyCtaLabel: {
+    fontFamily: Typography.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 1.61,
     color: Colors.accent,
-    textTransform: 'uppercase',
   },
 });

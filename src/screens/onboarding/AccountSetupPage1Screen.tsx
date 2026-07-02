@@ -32,11 +32,13 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Switch,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding } from '../../context/OnboardingContext';
@@ -47,6 +49,15 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSetupPage1
 
 const CHECK_EMAIL_URL = `${SUPABASE_URL}/functions/v1/check-email-available`;
 const PASSWORD_MAX = 64;
+
+// KAN-229 (Founder ruling 5): allow Unicode letters + space + hyphen +
+// apostrophe + period across first/middle/last name inputs. Covers
+// François, Reyes-Hernandez, D'Souza, St. John, Łukasz, Şükran. Reject
+// digits. Sanitises on each keystroke so the leader never sees an
+// invalid character land in the field.
+function sanitizeName(value: string): string {
+  return value.replace(/[^\p{L} \-'.]/gu, '');
+}
 
 // Password policy (KAN-11 AC #3):
 //   - Min 8 chars
@@ -91,7 +102,22 @@ const COUNTRIES = [
 ];
 
 export default function AccountSetupPage1Screen({ navigation }: Props) {
-  const { state, setPersonalDetails } = useOnboarding();
+  const { state, setPersonalDetails, reset } = useOnboarding();
+  // Push the back affordance below the iPhone 17 Pro Dynamic Island
+  // (safe-area top inset ~59pt) so the tap target isn't intercepted by
+  // iOS in the island region. 2026-06-12 fix per Founder report.
+  const insets = useSafeAreaInsets();
+  const backTop = insets.top + 4;
+
+  // 2026-06-12: explicit back to Splash. A leader who tapped Sign Up by
+  // mistake (or who scrolled past DoF and changed their mind here) can
+  // exit. The declaration affirmation is in-memory only and discarded;
+  // re-entry re-shows DoF clean. Page 2 onward remains a forward-only
+  // commit path.
+  const handleBack = () => {
+    reset();
+    navigation.replace('Splash');
+  };
   // B3 — initialize form state from OnboardingContext.personalDetails so
   // the back-button-and-re-entry path (e.g. CommonActions.reset from the
   // post-registration loopback) restores the leader's prior values
@@ -102,7 +128,13 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
   const pd = state.personalDetails;
 
   const [firstName, setFirstName] = useState(pd?.firstName ?? '');
+  // KAN-229: optional middle name input. Empty string is the canonical
+  // "no middle" value (~75% of leaders); leader can skip without effort.
+  const [middleName, setMiddleName] = useState(pd?.middleName ?? '');
   const [lastName, setLastName] = useState(pd?.lastName ?? '');
+  // KAN-231: optional personal phone for Replant team fallback contact.
+  // Empty string == not provided. No format normalisation at MVP.
+  const [phone, setPhone] = useState(pd?.phone ?? '');
   const [email, setEmail] = useState(pd?.email ?? '');
   const [password, setPassword] = useState(pd?.password ?? '');
   const [confirmPassword, setConfirmPassword] = useState(pd?.password ?? '');
@@ -280,10 +312,15 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
 
     // Email is available — persist and advance to Page 2.
     // KAN-196 — anonymous is carried inline (no longer a separate screen).
+    // KAN-229 — middle name flows through context too; empty string is
+    // the canonical "no middle" value and lands as '' in users.middle_name.
+    // KAN-231 — optional phone for Replant team fallback contact.
     setPersonalDetails({
       firstName,
+      middleName,
       lastName,
       email: trimmedEmail,
+      phone: phone.trim(),
       password,
       role,
       country,
@@ -292,18 +329,33 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
       // otherwise pass undefined so the field stays unset in context.
       otherRole: role === 'other' ? otherRole.trim() : undefined,
     });
+    Keyboard.dismiss();
     navigation.navigate('AccountSetupPage2');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Back affordance — sits above the step label inside the header.
+          Quiet muted register so it doesn't compete with the form CTA.
+          top dynamically resolved to safe-area inset + 4 so the tap
+          target clears the Dynamic Island on modern iPhones. */}
+      <TouchableOpacity
+        style={[styles.backButton, { top: backTop }]}
+        onPress={handleBack}
+        accessibilityRole="button"
+        accessibilityLabel="Back to start"
+        accessibilityHint="Cancels sign-up and returns to the welcome screen."
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+      >
+        <Text style={styles.backGlyph}>{'‹'}</Text>
+        <Text style={styles.backLabel}>Back</Text>
+      </TouchableOpacity>
+
+      {/* Header. paddingTop pushed past the back affordance so the
+          eyebrow label never collides with the chevron + "Back" cap. */}
+      <View style={[styles.header, { paddingTop: backTop + 52 }]}>
         <Text style={styles.stepLabel}>ACCOUNT SETUP · 1 OF 2</Text>
         <Text style={styles.title}>Your Details</Text>
       </View>
@@ -314,14 +366,16 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Name row */}
+        {/* Name row — first + last on one line; middle on its own row
+            below to give it space and signal optionality without
+            cramping the primary fields. KAN-229. */}
         <View style={styles.row}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
             <Text style={styles.label}>First Name</Text>
             <TextInput
               style={styles.input}
               value={firstName}
-              onChangeText={setFirstName}
+              onChangeText={(v) => setFirstName(sanitizeName(v))}
               placeholder="First"
               placeholderTextColor={Colors.textSubtle}
               autoCapitalize="words"
@@ -332,7 +386,7 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
             <TextInput
               style={styles.input}
               value={lastName}
-              onChangeText={setLastName}
+              onChangeText={(v) => setLastName(sanitizeName(v))}
               placeholder="Last"
               placeholderTextColor={Colors.textSubtle}
               autoCapitalize="words"
@@ -340,9 +394,25 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
           </View>
         </View>
 
+        {/* Middle name — optional. Leader can skip entirely (empty string
+            persists as ''); collapsed when not in use so the field
+            doesn't dominate the form. KAN-229. */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Middle Name <Text style={styles.labelOptional}>(optional)</Text></Text>
+          <TextInput
+            style={styles.input}
+            value={middleName}
+            onChangeText={(v) => setMiddleName(sanitizeName(v))}
+            placeholder="Middle"
+            placeholderTextColor={Colors.textSubtle}
+            autoCapitalize="words"
+          />
+        </View>
+
         {/* Email */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Email Address</Text>
+          <Text style={styles.label}>Personal Email</Text>
+          <Text style={styles.fieldNote}>This will be your login email.</Text>
           <TextInput
             style={[styles.input, emailCheckError ? styles.inputError : null]}
             value={email}
@@ -361,6 +431,26 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
             autoCorrect={false}
           />
           {emailCheckError && <Text style={styles.errorText}>{emailCheckError.message}</Text>}
+        </View>
+
+        {/* Phone — optional. KAN-231. Used by the Replant team as a
+            fallback reach when the church contact email doesn't answer;
+            never surfaced to other leaders. The reassurance hint below
+            is locked Founder copy 2026-06-08. */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Personal Phone <Text style={styles.labelOptional}>(optional)</Text></Text>
+          <TextInput
+            style={styles.input}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="e.g. +234 800 000 0000"
+            placeholderTextColor={Colors.textSubtle}
+            keyboardType="phone-pad"
+            autoCorrect={false}
+          />
+          <Text style={styles.fieldHint}>
+            We will only reach out to you directly if your church contact does not answer.
+          </Text>
         </View>
 
         {/* Password */}
@@ -399,12 +489,22 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
             style={styles.pickerButton}
             onPress={() => setRolePickerVisible(true)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={role ? `Role: ${ROLES.find(r => r.value === role)?.label}` : 'Select your role'}
+            accessibilityHint="Opens the role picker"
           >
             <Text style={role ? styles.pickerValue : styles.pickerPlaceholder}>
               {role ? ROLES.find(r => r.value === role)?.label : 'Select your role'}
             </Text>
             <Text style={styles.pickerChevron}>›</Text>
           </TouchableOpacity>
+          {/* KAN-229 Founder ruling — small hint pointing to Settings
+              for honorifics (Anba, Mar, Abuna, Father, etc.). Keeps the
+              sign-up picker short while signalling that the long tail
+              is supported elsewhere. */}
+          <Text style={styles.fieldHint}>
+            Honorifics can be added in Settings after setup.
+          </Text>
         </View>
 
         {/* B15 — "Other" role free-text field. Surfaces only when the
@@ -442,11 +542,14 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
 
         {/* Country picker */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Country</Text>
+          <Text style={styles.label}>Country of residence</Text>
           <TouchableOpacity
             style={styles.pickerButton}
             onPress={() => setCountryPickerVisible(true)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={country ? `Country: ${country}` : 'Select your country'}
+            accessibilityHint="Opens a searchable country list"
           >
             <Text style={country ? styles.pickerValue : styles.pickerPlaceholder}>
               {country || 'Select your country'}
@@ -566,13 +669,41 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
         </View>
       </Modal>
 
-      {/* Country Picker Modal — searchable full list */}
-      <Modal visible={countryPickerVisible} transparent animationType="slide">
-        <View style={styles.sheetOverlay}>
+      {/* Country Picker Modal — searchable full list. KAN-184 polish:
+          autoFocus the search input on open so the leader can start
+          typing immediately; show an empty state when the filter has
+          no matches; reset the filter on close. */}
+      <Modal
+        visible={countryPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setCountryPickerVisible(false);
+          setCountrySearch('');
+        }}
+      >
+        {/* KAN-184 fix 2026-06-12 — keyboard-aware sheet. Founder
+            reported the iOS keyboard occluded the filtered list when
+            narrowed. KeyboardAvoidingView with behavior=padding pushes
+            the sheet up by the keyboard height; on Android the height
+            behavior shrinks the overlay. automaticallyAdjustKeyboardInsets
+            is a defense-in-depth on the FlatList so even if the wrapper
+            doesn't fire (Modal hierarchy quirks), the list still scrolls
+            past the keyboard. keyboardDismissMode lets a swipe close the
+            keyboard if the leader wants the full list back. */}
+        <KeyboardAvoidingView
+          style={styles.sheetOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Country</Text>
-              <TouchableOpacity onPress={() => setCountryPickerVisible(false)}>
+              <Text style={styles.sheetTitle}>Country of residence</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCountryPickerVisible(false);
+                  setCountrySearch('');
+                }}
+              >
                 <Text style={styles.sheetClose}>Done</Text>
               </TouchableOpacity>
             </View>
@@ -580,13 +711,28 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
               style={styles.searchInput}
               value={countrySearch}
               onChangeText={setCountrySearch}
-              placeholder="Search countries..."
+              placeholder="Type to filter…"
               placeholderTextColor={Colors.textSubtle}
               autoCorrect={false}
+              autoCapitalize="words"
+              autoFocus
+              returnKeyType="search"
+              clearButtonMode="while-editing"
             />
             <FlatList
               data={filteredCountries}
               keyExtractor={item => item}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              automaticallyAdjustKeyboardInsets
+              ListEmptyComponent={
+                <View style={styles.searchEmpty}>
+                  <Text style={styles.searchEmptyTitle}>No countries match "{countrySearch}".</Text>
+                  <Text style={styles.searchEmptyHint}>
+                    Check the spelling, or use a shorter prefix.
+                  </Text>
+                </View>
+              }
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
@@ -613,9 +759,9 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
               )}
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -626,11 +772,41 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: 72,
+    // paddingTop is set dynamically at the call site (backTop + 52) so
+    // the eyebrow label sits below the back affordance regardless of
+    // the host device's safe-area inset.
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  // Back affordance — sits over the header in the top-left pocket.
+  // Quiet muted register so it does not compete with the primary Next
+  // CTA at the bottom of the form. `top` is set dynamically from
+  // useSafeAreaInsets at the call site so the affordance always clears
+  // the Dynamic Island / notch on the host device.
+  backButton: {
+    position: 'absolute',
+    left: Spacing.lg,
+    zIndex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  backGlyph: {
+    fontFamily: Typography.display,
+    fontSize: 24,
+    color: Colors.textMuted,
+    marginRight: 4,
+    marginTop: -3,
+  },
+  backLabel: {
+    fontFamily: Typography.body,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
   },
   stepLabel: {
     fontFamily: Typography.body,
@@ -726,6 +902,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: Colors.textMuted,
     textTransform: 'uppercase',
+  },
+  // Inline "(optional)" tag rendered next to a label. Lowercase to read
+  // as a soft annotation, not part of the field name.
+  labelOptional: {
+    textTransform: 'lowercase',
+    letterSpacing: 0.4,
+    color: Colors.textSubtle,
+    fontFamily: Typography.body,
+  },
+  // Soft annotation rendered below a field/picker. Used for the
+  // honorifics-in-Settings hint near the role picker (KAN-229).
+  fieldHint: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    marginTop: 6,
   },
 
   input: {
@@ -853,6 +1045,25 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 15,
     color: Colors.text,
+  },
+  // KAN-184 — empty state when the filter has no matches.
+  searchEmpty: {
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  searchEmptyTitle: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  searchEmptyHint: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    textAlign: 'center',
   },
   sheetItem: {
     paddingHorizontal: Spacing.xl,

@@ -4,7 +4,7 @@
 // Nothing is written to the server until final submission on Page 2.
 // ─────────────────────────────────────────────
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 
 // B13 — Loopback church survives the CommonActions.reset that fires
 // when RegisterChurchPage2 returns a successful registration. Without
@@ -27,8 +27,15 @@ export interface OnboardingLoopbackChurch {
 
 interface PersonalDetails {
   firstName: string;
+  // KAN-229: optional middle name. Empty string is the canonical "no
+  // middle" value (~75% of leaders); preserved through the write path
+  // and stored as '' in users.middle_name (NOT NULL).
+  middleName?: string;
   lastName: string;
   email: string;
+  // KAN-231: optional personal phone. Empty string == not provided.
+  // Replant team contact fallback only; never surfaced to other leaders.
+  phone?: string;
   password: string;
   role: string;
   country: string;
@@ -63,6 +70,38 @@ interface ChurchDetails {
   // Persisted so back-nav and edit-path restore prior selections.
   hasEmergencyPlan?: boolean | null;
   openToCollaboration?: boolean | null;
+  // Underground flow (2026-06-19/20). Captured on NameVisibilityChoice
+  // before final submit. Defaults to false (keep name hidden); irreversible
+  // commit gate fires when leader toggles to true. Server-side default also
+  // false post-Migration A — passing undefined is safe.
+  showChurchName?: boolean;
+}
+
+// Branch-flow extensions (2026-06-18). Set on RegisterIntroScreen choice.
+// 'standalone' = standard RegCP1 (type picker visible).
+// 'branch'     = branch RegCP1 (type picker hidden, parent-picker leads).
+// 'underground'= dedicated secure underground RegCP1 (existing UX).
+export type RegistrationEntry = 'standalone' | 'branch' | 'underground';
+
+// Resolved parent reference. Selected via ParentChurchPicker (RPL ID or name).
+export interface OnboardingParentRef {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+  type: string;
+  verificationStatus: 'verified' | 'pending';
+  churchCode: string | null;
+  isHeadquarters: boolean;
+}
+
+// Deferred-parent claim. Filled when leader picks "Not Sure" or "Parent not on
+// Replant yet" — name + city + country typed locally; resolves via nightly
+// auto_link or admin manual-link.
+export interface OnboardingPendingClaim {
+  name: string;
+  city: string | null;
+  country: string | null;
 }
 
 interface OnboardingState {
@@ -70,6 +109,11 @@ interface OnboardingState {
   churchDetails: Partial<ChurchDetails>;
   declarationAgreed: boolean;
   loopbackChurch: OnboardingLoopbackChurch | null;
+  // Branch-flow extensions (2026-06-18)
+  registrationEntry: RegistrationEntry | null;
+  parentRef: OnboardingParentRef | null;
+  pendingParentClaim: OnboardingPendingClaim | null;
+  isHeadquarters: boolean;
 }
 
 interface OnboardingContextValue {
@@ -80,6 +124,11 @@ interface OnboardingContextValue {
   // B13 — replaces outright (not merged) since loopback is a discrete
   // "selected loopback church" or "no loopback church" state.
   setLoopbackChurch: (church: OnboardingLoopbackChurch | null) => void;
+  // Branch-flow setters (2026-06-18)
+  setRegistrationEntry: (entry: RegistrationEntry | null) => void;
+  setParentRef: (parent: OnboardingParentRef | null) => void;
+  setPendingParentClaim: (claim: OnboardingPendingClaim | null) => void;
+  setIsHeadquarters: (hq: boolean) => void;
   reset: () => void;
 }
 
@@ -88,6 +137,10 @@ const defaultState: OnboardingState = {
   churchDetails: {},
   declarationAgreed: false,
   loopbackChurch: null,
+  registrationEntry: null,
+  parentRef: null,
+  pendingParentClaim: null,
+  isHeadquarters: false,
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -95,33 +148,71 @@ const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<OnboardingState>(defaultState);
 
-  const setPersonalDetails = (details: Partial<PersonalDetails>) => {
+  // 2026-06-18 hotfix — all setters wrapped in useCallback so they're stable
+  // across renders. Consumer useEffects depending on these setters (e.g.,
+  // RegCP1's hqChecked mirror) would otherwise loop infinitely when the setter
+  // reference recreates each render.
+  const setPersonalDetails = useCallback((details: Partial<PersonalDetails>) => {
     setState(prev => ({
       ...prev,
       personalDetails: { ...prev.personalDetails, ...details },
     }));
-  };
+  }, []);
 
-  const setChurchDetails = (details: Partial<ChurchDetails>) => {
+  const setChurchDetails = useCallback((details: Partial<ChurchDetails>) => {
     setState(prev => ({
       ...prev,
       churchDetails: { ...prev.churchDetails, ...details },
     }));
-  };
+  }, []);
 
-  const setDeclarationAgreed = (agreed: boolean) => {
+  const setDeclarationAgreed = useCallback((agreed: boolean) => {
     setState(prev => ({ ...prev, declarationAgreed: agreed }));
-  };
+  }, []);
 
-  const setLoopbackChurch = (church: OnboardingLoopbackChurch | null) => {
+  const setLoopbackChurch = useCallback((church: OnboardingLoopbackChurch | null) => {
     setState(prev => ({ ...prev, loopbackChurch: church }));
-  };
+  }, []);
+
+  const setRegistrationEntry = useCallback((entry: RegistrationEntry | null) => {
+    setState(prev => ({ ...prev, registrationEntry: entry }));
+  }, []);
+  // Setting a parent clears any pending claim (mutually exclusive — only one
+  // can populate at a time; mirrors the create-account v7 payload contract).
+  const setParentRef = useCallback((parent: OnboardingParentRef | null) => {
+    setState(prev => ({
+      ...prev,
+      parentRef: parent,
+      pendingParentClaim: parent === null ? prev.pendingParentClaim : null,
+    }));
+  }, []);
+  const setPendingParentClaim = useCallback((claim: OnboardingPendingClaim | null) => {
+    setState(prev => ({
+      ...prev,
+      pendingParentClaim: claim,
+      parentRef: claim === null ? prev.parentRef : null,
+    }));
+  }, []);
+  const setIsHeadquarters = useCallback((hq: boolean) => {
+    setState(prev => ({ ...prev, isHeadquarters: hq }));
+  }, []);
 
   const reset = () => setState(defaultState);
 
   return (
     <OnboardingContext.Provider
-      value={{ state, setPersonalDetails, setChurchDetails, setDeclarationAgreed, setLoopbackChurch, reset }}
+      value={{
+        state,
+        setPersonalDetails,
+        setChurchDetails,
+        setDeclarationAgreed,
+        setLoopbackChurch,
+        setRegistrationEntry,
+        setParentRef,
+        setPendingParentClaim,
+        setIsHeadquarters,
+        reset,
+      }}
     >
       {children}
     </OnboardingContext.Provider>

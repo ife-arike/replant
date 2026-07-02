@@ -85,7 +85,7 @@ function BranchRow({ row, onPress }: { row: BranchListRow; onPress: () => void }
           )}
         </View>
         <Text style={styles.members}>
-          {row.ministryCount} ministries · {row.memberCount} leaders
+          {row.ministryCount} MINISTRIES · {row.memberCount} LEADERS
         </Text>
         <Text style={styles.preview} numberOfLines={1}>
           {row.lastMessagePreview ?? ' '}

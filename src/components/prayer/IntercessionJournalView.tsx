@@ -575,7 +575,7 @@ function IJEmpty({
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyGlyphCircle}>
-        {isChurches ? <SteepleGlyph /> : <HandsGlyph />}
+        <JournalGlyph />
       </View>
       <Text style={styles.emptyTitle}>
         {isChurches ? 'Your intercession list is empty.' : 'No prayers stood in yet.'}
@@ -656,60 +656,25 @@ function TrashGlyph() {
   );
 }
 
-function SteepleGlyph() {
-  // Clean equal-armed cross, centred at (14, 14).
+function JournalGlyph() {
+  // Variant A (Founder pick 2026-06-10): open book with binding line.
+  // Same glyph on both Churches and Standing in Gap tabs — they're both
+  // pages of the same intercession journal.
   return (
-    <Svg width={28} height={28} viewBox="0 0 28 28">
+    <Svg width={32} height={32} viewBox="0 0 32 32">
       <Path
-        d="M14 5 L14 23"
+        d="M5 8c2-1.2 4.5-1.6 7-1.2 1.8 0.3 3.2 1 4 1.8 0.8-0.8 2.2-1.5 4-1.8 2.5-0.4 5 0 7 1.2v15c-2-1-4.5-1.4-7-1-1.5 0.2-2.9 0.7-4 1.4-1.1-0.7-2.5-1.2-4-1.4-2.5-0.4-5 0-7 1V8z"
         fill="none"
-        stroke="rgba(107,181,232,0.5)"
-        strokeWidth={1.2}
-        strokeLinecap="round"
+        stroke={SKY}
+        strokeWidth={1.3}
         strokeLinejoin="round"
       />
       <Path
-        d="M8 13 L20 13"
+        d="M16 8.6 L16 22.4"
         fill="none"
-        stroke="rgba(107,181,232,0.5)"
-        strokeWidth={1.2}
+        stroke={SKY}
+        strokeWidth={1}
         strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function HandsGlyph() {
-  // Two open cupped hands side by side, palms up — a prayer/offering posture.
-  return (
-    <Svg width={28} height={28} viewBox="0 0 28 28">
-      {/* Left hand: palm curve upward */}
-      <Path
-        d="M6 18 C6 14 10 12 10 16"
-        fill="none"
-        stroke="rgba(107,181,232,0.5)"
-        strokeWidth={1.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Right hand: mirrored */}
-      <Path
-        d="M22 18 C22 14 18 12 18 16"
-        fill="none"
-        stroke="rgba(107,181,232,0.5)"
-        strokeWidth={1.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Centre join: flat base connecting the two palms */}
-      <Path
-        d="M10 16 L18 16"
-        fill="none"
-        stroke="rgba(107,181,232,0.5)"
-        strokeWidth={1.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </Svg>
   );

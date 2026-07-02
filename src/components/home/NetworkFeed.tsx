@@ -43,6 +43,7 @@ import ArticleCard from './ArticleCard';
 import EncouragementCard from './EncouragementCard';
 import TogetherCard from './TogetherCard';
 import CallToActionCard from './CallToActionCard';
+import HomeSectionLabel from './HomeSectionLabel';
 import {
   PAGE_SIZE,
   ROLE_DISPLAY,
@@ -156,7 +157,10 @@ export default function NetworkFeed() {
   if (loadState === 'error') {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>No updates yet. Check back soon.</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>The wall is still for now.</Text>
+          <Text style={styles.emptyBody}>Check back soon for an update from the Network.</Text>
+        </View>
         <Pressable
           onPress={loadInitial}
           accessibilityRole="button"
@@ -180,7 +184,10 @@ export default function NetworkFeed() {
   if (rows.length === 0) {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.emptyCopy}>No updates yet. Check back soon.</Text>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>The wall is still for now.</Text>
+          <Text style={styles.emptyBody}>Check back soon for an update from the Network.</Text>
+        </View>
       </View>
     );
   }
@@ -192,6 +199,7 @@ export default function NetworkFeed() {
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={Separator}
+      ListHeaderComponent={<HomeSectionLabel>Network updates</HomeSectionLabel>}
       onEndReached={loadMore}
       onEndReachedThreshold={0.5}
       refreshControl={
@@ -346,19 +354,24 @@ function resolveAnonLabel(role: string | null): string {
 
 // Shared leader-author resolver. Resolves full_name + role + church via
 // author_id (matched against public.users.id — author_id references the
-// public.users PK, NOT auth_id; verified live 2026-06-02). The role is
-// humanised into the rendered display name ("Minister Ruth") before any
-// card sees it. Masking is the safe default: a missing author_id, an
-// unresolved row, a church-less leader, or any error all leave the author
-// masked.
+// public.users PK, NOT auth_id; verified live 2026-06-02). Masking is the
+// safe default: a missing author_id, an unresolved row, a church-less
+// leader, or any error all leave the author masked.
 //
-// Anonymous leaders (users.anonymous=true): still fetch the church so the
-// church name is visible (masking contract — church is real, name is held).
-// Display name becomes "A fellow {role}"; initial is always "A".
+// Decoupled 2026-06-21 — two independent axes:
 //
-// Underground leaders: show church name if show_church_name=true on the
-// church row, otherwise empty string (TODO: fetch macro_region_label and
-// use it as the fallback when show_church_name=false).
+//   1. users.anonymous = true → mask the LEADER's name to "A fellow {role}"
+//      with initial "A". Church name STAYS REAL (per anon-identity rules:
+//      public anon hides the person, not the church).
+//
+//   2. churches.type='underground' + show_church_name=false → mask the
+//      CHURCH's identity. Church display drops to '' (no name, no city,
+//      no country). Brave underground (show_church_name=true) discloses
+//      the real church name. Leader name is NOT masked by underground
+//      church status — that's the anonymous flag's job.
+//
+// Both axes can be true (underground + anon), neither (public + named),
+// or either independently.
 function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
   const [author, setAuthor] = useState<ResolvedAuthor>(MASKED_AUTHOR);
 
@@ -369,15 +382,23 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
       try {
         const { data: userRow, error: userErr } = await supabase
           .from('users')
-          .select('full_name, church_id, role, anonymous')
+          .select('first_name, middle_name, last_name, honorific, last_name_first, church_id, role, anonymous, display_name_preference')
           .eq('id', authorId)
           .maybeSingle();
         if (cancelled || userErr || !userRow) return;
 
-        const fullName = (userRow.full_name ?? '').trim();
+        const firstName = ((userRow as any).first_name as string | null) ?? '';
+        const middleName = ((userRow as any).middle_name as string | null) ?? '';
+        const lastName = ((userRow as any).last_name as string | null) ?? '';
+        const honorific = ((userRow as any).honorific as string | null) ?? null;
+        const lastNameFirst = !!(userRow as any).last_name_first;
         const role = (userRow.role as string | null) ?? null;
         const churchId = userRow.church_id as string | null;
         const isAnon = !!userRow.anonymous;
+        const displayNamePref = (userRow as any).display_name_preference as
+          | 'first_name_only'
+          | 'full_name'
+          | null;
 
         if (!churchId) return; // no church → stay masked
 
@@ -388,18 +409,23 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
           .maybeSingle();
         if (cancelled || churchErr || !churchRow) return;
 
-        if (churchRow.type === 'underground') {
-          // Underground leader: "A fellow {role}", round lock avatar.
-          // show_church_name drives whether the church name is surfaced.
-          // TODO: when show_church_name=false, fetch macro_region_label
-          //       from the churches row and use it as the church fallback.
-          const churchDisplay =
-            churchRow.show_church_name !== false
-              ? ((churchRow.name as string | null) ?? '')
-              : '';
+        // Resolve church display first (church-side axis, independent of leader).
+        // Underground + safe → masked to ''. Underground + brave or non-underground
+        // → real name. TODO: macro_region_label fallback for safe underground.
+        const isUnderground = churchRow.type === 'underground';
+        const isBraveUnderground =
+          isUnderground && churchRow.show_church_name === true;
+        const churchDisplay =
+          !isUnderground || isBraveUnderground
+            ? ((churchRow.name as string | null) ?? '')
+            : '';
+
+        // Resolve leader display (leader-side axis, independent of church).
+        if (isAnon) {
+          // Anonymous: name held regardless of church type. Initial "A".
           if (!cancelled) {
             setAuthor({
-              initial: '·',
+              initial: 'A',
               name: resolveAnonLabel(role),
               church: churchDisplay,
             });
@@ -407,24 +433,21 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
           return;
         }
 
-        if (isAnon) {
-          // Anonymous (non-underground) leader: church name is real and shown,
-          // but the leader's own name is held. Initial is always "A".
-          if (!cancelled) {
-            setAuthor({
-              initial: 'A',
-              name: resolveAnonLabel(role),
-              church: (churchRow.name as string | null) ?? '',
-            });
-          }
-          return;
-        }
-
+        // Not anonymous — leader chose to be known by name, even if their
+        // church is underground. Show the real name + initial.
         if (!cancelled) {
           setAuthor({
-            initial: fullName ? fullName.charAt(0).toUpperCase() : '·',
-            name: resolveDisplayName(fullName || null, role),
-            church: (churchRow.name as string | null) ?? '',
+            initial: firstName ? firstName.charAt(0).toUpperCase() : '·',
+            name: resolveDisplayName({
+              firstName: firstName || null,
+              middleName,
+              lastName: lastName || null,
+              honorific,
+              role,
+              displayNamePreference: displayNamePref ?? null,
+              lastNameFirst,
+            }),
+            church: churchDisplay,
           });
         }
       } catch {
@@ -494,6 +517,32 @@ const styles = StyleSheet.create({
     fontFamily: Typography.body,
     fontSize: 13,
     color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  emptyCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderWidth: 0.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(240,237,230,0.14)',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 22,
+    width: '85%',
+  },
+  emptyTitle: {
+    fontFamily: Typography.displayRegular,
+    fontSize: 17,
+    color: Colors.text,
+    letterSpacing: 0.17,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
     textAlign: 'center',
   },
   retryText: {

@@ -61,10 +61,19 @@ function makeDeps(): Deps {
     },
 
     async fetchUserStatus(authUid) {
+      // KAN-TBD 2026-06-18 root fix — both user.verification_deadline AND
+      // church.verification_status are now load-bearing for resolveStatus.
+      // Top-level `verification_deadline` is users.*; `church.*` is the
+      // embedded join. resolveStatus branches on church.verification_status
+      // BEFORE reading church.verification_deadline (stale deadlines on
+      // verified churches were auto-deactivating every new leader).
+      // Underground Verification Queue (2026-06-22): churches.soft_deleted_at
+      // and churches.last_outcome_modal_kind added to drive branch_substate.
+      // Both nullable; the resolver treats absent values as "no substate."
       const { data, error } = await adminClient
         .from("users")
         .select(
-          "id, verification_status, deactivated_at, is_active, church_id, church:churches!users_church_id_fkey(verification_deadline)",
+          "id, verification_status, deactivated_at, is_active, church_id, verification_deadline, church:churches!users_church_id_fkey(verification_status, verification_deadline, soft_deleted_at, last_outcome_modal_kind)",
         )
         .eq("auth_id", authUid)
         .maybeSingle();
@@ -72,12 +81,18 @@ function makeDeps(): Deps {
 
       // supabase-js types embedded relations as arrays even for many-to-one FKs and
       // the runtime shape varies across versions — normalize to a single row.
+      type ChurchEmbed = {
+        verification_status: string | null;
+        verification_deadline: string | null;
+        soft_deleted_at: string | null;
+        last_outcome_modal_kind: string | null;
+      };
       const churchRaw = (data as Record<string, unknown>).church;
-      let church: { verification_deadline: string | null } | null = null;
+      let church: ChurchEmbed | null = null;
       if (Array.isArray(churchRaw)) {
-        church = (churchRaw[0] as { verification_deadline: string | null } | undefined) ?? null;
+        church = (churchRaw[0] as ChurchEmbed | undefined) ?? null;
       } else if (churchRaw !== null && churchRaw !== undefined) {
-        church = churchRaw as { verification_deadline: string | null };
+        church = churchRaw as ChurchEmbed;
       }
 
       return {
@@ -86,6 +101,7 @@ function makeDeps(): Deps {
         deactivated_at: (data.deactivated_at as string | null) ?? null,
         is_active: data.is_active as boolean,
         church_id: (data.church_id as string | null) ?? null,
+        user_verification_deadline: (data.verification_deadline as string | null) ?? null,
         church,
       };
     },
@@ -125,6 +141,40 @@ function makeDeps(): Deps {
 
         return { wrote: true };
       });
+    },
+
+    async fetchUndergroundRevealContext(userId, churchId) {
+      // Read the church's underground fields + look up the founding
+      // leader (oldest active user on the church). Both queries are
+      // cheap point-lookups. Returns null on lookup failure or when
+      // the church type is not underground (cheap short-circuit so we
+      // don't waste a leaders query on standard rows).
+      const { data: churchRow, error: churchErr } = await adminClient
+        .from("churches")
+        .select("type, verification_status, underground_join_code_revealed_at")
+        .eq("id", churchId)
+        .maybeSingle();
+      if (churchErr || !churchRow) return null;
+      if (churchRow.type !== "underground") return null;
+
+      const { data: founders, error: founderErr } = await adminClient
+        .from("users")
+        .select("id")
+        .eq("church_id", churchId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(1);
+      if (founderErr) return null;
+      const foundingLeaderId =
+        founders && founders.length > 0 ? (founders[0].id as string) : null;
+
+      return {
+        churchType: churchRow.type as string | null,
+        churchVerificationStatus: churchRow.verification_status as string | null,
+        undergroundJoinCodeRevealedAt: (churchRow.underground_join_code_revealed_at as string | null) ?? null,
+        foundingLeaderId,
+      };
     },
 
     now() {

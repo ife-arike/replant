@@ -1,11 +1,18 @@
 // ─────────────────────────────────────────────
 // Replant — Onboarding Navigator
 // Back navigation rules:
-//   Splash → DoF: no back (headerLeft removed)
-//   DoF → Page1: no back (agreement must stand)
-//   Page1 → Page2: back allowed (first reversible step post-DoF)
-//   Page2 → ChurchReg: back allowed (cancel returns here)
-//   ChurchReg pages: back allowed within registration flow
+//   Splash → DoF:   no system back; DoF renders its own "Back" → Splash
+//                   (Founder ruling 2026-06-12: leaders who tap Sign Up
+//                   by mistake must have a visible way out before they
+//                   affirm).
+//   DoF → Page1:    no system back; Page 1 renders its own "Back" →
+//                   Splash and calls OnboardingContext.reset() so the
+//                   in-memory affirmation is discarded. Re-entry shows
+//                   DoF clean.
+//   Page1 → Page2:  back allowed via swipe / system back (first
+//                   reversible step post-DoF).
+//   Page2 → ChurchReg: back allowed (cancel returns here).
+//   ChurchReg pages: back allowed within registration flow.
 //
 // KAN-196 (D-63, 2026-05-22): the standalone AnonymousModeScreen was
 // removed; the anonymous toggle now lives inline on AccountSetupPage1.
@@ -20,10 +27,19 @@ import SplashScreen from '../screens/onboarding/SplashScreen';
 import DeclarationOfFaithScreen from '../screens/onboarding/DeclarationOfFaithScreen';
 import AccountSetupPage1Screen from '../screens/onboarding/AccountSetupPage1Screen';
 import AccountSetupPage2Screen from '../screens/onboarding/AccountSetupPage2Screen';
+import RegisterIntroScreen from '../screens/onboarding/RegisterIntroScreen';
 import RegisterChurchPage1Screen from '../screens/onboarding/RegisterChurchPage1Screen';
 import RegisterChurchPage2Screen from '../screens/onboarding/RegisterChurchPage2Screen';
 import LoginPlaceholderScreen from '../screens/onboarding/LoginPlaceholderScreen';
 import ForgotPasswordScreen from '../screens/onboarding/ForgotPasswordScreen';
+// Underground flow (2026-06-19/20). New secondary chooser + name-visibility
+// + second-leader join-by-code surfaces. UndergroundEntry is reached from
+// RegisterIntroScreen's Underground tile (never directly); NameVisibilityChoice
+// is reached from underground RegCP1's Submit; JoinByCode is reached from
+// UndergroundEntry's "join existing fellowship with a code" row.
+import UndergroundEntryScreen from '../screens/onboarding/UndergroundEntryScreen';
+import NameVisibilityChoiceScreen from '../screens/onboarding/NameVisibilityChoiceScreen';
+import JoinByCodeScreen from '../screens/onboarding/JoinByCodeScreen';
 
 // AccountSetupPage2 accepts an optional KAN-13 loopback payload — when the
 // leader returns from registering a brand-new church, KAN-13 navigates back
@@ -76,9 +92,15 @@ export type OnboardingStackParamList = {
         newChurch?: AccountSetupPage2LoopbackChurch;
       }
     | undefined;
+  // Branch-flow chooser (2026-06-18). Three mutually-exclusive tiles route to
+  // RegisterChurchPage1 with the corresponding `entry` mode.
+  RegisterIntro: undefined;
   RegisterChurchPage1:
     | {
         editChurch?: OnboardingEditChurch;
+        // Branch-flow entry mode (2026-06-18). Defaults to 'standalone' when
+        // absent (back-compat with any legacy direct nav).
+        entry?: 'standalone' | 'branch' | 'underground';
       }
     | undefined;
   RegisterChurchPage2:
@@ -89,6 +111,14 @@ export type OnboardingStackParamList = {
     | undefined; // KAN-14 — needs textarea + final non-underground submit
   Login: undefined; // KAN-26 — placeholder destination from Splash "Sign In"
   ForgotPassword: undefined; // KAN-38 — Screen 06A reset-link request flow
+  // Underground flow (2026-06-19/20) — nested secondary chooser routes.
+  // UndergroundEntry: register-new vs join-with-code. NameVisibilityChoice:
+  // show/hide name + irreversible commit modal, then submits register-church
+  // and routes to ASP2. JoinByCode: second-leader code entry → ASP1 with
+  // pre-attached underground churchId.
+  UndergroundEntry: undefined;
+  NameVisibilityChoice: undefined;
+  JoinByCode: undefined;
 };
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
@@ -133,7 +163,16 @@ export default function OnboardingNavigator() {
           options={{ gestureEnabled: true }}
         />
 
-        {/* Back allowed — returns to Page 2 */}
+        {/* Branch-flow chooser (2026-06-18). Inserted between ASP2 and RegCP1.
+            Three tiles: Standalone / Church branch / Underground. Each routes
+            to RegisterChurchPage1 with the appropriate `entry` param. */}
+        <Stack.Screen
+          name="RegisterIntro"
+          component={RegisterIntroScreen}
+          options={{ gestureEnabled: true }}
+        />
+
+        {/* Back allowed — returns to RegisterIntro (or Page 2 on direct nav) */}
         <Stack.Screen
           name="RegisterChurchPage1"
           component={RegisterChurchPage1Screen}
@@ -158,6 +197,28 @@ export default function OnboardingNavigator() {
         <Stack.Screen
           name="ForgotPassword"
           component={ForgotPasswordScreen}
+          options={{ gestureEnabled: true }}
+        />
+
+        {/* Underground flow (2026-06-19/20).
+            UndergroundEntry — nested secondary chooser; back → RegisterIntro.
+            NameVisibilityChoice — show/hide name + irreversible commit modal;
+              reached AFTER underground RegCP1's "Next" button; back returns
+              to RegCP1 with field state intact.
+            JoinByCode — second-leader code entry; back → UndergroundEntry. */}
+        <Stack.Screen
+          name="UndergroundEntry"
+          component={UndergroundEntryScreen}
+          options={{ gestureEnabled: true }}
+        />
+        <Stack.Screen
+          name="NameVisibilityChoice"
+          component={NameVisibilityChoiceScreen}
+          options={{ gestureEnabled: true }}
+        />
+        <Stack.Screen
+          name="JoinByCode"
+          component={JoinByCodeScreen}
           options={{ gestureEnabled: true }}
         />
       </Stack.Navigator>

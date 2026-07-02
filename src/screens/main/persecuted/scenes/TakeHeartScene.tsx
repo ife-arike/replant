@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, Typography } from '../../../../constants/theme';
 import { ScriptureFooter } from './FeedScene';
 import type { RootStackParamList } from '../../../../navigation/types';
+import ComingSoonModal from '../../../../components/common/ComingSoonModal';
 
 const CREAM = '#E6E1D5';
 const FAINT = 'rgba(240,237,230,0.08)';
@@ -27,28 +28,10 @@ interface FamilyWord {
   attribution: string; // "A [Role] from [Region]"
 }
 
-const FAMILY_WORDS: FamilyWord[] = [
-  {
-    text: 'We are standing with you. The church does not sleep while her members are pressed.',
-    attribution: 'Samuel, a Minister from West Africa',
-  },
-  {
-    text: 'You are not forgotten. We say your name before the Lord every morning.',
-    attribution: 'James, a Pastor from East Asia',
-  },
-  {
-    text: 'The same Christ who sustained the early church sustains you now. Hold fast.',
-    attribution: 'Lucia, an Evangelist from South America',
-  },
-  {
-    text: 'We are praying. We are watching. You are not alone in this.',
-    attribution: 'Andrei, a Ministry Leader from Eastern Europe',
-  },
-  {
-    text: 'Your faithfulness is seed. We will see the harvest together.',
-    attribution: 'Emmanuel, a Pastor from Central Africa',
-  },
-];
+// Real "A word from your family" entries will be leader-submitted post-MVP
+// (see memory: future_word_from_family.md). Until then the section renders
+// an empty state below; do NOT seed fabricated entries here.
+const FAMILY_WORDS: FamilyWord[] = [];
 
 interface GuidanceCardData {
   icon: 'lock' | 'door' | 'shield' | 'book';
@@ -87,10 +70,12 @@ const GUIDANCE_CARDS: GuidanceCardData[] = [
 export default function TakeHeartScene() {
   const navigation = useNavigation<NavProp>();
   const [familyIndex, setFamilyIndex] = useState(0);
+  const [findOutHowOpen, setFindOutHowOpen] = useState(false);
   const familyPaused = useRef(false);
 
-  // Auto-cycle every 12s
+  // Auto-cycle every 12s — only active when FAMILY_WORDS has entries.
   useEffect(() => {
+    if (FAMILY_WORDS.length === 0) return;
     const interval = setInterval(() => {
       if (!familyPaused.current) {
         setFamilyIndex((i) => (i + 1) % FAMILY_WORDS.length);
@@ -100,10 +85,15 @@ export default function TakeHeartScene() {
   }, []);
 
   const cycleWord = useCallback(() => {
+    if (FAMILY_WORDS.length === 0) return;
     setFamilyIndex((i) => (i + 1) % FAMILY_WORDS.length);
   }, []);
 
+  const familyEmpty = FAMILY_WORDS.length === 0;
+  const currentWord = familyEmpty ? null : FAMILY_WORDS[familyIndex % FAMILY_WORDS.length];
+
   return (
+    <>
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
@@ -118,19 +108,37 @@ export default function TakeHeartScene() {
         style={styles.familyWord}
       >
         <Text style={styles.familyEyebrow}>A WORD FROM YOUR FAMILY</Text>
-        <Text style={styles.familyText}>{FAMILY_WORDS[familyIndex % FAMILY_WORDS.length].text}</Text>
-        <Text style={styles.familyAttribution}>{FAMILY_WORDS[familyIndex % FAMILY_WORDS.length].attribution}</Text>
-        <View style={styles.dotPager}>
-          {FAMILY_WORDS.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                i === familyIndex % FAMILY_WORDS.length && styles.dotActiveSky,
-              ]}
-            />
-          ))}
-        </View>
+        {familyEmpty ? (
+          <>
+            <Text style={styles.familyEmptyBody}>
+              Words from the body will appear here as leaders share encouragement with those enduring persecution.
+            </Text>
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); setFindOutHowOpen(true); }}
+              hitSlop={8}
+              accessibilityRole="link"
+              accessibilityLabel="Find out how to share a word"
+            >
+              <Text style={styles.familyFindOutHow}>Find out how ›</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.familyText}>{currentWord!.text}</Text>
+            <Text style={styles.familyAttribution}>{currentWord!.attribution}</Text>
+            <View style={styles.dotPager}>
+              {FAMILY_WORDS.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    i === familyIndex % FAMILY_WORDS.length && styles.dotActiveSky,
+                  ]}
+                />
+              ))}
+            </View>
+          </>
+        )}
       </Pressable>
 
       {/* Practical guidance */}
@@ -173,11 +181,11 @@ export default function TakeHeartScene() {
         </Text>
         <Pressable
           onPress={() => {
-            // Route to Connect tab → Branches/Ministries sub-tab
-            // TODO: Location-based "nearest to you" filtering is post-MVP
-            (navigation as any).navigate('Tabs', {
+            // Route to Connect tab → Ministries sub-tab (EAP branch creation/list).
+            // Location-based "nearest to you" filtering is post-MVP.
+            navigation.navigate('Tabs', {
               screen: 'Connect',
-              params: { screen: 'Ministries' },
+              params: { initialSubTab: 'ministries' },
             });
           }}
           accessibilityRole="button"
@@ -194,6 +202,13 @@ export default function TakeHeartScene() {
         verseRef="JOHN 16:33"
       />
     </ScrollView>
+    <ComingSoonModal
+      visible={findOutHowOpen}
+      onDismiss={() => setFindOutHowOpen(false)}
+      title="Share a word with the body."
+      body="Soon, leaders will be able to send words of encouragement and comfort to those enduring persecution — and the body will see them here."
+    />
+    </>
   );
 }
 
@@ -278,6 +293,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
     letterSpacing: 0.21,
+  },
+  familyEmptyBody: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 14,
+    maxWidth: 320,
+  },
+  familyFindOutHow: {
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    letterSpacing: 1.65, // 0.15em × 11
+    textTransform: 'uppercase',
+    color: Colors.accent,
+    marginBottom: 6,
   },
   familyAttribution: {
     fontFamily: Typography.scriptureItalic, // italic — source attribution, correct use

@@ -41,6 +41,11 @@ import ArticleReaderScreen from "../screens/main/persecuted/readers/ArticleReade
 import GuidanceReaderScreen from "../screens/main/persecuted/readers/GuidanceReaderScreen";
 import StoryArchiveScreen from "../screens/main/persecuted/readers/StoryArchiveScreen";
 import WitnessArchiveScreen from "../screens/main/persecuted/readers/WitnessArchiveScreen";
+import TheVisionScreen from "../screens/main/hamburger/TheVisionScreen";
+import OutreachMissionsScreen from "../screens/main/hamburger/OutreachMissionsScreen";
+import InviteScreen from "../screens/main/hamburger/InviteScreen";
+import FAQScreen from "../screens/main/hamburger/FAQScreen";
+import JoinCodeRevealScreen from "../screens/main/JoinCodeRevealScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
@@ -52,7 +57,15 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {(branch === "active" || branch === "pending") && (
+      {/* Underground Verification Queue (manifest 2026-06-22) —
+          'request_info' and 'soft_deleted' route into Tabs too. The
+          leader's app still mounts; the appropriate Home-tab modal /
+          banner / read-only gating handles the sub-state. The leader
+          is NEVER logged out. */}
+      {(branch === "active" ||
+        branch === "pending" ||
+        branch === "request_info" ||
+        branch === "soft_deleted") && (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
           <Stack.Screen name="Settings" component={SettingsScreenContainer} />
@@ -82,6 +95,43 @@ export default function RootNavigator() {
             name="WitnessArchive"
             component={WitnessArchiveScreen}
             options={{ animation: 'slide_from_right' }}
+          />
+          {/* Hamburger sprint (CD v5 final) — pushed from Home-tab panel.
+              Vision / Outreach / FAQ slide in from the right; Invite presents
+              as a full-screen modal that slides up from the bottom. */}
+          <Stack.Screen
+            name="TheVision"
+            component={TheVisionScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="OutreachMissions"
+            component={OutreachMissionsScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="InviteToReplant"
+            component={InviteScreen}
+            options={{ presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="FAQ"
+            component={FAQScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          {/* Underground one-shot join-code reveal (2026-06-20). Full-screen
+              takeover; NON-DISMISSIBLE via swipe gesture or Android hardware
+              back once the leader passes the pre-reveal "I'm somewhere
+              private" gate. The pre-gate screen itself IS dismissible —
+              leader can cancel and come back later, so the route is opted
+              into via a Home-tab CTA rather than auto-presented. */}
+          <Stack.Screen
+            name="JoinCodeReveal"
+            component={JoinCodeRevealScreen}
+            options={{
+              animation: 'fade',
+              gestureEnabled: false,
+            }}
           />
         </>
       )}

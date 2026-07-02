@@ -1,7 +1,7 @@
 // MyHeartcriesScene — Surface 2: Own heartcry submissions with severity + status track.
 // FlatList with estimatedItemSize 186. Severity tags, StatusTrack, Responded CTA.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -40,22 +40,26 @@ export default function MyHeartcriesScene() {
   const [rows, setRows] = useState<MyHeartcryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const hasFetchedRef = useRef(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setLoadError(false);
+  const loadData = useCallback(async (silent?: boolean) => {
+    if (!silent) {
+      setLoading(true);
+      setLoadError(false);
+    }
     const { data, error } = await supabase.rpc('get_my_heartcries');
+    hasFetchedRef.current = true;
     if (error) {
-      setLoadError(true);
+      if (!silent) setLoadError(true);
     } else {
       setRows((data ?? []) as MyHeartcryRow[]);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void loadData();
+      void loadData(hasFetchedRef.current);
     }, [loadData]),
   );
 
@@ -64,10 +68,12 @@ export default function MyHeartcriesScene() {
       row={item}
       onOpenMessage={() => {
         if (item.thread_id) {
-          // Navigate to DM thread in Connect tab
-          (navigation as any).navigate('Connect', {
-            screen: 'DM',
-            params: { threadId: item.thread_id },
+          // Navigate to Connect tab and open the DM thread by conversationId.
+          // ConnectScreen reads the conversationId param on focus and calls
+          // goTo({ kind: 'thread', conversationId }) into its state machine.
+          navigation.navigate('Tabs', {
+            screen: 'Connect',
+            params: { conversationId: item.thread_id },
           });
         }
       }}
@@ -212,7 +218,7 @@ function MyHeartcryEmpty({ onShare }: { onShare: () => void }) {
           strokeWidth={1}
         />
       </Svg>
-      <Text style={styles.emptyTitle}>You have shared nothing here, and that is fine.</Text>
+      <Text style={styles.emptyTitle}>No Heartcries written.</Text>
       <Text style={styles.emptyBody}>
         If a day comes when you need to be heard, this space will hold it. Until then, the body is praying around you.
       </Text>

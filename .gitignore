@@ -52,3 +52,6 @@ qa/*/artifacts/*
 # and never touch the public repo. The FLAG_TAXONOMY Supabase Edge Function
 # secret holds them; this local file is the operator's dashboard input only.
 flag_taxonomy_secret.json
+
+# Local Netlify folder
+.netlify

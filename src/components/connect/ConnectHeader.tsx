@@ -35,11 +35,11 @@ function PlusIcon() {
 
 function ComposeIcon() {
   return (
-    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
-      <Path d="M4 20h4l10.5-10.5a2 2 0 0 0-2.8-2.8L5 17.2z"
-        stroke={Colors.accent} strokeWidth={1.6} strokeLinejoin="round" />
-      <Path d="M13.5 6.5l4 4"
-        stroke={Colors.accent} strokeWidth={1.6} strokeLinecap="round" />
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+        stroke={Colors.accent} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+      />
     </Svg>
   );
 }

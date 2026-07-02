@@ -52,6 +52,8 @@ import CamlView from '../../components/church/CamlView';
 import { REGION_DEFS, groupByRegion, type RegionDef } from '../../utils/regionUtils';
 import ChurchTutorialOverlay, { TUTORIAL_SEEN_KEY } from '../../components/church/ChurchTutorialOverlay';
 import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
+import { useViewerChurch } from '../../hooks/useViewerChurch';
+import { viewerOrgCopy } from '../../utils/displayHelpers';
 
 type Page = 0 | 1; // 0 = CAML (placeholder), 1 = CAL (globe)
 
@@ -72,8 +74,29 @@ const HORIZON_MS = 550;
 // Two copy variants:
 //   churchVerified = true  → second leader (church verified, leader pending)
 //   churchVerified = false/null → original leader (church verification pending)
-function UnverifiedGateView({ churchVerified }: { churchVerified: boolean | null }) {
+function UnverifiedGateView({
+  churchVerified,
+  viewerChurchType,
+  suppressTimeline,
+}: {
+  churchVerified: boolean | null;
+  viewerChurchType: string | null | undefined;
+  /** Underground Verification Queue · manifest §4 / Ruling #22 (2026-06-22):
+   *  when branch === 'request_info', the team is waiting on the leader, not
+   *  the other way around — suppress the 30-day / 24-72hr timeline copy. */
+  suppressTimeline: boolean;
+}) {
   const isLeaderPending = churchVerified === true;
+  const viewer = viewerOrgCopy(viewerChurchType);
+  // Founder ruling #6 (locked 2026-06-21) is PRESERVED: the timeline
+  // copy is the SAME phrase for surface and underground — no
+  // differential, no fingerprint. The phrase now states both the
+  // 30-day max AND the 24-72hr typical window universally, so neither
+  // viewer can be distinguished from the other by what they read.
+  // viewerChurchType is intentionally NOT branched on here.
+  // para-ministry copy swap (church → organization) still applies via
+  // viewer.yourChurchOrOrg per BA-para #1.
+  void viewerChurchType;
   return (
     <View style={styles.unverifiedGate}>
       {/* Sky cross glyph */}
@@ -88,20 +111,19 @@ function UnverifiedGateView({ churchVerified }: { churchVerified: boolean | null
       </Text>
       <Text style={styles.gateBody}>
         {isLeaderPending
-          ? "Your church is already part of the Replant network. Once the team confirms your account, you'll unlock The Church tab and be seen by leaders around the world."
-          : "Once your church is confirmed by a Replant team member, you'll unlock The Church tab — and be able to see, and be seen by, every verified leader on the network."}
+          ? `${viewer.yourChurchOrOrgCap} is already part of the Replant network. Once the team confirms your account, you'll unlock The Church tab and connect with verified leaders around the world.`
+          : `Once ${viewer.yourChurchOrOrg} is confirmed by a Replant team member, you'll unlock The Church tab and connect with verified leaders around the world.`}
       </Text>
-      <Text style={styles.gateTiny}>
-        {isLeaderPending
-          ? 'Confirmation usually takes 24–72 hours.'
-          : 'Most verifications complete in 24–72 hours.'}
-      </Text>
-      <View style={styles.gateScripture}>
-        <Text style={styles.gateScriptureText}>
-          "For the vision is yet for an appointed time, but at the end it shall speak, and not lie: though it tarry, wait for it; because it will surely come, it will not tarry."
+      {/* Verified-gate timeline (locked 2026-06-22). Suppressed when
+          branch === 'request_info' — the team is waiting on the leader's
+          reply, not the other way around. The Home-tab RequestInfoModal
+          + banner already carries that context; restating the timeline
+          here would feel contradictory. */}
+      {!suppressTimeline && (
+        <Text style={styles.gateTiny}>
+          This process may take up to 30 days, but reviews are typically complete within 24-72 hours.
         </Text>
-        <Text style={styles.gateScriptureRef}>HABAKKUK 2:3</Text>
-      </View>
+      )}
     </View>
   );
 }
@@ -112,14 +134,26 @@ export default function TheChurchScreen() {
   // When the viewer is pending, distinguish church-pending vs leader-pending
   // so UnverifiedGateView can show the correct copy variant.
   const churchVerified = useChurchVerifiedStatus();
+  // Para-ministry copy swap on the unverified gate (BA-para #1).
+  const { church: viewerChurch } = useViewerChurch();
   const navigation = useNavigation<BottomTabNavigationProp<TabsParamList>>();
   const reduced = useReducedMotion();
 
   // Hoisted globe data — subtitle + count chip + GlobeView all read from
   // the same source (one network call, no duplicate fetches).
+  // viewerChurchType is the SAFE signal for underground gating below
+  // (suppress CAML, suppress tutorial, lock to CAL). useChurchesGlobal
+  // already routes the underground caller's globe fetch through the
+  // coord-free RPC; we read the same context here for FE behavior.
   const {
-    dots, undergroundCount, ownChurchId, viewerCountry, loading, error, refetch,
+    dots, undergroundCount, ownChurchId, viewerCountry, viewerChurchType,
+    loading, error, refetch,
   } = useChurchesGlobal();
+  const viewerIsUnderground = viewerChurchType === 'underground';
+  const ownChurchCoords = useMemo(() => {
+    const d = dots.find(dot => dot.id === ownChurchId);
+    return d ? { lat: d.lat, lng: d.lng } : null;
+  }, [dots, ownChurchId]);
 
   // ── KAN-213: Church profile completion gate ─────────────────────────
   // Resolved once on mount (when branch flips to 'active') via a single
@@ -165,10 +199,15 @@ export default function TheChurchScreen() {
   }, []);
   useEffect(() => {
     if (!viewerVerified || !completionReady || showCompletionFlow) return;
+    // Founder lock 2026-06-21 (#8): underground viewers do NOT get the
+    // Church tab tutorial. The existing tutorial walks through the CAML
+    // / "Your church is here" surface — which underground viewers never
+    // see. Post-MVP we'll design an underground-specific tutorial.
+    if (viewerIsUnderground) return;
     SecureStore.getItemAsync(TUTORIAL_SEEN_KEY).then((v) => {
       if (!v) setShowTutorial(true);
     }).catch(() => {});
-  }, [viewerVerified, completionReady, showCompletionFlow]);
+  }, [viewerVerified, completionReady, showCompletionFlow, viewerIsUnderground]);
 
   const checkCompletionGate = useCallback(async () => {
     if (!viewerVerified || skippedThisSession.current) return;
@@ -256,20 +295,28 @@ export default function TheChurchScreen() {
     setShowCompletionFlow(false);
   }, []);
 
-  const [page, setPage] = useState<Page>(0);
+  // Underground viewers land directly on CAL (page 1) and stay there —
+  // the horizon switcher is suppressed entirely below (Founder lock
+  // 2026-06-21 #4). Surface viewers start on CAML (page 0).
+  const [page, setPage] = useState<Page>(viewerIsUnderground ? 1 : 0);
 
-  // Reset to CAML (page 0 — Church At My Location) every time the tab
-  // receives focus. page persists across tab switches otherwise, so a
-  // leader who left on the CAL globe would return to it; the Founder
-  // wants the tab to always open on their own location.
+  // Reset page on every tab focus. Surface viewers go back to CAML;
+  // underground viewers stay locked on CAL.
   useFocusEffect(
     useCallback(() => {
-      setPage(0);
+      setPage(viewerIsUnderground ? 1 : 0);
       // Refresh the global Prayer Wall pull-up on every tab focus so a
       // request posted elsewhere (Prayer Wall tab) is reflected here.
       setPrayerWallRefetchTrigger((n) => n + 1);
-    }, []),
+    }, [viewerIsUnderground]),
   );
+
+  // If viewerChurchType resolves AFTER first render (race with the async
+  // useChurchesGlobal context fetch) and the leader is underground,
+  // snap to page 1 the moment we know. No-op for surface viewers.
+  useEffect(() => {
+    if (viewerIsUnderground) setPage(1);
+  }, [viewerIsUnderground]);
 
   const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
   // Post-completion CAML refetch — bumped in handleCompletionComplete so
@@ -347,7 +394,8 @@ export default function TheChurchScreen() {
   );
 
   // KAN-223: Open the regional panel for the given RegionDef.
-  // Called from GlobeView's onPickRegion (globe-body tap or pill tap).
+  // 2026-06-11: pill-only entry. Called from handleRegionsPress when the
+  // user taps the REGIONS button in the CAL header.
   const handlePickRegion = useCallback(
     (def: RegionDef) => {
       setRegional(buildRegion(def));
@@ -398,7 +446,12 @@ export default function TheChurchScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>
-            {page === 0 ? (
+            {viewerIsUnderground ? (
+              // Underground viewers see ONLY the CAL surface; the header
+              // reads "The Church at Large" with no CAML-variant path.
+              // (Founder lock 2026-06-21 #4.)
+              <>The Church <Text style={styles.titleEm}>at Large</Text></>
+            ) : page === 0 ? (
               // Header tells the truth: no fabricated "at <city>" before
               // the Mapbox reverse-geocode lands. useChurchesGlobal does
               // not currently expose ownChurchCity (only ownChurchId and
@@ -417,19 +470,24 @@ export default function TheChurchScreen() {
           </Text>
         </View>
         <Text style={styles.subtitle} numberOfLines={1}>
-          {page === 0
-            ? `YOUR LOCATION · ${camlLeaderCount !== null ? camlLeaderCount : '—'} LEADERS WITHIN 50 KM`
-            : `GLOBAL · ${verifiedCount} VERIFIED · +${undergroundCount} HIDDEN`}
+          {viewerIsUnderground || page === 1
+            ? `GLOBAL · ${verifiedCount} VERIFIED · +${undergroundCount} HIDDEN`
+            : `YOUR LOCATION · ${camlLeaderCount !== null ? camlLeaderCount : '—'} LEADERS WITHIN 50 KM`}
         </Text>
-        {/* tc-pager — horizon switcher */}
-        <View style={styles.pager}>
-          <Text style={[styles.pagerLabel, page === 0 && styles.pagerLabelActive]}>AT MY LOCATION</Text>
-          <Pressable onPress={handleHorizonPress} style={styles.horizonTrack} accessibilityRole="button" accessibilityLabel={page === 0 ? 'Switch to At Large' : 'Switch to At My Location'}>
-            <View style={styles.horizonBase} />
-            <Animated.View style={[styles.horizonBar, { width: horizonWidth, left: horizonLeft }]} />
-          </Pressable>
-          <Text style={[styles.pagerLabel, styles.pagerLabelRight, page === 1 && styles.pagerLabelActive]}>AT LARGE</Text>
-        </View>
+        {/* tc-pager — horizon switcher. Suppressed entirely for
+            underground viewers (Founder lock 2026-06-21 #4): no
+            AT MY LOCATION affordance, no switch back to CAML. They
+            land on CAL and stay there. */}
+        {viewerIsUnderground ? null : (
+          <View style={styles.pager}>
+            <Text style={[styles.pagerLabel, page === 0 && styles.pagerLabelActive]}>AT MY LOCATION</Text>
+            <Pressable onPress={handleHorizonPress} style={styles.horizonTrack} accessibilityRole="button" accessibilityLabel={page === 0 ? 'Switch to At Large' : 'Switch to At My Location'}>
+              <View style={styles.horizonBase} />
+              <Animated.View style={[styles.horizonBar, { width: horizonWidth, left: horizonLeft }]} />
+            </Pressable>
+            <Text style={[styles.pagerLabel, styles.pagerLabelRight, page === 1 && styles.pagerLabelActive]}>AT LARGE</Text>
+          </View>
+        )}
       </View>
 
       {/* tc-pages — BOTH surfaces always mounted; crossfade driven by
@@ -442,28 +500,38 @@ export default function TheChurchScreen() {
           views stay mounted across the swap: no GL teardown, no
           location-listener churn. */}
       <View style={styles.pages}>
-        {/* CAML — always mounted, fades 1 → 0 as page goes 0 → 1 */}
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFillObject,
-            {
-              opacity: horizonProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-              pointerEvents: page === 0 ? 'auto' : 'none',
-            },
-          ]}
-        >
-          <CamlView
-            isActive={page === 0}
-            ownChurchId={ownChurchId}
-            viewerVerified={viewerVerified}
-            onChurchSelect={handleChurchSelect}
-            onCityResolved={setCamlCity}
-            onLeaderCountResolved={setCamlLeaderCount}
-            refreshTrigger={camlRefreshTrigger}
-            panToChurchTrigger={panToChurchTrigger}
-            recenterToGPSTrigger={recenterGPSTrigger}
-          />
-        </Animated.View>
+        {/* CAML — always mounted for surface viewers, fades 1 → 0 as
+            page goes 0 → 1. NEVER mounted for underground viewers
+            (Founder lock 2026-06-21 #4 + #5): mounting CamlView would
+            kick off locationManager.start() + the Mapbox places
+            reverse-geocode, neither of which is permitted for an
+            underground caller. Defense-in-depth — CamlView ALSO
+            guards via its own viewerIsUnderground prop. */}
+        {viewerIsUnderground ? null : (
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                opacity: horizonProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+                pointerEvents: page === 0 ? 'auto' : 'none',
+              },
+            ]}
+          >
+            <CamlView
+              isActive={page === 0}
+              ownChurchId={ownChurchId}
+              ownChurchCoords={ownChurchCoords}
+              viewerVerified={viewerVerified}
+              viewerIsUnderground={viewerIsUnderground}
+              onChurchSelect={handleChurchSelect}
+              onCityResolved={setCamlCity}
+              onLeaderCountResolved={setCamlLeaderCount}
+              refreshTrigger={camlRefreshTrigger}
+              panToChurchTrigger={panToChurchTrigger}
+              recenterToGPSTrigger={recenterGPSTrigger}
+            />
+          </Animated.View>
+        )}
 
         {/* CAL — always mounted, fades 0 → 1 as page goes 0 → 1 */}
         <Animated.View
@@ -488,35 +556,36 @@ export default function TheChurchScreen() {
             // globe stops rotating + pulsing the moment they swap surfaces.
             forcePaused={anyOverlayOpen || page !== 1}
             bottomInset={88}
-            // KAN-223: globe-body tap → open panel for the currently faced
-            // region. onFaceRegion tracks the facing for the REGIONS button.
-            onPickRegion={handlePickRegion}
+            // 2026-06-11: globe-body tap no longer opens the regional panel
+            // (Founder ruling — pill-only). onFaceRegion still tracks the
+            // facing so the REGIONS button opens the correct region.
             onFaceRegion={setCalFacedRegion}
           />
 
-          {/* Count stats chip — top-left of globe area (CD app.jsx) */}
-          <View style={styles.countChip} pointerEvents="none">
-            <Text style={styles.countChipText}>
-              <Text style={styles.countSky}>{verifiedCount}</Text>
-              <Text style={styles.countMuted}> VERIFIED · </Text>
-              <Text style={styles.countRed}>{urgentCount}</Text>
-              <Text style={styles.countMuted}> URGENT · </Text>
-              <Text style={styles.countOffWhite}>+{undergroundCount}</Text>
-              <Text style={styles.countMuted}> HIDDEN</Text>
-            </Text>
+          {/* Top row — count chip (left) + Regions button (right).
+              Wrapped in a row so they share horizontal space and never
+              overlap on narrow screens (e.g. iPhone 17 Pro vs Pro Max). */}
+          <View style={styles.globeTopRow}>
+            <View style={styles.countChip} pointerEvents="none">
+              <Text style={styles.countChipText} numberOfLines={1}>
+                <Text style={styles.countSky}>{verifiedCount}</Text>
+                <Text style={styles.countMuted}> VERIFIED · </Text>
+                <Text style={styles.countRed}>{urgentCount}</Text>
+                <Text style={styles.countMuted}> URGENT · </Text>
+                <Text style={styles.countOffWhite}>+{undergroundCount}</Text>
+                <Text style={styles.countMuted}> HIDDEN</Text>
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleRegionsPress}
+              style={styles.regionsBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Regions"
+            >
+              <View style={styles.regionsDot} />
+              <Text style={styles.regionsText}>REGIONS</Text>
+            </Pressable>
           </View>
-
-          {/* Regions button — top-right of globe area. STUB per Step 0
-              halt (KAN-21 c.14810) — opens the RegionalPanel shell. */}
-          <Pressable
-            onPress={handleRegionsPress}
-            style={styles.regionsBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Regions"
-          >
-            <View style={styles.regionsDot} />
-            <Text style={styles.regionsText}>REGIONS</Text>
-          </Pressable>
 
           {/* KAN-223: RegionalPanel — full build. onPickChurch closes the
               panel and opens the profile sheet for the selected church. */}
@@ -588,7 +657,15 @@ export default function TheChurchScreen() {
           20). Mapbox surfaces stay mounted below but are visually held
           until the leader's church is confirmed by a Replant team
           member. */}
-      {!viewerVerified ? <UnverifiedGateView churchVerified={churchVerified} /> : null}
+      {!viewerVerified ? (
+        <UnverifiedGateView
+          churchVerified={churchVerified}
+          viewerChurchType={viewerChurch?.type}
+          // Queue §22 (manifest 2026-06-22): suppress the 30-day timeline
+          // when the team is waiting on the leader's reply.
+          suppressTimeline={branch === 'request_info'}
+        />
+      ) : null}
 
       {/* KAN-213: Church profile completion gate (AC 1 + AC 2).
           Renders ONLY when:
@@ -713,38 +790,43 @@ const styles = StyleSheet.create({
   // so the chip is legible on-device. CD CSS reads 8.5px for web; RN
   // renders the same numeric size noticeably smaller, so a clean bump
   // restores legibility without breaking the visual rhythm.
-  countChip: {
+  globeTopRow: {
     position: 'absolute',
-    top: 16, left: 16,
+    top: 16, left: 16, right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 8,
+  },
+  countChip: {
+    flexShrink: 1,
     paddingVertical: 9, paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(8, 8, 8, 0.7)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
-    zIndex: 8,
+    marginRight: 8,
   },
   countChipText: {
     fontFamily: Typography.mono,
-    fontSize: 10,
-    letterSpacing: 1.6, // ~0.16em × 10
-    lineHeight: 14,
+    fontSize: 9,
+    letterSpacing: 1.44,
+    lineHeight: 13,
   },
   countSky:      { color: Colors.accent },
   countRed:      { color: Colors.red },
   countOffWhite: { color: Colors.text },
   countMuted:    { color: Colors.textMuted },
 
-  // Regions button — top-right of globe area (CD: top:16, right:16)
+  // Regions button — right side of globeTopRow
   regionsBtn: {
-    position: 'absolute',
-    top: 16, right: 16,
+    flexShrink: 0,
     flexDirection: 'row', alignItems: 'center', gap: 7,
     paddingVertical: 9, paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(8, 8, 8, 0.7)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
-    zIndex: 8,
   },
   regionsDot: {
     width: 10, height: 10, borderRadius: 5,
@@ -768,15 +850,18 @@ const styles = StyleSheet.create({
   },
 
   // ── Unverified gate (UnverifiedGateView) ──
+  // Full-screen overlay. Top-aligned (no justifyContent:'center') so
+  // the glyph sits ~marginTop:300 below the screen top, matching the
+  // Persecuted gate's lower-anchored feel. Scripture block removed
+  // 2026-06-22.
   unverifiedGate: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
     backgroundColor: 'rgba(8,8,8,0.92)',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 28,
   },
-  gateCrossGlyph: { marginBottom: 28 },
+  gateCrossGlyph: { marginTop: 300, marginBottom: 28 },
   gateTitle: {
     fontFamily: Typography.scriptureLight,
     fontSize: 28,
@@ -797,35 +882,11 @@ const styles = StyleSheet.create({
   },
   gateTiny: {
     fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.1,
+    fontSize: 10.5,
+    letterSpacing: 2.31, // 0.22em × 10.5
     textTransform: 'uppercase',
     color: Colors.accent,
-    marginBottom: 28,
-  },
-  gateScripture: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(107,181,232,0.06)',
-    borderWidth: 0.5,
-    borderColor: Colors.borderAccent,
-    borderRadius: 10,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-  },
-  gateScriptureText: {
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 16.5,
-    color: Colors.text,
-    lineHeight: 25,
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  gateScriptureRef: {
-    fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.09, // 0.22em × 9.5
-    textTransform: 'uppercase',
-    color: Colors.accent,
+    marginBottom: 28,
   },
 });

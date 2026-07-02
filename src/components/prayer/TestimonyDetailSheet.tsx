@@ -26,13 +26,13 @@ import {
   Animated,
   Dimensions,
   Easing,
-  Image,
   PanResponder,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import { supabase } from '../../lib/supabase';
@@ -49,10 +49,6 @@ import { XIcon } from './PrayerIcons';
 import { formatLeaderLine } from '../../utils/displayHelpers';
 import { TESTIMONY_DETAIL_STYLE } from './TestimonyCard';
 
-// Device-pass fix — "Rejoice with them" uses the shofar glyph
-// (assets/rejoice-icon.png), matching the Testimonies card. Replaces the
-// former bell/CelebrateIcon. Green title token #6B9E7A also applied below.
-const REJOICE_ICON = require('../../../assets/rejoice-icon.png');
 const TESTIMONY_GREEN = '#6B9E7A';
 
 interface Props {
@@ -317,11 +313,15 @@ export default function TestimonyDetailSheet({
             style={styles.celebrateCta}
           >
             <Animated.View style={{ transform: [{ scale: burstScale }] }}>
-              <Image
-                source={REJOICE_ICON}
-                style={styles.rejoiceIcon}
-                resizeMode="contain"
-              />
+              {iCelebrated ? (
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M5 12l5 5L19 7" stroke={Colors.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              ) : (
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M12 5v14M5 12h14" stroke={Colors.accent} strokeWidth={2} strokeLinecap="round" />
+                </Svg>
+              )}
             </Animated.View>
             <Text
               style={[
@@ -384,9 +384,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.6,
     lineHeight: 16,
-    // Device-pass fix — church/location eyebrow in testimony green (was
-    // sky Colors.accent) to match the testimony surface treatment.
-    color: TESTIMONY_GREEN,
+    color: Colors.text,
   },
   leaderLine: {
     // v8 Fix H4 — attribution 15 pt DM Sans 400, lh 1.3, muted-45%.
@@ -451,33 +449,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(91, 173, 122, 0.45)',
-    backgroundColor: 'rgba(91, 173, 122, 0.08)',
-  },
-  rejoiceIcon: {
-    // Device-pass fix — shofar glyph at 24×24, negative vertical margin
-    // clips the PNG's transparent edges and keeps the CTA row height in check.
-    width: 24,          // was 32 — smaller to clip PNG's transparent edges
-    height: 24,         // was 32
-    marginVertical: -6, // was -4 — clips more of the transparent padding
+    borderColor: 'rgba(107, 181, 232, 0.35)',
+    backgroundColor: 'rgba(107, 181, 232, 0.08)',
   },
   celebrateLabel: {
     fontFamily: Typography.bodyMedium,
     fontSize: 14,
-    color: Colors.green,
-    marginLeft: 4,   // ADD — tight gap between icon and label
+    color: Colors.accent,
+    marginLeft: 4,
   },
   celebrateLabelActive: {
-    color: Colors.green,
+    color: Colors.accent,
   },
   celebrateCount: {
     fontFamily: Typography.mono,
     fontSize: 12,
     color: Colors.textMuted,
-    marginLeft: 6,  // ADD — clear separation from label text
+    marginLeft: 6,
   },
   celebrateCountActive: {
-    color: Colors.green,
+    color: Colors.accent,
   },
   timestamp: {
     // v7 Item 08 — 13 pt DM Sans 400, sentence case, no tracking

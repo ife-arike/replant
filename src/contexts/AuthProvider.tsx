@@ -50,12 +50,35 @@ import { signOutAndClear, PENDING_SIGNOUT_KEY } from "../utils/signOutAndClear";
 // triggers the modal AND calls signOut on detection, so the branch flips
 // straight from active/pending/loading to unauthenticated and the user
 // lands back on the login form behind the modal.
+//
+// Underground Verification Queue (manifest 2026-06-22) — two NEW
+// branches derived from the auth-status-check `branch_substate` field
+// (BE lane extends auth-status-check separately). FE consumes
+// defensively: if the BE has not yet shipped the field, both default
+// off and the leader sees the existing pending/active surface unchanged.
+//
+//   'request_info'  Admin has sent a question; the team is waiting on
+//                   the leader. TheChurchScreen suppresses the
+//                   verified-gate tiny-line ("This process may take up
+//                   to 30 days…") because the wait is now on the
+//                   leader's side. HomeScreen renders RequestInfoModal
+//                   on launch.
+//
+//   'soft_deleted'  Verification could not be completed; record is in
+//                   the 30-day soft-delete window. Leader can READ
+//                   Home / Persecuted / Prayer Wall / Connect but
+//                   cannot WRITE (RLS gates this server-side; the FE
+//                   hides compose paths as defense-in-depth). The
+//                   leader is NEVER logged out — every notice is
+//                   revisitable from the Home outcome banner (§19).
 export type AuthBranch =
   | "loading"
   | "unauthenticated"
   | "active"
   | "pending"
-  | "password_recovery";
+  | "password_recovery"
+  | "request_info"
+  | "soft_deleted";
 
 // Mirrored from supabase/functions/auth-status-check/logic.ts; must stay
 // in lockstep. KAN-36 v2 binary-only contract — no third value.
@@ -66,6 +89,14 @@ export interface AuthState {
   branch: AuthBranch;
   verificationDeadline: string | null;
   daysRemaining: number | null;
+  // Underground flow (2026-06-20). True iff auth-status-check returned
+  // underground_join_code_pending_reveal: true on the most recent check.
+  // Conditions are server-side (verified underground + founding leader +
+  // not yet revealed). The FE surfaces the "code ready to view" prompt on
+  // Home when this is true; tapping routes to the JoinCodeReveal screen.
+  // Never advertised to non-underground viewers — the BE omits the field
+  // entirely when false. We default to false here on a missing field.
+  undergroundJoinCodePendingReveal: boolean;
   loading: boolean;
   // KAN-36 v2 — non-null when a deactivation modal is on screen. The
   // session has already been signed out by the time this is set (modal
@@ -106,6 +137,19 @@ interface AuthStatusResponse {
   // "support_contact" on a missing field so an unknown future-pre-v4
   // function deploy never surfaces "verification_renewal" by accident.
   recovery_path?: RecoveryPath;
+  // Underground flow (2026-06-20). True iff caller is the founding leader
+  // of a verified underground church AND the code hasn't been revealed
+  // yet. Omitted from the response body when false (so non-underground
+  // viewers never see the field). Default false in the consumer.
+  underground_join_code_pending_reveal?: boolean;
+  // Underground Verification Queue (manifest 2026-06-22) — BE lane
+  // extends auth-status-check to return this field when the leader is in
+  // one of the two sub-states the queue produces. Omitted in normal
+  // active/pending responses. The FE maps it onto the AuthBranch:
+  //   'request_info' → branch="request_info"
+  //   'soft_deleted' → branch="soft_deleted"
+  // Default undefined → fall through to verification_status as today.
+  branch_substate?: "request_info" | "soft_deleted";
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -126,6 +170,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [deactivationModalPath, setDeactivationModalPath] = useState<RecoveryPath | null>(null);
+  // Underground flow (2026-06-20) — see header on AuthState.
+  const [undergroundJoinCodePendingReveal, setUndergroundJoinCodePendingReveal] =
+    useState(false);
 
   const dismissDeactivationModal = useCallback(() => {
     setDeactivationModalPath(null);
@@ -156,6 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBranch("unauthenticated");
       setVerificationDeadline(null);
       setDaysRemaining(null);
+      setUndergroundJoinCodePendingReveal(false);
       // (3) Clear persisted storage (SecureStore adapter removeItem nukes
       //     both ciphertext + AES key). signOut also revokes refresh server-
       //     side. signOut errors don't block local clearing.
@@ -266,13 +314,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         return true;
       }
-      setBranch(data.verification_status);
+      // Underground Verification Queue (manifest 2026-06-22). When BE
+      // surfaces a branch_substate, prefer it — it strictly narrows the
+      // verification_status (the BE only sets it when the leader is in
+      // one of the two sub-states). If absent, fall through to
+      // verification_status. This keeps the FE forward-compatible:
+      // when BE has not yet shipped the extension, the field is
+      // undefined and behavior is unchanged.
+      const resolvedBranch: AuthBranch =
+        data.branch_substate === "request_info"
+          ? "request_info"
+          : data.branch_substate === "soft_deleted"
+            ? "soft_deleted"
+            : data.verification_status;
+      setBranch(resolvedBranch);
       setVerificationDeadline(data.verification_deadline);
       setDaysRemaining(data.days_remaining);
       // A successful non-deactivated check clears any stale modal state —
       // e.g., a leader who got deactivated on one account dismissed the
       // modal, signed in with a working account, and now is active.
       setDeactivationModalPath(null);
+      // Underground flow (2026-06-20) — BE omits the field when false.
+      // Default false on missing/non-boolean.
+      setUndergroundJoinCodePendingReveal(
+        data.underground_join_code_pending_reveal === true,
+      );
       return true;
     } catch (err) {
       // AbortError fires when we replace the controller mid-flight — expected,
@@ -468,6 +534,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         branch,
         verificationDeadline,
         daysRemaining,
+        undergroundJoinCodePendingReveal,
         loading,
         deactivationModalPath,
         dismissDeactivationModal,

@@ -34,15 +34,15 @@ export default function ConnectTabIcon({ color }: Props) {
       <ConnectIcon color={color} />
       {shown && label ? (
         <View
-          style={styles.badge}
+          style={[styles.badge, label.length >= 3 && styles.badgeWide]}
           accessibilityLiveRegion="polite"
           accessibilityLabel={
             count === 1
               ? '1 unread message'
-              : `${count > 99 ? '99 or more' : count} unread messages`
+              : `${count} unread messages`
           }
         >
-          <Text style={styles.badgeText} numberOfLines={1}>
+          <Text style={styles.badgeText}>
             {label}
           </Text>
         </View>
@@ -60,14 +60,19 @@ const styles = StyleSheet.create({
     height: 20,
   },
   badge: {
-    // §15.1 — top: -8, left: 10 relative to the 20×20 icon.
+    // Anchor from the right so wider labels ("10+", "20+") grow leftward
+    // over the icon rather than rightward into the tab bar's clip boundary.
     position: 'absolute',
     top: -8,
-    left: 10,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    // No paddingHorizontal here — for a single-digit circle (minWidth 20,
+    // borderWidth 2) the content area is already 16px which is plenty for
+    // one character at 10pt. Adding paddingHorizontal 6 leaves only 4px of
+    // content space and the borderRadius clips the digit. Horizontal padding
+    // lives in badgeWide only, where the wider container has room for it.
     backgroundColor: Colors.red,
     // 2px solid background-color ring — separates the badge from the
     // bar. boxSizing: border-box is implicit in RN.
@@ -76,11 +81,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // "10+", "20+" etc. — 3-char labels need an explicit wider pill since
+  // React Native's absolute-positioned View doesn't reliably auto-expand
+  // beyond minWidth on iOS.
+  badgeWide: {
+    width: 34,
+    paddingHorizontal: 6,
+  },
   badgeText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 10.5,
-    lineHeight: 12,
+    fontSize: 10,
+    lineHeight: 13,
     color: '#FFFFFF',
+    includeFontPadding: false,
     // No letter spacing — the digits are short enough to read at this size.
   },
 });

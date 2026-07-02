@@ -37,47 +37,13 @@ interface StoryPreview {
   read?: string;
 }
 
-// ── Placeholder data (until RPCs are seeded) ────────────────────────
-const PLACEHOLDER_STATS: StandingStat[] = [
-  { num: '8,412', desc: 'leaders standing in prayer across forty-three regions this week' },
-  { num: '1,206', desc: 'heartcries held by the body this month, each one named before the Father' },
-  { num: '63', desc: 'churches currently under active persecution, region only — never named' },
-];
-
-const PLACEHOLDER_STORIES: StoryPreview[] = [
-  {
-    source: 'Replant Editorial',
-    author: 'Replant Team',
-    title: 'Three families, one basement.',
-    excerpt: 'What we have learned from leaders sheltering in place: the body does not need permission to gather. It needs only courage and one room.',
-    read: '6 min read',
-  },
-  {
-    source: 'Voice of the Martyrs',
-    author: 'Partner feed',
-    title: 'A letter from inside.',
-    excerpt: 'Translated and shared with permission. A pastor writes to his congregation from prison — not asking for release, but for the church to remain.',
-    read: '4 min read',
-  },
-  {
-    source: 'Replant Editorial',
-    author: 'Replant Team',
-    title: 'When the gathering is forbidden.',
-    excerpt: 'A pastoral note on the threshold: how the early church gathered when Rome forbade it, and what they wrote to each other when they could not.',
-    read: '9 min read',
-  },
-];
-
-const PLACEHOLDER_WITNESS: WitnessData = {
-  era: 'AD 156',
-  years_label: 'c. AD 69 – 156',
-  name: 'Polycarp of Smyrna',
-  region: 'Asia Minor',
-  category: 'Father of the Faith',
-  martyr: true,
-  quote: 'Eighty-six years I have served Him, and He has done me no wrong. How can I blaspheme my King who saved me?',
-  scripture_ref: 'Revelation 2:10',
-};
+// Live data backs each of these sections post-cleanup. Until the
+// witnesses / articles / guidance tables are created (see
+// memory: persecuted_multipage_state.md follow-up), every list is empty
+// and the screen renders pure empty-state copy. NO fabricated rows.
+const PLACEHOLDER_STATS: StandingStat[] = [];
+const PLACEHOLDER_STORIES: StoryPreview[] = [];
+const PLACEHOLDER_WITNESS: WitnessData | null = null;
 
 export default function BearWitnessScene() {
   const navigation = useNavigation<NavProp>();
@@ -85,7 +51,7 @@ export default function BearWitnessScene() {
   // TODO: Replace with live RPC data when seeded
   const [stats] = useState<StandingStat[]>(PLACEHOLDER_STATS);
   const [stories] = useState<StoryPreview[]>(PLACEHOLDER_STORIES);
-  const [witness] = useState<WitnessData>(PLACEHOLDER_WITNESS);
+  const [witness] = useState<WitnessData | null>(PLACEHOLDER_WITNESS);
 
   return (
     <ScrollView
@@ -95,55 +61,74 @@ export default function BearWitnessScene() {
       {/* Standing this week */}
       <View style={styles.statsBlock}>
         <Text style={styles.statsEyebrow}>STANDING THIS WEEK</Text>
-        {stats.map((s, i) => (
-          <View key={i} style={styles.statRow}>
-            <Text style={styles.statNum}>{s.num}</Text>
-            <Text style={styles.statDesc}>{s.desc}</Text>
-          </View>
-        ))}
+        {stats.length === 0 ? (
+          <Text style={styles.emptyCopy}>
+            Standing reports will be tallied here as leaders take their places across the body.
+          </Text>
+        ) : (
+          stats.map((s, i) => (
+            <View key={i} style={styles.statRow}>
+              <Text style={styles.statNum}>{s.num}</Text>
+              <Text style={styles.statDesc}>{s.desc}</Text>
+            </View>
+          ))
+        )}
       </View>
 
       {/* Around the world */}
       <SectionHeader
         label="Around the world"
-        link="All stories"
-        onLink={() => navigation.navigate('StoryArchive')}
+        link={stories.length > 0 ? 'All stories' : undefined}
+        onLink={stories.length > 0 ? () => navigation.navigate('StoryArchive') : undefined}
       />
       <View style={styles.storiesBlock}>
-        {stories.map((s, i) => (
-          <Pressable
-            key={i}
-            onPress={() => {
-              // TODO: Pass real article ID when articles are seeded
-              navigation.navigate('ArticleReader', { articleId: 'placeholder' });
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={s.title}
-            hitSlop={{ top: 4, bottom: 4 }}
-            style={styles.storyCard}
-          >
-            <View style={styles.storySourceRow}>
-              <Text style={styles.storyAuthor}>{s.source}</Text>
-              <Text style={styles.storySep}> · </Text>
-              <Text style={styles.storySourceLabel}>{s.author}</Text>
-            </View>
-            <Text style={styles.storyTitle}>{s.title}</Text>
-            {s.excerpt ? <Text style={styles.storyExcerpt}>{s.excerpt}</Text> : null}
-            {s.read ? <Text style={styles.storyReadTime}>{s.read}</Text> : null}
-          </Pressable>
-        ))}
+        {stories.length === 0 ? (
+          <Text style={styles.emptyCopy}>
+            Stories from the body will appear here as they are gathered and prepared.
+          </Text>
+        ) : (
+          stories.map((s, i) => (
+            <Pressable
+              key={i}
+              onPress={() => {
+                navigation.navigate('ArticleReader', { articleId: s.id ?? 'placeholder' });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={s.title}
+              hitSlop={{ top: 4, bottom: 4 }}
+              style={styles.storyCard}
+            >
+              <View style={styles.storySourceRow}>
+                <Text style={styles.storyAuthor}>{s.source}</Text>
+                <Text style={styles.storySep}> · </Text>
+                <Text style={styles.storySourceLabel}>{s.author}</Text>
+              </View>
+              <Text style={styles.storyTitle}>{s.title}</Text>
+              {s.excerpt ? <Text style={styles.storyExcerpt}>{s.excerpt}</Text> : null}
+              {s.read ? <Text style={styles.storyReadTime}>{s.read}</Text> : null}
+            </Pressable>
+          ))
+        )}
       </View>
 
       {/* Witness of the day */}
       <SectionHeader
         label="Witness of the day"
-        link="Archive"
-        onLink={() => navigation.navigate('WitnessArchive')}
+        link={witness ? 'Archive' : undefined}
+        onLink={witness ? () => navigation.navigate('WitnessArchive') : undefined}
       />
-      <WitnessOfDayCard
-        witness={witness}
-        onOpenArchive={() => navigation.navigate('WitnessArchive')}
-      />
+      {witness ? (
+        <WitnessOfDayCard
+          witness={witness}
+          onOpenArchive={() => navigation.navigate('WitnessArchive')}
+        />
+      ) : (
+        <View style={styles.witnessEmpty}>
+          <Text style={styles.emptyCopy}>
+            The witnesses will be lifted up here, one a day. The first will be posted soon.
+          </Text>
+        </View>
+      )}
 
       <ScriptureFooter
         eyebrow="A CLOUD OF WITNESSES"
@@ -253,6 +238,21 @@ const styles = StyleSheet.create({
     fontFamily: Typography.scriptureItalic,
     fontSize: 14,
     color: Colors.accent,
+  },
+
+  // Empty-state copy (shared across stats / stories / witness)
+  // De-italicized 2026-06-10 per Founder ruling — body copy in empty
+  // states should not be italic. Italics reserved for titles/scripture.
+  emptyCopy: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.textMuted,
+    paddingVertical: 10,
+  },
+  witnessEmpty: {
+    paddingHorizontal: 22,
+    paddingVertical: 4,
   },
 
   // Stories
