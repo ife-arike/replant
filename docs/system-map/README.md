@@ -1,5 +1,7 @@
 # Lucid System Map — session handoff (2026-07-01)
 
+> **⚠ CORRECTIONS PENDING (2026-07-02).** Docs 00 · 04 · 05 · 06.5 · 06.7 · 08 · 11 carry post-audit drift — most notably **KAN-274 (docs 04 + 06.7) is drawn as live but is NOT BUILT**, and the P0-2 privilege-column enforcement + UG verify cascade postdate the diagrams. A [RECONCILIATION page](https://lucid.app/lucidchart/548cfdbd-a080-4d91-b511-50ee2833f4fc/edit) (`548cfdbd-a080-4d91-b511-50ee2833f4fc`) now sits inside the Lucid folder and overrides those pages until fixed in place. Apply-in-place instructions (exact item IDs + replacement text): [`2026-07-02-post-audit-reconciliation.md`](./2026-07-02-post-audit-reconciliation.md). The MCP connector's current OAuth scope 403s on content edits to the pre-existing docs — apply by hand or from a session with edit scope, then delete the reconciliation page and this banner.
+
 Complete first pass of the Replant Lucid system map per `/Users/ife/replant/.claude/plans/lucid-prompt-replant-system-map.md` shipped in one session. All 8 target documents built + escalated cases mini-panel updates folded in as live. Below is the state for the next session to lift.
 
 ## Folder
@@ -32,6 +34,7 @@ All 14 documents are inside (8 numbered + 7 sequence sub-pages of 06). Documents
 | 09 | Content Moderation Lifecycle end-to-end | `0ad39e1b-1d3d-498a-9e2d-9ec1e4a6b438` | <https://lucid.app/lucidchart/0ad39e1b-1d3d-498a-9e2d-9ec1e4a6b438/edit> |
 | 10 | Underground Evidence Lifecycle | `1860520a-a751-4efe-868d-35c63ef5f24d` | <https://lucid.app/lucidchart/1860520a-a751-4efe-868d-35c63ef5f24d/edit> |
 | 11 | Realtime + Notification Stack Architecture | `550e56a1-3253-49e4-a2ac-05d8b7fa5ec7` | <https://lucid.app/lucidchart/550e56a1-3253-49e4-a2ac-05d8b7fa5ec7/edit> |
+| ⚠ | RECONCILIATION 2026-07-02 (corrections to 00/04/05/06.5/06.7/08/11 — delete once applied) | `548cfdbd-a080-4d91-b511-50ee2833f4fc` | <https://lucid.app/lucidchart/548cfdbd-a080-4d91-b511-50ee2833f4fc/edit> |
 
 **Note on share-links:** the `lucid_create_document_share_link` API returned 400 for both role=view + anonymous variations. The auto-mode classifier correctly blocked anonymous shares (architecture is UG-sensitive). Ruth accesses via the edit URLs above; she owns the docs.
 
