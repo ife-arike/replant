@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall · v8 Redlines</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --subtle: rgba(240,237,230,0.25);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --red-dim: rgba(224,85,85,0.10);
+    --red-mid: rgba(224,85,85,0.45);
+    --amber: #D4A855;
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-tint: rgba(91,173,122,0.06);
+  }
+  body { background: #0d0d0d; font-family: var(--sans); font-weight: 300; color: var(--text); padding: 3rem 2rem 5rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .doc { max-width: 1120px; margin: 0 auto; }
+
+  .doc-header { padding-bottom: 1.8rem; margin-bottom: 2.4rem; border-bottom: 0.5px solid var(--faint); }
+  .eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--sky); }
+  .doc-title { font-family: var(--serif); font-size: 2.6rem; font-weight: 300; letter-spacing: 0.02em; margin-bottom: 8px; }
+  .doc-sub { font-size: 0.95rem; color: var(--muted-strong); max-width: 800px; line-height: 1.65; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 18px; font-family: var(--sans); font-size: 0.7rem; color: var(--muted); }
+  .meta-row strong { color: var(--text); font-weight: 500; }
+
+  /* token chip */
+  .tok { font-family: var(--mono); font-size: 0.7rem; color: var(--sky); background: var(--sky-dim); padding: 1px 6px; border-radius: 3px; }
+  .tok-amber { color: var(--amber); background: rgba(212,168,85,0.12); }
+
+  .item { margin: 3rem 0 0; padding-top: 2rem; border-top: 0.5px solid var(--faint); scroll-margin-top: 24px; }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item-num { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; margin-bottom: 6px; }
+  .item-title { font-family: var(--serif); font-size: 1.55rem; font-weight: 400; letter-spacing: 0.01em; margin-bottom: 8px; }
+  .item-ask { font-size: 0.86rem; color: var(--muted-strong); margin-bottom: 1.6rem; max-width: 800px; }
+  .item-ask strong { color: var(--text); font-weight: 500; }
+
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .col { flex: 1 1 360px; min-width: 320px; }
+  .col-wide { flex: 1 1 100%; }
+
+  /* Spec table */
+  .spec-table { font-size: 0.84rem; line-height: 1.65; }
+  .spec-table dl { display: grid; grid-template-columns: 220px 1fr; gap: 8px 22px; }
+  .spec-table dt { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .spec-table dd { color: var(--muted-strong); }
+  .spec-table dd strong { color: var(--text); font-weight: 500; }
+  .spec-table .from { color: var(--muted); text-decoration: line-through; font-family: var(--mono); font-size: 0.72rem; padding-right: 5px; }
+  .spec-table .delta { color: var(--green); font-family: var(--mono); font-size: 0.68rem; padding-left: 6px; }
+
+  .vis-frame { background: var(--bg); border: 0.5px solid var(--faint); border-radius: 14px; padding: 22px; }
+  .frame-label { font-family: var(--sans); font-size: 0.7rem; color: var(--muted); margin-bottom: 10px; }
+  .frame-label.sky { color: var(--sky); }
+  .frame-label.green { color: var(--green); }
+  .frame-label.bad { color: rgba(224,85,85,0.75); }
+
+  .cc-note {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--muted-strong);
+    line-height: 1.6;
+  }
+  .cc-note strong { color: var(--sky); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; margin-right: 8px; }
+
+  /* Scripture floating render */
+  .scrip-float { padding: 24px 20px; text-align: center; }
+  .scrip-float .body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.55;
+    color: rgba(240,237,230,0.78);
+    margin-bottom: 10px;
+  }
+  .scrip-float.lg .body { font-size: 1.25rem; }
+  .scrip-float.md .body { font-size: 1.13rem; }
+  .scrip-float .ref {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+  .scrip-float.sky .ref { color: rgba(107,181,232,0.70); }
+  .scrip-float.green .ref { color: rgba(91,173,122,0.70); }
+
+  /* Action card render (after — heavier, smaller title) */
+  .action-card { background: var(--surface); border: 0.5px solid var(--sky-mid); border-radius: 14px; padding: 20px; }
+  .action-card.green { border-color: var(--green-mid); }
+  .ac-head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .ac-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--sky-dim); border: 0.5px solid var(--sky-mid); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ac-icon.green { background: rgba(91,173,122,0.10); border-color: var(--green-mid); }
+  .ac-icon svg { width: 28px; height: 28px; }
+  .ac-text { flex: 1; }
+  .ac-title-after {
+    font-family: var(--serif);
+    font-size: 1.45rem;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .ac-title-before {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .ac-sub { font-size: 0.86rem; color: var(--muted-strong); line-height: 1.45; font-weight: 300; }
+  .ac-cta { background: var(--sky); color: var(--bg); text-align: center; padding: 14px; border-radius: 10px; font-size: 0.92rem; font-weight: 500; }
+
+  /* Feed card */
+  .feed-card { background: var(--surface); border: 0.5px solid var(--faint); border-left: 2px solid var(--sky); border-radius: 0 6px 6px 0; padding: 14px 16px; }
+  .feed-card.urgent { border-left-color: var(--red); }
+  .fc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 12px; }
+  .fc-head-left { flex: 1; min-width: 0; }
+  .fc-loc { font-size: 1rem; color: var(--text); margin-bottom: 2px; line-height: 1.3; }
+  .fc-author { font-size: 0.85rem; color: var(--muted); }
+  .fc-tap { font-family: var(--sans); font-size: 0.7rem; color: rgba(240,237,230,0.35); flex-shrink: 0; padding-top: 2px; }
+  .fc-body-before {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .fc-body-after {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 1.15rem;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .fc-meta { display: flex; gap: 8px; align-items: center; }
+  .fc-tag { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+  .fc-tag.sky { background: var(--sky-dim); color: var(--sky); }
+  .fc-tag.red { background: var(--red-dim); color: var(--red); }
+  .fc-tag.green { background: rgba(91,173,122,0.12); color: var(--green); }
+  .fc-heart { font-family: var(--sans); font-size: 0.78rem; color: var(--muted); margin-left: 4px; display: inline-flex; align-items: center; gap: 4px; }
+  .fc-time { font-family: var(--sans); font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+
+  /* Testimony rotator preview card (small, on landing) */
+  .rotator-card {
+    background: var(--green-tint);
+    border: 0.5px solid rgba(91,173,122,0.20);
+    border-left: 2px solid var(--green);
+    border-radius: 0 6px 6px 0;
+    padding: 14px 16px;
+  }
+  .rotator-loc-before { font-size: 0.95rem; color: var(--green); line-height: 1.3; font-weight: 400; }
+  .rotator-author-before { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+  .rotator-body-before {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: rgba(240,237,230,0.85);
+  }
+  .rotator-loc-after { font-size: 1.05rem; color: var(--green); line-height: 1.3; font-weight: 400; }
+  .rotator-author-after { font-size: 0.88rem; color: var(--muted); margin-bottom: 10px; }
+  .rotator-body-after {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 1.08rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  /* Testimony card (full, in Testimonies tab) */
+  .tm-card {
+    background: var(--green-tint);
+    border: 0.5px solid rgba(91,173,122,0.20);
+    border-left: 3px solid var(--green);
+    border-radius: 0 6px 6px 0;
+    padding: 14px 16px;
+  }
+  .tm-head { margin-bottom: 12px; }
+  .tm-loc { font-size: 1rem; color: var(--green); line-height: 1.3; }
+  .tm-author { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+  .tm-body-before {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.1rem;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .tm-body-after {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 1.18rem;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  /* Detail sheet shell */
+  .sheet {
+    background: var(--surface);
+    border-top: 0.5px solid var(--hair);
+    border-radius: 14px 14px 0 0;
+    padding: 18px 18px 22px;
+    max-width: 480px;
+  }
+  .sheet-grab { width: 30px; height: 3px; background: var(--hair); border-radius: 2px; margin: 0 auto 12px; }
+  .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .sheet-loc-sky { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sky); }
+  .sheet-loc-red { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--red); }
+  .sheet-loc-green { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--green); }
+  .sheet-author { font-size: 0.85rem; color: var(--muted); margin-bottom: 14px; }
+
+  .footer-meta { text-align: center; padding-top: 24px; margin-top: 4rem; border-top: 0.5px solid var(--faint); font-family: var(--sans); font-size: 0.7rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="doc-header" data-screen-label="Header">
+    <p class="eyebrow">CD · v8 redlines · device pass on v7 build (main @ 6e18f5a)</p>
+    <h1 class="doc-title">Prayer Wall — v8 redlines</h1>
+    <p class="doc-sub">Six items in CD scope after the v7 device pass. Banners go to <span class="tok">tone="none"</span> on all three surfaces (Plan B confirmed). Testimony rotator on the landing gets a body bump. Action card titles go one weight heavier and 1pt smaller. Prayer + testimony bodies (both preview and detail) get bigger <em>and</em> bolder, with preview and detail matched. Plus testimony attribution spec for the new role wire-through. Items 5 + 6 are CC-only; not specced here.</p>
+    <div class="meta-row">
+      <span><strong>Reference:</strong> v7 build · device pass</span>
+      <span><strong>Device:</strong> iPhone 14 Pro Max</span>
+      <span><strong>Date:</strong> 25 May 2026</span>
+      <span><strong>From:</strong> CD → CC via SM</span>
+    </div>
+  </div>
+
+  <!-- ITEM 1 -->
+  <section class="item" id="item-1" data-screen-label="01 Scripture banners → none">
+    <p class="item-num">Item 01 · ScriptureBanner · tone="none" on all surfaces</p>
+    <h2 class="item-title">Match the Feed's Phil 4:6 floating render · exact spec</h2>
+    <p class="item-ask"><strong>Plan B confirmed</strong> — all three Prayer Wall scriptures go to <span class="tok">tone="none"</span>. The Feed's Phil 4:6 is the approved reference render. Landing (Eph 6:18) and Testimonies (Rev 12:11, KJV full, no truncation) must match it precisely. The Feed render itself does not need adjustment — its spec is already right.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label sky">Feed · Phil 4:6 · approved reference</p>
+        <div class="vis-frame">
+          <div class="scrip-float md sky">
+            <p class="body">"Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God."</p>
+            <p class="ref">Philippians 4:6 · KJV</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">Landing · Eph 6:18 · match Feed render</p>
+        <div class="vis-frame">
+          <div class="scrip-float lg sky">
+            <p class="body">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+            <p class="ref">Ephesians 6:18 · KJV</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 22px;">
+      <div class="col">
+        <p class="frame-label green">Testimonies · Rev 12:11 · KJV full · match Feed render</p>
+        <div class="vis-frame">
+          <div class="scrip-float lg green">
+            <p class="body">"And they overcame him by the blood of the Lamb, and by the word of their testimony; and they loved not their lives unto the death."</p>
+            <p class="ref">Revelation 12:11 · KJV</p>
+          </div>
+        </div>
+      </div>
+      <div class="col spec-table">
+        <dl>
+          <dt>Component prop</dt>
+          <dd><span class="tok">tone="none"</span> on Landing, Feed (already), Testimonies. No background fill, no border, no border-radius. Floating text only.</dd>
+          <dt>Verse · Landing + Testimonies</dt>
+          <dd><span class="tok">Typography.scriptureItalic</span> (Cormorant 300 Light Italic, native) · <strong>20 pt</strong> · line-height <strong>1.55</strong> · color <span class="tok">rgba(240,237,230,0.78)</span> · centred</dd>
+          <dt>Verse · Feed (Phil 4:6)</dt>
+          <dd>Same token, but <strong>18 pt</strong> · line-height 1.55 · same color · centred <em>(slightly smaller — the Feed verse sits between filter chips and the first card, less hero room)</em></dd>
+          <dt>Reference line</dt>
+          <dd><span class="tok">Typography.body</span> (DM Sans 400) · <strong>11 pt</strong> · letter-spacing 0.18em · UPPERCASE · centred · <strong>8 pt</strong> above-margin from verse · color: sky <span class="tok">rgba(107,181,232,0.70)</span> on Landing + Feed; green <span class="tok">rgba(91,173,122,0.70)</span> on Testimonies</dd>
+          <dt>Block padding</dt>
+          <dd><strong>24 pt</strong> top · <strong>24 pt</strong> bottom · <strong>20 pt</strong> horizontal</dd>
+          <dt>Margin above block</dt>
+          <dd>Landing: <strong>20 pt</strong> below "Prayer Wall" header divider. Testimonies: <strong>16 pt</strong> below segmented control. Feed: <strong>20 pt</strong> below the chip row.</dd>
+          <dt>Margin below block</dt>
+          <dd>Landing: <strong>24 pt</strong> above first action card. Testimonies: <strong>20 pt</strong> above first testimony card. Feed: <strong>14 pt</strong> above first prayer card.</dd>
+        </dl>
+        <div class="cc-note"><strong>CC</strong> Feed's render is already correct — don't touch the existing values, just confirm they match the table above. The Landing + Testimonies banners flip <span class="tok">tone</span> to <span class="tok">"none"</span> and inherit Feed's pattern.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEM 2 -->
+  <section class="item" id="item-2" data-screen-label="02 Rotator cards">
+    <p class="item-num">Item 02 · Testimony rotator (Landing) — preview body bump</p>
+    <h2 class="item-title">Mini-card body up to 17pt 500 Medium Italic · attribution +1pt</h2>
+    <p class="item-ask"><strong>Ask:</strong> the rotator cards under the action cards on the landing are reading too small on device. These are the small preview testimonies, not the full TestimonyCard in the Testimonies tab. Bump body + attribution so they hold weight at the bottom of the landing scroll.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">Before · v7 build</p>
+        <div class="vis-frame">
+          <div class="rotator-card">
+            <p class="rotator-loc-before">Casa de Oración · Peru</p>
+            <p class="rotator-author-before">Minister Felipe</p>
+            <p class="rotator-body-before">"A sister in our fellowship sold a piece of family land she had been holding for thirty years, and brought the proceeds to our pastor and his wife. Four months of back salary paid in one envelope. The Lord has not forgotten His servant. We give all the glory…"</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label green">After · v8 · bumped body + attribution</p>
+        <div class="vis-frame">
+          <div class="rotator-card">
+            <p class="rotator-loc-after">Casa de Oración · Peru</p>
+            <p class="rotator-author-after">Minister Felipe</p>
+            <p class="rotator-body-after">"A sister in our fellowship sold a piece of family land she had been holding for thirty years, and brought the proceeds to our pastor and his wife. Four months of back salary paid in one envelope…"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-wide spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Body</dt>
+        <dd><span class="from">14 pt 300 Light Italic</span> → <span class="tok">Typography.displayMediumItalic</span> (Cormorant 500 Medium Italic) · <strong>17 pt</strong> · line-height <strong>1.50</strong> · color <span class="tok">#F0EDE6</span> <span class="delta">+3 pt · heavier</span></dd>
+        <dt>Church · Country</dt>
+        <dd><span class="from">14 pt body</span> → <span class="tok">Typography.body</span> (DM Sans 400) · <strong>15 pt</strong> · line-height 1.3 · color <span class="tok">#5BAD7A</span> (green) <span class="delta">+1 pt</span></dd>
+        <dt>Attribution (role + name)</dt>
+        <dd><span class="from">12 pt</span> → <span class="tok">Typography.body</span> · <strong>13 pt</strong> · line-height 1.3 · color <span class="tok">rgba(240,237,230,0.45)</span> · format <em>"Minister Felipe"</em> (no separator) <span class="delta">+1 pt</span></dd>
+        <dt>numberOfLines on body</dt>
+        <dd>Drop from <strong>4</strong> → <strong>3</strong>. With the size + weight bump, 4 lines crowds the action-card stack above; 3 lines + ellipsis still teases enough to want to See all.</dd>
+        <dt>Card padding</dt>
+        <dd>Hold at <strong>14 pt × 16 pt</strong>. No change.</dd>
+        <dt>Pagination dots</dt>
+        <dd>Hold at <strong>6 pt</strong> below card. No change.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> These mini cards are the only place 500 Medium Italic appears at 17 pt. Full TestimonyCard in the Testimonies tab uses the same token at a different size (Item 07) — don't share the same constant.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 3 -->
+  <section class="item" id="item-3" data-screen-label="03 Action card titles">
+    <p class="item-num">Item 03 · Action card titles — heavier, slightly smaller</p>
+    <h2 class="item-title">Typography.display (600 SemiBold) at 25pt</h2>
+    <p class="item-ask"><strong>Direction:</strong> one weight heavier, 1 pt smaller. The 500 Medium at 26 pt is reading slightly thin against the icon — moving to 600 SemiBold at 25 pt gives the titles more presence without dominating the card. <strong>No change</strong> to the subtitle/description line below.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">Before · v7</p>
+        <div class="vis-frame">
+          <div class="action-card">
+            <div class="ac-head">
+              <div class="ac-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/>
+                  <line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/>
+                  <line x1="9" y1="21" x2="15" y2="21"/>
+                  <path d="M8.5 11 Q10.5 8 8.5 5"/>
+                  <path d="M12 11 Q14 7 12 3"/>
+                  <path d="M15.5 11 Q13.5 8 15.5 5"/>
+                </svg>
+              </div>
+              <div class="ac-text">
+                <p class="ac-title-before">Make Intercession</p>
+                <p class="ac-sub">Pray through the wall of requests from churches around the world.</p>
+              </div>
+            </div>
+            <div class="ac-cta">Enter the prayer wall</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">After · v8 · 600 SemiBold @ 25pt</p>
+        <div class="vis-frame">
+          <div class="action-card">
+            <div class="ac-head">
+              <div class="ac-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 13.5 Q3 19 8 19 H16 Q21 19 21 13.5"/>
+                  <line x1="2.5" y1="13.5" x2="21.5" y2="13.5"/>
+                  <line x1="9" y1="21" x2="15" y2="21"/>
+                  <path d="M8.5 11 Q10.5 8 8.5 5"/>
+                  <path d="M12 11 Q14 7 12 3"/>
+                  <path d="M15.5 11 Q13.5 8 15.5 5"/>
+                </svg>
+              </div>
+              <div class="ac-text">
+                <p class="ac-title-after">Make Intercession</p>
+                <p class="ac-sub">Pray through the wall of requests from churches around the world.</p>
+              </div>
+            </div>
+            <div class="ac-cta">Enter the prayer wall</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-wide spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Title · token</dt>
+        <dd><span class="from">Typography.displayMedium (500 Medium)</span> → <span class="tok">Typography.display</span> (Cormorant Garamond 600 SemiBold)</dd>
+        <dt>Title · size</dt>
+        <dd><span class="from">26 pt</span> → <strong>25 pt</strong> · line-height 1.15 · letter-spacing 0.005em</dd>
+        <dt>Title · colour</dt>
+        <dd><span class="tok">#F0EDE6</span> — unchanged</dd>
+        <dt>Description</dt>
+        <dd><strong>No change.</strong> Hold at <span class="tok">Typography.sansLight</span> (DM Sans 300) · 15 pt · line-height 1.45 · color <span class="tok">rgba(240,237,230,0.65)</span></dd>
+        <dt>Applies to</dt>
+        <dd>Both <em>Make Intercession</em> and <em>Receive Intercession</em> cards. Same token at the same size.</dd>
+        <dt>Icon + layout</dt>
+        <dd>No change. Icon-left, 56 pt circle, 16 pt gap to text column.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ITEM 4 -->
+  <section class="item" id="item-4" data-screen-label="04 Prayer body">
+    <p class="item-num">Item 04 · Prayer body · feed card + detail sheet — match each other</p>
+    <h2 class="item-title">Both at Typography.displayMediumItalic · 18pt · numberOfLines = 3</h2>
+    <p class="item-ask"><strong>Direction:</strong> bigger and bolder. The feed-card preview and the detail sheet must render the same body at the same size and weight — they are two views of the same content. Less preview text per card is acceptable; the upgrade in legibility matters more than line count.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">Before · v7 build</p>
+        <div class="vis-frame" style="display: flex; flex-direction: column; gap: 18px;">
+          <div class="feed-card urgent">
+            <div class="fc-head">
+              <div class="fc-head-left">
+                <p class="fc-loc">Casa de Oración · Peru</p>
+                <p class="fc-author">Minister Felipe</p>
+              </div>
+              <span class="fc-tap">Tap to open</span>
+            </div>
+            <p class="fc-body-before">"Our congregation has not been able to pay our pastor's small salary for three months. He continues to serve faithfully without complaint. Pray for provision before his family runs out of food."</p>
+            <div class="fc-meta">
+              <span class="fc-tag sky">Provision</span>
+              <span class="fc-tag red">Urgent</span>
+              <span class="fc-heart">♡ 0</span>
+              <span class="fc-time">2d ago</span>
+            </div>
+          </div>
+          <p class="frame-label" style="margin: 0;">16 pt 300 Light Italic · feed card</p>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">After · v8</p>
+        <div class="vis-frame" style="display: flex; flex-direction: column; gap: 18px;">
+          <div class="feed-card urgent">
+            <div class="fc-head">
+              <div class="fc-head-left">
+                <p class="fc-loc">Casa de Oración · Peru</p>
+                <p class="fc-author">Minister Felipe</p>
+              </div>
+              <span class="fc-tap">Tap to open</span>
+            </div>
+            <p class="fc-body-after">"Our congregation has not been able to pay our pastor's small salary for three months. He continues to serve faithfully without…"</p>
+            <div class="fc-meta">
+              <span class="fc-tag sky">Provision</span>
+              <span class="fc-tag red">Urgent</span>
+              <span class="fc-heart">♡ 0</span>
+              <span class="fc-time">2d ago</span>
+            </div>
+          </div>
+          <p class="frame-label sky" style="margin: 0;">18 pt 500 Medium Italic · feed card · numberOfLines: 3</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 28px;">
+      <div class="col">
+        <p class="frame-label bad">Before · v7 detail sheet</p>
+        <div class="vis-frame" style="background: var(--bg);">
+          <div class="sheet">
+            <div class="sheet-grab"></div>
+            <div class="sheet-head">
+              <p class="sheet-loc-red">Underground Church</p>
+              <span style="color: var(--muted);">✕</span>
+            </div>
+            <p class="sheet-author">A fellow leader</p>
+            <p class="fc-body-before" style="font-size: 1.18rem; margin-bottom: 14px;">"Authorities visited the home where we usually gather. We have moved twice this month. Pray we find a place where our people can come without fear of being followed."</p>
+            <p class="frame-label" style="margin: 0;">19 pt 300 Light Italic</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label sky">After · v8 detail sheet · matches feed card body</p>
+        <div class="vis-frame" style="background: var(--bg);">
+          <div class="sheet">
+            <div class="sheet-grab"></div>
+            <div class="sheet-head">
+              <p class="sheet-loc-red">Underground Church</p>
+              <span style="color: var(--muted);">✕</span>
+            </div>
+            <p class="sheet-author">A fellow leader</p>
+            <p class="fc-body-after" style="font-size: 1.15rem;">"Authorities visited the home where we usually gather. We have moved twice this month. Pray we find a place where our people can come without fear of being followed."</p>
+            <p class="frame-label sky" style="margin: 0;">18 pt 500 Medium Italic · matches feed card</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-wide spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Body · token</dt>
+        <dd><span class="from">Typography.scriptureItalic (300 Light Italic)</span> → <span class="tok">Typography.displayMediumItalic</span> (Cormorant 500 Medium Italic) <span class="delta">heavier</span></dd>
+        <dt>Body · size · both surfaces</dt>
+        <dd><span class="from">16 pt feed / 19 pt sheet</span> → <strong>18 pt</strong> on both <span class="delta">matched · larger feed / slightly smaller sheet</span></dd>
+        <dt>Body · line-height</dt>
+        <dd><strong>1.50</strong> · medium italic at 18 pt with 1.6 leading reads loose; 1.5 keeps the verse-like rhythm</dd>
+        <dt>Body · colour</dt>
+        <dd><span class="tok">#F0EDE6</span> — unchanged</dd>
+        <dt>numberOfLines · feed card</dt>
+        <dd><span class="from">4</span> → <strong>3</strong>. With the heavier weight + larger size, 3 lines is the right preview — long requests trail to <em>…</em>; full text on tap.</dd>
+        <dt>numberOfLines · detail sheet</dt>
+        <dd>None. Full body always renders in the sheet.</dd>
+        <dt>Margin below body · feed</dt>
+        <dd><strong>12 pt</strong> above meta row. Hold.</dd>
+        <dt>Margin below body · sheet</dt>
+        <dd><strong>14 pt</strong> above CTA row. Hold.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Both surfaces pull the same constant. Suggest <span class="tok">PRAYER_BODY = { fontFamily: Typography.displayMediumItalic, fontSize: 18, lineHeight: 27 }</span> shared between PrayerCard and PrayerDetailSheet. Detail sheet adds full-bleed (no numberOfLines); feed card adds <span class="tok">numberOfLines: 3</span>.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 7 -->
+  <section class="item" id="item-7" data-screen-label="07 Testimony body">
+    <p class="item-num">Item 07 · Testimony body · card + detail sheet — match each other</p>
+    <h2 class="item-title">Both at Typography.displayMediumItalic · 18pt · numberOfLines = 4</h2>
+    <p class="item-ask"><strong>Same direction as Item 04:</strong> bigger and bolder, preview and detail matched. Testimony cards get one extra preview line (4 vs 3 on prayer cards) — testimonies tell longer stories and earn the extra room.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label bad">Before · v7 build</p>
+        <div class="vis-frame" style="display: flex; flex-direction: column; gap: 18px;">
+          <div class="tm-card">
+            <div class="tm-head">
+              <p class="tm-loc">Abundant Life Church Mumbai · India</p>
+              <p class="tm-author">Pastor Priya</p>
+            </div>
+            <p class="tm-body-before">"Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown and were able to remove it cleanly. She is at home now with her three children, walking a few minutes more each day…"</p>
+          </div>
+          <p class="frame-label" style="margin: 0;">17 pt 300 Light Italic</p>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label green">After · v8</p>
+        <div class="vis-frame" style="display: flex; flex-direction: column; gap: 18px;">
+          <div class="tm-card">
+            <div class="tm-head">
+              <p class="tm-loc">Abundant Life Church Mumbai · India</p>
+              <p class="tm-author">Pastor Priya</p>
+            </div>
+            <p class="tm-body-after">"Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown and were able to remove it cleanly. She is at home now…"</p>
+          </div>
+          <p class="frame-label green" style="margin: 0;">18 pt 500 Medium Italic · numberOfLines: 4</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-wide spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Body · token</dt>
+        <dd><span class="from">Typography.scriptureItalic (300)</span> → <span class="tok">Typography.displayMediumItalic</span> (500) <span class="delta">heavier</span></dd>
+        <dt>Body · size · both surfaces</dt>
+        <dd><span class="from">17 pt card / 18 pt sheet</span> → <strong>18 pt</strong> on both <span class="delta">matched</span></dd>
+        <dt>Body · line-height</dt>
+        <dd><strong>1.50</strong> · same as prayer body</dd>
+        <dt>Body · colour</dt>
+        <dd><span class="tok">#F0EDE6</span></dd>
+        <dt>numberOfLines · card</dt>
+        <dd><strong>4</strong> · one more than prayer cards. Testimonies tell longer stories and benefit from the extra preview line.</dd>
+        <dt>numberOfLines · sheet</dt>
+        <dd>None. Full body.</dd>
+        <dt>"Originally posted as" block</dt>
+        <dd>No change. <span class="tok">Typography.body</span> · 14 pt · line-height 1.5 · color <span class="tok">rgba(240,237,230,0.55)</span> · padding 10 × 12 pt · bg <span class="tok">rgba(240,237,230,0.04)</span> · 1 pt green left-border</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Same pattern as prayer body — share a constant between TestimonyCard and TestimonyDetailSheet: <span class="tok">TESTIMONY_BODY = { fontFamily: Typography.displayMediumItalic, fontSize: 18, lineHeight: 27 }</span>. Card adds <span class="tok">numberOfLines: 4</span>; sheet renders full.</div>
+    </div>
+  </section>
+
+  <!-- ITEM 8 -->
+  <section class="item" id="item-8" data-screen-label="08 Testimony attribution">
+    <p class="item-num">Item 08 · Testimony attribution · role + name display</p>
+    <h2 class="item-title">Match the prayer-card attribution exactly · same format · same token</h2>
+    <p class="item-ask"><strong>Direction:</strong> when the BE wire-through lands (<span class="tok">leader_role</span> on TestimonyRow), testimony surfaces should render the attribution exactly like prayer surfaces. Same format <em>(role + space + name, no separator)</em>, same token, same colour. No visual distinction between prayer and testimony attribution — they are the same kind of attribution line, just on different card types.</p>
+
+    <div class="row">
+      <div class="col">
+        <p class="frame-label green">TestimonyCard · preview</p>
+        <div class="vis-frame">
+          <div class="tm-card">
+            <div class="tm-head">
+              <p class="tm-loc">Abundant Life Church Mumbai · India</p>
+              <p class="tm-author">Pastor Priya</p>
+            </div>
+            <p class="tm-body-after" style="font-size: 1.08rem;">"Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown…"</p>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="frame-label green">TestimonyDetailSheet · attribution treatment</p>
+        <div class="vis-frame" style="background: var(--bg);">
+          <div class="sheet">
+            <div class="sheet-grab"></div>
+            <div class="sheet-head">
+              <p class="sheet-loc-green">Abundant Life Church Mumbai · India</p>
+              <span style="color: var(--muted);">✕</span>
+            </div>
+            <p class="sheet-author">Pastor Priya</p>
+            <p class="fc-body-after" style="font-size: 1.15rem;">"Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown and were able to remove it cleanly…"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-wide spec-table" style="margin-top: 22px;">
+      <dl>
+        <dt>Format</dt>
+        <dd><code>{getRoleLabel(leader_role)} {leader_display_name}</code> · single space, <strong>no separator</strong> between role and name · same helper as prayer cards · same canonical mapping (<span class="tok">ministry_leader</span> → "Minister", <span class="tok">other</span> / null → "Minister" fallback)</dd>
+        <dt>TestimonyCard · attribution</dt>
+        <dd><span class="tok">Typography.body</span> (DM Sans 400) · <strong>14 pt</strong> · line-height 1.3 · color <span class="tok">rgba(240,237,230,0.45)</span> · sits directly below the Church · Country line · 2 pt top-margin <em>(matches PrayerCard's author line spec)</em></dd>
+        <dt>TestimonyDetailSheet · attribution</dt>
+        <dd><span class="tok">Typography.body</span> · <strong>15 pt</strong> · line-height 1.3 · color <span class="tok">rgba(240,237,230,0.45)</span> · sits below the green Church · Country header line · 4 pt top-margin · 14 pt bottom-margin before testimony body <em>(matches PrayerDetailSheet's author spec)</em></dd>
+        <dt>Anonymous · masking</dt>
+        <dd>If <span class="tok">is_anonymous</span> is true, render <em>"A fellow leader"</em> with no role and no name — exact same string used on prayer cards.</dd>
+        <dt>Visual distinction · prayer vs testimony attribution</dt>
+        <dd><strong>None.</strong> Same token, same size, same colour on both card types. The card-level differentiation (green left-border, green location, "Testimony" chip) already distinguishes testimony surfaces — the attribution line stays consistent so leaders read it without re-learning the pattern.</dd>
+        <dt>Rotator preview · already specced in Item 02</dt>
+        <dd>Rotator's attribution is 13 pt · matches there. The full TestimonyCard in the Testimonies tab uses 14 pt per this row.</dd>
+      </dl>
+      <div class="cc-note"><strong>CC</strong> Reuse the same display helper for both surfaces: <span class="tok">formatLeaderLine(role, name, isAnonymous)</span> → <em>"Pastor Priya"</em> | <em>"A fellow leader"</em>. Don't fork formatting between PrayerCard and TestimonyCard.</div>
+    </div>
+  </section>
+
+  <p class="footer-meta">Replant · Prayer Wall · v8 redlines · 25 May 2026 · device pass on main @ 6e18f5a</p>
+
+</div>
+</body>
+</html>

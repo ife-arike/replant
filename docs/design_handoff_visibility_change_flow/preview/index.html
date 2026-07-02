@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Visibility-Change Flow · Mobile CD · KAN-274</title>
+<!-- ext-resource-dependency: https://fonts.googleapis.com -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="flow-chrome.css">
+<link rel="stylesheet" href="flow-screens.css">
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#080808"/>
+    <rect x="33" y="26" width="34" height="52" rx="7" fill="none" stroke="#6BB5E8" stroke-width="2.4"/>
+    <path d="M44 47l5 5 9-11" fill="none" stroke="#6BB5E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="50" cy="65" r="2.4" fill="#6BB5E8"/>
+  </svg>
+</template>
+
+<div class="doc">
+
+  <!-- ░░░ HEADER ░░░ -->
+  <header class="page-header">
+    <div class="page-header-top">
+      <span class="page-eyebrow">Replant Mobile · Concept Direction</span>
+      <div class="page-meta">
+        KAN-274 · visibility-change flow<br>
+        <b>UG leaders only · off-root stack</b><br>
+        Hidden ⇄ Visible · confirmation-call gate
+      </div>
+    </div>
+    <h1 class="page-title">Flipping visibility, <em>with a human on the other end of the line</em></h1>
+    <p class="page-sub">A verified underground leader decides to change whether their church is <strong>Hidden</strong> or <strong>Visible</strong> in the network. Because that flip is exactly the moment an adversary would want to forge, the change can't be a toggle — it routes through a <strong>scheduled confirmation call</strong> with the admin team and a <strong>4-digit code the leader speaks aloud</strong>. This CD designs the six mobile surfaces that carry the leader from the request to the outcome, the security floor on the live call, and the duress channel hidden inside how the code is read.</p>
+
+    <p class="prayer-line">
+      Father, the leaders who will pass through these screens have already counted the cost — a pastor in Iran, a host in a Hunan apartment, a convert in a Gulf compound, deciding whether to let their name be seen. The first flip is the most fragile moment they've had with us. Cover their phones and the rooms they sit in; cover the privacy of the ones beside them; give them courage where it is safe and a quiet exit where it is not. Steady Founder Ruth as she ratifies this. Let our copy be honest and unhurried, leaking no name and no fear. We cover this work in the blood of Jesus Christ.
+      <span class="amen">In Jesus' name, Amen.</span>
+    </p>
+
+    <div class="invariants">
+      <span class="inv-chip">iPhone Pro Max · 412pt</span>
+      <span class="inv-chip">Dark base #080808</span>
+      <span class="inv-chip">Serif headers · mono for the code</span>
+      <span class="inv-chip">Italic = scripture only</span>
+      <span class="inv-chip">No greens on the sensitive flip</span>
+      <span class="inv-chip">UG leaders only · never regulars</span>
+      <span class="inv-chip">constants/theme.ts tokens · no new values</span>
+    </div>
+  </header>
+
+  <!-- ░░░ THE FLOW ░░░ -->
+  <section class="section" id="flow" style="margin-top:60px">
+    <div class="section-header">
+      <div class="section-eyebrow">How the path runs</div>
+      <h2 class="section-title">One request, one call, one outcome</h2>
+      <p class="section-desc">The flip is <strong>hybrid leader-initiated</strong>: the leader asks, schedules a safe window, the admin claims the slot, a silent push lands at T-15, the leader pre-arms by tapping <strong>I'm ready</strong>, and the admin dials. The code only exists on screen during the call, and only the leader's voice carries it across. Everything else — screen-capture blocks, idle blanking, the duress reverse — defends the few minutes it is visible.</p>
+    </div>
+
+    <div class="specs">
+      <div class="specs-inner" style="padding:22px">
+        <div class="specs-grid">
+          <div>
+            <div class="specs-block-label">The six surfaces</div>
+            <div class="spec-row"><span class="spec-key">01 entry</span><span class="spec-val">Inside <code>Settings → Church</code>. Current state + "Request to change to [VISIBLE | HIDDEN]". Renders only for underground churches.</span></div>
+            <div class="spec-row"><span class="spec-key">02 schedule</span><span class="spec-val">Explainer + window picker. The leader chooses when they'll be somewhere safe to talk.</span></div>
+            <div class="spec-row"><span class="spec-key">03 briefing</span><span class="spec-val">One-shot safety briefing the first time only — teaches the over-shoulder defenses and the reverse-the-digits duress signal.</span></div>
+            <div class="spec-row"><span class="spec-key">04 lobby</span><span class="spec-val">Surfaces at T-15 off root. Schedule recap + "I'm ready" to pre-arm the call.</span></div>
+            <div class="spec-row"><span class="spec-key">05 active</span><span class="spec-val">The code, large + mono. Hide-code target, idle blanking, duress jog, delayed / validating states.</span></div>
+            <div class="spec-row"><span class="spec-key">06 complete</span><span class="spec-val">Endgame copy — success either direction, or the "didn't connect" failure with a fresh picker.</span></div>
+          </div>
+          <div>
+            <div class="specs-block-label">State machine — <code>VisibilityChangeRequest</code></div>
+            <div class="spec-row"><span class="spec-key">pending</span><span class="spec-val">Leader scheduled a window; admin hasn't claimed the slot yet.</span></div>
+            <div class="spec-row"><span class="spec-key">revealed</span><span class="spec-val">Admin claimed; T-15 reached; leader has opened the lobby.</span></div>
+            <div class="spec-row"><span class="spec-key">in_call</span><span class="spec-val">Leader tapped "I'm ready"; admin dialed; code is on screen.</span></div>
+            <div class="spec-row"><span class="spec-key">validated</span><span class="spec-val">Admin entered the correct (or reversed duress) code; visibility flipped.</span></div>
+            <div class="spec-row"><span class="spec-key">expired</span><span class="spec-val">TTL elapsed with no validation; force re-mint via a new window.</span></div>
+            <div class="spec-row"><span class="spec-key">failed</span><span class="spec-val">Too many wrong attempts; admin must re-mint. Leader sees only the terminal outcome.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="specs-note"><div class="specs-note-label">Why a call and not a toggle</div><div class="specs-note-body">The load-bearing promise is that a hijacked session or a coerced leader can't quietly change what the network shows. A confirmation call puts a <strong>human anti-social-engineering check</strong> in the path: the admin confirms it's really the leader before the flip lands, and the 4-digit code proves the person on the call is the one holding this phone. Brute-force defense is <strong>per-attempt audit + AAL2 + lockout</strong>, not entropy — four digits is enough because every guess is logged against a live, rate-limited call.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ SURFACE 1 — ENTRY AFFORDANCE ░░░ -->
+  <section class="section" id="surface-entry">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 01 · <span class="num">Settings → Church</span></div>
+      <h2 class="section-title">The entry affordance, <em>in context</em></h2>
+      <p class="section-desc">It lives where the leader already manages their church — the <code>'church'</code> section of the existing Settings accordion, never a new top-level item. It states the current visibility plainly and offers the one action: request the opposite. After a window is picked, the same block becomes a scheduled-call card with a Cancel affordance. Use <strong>View as</strong> to switch the leader's current state.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">View as</span>
+      <div class="opt-group">
+        <span class="opt-name">State</span>
+        <div data-seg-entry data-opts='[{"v":"hidden","label":"Currently Hidden"},{"v":"visible","label":"Currently Visible"},{"v":"scheduled","label":"Call scheduled"}]'></div>
+      </div>
+      <span class="opt-hint">Hidden and Visible show the request CTA pointing at the opposite state. Scheduled shows the pending-call card.</span>
+    </div>
+
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar">
+                <span class="sb-time">9:41</span>
+                <span class="sb-icons" data-sb></span>
+              </div>
+              <div class="scr">
+                <div class="set-header">
+                  <span class="set-back" data-ic="back"></span>
+                  <span class="set-h-title">Settings</span>
+                  <span class="set-mark" data-ic="mark"></span>
+                </div>
+                <div class="scr-scroll" style="overflow:hidden">
+                  <div class="set-epigraph">your account, your church.</div>
+                  <div class="set-epi-rule"></div>
+
+                  <div class="set-section">
+                    <div class="set-sec-head">
+                      <span class="set-sec-num">02</span>
+                      <span class="set-sec-title">Privacy</span>
+                      <span class="set-sec-chev" data-ic="chev-down"></span>
+                    </div>
+                    <div class="set-sec-rule"></div>
+                  </div>
+
+                  <div class="set-section">
+                    <div class="set-sec-head">
+                      <span class="set-sec-num">03</span>
+                      <span class="set-sec-title">Church</span>
+                      <span class="set-sec-chev" data-ic="chev-up"></span>
+                    </div>
+                    <div class="set-sec-rule"></div>
+
+                    <div class="set-row">
+                      <div class="set-row-label">Network ID</div>
+                      <div class="set-row-flex">
+                        <span class="set-row-val mono">RPL-4827Q</span>
+                        <span class="set-copyhint">Tap to copy</span>
+                      </div>
+                    </div>
+
+                    <div class="set-row">
+                      <div class="set-row-label">Status before the Lord</div>
+                      <div class="rag-line">
+                        <span class="rag-glyph on-amber">◉</span>
+                        <span class="rag-text">Amber — with some limitations or needs</span>
+                      </div>
+                    </div>
+
+                    <!-- ░ THE ENTRY AFFORDANCE ░ -->
+                    <div class="vis-block" data-entry-block>
+                      <div class="set-row-label">Visibility in the network</div>
+                      <div class="vis-state-row">
+                        <span class="vis-state-label">You are currently</span>
+                        <span class="vis-pill" data-entry-pill><span class="dot"></span><span class="lbl">Hidden</span></span>
+                      </div>
+                      <button class="vis-request" data-entry-cta type="button">Request to change to Visible</button>
+                      <p class="vis-caption" data-entry-caption>Our team confirms every change on a short call before it goes through. You'll pick a window when you're somewhere safe to talk.</p>
+                    </div>
+                  </div>
+
+                  <div class="set-section" style="opacity:0.5">
+                    <div class="set-sec-head">
+                      <span class="set-sec-num">04</span>
+                      <span class="set-sec-title">Language</span>
+                      <span class="set-sec-chev" data-ic="chev-down"></span>
+                    </div>
+                    <div class="set-sec-rule"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state gray" data-entry-capstate>Settings · idle</span>
+          <span class="dev-cap-name">Church section — entry affordance</span>
+          <span class="dev-cap-desc" data-entry-capdesc>Hidden church. The CTA points at Visible; the caption sets the expectation of a call before anything changes.</span>
+        </div>
+      </div>
+
+      <div class="sec-floor" style="width:300px;align-self:center">
+        <div class="sec-chip"><span class="sc-ico" data-ic="eye"></span><span class="sc-text"><b>Renders only for underground churches.</b> A regular church never sees this block — the section gates on <code>viewerChurchType === 'underground'</code>.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="shield"></span><span class="sc-text"><b>State, not a switch.</b> The pill reports the current value; the button is a request, not a write. Nothing flips from this screen.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="clock"></span><span class="sc-text">Once a window is picked this block becomes the <b>scheduled-call card</b> — same footprint, Cancel affordance, no second entry point.</span></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> New component <b>ChurchVisibilityRow.tsx</b>, rendered inside <code>SettingsScreen</code>'s <code>'church'</code> section body. Reads <code>visibilityChangeRequest</code> from <code>AuthProvider</code> to pick which face to show (idle ↔ scheduled). The CTA pushes the <code>VisibilityChangeStack</code> schedule screen; it does <b>not</b> mutate <code>show_church_name</code>. Block is omitted entirely when <code>viewerChurchType !== 'underground'</code>.</div>
+  </section>
+
+  <!-- ░░░ SURFACE 2 — SCHEDULE PICKER ░░░ -->
+  <section class="section" id="surface-schedule">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 02 · <span class="num">VisibilityChangeScheduleScreen</span></div>
+      <h2 class="section-title">Choosing a safe window <em>to talk</em></h2>
+      <p class="section-desc">The explainer is the whole point of this screen — it tells the leader, before they commit, that a person will call and why. The picker is deliberately coarse: a day rail plus a short list of 2-hour windows. The leader is choosing <strong>when they will be free and unobserved</strong>, not booking a precise minute. Granularity is staged as an open question for Founder.</p>
+    </div>
+
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar">
+                <span class="sb-time">9:41</span>
+                <span class="sb-icons" data-sb></span>
+              </div>
+              <div class="scr">
+                <div class="set-header">
+                  <span class="set-back" data-ic="back"></span>
+                  <span class="set-h-title">Verification call</span>
+                  <span class="set-mark" data-ic="mark"></span>
+                </div>
+                <div class="scr-scroll pad-lg" style="overflow:hidden">
+                  <div class="scr-title sm">Our team needs to confirm it's you</div>
+                  <p class="scr-body">Before your church changes from <b>Hidden</b> to <b>Visible</b>, someone on our team will call to confirm it's really you making the change — not someone who got hold of your phone. Choose a window when you'll be <b>in a safe place to talk</b>.</p>
+
+                  <div class="win-label" style="margin-top:18px">Day</div>
+                  <div class="day-rail" data-day-rail>
+                    <button class="day-chip on" type="button"><span class="dc-dow">Wed</span><span class="dc-day">12</span></button>
+                    <button class="day-chip" type="button"><span class="dc-dow">Thu</span><span class="dc-day">13</span></button>
+                    <button class="day-chip" type="button"><span class="dc-dow">Fri</span><span class="dc-day">14</span></button>
+                    <button class="day-chip" type="button"><span class="dc-dow">Sat</span><span class="dc-day">15</span></button>
+                    <button class="day-chip" type="button"><span class="dc-dow">Sun</span><span class="dc-day">16</span></button>
+                  </div>
+
+                  <div class="win-label">Window · 2-hour blocks</div>
+                  <div class="win-list" data-win-list>
+                    <div class="win-row off" data-win><span class="win-radio"></span><span class="win-time">08:00 – 10:00</span><span class="win-tag">Passed</span></div>
+                    <div class="win-row" data-win><span class="win-radio"></span><span class="win-time">10:00 – 12:00</span></div>
+                    <div class="win-row on" data-win><span class="win-radio"></span><span class="win-time">14:00 – 16:00</span><span class="win-tag">Your time</span></div>
+                    <div class="win-row" data-win><span class="win-radio"></span><span class="win-time">18:00 – 20:00</span></div>
+                    <div class="win-row" data-win><span class="win-radio"></span><span class="win-time">20:00 – 22:00</span></div>
+                  </div>
+                </div>
+                <div class="scr-foot">
+                  <button class="btn-cta" type="button">Request this window</button>
+                  <div class="scr-foot-cap">You can reschedule or cancel any time before the call.</div>
+                </div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state">pending · scheduling</span>
+          <span class="dev-cap-name">Schedule picker</span>
+          <span class="dev-cap-desc">Explainer first, then a coarse day + 2-hour-window picker. Past windows are inert. Tap a day or window to reselect.</span>
+        </div>
+      </div>
+
+      <div class="sec-floor" style="width:300px;align-self:center">
+        <div class="sec-chip"><span class="sc-ico" data-ic="clock"></span><span class="sc-text"><b>Coarse on purpose.</b> The leader is committing to a stretch of time they'll be safe and free — not a single minute the admin must hit exactly.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="shield"></span><span class="sc-text">Confirming returns to Settings, where the Church block now reads <b>"Verification call scheduled for…"</b> with Reschedule + Cancel.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="eye"></span><span class="sc-text">No call number or admin name is shown here — see open questions <code>Q2</code> + <code>Q3</code>.</span></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> <b>VisibilityChangeScheduleScreen.tsx</b>, first card of <code>VisibilityChangeStack</code>. On confirm: <code>POST request-visibility-change { direction, window_start, window_end }</code> → request enters <code>pending</code>. Windows are server-supplied (admin availability ∩ leader-local daylight); the client never invents slots. Direction is carried from the entry CTA, never re-chosen here.</div>
+  </section>
+
+  <!-- ░░░ SURFACE 3 — SAFETY BRIEFING ░░░ -->
+  <section class="section" id="surface-briefing">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 03 · <span class="num">FirstCallSafetyBriefing</span> · one-shot</div>
+      <h2 class="section-title">The briefing, <em>shown once</em></h2>
+      <p class="section-desc">The first time a leader reaches a live call, this stands in front of the code for a moment. It teaches the three things the active screen can't say out loud every time: the screen guards itself, the code never leaves by any channel but their voice, and — the load-bearing one — <strong>if anyone is forcing this, read the digits in reverse</strong>. After this, the active screen carries only a quiet jog. Shown once per leader, then never again.</p>
+    </div>
+
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar">
+                <span class="sb-time">14:02</span>
+                <span class="sb-icons" data-sb></span>
+              </div>
+              <div class="scr">
+                <div class="scr-scroll pad-lg" style="overflow:hidden">
+                  <div class="scr-eyebrow">Before your first call</div>
+                  <div class="scr-title sm">A few things to know, once</div>
+
+                  <div style="margin-top:8px">
+                    <div class="brief-item">
+                      <span class="brief-num">1</span>
+                      <div>
+                        <div class="brief-h">The screen protects itself</div>
+                        <div class="brief-p">Your code can't be screenshotted, and it blanks on its own if you set the phone down. You can hide it any time with one tap.</div>
+                      </div>
+                    </div>
+                    <div class="brief-item">
+                      <span class="brief-num">2</span>
+                      <div>
+                        <div class="brief-h">Only your voice carries the code</div>
+                        <div class="brief-p">Read it aloud to the person on the call. There's no copy button and nothing to send — that's deliberate. It never leaves this phone any other way.</div>
+                      </div>
+                    </div>
+                    <div class="brief-item">
+                      <span class="brief-num warn">3</span>
+                      <div>
+                        <div class="brief-h">If you are not free, read it backward</div>
+                        <div class="brief-p">If anyone is with you and forcing this change, <b>read the digits in reverse order</b>. The call will look like it worked. No one in the room will know — and we will quietly check on you.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="scr-foot">
+                  <button class="btn-cta" type="button">I understand</button>
+                  <div class="scr-foot-cap">You won't see this again. The reverse-the-digits signal works on every call.</div>
+                </div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state red">first call only</span>
+          <span class="dev-cap-name">Safety briefing</span>
+          <span class="dev-cap-desc">The only place the duress convention is taught in plain language. Item 3 carries the warn accent — the one red on the leader's path.</span>
+        </div>
+      </div>
+
+      <div class="sec-floor" style="width:300px;align-self:center">
+        <div class="sec-chip"><span class="sc-ico" data-ic="shield"></span><span class="sc-text"><b>Taught once, in plain words.</b> An observer reading over the shoulder here sees generic safety copy; the meaning only matters to the leader on a future call.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="eye"></span><span class="sc-text">Gated on a per-leader <code>hasSeenSafetyBriefing</code> flag in <code>expo-secure-store</code> — set true on "I understand", checked before the lobby hands off to the active screen.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="clock"></span><span class="sc-text">Inserts between <b>I'm ready</b> and the code reveal on the first call; on every later call the lobby goes straight to active.</span></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> <b>FirstCallSafetyBriefing.tsx</b>. Presented by the lobby when <code>!hasSeenSafetyBriefing</code> after "I'm ready", before transitioning to <code>in_call</code>. Non-skippable but self-paced — no timer. The flag is per-leader and local; resetting a device re-shows it (acceptable — re-teaching the duress signal is never harmful).</div>
+  </section>
+
+  <!-- ░░░ SURFACE 4 — LOBBY ░░░ -->
+  <section class="section" id="surface-lobby">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 04 · <span class="num">VisibilityChangeLobbyScreen</span></div>
+      <h2 class="section-title">The lobby — <em>pre-arming the call</em></h2>
+      <p class="section-desc">At T-15 a silent data push lands; the next time the leader opens the app, this full-screen modal surfaces off root. It recaps the window and waits. Tapping <strong>I'm ready</strong> is the leader's pre-arm — it tells the admin the leader is present and unobserved, and only then does the code mint and the admin dial. Reschedule and Cancel stay available right up to that tap.</p>
+    </div>
+
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar">
+                <span class="sb-time">13:58</span>
+                <span class="sb-icons" data-sb></span>
+              </div>
+              <div class="scr">
+                <div class="scr-scroll pad-lg" style="overflow:hidden">
+                  <div class="scr-eyebrow">Your verification call</div>
+                  <div class="scr-title">It's almost time</div>
+                  <p class="scr-body">When you're somewhere private and ready to talk, tap <b>I'm ready</b>. Our team will call within your window. Your code appears only after you're ready.</p>
+
+                  <div class="vis-sched" style="margin-top:8px">
+                    <div class="vis-sched-eyebrow">Scheduled window</div>
+                    <div class="vis-sched-when">Today · 14:00 – 16:00</div>
+                    <div class="vis-sched-sub">Changing Hidden → Visible</div>
+                  </div>
+
+                  <p class="scr-body" style="margin-top:20px;font-size:12.5px">Stay on this screen once you've tapped ready — the call comes through here.</p>
+                </div>
+                <div class="scr-foot">
+                  <button class="btn-cta" type="button">I'm ready</button>
+                  <button class="btn-ghost" type="button">Reschedule</button>
+                  <div class="scr-foot-cap">Need to stop? <span style="color:var(--muted)">Cancel this request</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state">revealed · lobby open</span>
+          <span class="dev-cap-name">Lobby</span>
+          <span class="dev-cap-desc">Surfaces off root at T-15. "I'm ready" is the pre-arm — the code mints only after it, never before.</span>
+        </div>
+      </div>
+
+      <div class="sec-floor" style="width:300px;align-self:center">
+        <div class="sec-chip"><span class="sc-ico" data-ic="shield"></span><span class="sc-text"><b>Pre-arm gate.</b> The leader, not a timer, decides when the code appears — so it never mints while the phone is in someone else's hand.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="clock"></span><span class="sc-text">Mounted off root, above the tab tree, like <code>JoinCodeReveal</code>. The leader is never logged out to see it.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="eye"></span><span class="sc-text">Reschedule + Cancel live here until "I'm ready". After the tap, back-out is guarded — see the active screen.</span></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> <b>VisibilityChangeLobbyScreen.tsx</b>, presented from <code>RootNavigator</code> when <code>visibilityChangeRequest.status === 'revealed'</code> (set by the T-15 push handler). "I'm ready" → <code>POST arm-visibility-call</code> mints the token, flips status to <code>in_call</code>, and — first call only — routes through the safety briefing before the active screen.</div>
+  </section>
+
+  <!-- ░░░ SURFACE 5 — ACTIVE ░░░ -->
+  <section class="section" id="surface-active">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 05 · <span class="num">VisibilityChangeActiveScreen</span></div>
+      <h2 class="section-title">The code, <em>live on the call</em></h2>
+      <p class="section-desc">This is the screen the security floor is built for. The 4-digit code sits large and mono; the leader reads it aloud and the admin types it. A persistent <strong>Hide code</strong> target blanks it for over-shoulder defense, a 90-second idle drops it to <code>••••</code> on its own, and a quiet line reminds the leader that the <em>order</em> they read carries meaning. Use <strong>View as</strong> to walk the states — including the delayed-admin fallback and the validating hand-off.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">View as</span>
+      <div class="opt-group">
+        <span class="opt-name">State</span>
+        <div data-seg-active data-opts='[{"v":"revealed","label":"Code revealed"},{"v":"hidden","label":"Hidden (over-shoulder)"},{"v":"idle","label":"Idle timeout"},{"v":"delayed","label":"Admin delayed"},{"v":"validating","label":"Validating"}]'></div>
+      </div>
+      <span class="opt-hint">In Revealed, the Hide-code button is live — tap it on the device. Idle is the 90-second auto-blank; tap-to-reveal restores it.</span>
+    </div>
+
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar">
+                <span class="sb-time">14:07</span>
+                <span class="sb-icons" data-sb></span>
+              </div>
+              <div class="scr act" data-active-screen>
+                <div class="act-top">
+                  <span class="act-status" data-act-status><span class="sdot"></span>On the call</span>
+                  <button class="hide-btn" data-hide-btn type="button"><span data-ic="eye-off"></span>Hide code</button>
+                </div>
+
+                <div class="act-banner" data-act-banner style="display:none">
+                  <span class="ab-ico">!</span>
+                  <div>
+                    <div class="ab-title">Our team is a moment behind</div>
+                    <div class="ab-text">Stay on this screen — they'll connect shortly. Your code is still valid.</div>
+                  </div>
+                </div>
+
+                <div class="act-mid" data-act-mid>
+                  <p class="act-lead">Read these digits aloud to confirm the change to <b>Visible</b>.</p>
+                  <div class="code-figure" data-code-figure>
+                    <span class="code-digit">7</span>
+                    <span class="code-digit">2</span>
+                    <span class="code-digit">9</span>
+                    <span class="code-digit">4</span>
+                  </div>
+                  <div class="code-rule"></div>
+                  <div class="code-cap" data-code-cap>Read them in the order shown.</div>
+                </div>
+
+                <div class="act-foot">
+                  <div class="act-secline"><span data-ic="lock"></span>Screen-capture blocked · code never saved · clears when you leave</div>
+                </div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state" data-active-capstate>in_call · code revealed</span>
+          <span class="dev-cap-name">Active screen</span>
+          <span class="dev-cap-desc" data-active-capdesc>The code is on screen only now, only here. Hide-code, idle-blank, and the duress jog all defend these few minutes.</span>
+        </div>
+      </div>
+
+      <div class="sec-floor" style="width:312px;align-self:center">
+        <div class="sec-chip"><span class="sc-ico" data-ic="lock"></span><span class="sc-text"><b>Capture-blocked.</b> <code>preventScreenCaptureAsync()</code> stops Android screenshots; iOS renders blank in the app switcher.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="eye-off"></span><span class="sc-text"><b>Two ways to blank.</b> The Hide-code target is one-tap and persistent; a <b>90-second idle</b> drops it to <code>••••</code> on its own. Tap-to-reveal brings it back.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="shield"></span><span class="sc-text"><b>No copy, ever.</b> No clipboard affordance. The token is never written to <code>AsyncStorage</code> — only an encrypted <code>secure-store</code> entry, 30-min TTL, for force-quit recovery.</span></div>
+        <div class="sec-chip"><span class="sc-ico" data-ic="back"></span><span class="sc-text"><b>No back-out mid-call.</b> <code>beforeRemove</code> blocks the gesture and Android hardware back; the token clears on blur, background, and TTL.</span></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> <b>VisibilityChangeActiveScreen.tsx</b>. Mounts <code>preventScreenCaptureAsync()</code> on focus, releases on blur. 90s idle timer (reset on touch) blanks the plaintext to <code>••••</code> + tap-to-reveal. <code>beforeRemove</code> listener + <code>BackHandler</code> intercept block exit while <code>status === 'in_call'</code>. Token held in component state + encrypted <code>secure-store</code> (30-min TTL) only; cleared on blur / background / TTL / terminal status. Status polls reconcile <code>in_call → validated | expired | failed</code>; the screen never shows wrong-attempt counts — only the terminal outcome.</div>
+  </section>
+
+  <!-- ░░░ SURFACE 6 — COMPLETE ░░░ -->
+  <section class="section" id="surface-complete">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 06 · <span class="num">VisibilityChangeCompleteScreen</span></div>
+      <h2 class="section-title">The outcome, <em>in the locked words</em></h2>
+      <p class="section-desc">Three terminal faces, all carrying verbatim endgame copy. Success reads plainly in either direction — no celebration, no green flare on a sensitive action; the accent simply tracks the new state (sky for Visible, muted for Hidden). Failure is calm and actionable: the call didn't connect, choose a new window. Tapping Done returns to Settings, where the Church block now shows the resolved state.</p>
+    </div>
+
+    <div class="flow-strip">
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar"><span class="sb-time">14:09</span><span class="sb-icons" data-sb></span></div>
+              <div class="scr">
+                <div class="done">
+                  <span class="done-mark" data-ic="eye"></span>
+                  <div class="done-eyebrow">Change confirmed</div>
+                  <div class="done-pill"><span class="dot"></span><span class="lbl">Now Visible</span></div>
+                  <div class="done-title">Your church name now shows in the network.</div>
+                  <p class="done-body">Other leaders can now see your church's name. Your <b>location stays hidden</b> — only your region is ever shown.</p>
+                </div>
+                <div class="scr-foot"><button class="btn-cta" type="button">Done</button></div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state">validated · Hidden → Visible</span>
+          <span class="dev-cap-name">Success — now Visible</span>
+          <span class="dev-cap-desc">Locked copy, sky accent. No green, no exclamation.</span>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar"><span class="sb-time">21:32</span><span class="sb-icons" data-sb></span></div>
+              <div class="scr">
+                <div class="done">
+                  <span class="done-mark hidden" data-ic="eye-off"></span>
+                  <div class="done-eyebrow">Change confirmed</div>
+                  <div class="done-pill hidden"><span class="dot"></span><span class="lbl">Now Hidden</span></div>
+                  <div class="done-title">Your church name is now hidden.</div>
+                  <p class="done-body">Other leaders will see <b>"Underground Church"</b> and your region only. Your church name is withheld.</p>
+                </div>
+                <div class="scr-foot"><button class="btn-cta" type="button">Done</button></div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state gray">validated · Visible → Hidden</span>
+          <span class="dev-cap-name">Success — now Hidden</span>
+          <span class="dev-cap-desc">Muted accent tracks the quieter state. Same calm register.</span>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="device">
+          <div class="device-screen">
+            <div class="island"></div>
+            <div class="rp">
+              <div class="statusbar"><span class="sb-time">16:01</span><span class="sb-icons" data-sb></span></div>
+              <div class="scr">
+                <div class="done">
+                  <span class="done-mark fail" data-ic="clock"></span>
+                  <div class="done-eyebrow">Not this time</div>
+                  <div class="done-title">We didn't connect. Choose a new window when you're ready.</div>
+                  <p class="done-body">Nothing changed — your church is still <b>Hidden</b>. This happens; pick another time you'll be free to talk and we'll try again.</p>
+                </div>
+                <div class="scr-foot">
+                  <button class="btn-cta" type="button">Choose a new window</button>
+                  <button class="btn-ghost" type="button">Not now</button>
+                </div>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+        <div class="dev-cap">
+          <span class="dev-cap-state red">expired / failed</span>
+          <span class="dev-cap-name">Failure — didn't connect</span>
+          <span class="dev-cap-desc">One copy for both expired and failed — the leader never learns which, and never sees attempt counts.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> <b>VisibilityChangeCompleteScreen.tsx</b>. Renders from terminal status: <code>validated</code> → success variant keyed on direction (copy + accent), <code>expired | failed</code> → the single failure variant. Done dismisses the off-root stack back to Settings; the failure CTA re-enters the schedule picker with the same direction pre-set. Endgame strings are <b>locked verbatim</b> — see the copy log.</div>
+  </section>
+
+  <!-- ░░░ COPY LOG ░░░ -->
+  <section class="section" id="copy">
+    <div class="section-header">
+      <div class="section-eyebrow">Copy log · for ratification</div>
+      <h2 class="section-title">Every string, and why</h2>
+      <p class="section-desc">Voice: clinical, peer-respecting, never coddling. No "Oops!", no "copy it somewhere safe", no exclamation reassurance, no auth-internal vocabulary leaking to the leader. Italic is reserved for scripture — none is forced onto these utility surfaces, so the endgame lines render <strong>roman</strong> even though the brief quotes them in italics.</p>
+    </div>
+    <div class="specs"><div class="specs-inner" style="padding:20px 22px">
+      <div class="specs-grid">
+        <div>
+          <div class="specs-block-label">Entry + schedule</div>
+          <div class="spec-row"><span class="spec-key">state</span><span class="spec-val"><b>"You are currently Hidden"</b> / <b>Visible</b> — plain present-tense fact, paired with the pill.</span></div>
+          <div class="spec-row"><span class="spec-key">cta</span><span class="spec-val"><b>"Request to change to Visible"</b> / <b>Hidden</b> — a request, named by destination, never "toggle" or "flip".</span></div>
+          <div class="spec-row"><span class="spec-key">explainer</span><span class="spec-val">"Our team needs to confirm it's you on a call before this change goes through. Choose a window when you're in a safe place to talk."</span></div>
+          <div class="spec-row"><span class="spec-key">scheduled</span><span class="spec-val">"Verification call scheduled for [day · window]" + Reschedule / Cancel.</span></div>
+        </div>
+        <div>
+          <div class="specs-block-label">Lobby + active</div>
+          <div class="spec-row"><span class="spec-key">lobby</span><span class="spec-val">"It's almost time" + "When you're somewhere private and ready to talk, tap <b>I'm ready</b>." Code appears only after.</span></div>
+          <div class="spec-row"><span class="spec-key">active lead</span><span class="spec-val">"Read these digits aloud to confirm the change to <b>Visible</b>."</span></div>
+          <div class="spec-row"><span class="spec-key">duress jog</span><span class="spec-val">"Read them in the order shown." — coded; the word <i>order</i> is the only on-screen cue, and the plain teaching lives in the one-shot briefing.</span></div>
+          <div class="spec-row"><span class="spec-key">delayed</span><span class="spec-val">"Our team is a moment behind. Stay on this screen — they'll connect shortly. Your code is still valid."</span></div>
+        </div>
+      </div>
+      <div class="specs-note" style="margin:18px 0 0"><div class="specs-note-label">Endgame — LOCKED verbatim (rendered roman, not italic)</div><div class="specs-note-body">Hidden → Visible: <strong>"Your church name now shows in the network."</strong> · Visible → Hidden: <strong>"Your church name is now hidden."</strong> · Failure (expired or failed): <strong>"We didn't connect. Choose a new window when you're ready."</strong></div></div>
+      <div class="specs-note red" style="margin:12px 0 0"><div class="specs-note-label">Banned, per the voice ruling</div><div class="specs-note-body">No "Oops!", no "Copy it somewhere safe", no exclamation reassurance. No "TOTP" / "AAL2" / "token" / "duress" surfaced to the leader. No greens and no celebratory flare on the flip — success tracks state with sky / muted, never a green checkmark. Italics never used for emphasis on any screen here.</div></div>
+    </div></div>
+  </section>
+
+  <!-- ░░░ OPEN QUESTIONS ░░░ -->
+  <section class="section" id="questions">
+    <div class="section-header">
+      <div class="section-eyebrow">For Founder ratification</div>
+      <h2 class="section-title">Open questions</h2>
+    </div>
+    <div class="specs"><div class="specs-inner" style="padding:8px 22px 18px">
+      <div class="spec-row" style="padding-top:14px"><span class="spec-key" style="color:var(--rp-sky)">Q1</span><span class="spec-val"><b>Window-picker granularity.</b> CD shows <b>2-hour blocks</b> per the panel ruling. Alternatives: 30-minute slots (tighter, but implies a precision the call doesn't need) or leader-defined free time. <b>CD lean → keep 2-hour blocks.</b> Founder confirm.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-sky)">Q2</span><span class="spec-val"><b>Does the leader see who the admin is?</b> CD shows <b>nothing</b> — no admin name, no avatar — to keep the surface symmetric and leak-free. Alternative: a generic "Replant team member". Founder ratify.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-sky)">Q3</span><span class="spec-val"><b>Surface the call channel?</b> CD assumes a <b>plain phone call</b> and shows no number or link. If the call is in-app voice or a dialed number, the lobby + active screens need a channel line. Founder direct.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-amber)">Q4</span><span class="spec-val"><b>Duress reminder frequency.</b> CD puts the <b>plain teaching in the one-shot briefing</b> and only a <b>coded jog</b> on every active render. Alternative: the jog appears first-call only. <b style="color:var(--rp-amber)">CD recommends → coded jog every call</b> (muscle memory matters under stress; the jog is innocuous to an observer). Founder ratify.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-green)">Q5</span><span class="spec-val"><b>Reversibility asymmetry.</b> Onboarding makes Visible → Hidden never self-reversible (admin-only). This flow puts <b>both directions</b> behind the same call. Confirm that's intended for already-verified leaders — i.e. a verified leader <i>may</i> self-initiate going Hidden again via this call, unlike the onboarding lock.</span></div>
+    </div></div>
+  </section>
+
+  <!-- ░░░ ENDNOTE ░░░ -->
+  <div class="endnote">
+    <div class="endnote-prayer">"The name of the LORD is a strong tower: the righteous runneth into it, and is safe." — Proverbs 18:10</div>
+    <div class="endnote-meta">
+      Replant Mobile · Visibility-change flow<br>
+      KAN-274 · UG leaders only · off-root stack<br>
+      Founder ratifies → FE wire-up
+    </div>
+  </div>
+
+</div>
+
+<script src="flow.js"></script>
+</body>
+</html>

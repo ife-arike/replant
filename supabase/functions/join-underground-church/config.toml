@@ -1,0 +1,30 @@
+# join-underground-church Edge Function config
+#
+# verify_jwt = false is LOAD-BEARING — this function is the pre-auth
+# attach path for a second underground leader. They do not yet have a
+# Replant account when this function runs (the function CREATES the
+# account). Any JWT requirement makes the flow impossible.
+#
+# Defense-in-depth at the function layer (SEC-locked per Founder
+# rulings #4, #27, #28, 2026-06-19):
+#   - POST + JSON only
+#   - Idempotency key REQUIRED (#28). 1h Upstash cache for successful
+#     responses. Missing key → 400 idempotency_key_required.
+#   - Per-IP rate limit: 5/hr (#27). Fail-CLOSED via in-memory token
+#     bucket per worker on Upstash backend failure (locked panel
+#     ruling — do NOT fail open here).
+#   - SINGLE GENERIC ERROR (#4) on EVERY redemption-failure path —
+#     invalid_or_consumed_code. Do NOT branch on internal subcodes
+#     (enumeration defense). Live cap-of-2 → same generic error
+#     (don't reveal cap-exceeded as a distinct case).
+#   - Welcome email = generic underground_pending body (#5) — NO
+#     church name, role, region, country, or "underground" mention.
+#   - Plaintext join code is NEVER logged. Not in console, not in
+#     Sentry, not in Upstash.
+#   - Underground church names are NEVER logged. Church IDs only.
+#   - Auth user creation must be comp-deletable on any subsequent
+#     failure (orphan prevention — Founder lock).
+#
+# Any change to verify_jwt OR the SEC-relevant invariants above
+# requires a fresh SEC ruling.
+verify_jwt = false

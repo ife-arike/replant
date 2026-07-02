@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "docs-server",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7799", "--directory", "/Users/ife/replant/docs"],
+      "port": 7799
+    },
+    {
+      "name": "cd-concepts",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/Users/ife/replant/.claude/serve-concepts.py"],
+      "port": 7801
+    },
+    {
+      "name": "blog",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/ife/replant/blog", "run", "dev"],
+      "port": 4321
+    }
+  ]
+}

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Underground Queue · Leader Touchpoints CD</title>
+<!-- ext-resource-dependency: https://fonts.googleapis.com -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="underground-cd.css">
+<link rel="stylesheet" href="leader-touchpoints-cd.css">
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#080808"/>
+    <rect x="34" y="28" width="32" height="44" rx="6" fill="none" stroke="#6BB5E8" stroke-width="2.4"/>
+    <path d="M42 46h16M42 53h12" stroke="#6BB5E8" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="50" cy="64" r="1.8" fill="#6BB5E8"/>
+  </svg>
+</template>
+
+<!-- ░░░ TWEAKS PANEL ░░░ -->
+<div id="tweaks">
+  <div class="tw-head"><span class="tw-title">Tweaks</span><span class="tw-close">×</span></div>
+  <div class="tw-body">
+    <div class="tw-field">
+      <span class="tw-label">§16 · Question delivery</span>
+      <div class="tw-seg" data-tw-seg="qDelivery" data-opts='[{"v":"modal","label":"Modal-on-launch"},{"v":"banner","label":"Banner only"}]'></div>
+      <span class="tw-hint">Ruling #16: modal-on-launch AND a persistent banner. Banner-only shown for comparison.</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">§18 · Rejection glyph</span>
+      <div class="tw-seg" data-tw-seg="rejGlyph" data-opts='[{"v":"none","label":"No glyph"},{"v":"quiet","label":"Quiet mark"}]'></div>
+      <span class="tw-hint">Trauma-aware: a heavy red ✕ is never used. Choose nothing, or a small muted mark.</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">§21 · Join code block</span>
+      <div class="tw-seg" data-tw-seg="codeBlock" data-opts='[{"v":"boxed","label":"Boxed"},{"v":"quiet","label":"Quiet"}]'></div>
+    </div>
+  </div>
+</div>
+
+<div class="doc">
+
+  <!-- ░░░ HEADER ░░░ -->
+  <header class="page-header">
+    <div class="page-header-top">
+      <span class="page-eyebrow">Replant App · Concept Direction</span>
+      <div class="page-meta">
+        Underground Queue · Leader Touchpoints<br>
+        <b>FLOW 2 of 2 · App</b><br>
+        Pastoral copy LOCKED
+      </div>
+    </div>
+    <h1 class="page-title">What the queue sends back — <em>pastoral notices on a watched device</em></h1>
+    <p class="page-sub">Six in-app surfaces the verification queue produces for the underground leader. There is <strong>no inbox</strong> — every message arrives as a <strong>modal-on-launch</strong> plus a persistent Home-tab banner. The agent is always <strong>"the Replant team"</strong> — never "Admin," never a founder's name. The highest-leverage surface is the rejection notice: an underground leader may have risked exposure to register, so "rejected" lands like a door slammed. We say <em>"could not be verified at this time."</em> Dignity beats efficiency.</p>
+
+    <p class="prayer-line">
+      Father, for the leader who opens this app hoping for an answer — let what they read carry Your gentleness. For the one we cannot verify, guard their heart from shame; let "not yet" never sound like "not wanted." For the one whose church is now seen, and the one returning to hiding, keep them safe in Your hand. Make these few words pastoral, never corporate.
+      <span class="amen" style="display:block;margin-top:10px;color:var(--sky);font-style:normal;font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase">In Jesus' name, Amen.</span>
+    </p>
+
+    <div class="tokens-strip" style="grid-template-columns:repeat(6,1fr)">
+      <div class="token-cell"><div class="token-swatch" style="background:#080808"></div><div class="token-name">background</div><div class="token-val">#080808</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#6BB5E8"></div><div class="token-name">accent</div><div class="token-val">#6BB5E8</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#F0EDE6"></div><div class="token-name">text</div><div class="token-val">#F0EDE6</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#D4A855"></div><div class="token-name">amber</div><div class="token-val">#D4A855</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#E05555"></div><div class="token-name">red</div><div class="token-val">#E05555</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#5BAD7A"></div><div class="token-name">green</div><div class="token-val">#5BAD7A</div></div>
+    </div>
+
+    <div class="invariants">
+      <span class="inv-chip">Agent = "the Replant team" · no names</span>
+      <span class="inv-chip">Modal-on-launch + persistent banner · no inbox</span>
+      <span class="inv-chip">"could not be verified" · never "rejected"</span>
+      <span class="inv-chip">No time-of-day language · no idioms</span>
+      <span class="inv-chip">scriptureItalic for quotes only</span>
+      <span class="inv-chip">RN-translatable · Typography.* constants</span>
+    </div>
+  </header>
+
+  <!-- ░░░░░░░░░░ §16 ADMIN QUESTION ░░░░░░░░░░ -->
+  <section class="section" id="s16" data-screen-label="Leader · Question modal">
+    <div class="section-header">
+      <div class="section-eyebrow">Deliverable 16 · Ruling #16</div>
+      <h2 class="section-title">The team has a question — <em>"there's no rush"</em></h2>
+      <p class="section-desc">When an admin requests info, the leader sees a <strong>modal-on-launch</strong> on the Home tab, not a notification badge in some new inbox. The question itself sits in a <strong>scriptureItalic quote treatment</strong> — set apart, given weight, never buried. While the leader is in request-info state, the verified-gate phrase is <strong>suppressed</strong>: the team is waiting on them, not the other way around.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">Live tweak</span>
+      <div class="opt-group"><span class="opt-name">Delivery</span><div class="seg" data-seg="qDelivery" data-opts='[{"v":"modal","label":"Modal-on-launch"},{"v":"banner","label":"Banner only"}]'></div></div>
+      <span class="tw-hint" style="font-family:var(--sans);color:var(--subtle)">Tap "Send a reply" to walk into the composer (§17).</span>
+    </div>
+
+    <div class="stage">
+      <div class="phone-col"><div id="m-question"></div><div class="phone-caption">Modal-on-launch · question in <b>scriptureItalic</b></div></div>
+      <div class="specs">
+        <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>RequestInfoModal<span class="ang">/&gt;</span></span></div>
+        <div class="specs-inner"><div class="specs-grid">
+          <div class="specs-block"><div class="specs-block-label">Delivery</div>
+            <div class="spec-row"><span class="spec-key">trigger</span><span class="spec-val">Home tab launch when <code>request_info</code> is open. Modal + persistent banner (#19).</span></div>
+            <div class="spec-row"><span class="spec-key">agent</span><span class="spec-val">"The Replant team" — never a name, never "Admin."</span></div>
+            <div class="spec-row"><span class="spec-key">tone</span><span class="spec-val">"Reply when you're ready. There's no rush." No time-of-day, no deadline shown.</span></div>
+          </div>
+          <div class="specs-block"><div class="specs-block-label">Gate interaction</div>
+            <div class="spec-row"><span class="spec-key">suppress</span><span class="spec-val">Verified-gate phrase <b>hidden</b> while in request-info — replaced by this banner (#22).</span></div>
+            <div class="spec-row"><span class="spec-key">cta</span><span class="spec-val">"Send a reply" → reply composer (#17). No dismiss-to-nowhere.</span></div>
+          </div>
+        </div></div>
+        <div class="specs-note"><div class="specs-note-label">Why a quote</div><div class="specs-note-body">The team's words are the most important thing on the screen. The scriptureItalic treatment — the same voice the Home verse uses — gives them dignity and makes them feel personal, not like a form field.</div></div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">RN spec</span> <b>RequestInfoModal.tsx</b> (new). Question text: <b>Typography.scriptureItalic</b>, 19px, lineHeight 1.5, 1.5px <b>borderAccent</b> left rule. Lead/close: <b>Typography.body</b> 13.5px <b>textMuted</b>. CTA primary <b>accent</b> bg. Spacing.lg between blocks. Suppresses <b>UnverifiedGateView</b> tiny-copy when <code>branch==='request_info'</code>.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §17 REPLY COMPOSER ░░░░░░░░░░ -->
+  <section class="section" id="s17" data-screen-label="Leader · Reply composer">
+    <div class="section-header">
+      <div class="section-eyebrow">Deliverable 17 · Ruling #16</div>
+      <h2 class="section-title">The reply — <em>sent to the team, quietly confirmed</em></h2>
+      <p class="section-desc">A single field, the question kept in view for context, a send action, and a calm post-send confirmation: <strong>"Your reply was sent to the team."</strong> No read receipts, no typing indicators, no urgency. The leader says what they can and closes the app in peace.</p>
+    </div>
+
+    <div class="stage triple">
+      <div class="phone-col"><div id="m-reply"></div><div class="phone-caption">Composer · question kept in view</div></div>
+      <div class="phone-col"><div id="m-reply-sent"></div><div class="phone-caption"><b style="color:var(--green)">Sent</b> · quiet confirmation</div></div>
+      <div class="specs">
+        <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>ReplyComposer<span class="ang">/&gt;</span></span></div>
+        <div class="specs-inner"><div class="specs-grid single">
+          <div class="specs-block"><div class="specs-block-label">Behavior</div>
+            <div class="spec-row"><span class="spec-key">field</span><span class="spec-val">Multiline, no char limit shown. Send disabled until non-empty.</span></div>
+            <div class="spec-row"><span class="spec-key">send</span><span class="spec-val">Writes to the request-info thread the admin reads in the detail surface (admin §3).</span></div>
+            <div class="spec-row"><span class="spec-key">confirm</span><span class="spec-val">"Your reply was sent to the team." Green check takeover, auto-returns to Home.</span></div>
+            <div class="spec-row"><span class="spec-key">no-urgency</span><span class="spec-val">No read receipts, no typing dots, no "team will respond by…" — nothing that pressures.</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">RN spec</span> <b>ReplyComposer.tsx</b> (new) or extend RequestInfoModal as step 2. Field: <b>Typography.body</b> 14px, surface bg, radius <b>Radius.lg (12)</b>, minHeight 130. Confirmation reuses the verified-takeover layout pattern. Posts to the same thread surfaced in the admin detail route.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §18 REJECTION (2 variants) ░░░░░░░░░░ -->
+  <section class="section" id="s18" data-screen-label="Leader · Rejection notice">
+    <div class="section-header">
+      <div class="section-eyebrow">Deliverable 18 · Ruling #17 · <span style="color:var(--red)">highest-leverage surface</span></div>
+      <h2 class="section-title">"Could not be verified at this time" — <em>dignity over efficiency</em></h2>
+      <p class="section-desc">The trauma-aware surface. Lead-in is always <strong>"After review, your registration could not be verified at this time."</strong> Then a reason-specific sentence, then the gentle close <strong>"You are welcome to re-apply when you're ready."</strong> with an appeal address. The <code>safety_concern</code> variant is different: <strong>no reason detail, no re-apply invitation</strong> — trauma-aware silence. We never make someone in danger feel they failed.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">Live tweak</span>
+      <div class="opt-group"><span class="opt-name">Glyph</span><div class="seg" data-seg="rejGlyph" data-opts='[{"v":"none","label":"No glyph"},{"v":"quiet","label":"Quiet mark"}]'></div></div>
+      <span class="tw-hint" style="font-family:var(--sans);color:var(--subtle)">A heavy red ✕ is never used. The dignity is in the restraint.</span>
+    </div>
+
+    <div class="stage triple">
+      <div class="phone-col"><div id="m-rej-standard"></div><div class="phone-caption">Standard · reason + close + appeal</div></div>
+      <div class="phone-col"><div id="m-rej-safety"></div><div class="phone-caption danger"><b>safety_concern</b> · no detail, no close</div></div>
+      <div class="specs">
+        <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>VerificationOutcomeModal<span class="ang">/&gt;</span></span></div>
+        <div class="specs-inner"><div class="specs-grid single">
+          <div class="specs-block"><div class="specs-block-label">Two variants, one component</div>
+            <div class="spec-row"><span class="spec-key">lead-in</span><span class="spec-val">Always "After review, your registration could not be verified at this time."</span></div>
+            <div class="spec-row"><span class="spec-key">reason</span><span class="spec-val">One sentence from the 8-value enum's leader-facing translation. Omitted for <code>safety_concern</code>.</span></div>
+            <div class="spec-row"><span class="spec-key">close</span><span class="spec-val">"You are welcome to re-apply when you're ready." <b>Omitted</b> for <code>safety_concern</code>.</span></div>
+            <div class="spec-row"><span class="spec-key">appeal</span><span class="spec-val">accounts@projectreplant.org. CTA "I understand."</span></div>
+          </div>
+        </div></div>
+        <div class="specs-note red"><div class="specs-note-label">Trauma-aware</div><div class="specs-note-body">For <code>safety_concern</code> we deliberately say less. No reason, no "try again" — because the worst outcome is making a person who may be in real danger feel rejected or interrogated. Silence here is mercy, not neglect.</div></div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">RN spec</span> <b>VerificationOutcomeModal.tsx</b> (new). Lead-in <b>Typography.body</b> 14.5px text. Reason 13.5px textMuted. Close <b>Typography.scriptureItalic</b> 16px. Appeal block surface card, radius <b>Radius.lg</b>. Branch on <code>reason==='safety_concern'</code> to drop reason + close + re-apply.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §19 PERSISTENT BANNER ░░░░░░░░░░ -->
+  <section class="section" id="s19" data-screen-label="Leader · Persistent banner">
+    <div class="section-header">
+      <div class="section-eyebrow">Deliverable 19 · Ruling #17</div>
+      <h2 class="section-title">After the modal — <em>a quiet banner that doesn't nag</em></h2>
+      <p class="section-desc">Once the leader dismisses the outcome modal, the Home tab keeps a <strong>persistent banner</strong> so the message isn't lost: <strong>"Your registration could not be verified at this time."</strong> with a <strong>Read details →</strong> affordance that re-opens the full notice. It sits where the verification-pending banner used to — same chrome, generic enough that a screenshot reveals nothing underground-specific.</p>
+    </div>
+
+    <div class="stage">
+      <div class="phone-col"><div id="m-banner"></div><div class="phone-caption">Home tab · persistent · "Read details →" reopens the modal</div></div>
+      <div class="specs">
+        <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>VerificationBanner<span class="ang">/&gt;</span> · outcome</span></div>
+        <div class="specs-inner"><div class="specs-grid single">
+          <div class="specs-block"><div class="specs-block-label">Behavior</div>
+            <div class="spec-row"><span class="spec-key">copy</span><span class="spec-val">"Your registration could not be verified at this time." + "Read details →".</span></div>
+            <div class="spec-row"><span class="spec-key">persist</span><span class="spec-val">Stays until the leader re-applies or the record is removed. No auto-dismiss.</span></div>
+            <div class="spec-row"><span class="spec-key">generic</span><span class="spec-val">Same banner chrome all church types use. No underground signal in a captured screen.</span></div>
+            <div class="spec-row"><span class="spec-key">read</span><span class="spec-val">"Read details →" re-opens VerificationOutcomeModal (§18).</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">RN spec</span> Extend <b>VerificationBanner.tsx</b> with an <code>outcome</code> state (alongside pending). Neutral tint (surfaceElevated), not red — the modal already carried the weight; the banner is a calm reminder. "Read details" re-mounts the modal.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §20 DAY-23 WARNING ░░░░░░░░░░ -->
+  <section class="section" id="s20" data-screen-label="Leader · Day-23 warning">
+    <div class="section-header">
+      <div class="section-eyebrow">Deliverable 20 · Ruling #18</div>
+      <h2 class="section-title">Before removal — <em>blameless, time to appeal</em></h2>
+      <p class="section-desc">Three days before a pending record is hard-deleted (day 23), a <strong>modal-on-launch</strong> in a blameless tone. The headline centers our wish to keep them — <strong>"We don't want to lose your registration"</strong> — and the body <strong>owns that the delay may be on our side</strong> ("Sometimes that's because we're still reviewing on our end"), with a path to appeal at <strong>accounts@projectreplant.org</strong> and a single <strong>"I understand"</strong> CTA. It never implies the leader dropped the ball.</p>
+    </div>
+
+    <div class="stage">
+      <div class="phone-col"><div id="m-day23"></div><div class="phone-caption">Modal-on-launch · gentle · "I understand"</div></div>
+      <div class="specs">
+        <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>PreRemovalModal<span class="ang">/&gt;</span></span></div>
+        <div class="specs-inner"><div class="specs-grid single">
+          <div class="specs-block"><div class="specs-block-label">Behavior</div>
+            <div class="spec-row"><span class="spec-key">trigger</span><span class="spec-val">Day-23 launch (3 days before day-30 auto-delete window). Once.</span></div>
+            <div class="spec-row"><span class="spec-key">tone</span><span class="spec-val">"We don't want to lose your registration." Owns that the delay may be on Replant's side — never blames the leader.</span></div>
+            <div class="spec-row"><span class="spec-key">appeal</span><span class="spec-val">accounts@projectreplant.org · re-apply welcome.</span></div>
+            <div class="spec-row"><span class="spec-key">cta</span><span class="spec-val">"I understand." Single button, no dismiss-X that feels like a trap.</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">RN spec</span> <b>PreRemovalModal.tsx</b> (new). Amber glyph well (border <b>Colors.amber</b>), not red — this is a heads-up, not a verdict. Body <b>Typography.body</b>. Single primary CTA. Shows once at day 23 via a launch-gate flag.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §21 VISIBILITY FLIPS + JOIN ROTATION (3 variants) ░░░░░░░░░░ -->
+  <section class="section" id="s21" data-screen-label="Leader · Visibility + Join code">
+    <div class="section-header">
+      <div class="section-eyebrow">Deliverable 21 · Rulings #19 + #20</div>
+      <h2 class="section-title">Visibility flips &amp; a refreshed code — <em>told plainly, never naming the channel</em></h2>
+      <p class="section-desc">Three modal-on-launch notices the admin actions produce. <strong>Hidden→Visible</strong> and <strong>Visible→Hidden</strong> each state plainly what changed and what stayed protected — and <strong>neither names the channel of contact</strong> (that's admin-internal meta). The <strong>join-code rotation</strong> notice shows the refreshed code with a Copy action and a "Got it" close.</p>
+    </div>
+
+    <div class="stage triple">
+      <div class="phone-col"><div id="m-flip-h2v"></div><div class="phone-caption"><b style="color:var(--sky)">Hidden → Visible</b></div></div>
+      <div class="phone-col"><div id="m-flip-v2h"></div><div class="phone-caption">Visible → Hidden</div></div>
+      <div class="phone-col"><div id="m-join-refresh"></div><div class="phone-caption"><b>Join code refreshed</b> · Copy + Got it</div></div>
+    </div>
+
+    <div class="specs" style="margin-top:28px">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>VisibilityFlipModal<span class="ang">/&gt;</span> · <span class="ang">&lt;</span>JoinCodeRefreshedModal<span class="ang">/&gt;</span></span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div class="specs-block"><div class="specs-block-label">Visibility flips (#19)</div>
+          <div class="spec-row"><span class="spec-key">h→v</span><span class="spec-val">"…now listed as Visible in the Replant network. Your location remains hidden."</span></div>
+          <div class="spec-row"><span class="spec-key">v→h</span><span class="spec-val">"…now listed as Hidden. Other leaders will see 'Underground Church' and your region only."</span></div>
+          <div class="spec-row"><span class="spec-key">never</span><span class="spec-val">Neither names the channel of contact — admin-internal only.</span></div>
+        </div>
+        <div class="specs-block"><div class="specs-block-label">Join rotation (#20)</div>
+          <div class="spec-row"><span class="spec-key">copy</span><span class="spec-val">"Your join code has been refreshed" + new code displayed.</span></div>
+          <div class="spec-row"><span class="spec-key">actions</span><span class="spec-val">Copy CTA (Clipboard + success haptic) + "Got it."</span></div>
+          <div class="spec-row"><span class="spec-key">format</span><span class="spec-val">Locked <code>RPL-XXXX-NNNNN</code>, monospace, copy-on-tap.</span></div>
+        </div>
+      </div></div>
+      <div class="specs-note"><div class="specs-note-label">Locale-safe</div><div class="specs-note-body">All three avoid idioms and time-of-day. "Refreshed" reads cleanly in translation; "Visible / Hidden" map directly to the <code>show_church_name</code> bit without the internal "Brave / Safe" jargon ever surfacing to a leader.</div></div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">RN spec</span> <b>VisibilityFlipModal.tsx</b> + <b>JoinCodeRefreshedModal.tsx</b> (new). Flip pill uses <b>Colors.accent</b> (Visible) / <b>textMuted</b> (Hidden). Code block monospace <b>Typography.mono</b>, Clipboard.setStringAsync + Haptics.notificationAsync(Success). All modal-on-launch, one-shot per action.</div>
+  </section>
+
+  <!-- ░░░ ENDNOTE ░░░ -->
+  <div class="endnote">
+    <div class="endnote-prayer">"He will not let your foot slip — he who watches over you will not slumber." — Psalm 121:3</div>
+    <div class="endnote-meta">
+      Replant App · Underground Queue · Leader Touchpoints<br>
+      Flow 2 of 2 · 6 surfaces · pastoral throughout<br>
+      Founder ratifies → SME review → FE wire-up
+    </div>
+  </div>
+
+</div>
+
+<script src="leader-touchpoints-cd.js"></script>
+</body>
+</html>

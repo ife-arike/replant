@@ -1,0 +1,82 @@
+---
+/**
+ * Top nav for the blog.
+ * Mirrors the marketing site's nav but quieter — single link back to projectreplant.org.
+ */
+---
+
+<nav>
+  <a href="/" class="nav-logo" aria-label="Replant blog home">
+    <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="100" cy="100" r="92" stroke="#6BB5E8" stroke-width="6" fill="none" />
+      <path d="M68 60 V145 M68 60 H105 a25 25 0 0 1 0 50 H68" stroke="#F0EDE6" stroke-width="9" stroke-linecap="round" fill="none" />
+    </svg>
+    <span class="nav-wordmark">Replant<span class="suffix"> <em>·</em> Blog</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="/about">About</a>
+    <a href="https://projectreplant.org" class="nav-cta">projectreplant.org</a>
+  </div>
+</nav>
+
+<style>
+  nav {
+    position: sticky; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5rem 4rem;
+    background: rgba(8, 8, 8, 0.85);
+    backdrop-filter: blur(14px);
+    border-bottom: 0.5px solid var(--ink-faint);
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 0.75rem;
+    text-decoration: none;
+  }
+  .nav-logo svg { width: 34px; height: 34px; }
+  .nav-wordmark {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .nav-wordmark em {
+    color: var(--ink-mid);
+    font-style: normal;
+    margin: 0 0.2em;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  .nav-links a {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mid);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  a.nav-cta {
+    color: var(--sky);
+    border: 0.5px solid var(--sky-mid);
+    padding: 0.45rem 1.2rem;
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+  a.nav-cta:hover { background: var(--sky-dim); color: var(--sky); }
+
+  @media (max-width: 640px) {
+    nav { padding: 1.2rem 1.5rem; }
+    .nav-links { gap: 1rem; }
+    .nav-links a:not(.nav-cta) { display: none; }
+    .nav-wordmark { font-size: 1.15rem; }
+    .nav-wordmark .suffix { display: none; }
+    a.nav-cta { font-size: 0.65rem; padding: 0.4rem 0.8rem; letter-spacing: 0.08em; }
+  }
+</style>

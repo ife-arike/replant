@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant CD — "A word from your family" concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────
+   ROOT TOKENS — Replant design system
+   ───────────────────────────────────────────── */
+:root {
+  --black:   #080808;
+  --bg:      #0b0b0c;
+  --surface: #121214;
+  --surface2:#18181b;
+
+  --cream:     #E6E1D5;
+  --off-white: #F0EDE6;
+  --muted:     rgba(240,237,230,0.45);
+  --muted-2:   rgba(240,237,230,0.28);
+  --faint:     rgba(240,237,230,0.08);
+  --faint-2:   rgba(240,237,230,0.14);
+
+  --sky:       #6BB5E8;
+  --sky-mid:   rgba(107,181,232,0.35);
+  --sky-dim:   rgba(107,181,232,0.12);
+  --sky-faint: rgba(107,181,232,0.05);
+  --sky-border:rgba(107,181,232,0.18);
+
+  --red:       #D9594F;
+  --red-mid:   rgba(217,89,79,0.30);
+  --red-dim:   rgba(217,89,79,0.08);
+
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans:  'DM Sans', system-ui, sans-serif;
+  --mono:  'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: #060607;
+  font-family: var(--sans);
+  color: var(--off-white);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 52px 24px 96px;
+  gap: 40px;
+  background:
+    radial-gradient(1400px 700px at 50% -6%, rgba(107,181,232,0.04), transparent 60%),
+    #060607;
+}
+
+/* ─────────── Page header ─────────── */
+.page-head {
+  text-align: center;
+  max-width: 540px;
+}
+.page-head .eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 12px;
+}
+.page-head h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 28px;
+  letter-spacing: 0.03em;
+  color: var(--off-white);
+  margin-bottom: 8px;
+  line-height: 1.15;
+}
+.page-head .desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.page-head .desc em {
+  font-style: normal;
+  color: var(--sky);
+}
+
+/* ─────────── Phone frame ─────────── */
+.frame-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.frame-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.phone {
+  width: 393px;
+  height: 852px;
+  background: var(--black);
+  border-radius: 47px;
+  position: relative;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,0.07);
+  box-shadow:
+    0 0 0 0.5px rgba(0,0,0,0.9),
+    0 40px 120px rgba(0,0,0,0.85),
+    0 8px 32px rgba(0,0,0,0.6),
+    inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+/* Dynamic Island */
+.dynamic-island {
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 20;
+}
+
+/* Left-edge red accent — Persecuted tab signature */
+.left-edge-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--red);
+  opacity: 0.22;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Tab root */
+.tab-root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--black);
+  border-radius: 46px;
+  overflow: hidden;
+}
+
+/* Scrollable content area */
+.surface-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.surface-scroll::-webkit-scrollbar { width: 0; }
+
+/* ─────────── Nav bar ─────────── */
+.persec-navbar {
+  padding: 62px 20px 14px;
+  flex-shrink: 0;
+  position: relative;
+}
+.persec-navbar .title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: 0.4px;
+  color: var(--red);
+  line-height: 1.1;
+}
+.persec-navbar .subtitle {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.persec-navbar .hairline {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 0.5px;
+  background: var(--red-mid);
+}
+
+/* ─────────── Pill tab bar ─────────── */
+.pill-bar {
+  padding: 10px 20px 8px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.pill-bar::-webkit-scrollbar { width: 0; height: 0; }
+.pill {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 100px;
+  white-space: nowrap;
+  border: 0.5px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .18s;
+}
+.pill.active {
+  color: var(--red);
+  background: var(--red-dim);
+  border-color: var(--red-mid);
+}
+
+/* ─────────── Section header ─────────── */
+.section-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  margin-top: 22px;
+  margin-bottom: 14px;
+}
+.section-label {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0.01em;
+  color: var(--off-white);
+  white-space: nowrap;
+}
+.section-rule {
+  flex: 1;
+  height: 0.5px;
+  background: var(--faint);
+}
+
+/* ─────────── Word for Today ─────────── */
+.word-today {
+  padding: 26px 30px 28px;
+  text-align: center;
+  border-bottom: 0.5px solid var(--faint);
+  cursor: pointer;
+}
+.word-today .eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 18px;
+}
+.word-today .verse {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 22px;
+  line-height: 1.48;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  margin-bottom: 14px;
+}
+.word-today .ref {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.verse-pager {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+.v-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: var(--faint-2);
+}
+.v-dot.on-red  { background: var(--red); }
+.v-dot.on-sky  { background: var(--sky); }
+
+/* ─────────── Word from your family ─────────── */
+/* Open text — no card border. Breathes within the section. */
+.family-word-block {
+  padding: 0 26px 24px;
+  cursor: pointer;
+}
+.family-word-text {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.family-attribution {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 18px;
+}
+.family-pager {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+/* ─────────── Practical guidance ─────────── */
+.guidance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 22px;
+}
+.guidance-card {
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 8px;
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.guidance-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  background: rgba(107,181,232,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sky);
+  flex-shrink: 0;
+}
+.guidance-body { flex: 1; min-width: 0; }
+.guidance-title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 3px;
+  line-height: 1.25;
+}
+.guidance-sub {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.guidance-chev { color: var(--muted-2); flex-shrink: 0; }
+
+/* ─────────── Body with you (EAP) ─────────── */
+.body-with-you {
+  margin: 0 22px;
+  padding: 20px 20px 18px;
+  background: var(--sky-faint);
+  border: 0.5px solid var(--sky-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.body-copy {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--cream);
+  margin-bottom: 16px;
+}
+.eap-cta {
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 6px;
+  padding: 11px 18px;
+  background: rgba(107,181,232,0.07);
+  cursor: pointer;
+}
+.eap-cta-label {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+
+/* ─────────── Scripture footer ─────────── */
+.scripture-foot {
+  margin: 28px 22px 0;
+  padding: 22px 0 36px;
+  border-top: 0.5px solid var(--faint);
+  text-align: center;
+}
+.scripture-foot .eyebrow {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.scripture-foot .verse {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+}
+.scripture-foot .ref {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+/* ─────────── Bottom tab bar ─────────── */
+.tc-tabbar {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 4px 30px;
+  background: rgba(6,6,7,0.96);
+  border-top: 0.5px solid var(--faint);
+  flex-shrink: 0;
+}
+.tc-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 2px;
+  opacity: 0.38;
+}
+.tc-tab.active { opacity: 1; }
+.tc-tab .tab-label {
+  font-family: var(--sans);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--off-white);
+  white-space: nowrap;
+}
+.tc-tab.active .tab-label { color: var(--red); }
+
+/* ─────────── RN Spec panel ─────────── */
+.rn-spec {
+  max-width: 860px;
+  width: 100%;
+  padding: 24px 28px 28px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 8px;
+}
+.rn-spec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--faint);
+  flex-wrap: wrap;
+}
+.rn-spec-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.rn-spec-title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+}
+.rn-spec-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: right;
+}
+
+.rn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 28px;
+}
+.rn-grid .full { grid-column: 1 / -1; }
+
+.rn-block .lbl {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 9px;
+}
+.rn-block ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rn-block li {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--cream);
+}
+.rn-block li .k { color: var(--sky); }
+.rn-block li .v { color: var(--off-white); }
+.rn-block li .c { color: var(--muted-2); }
+
+.rn-block pre {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--cream);
+  background: rgba(0,0,0,0.45);
+  border: 0.5px solid var(--faint);
+  border-radius: 4px;
+  padding: 13px 14px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.rn-block pre .k { color: var(--sky); }
+.rn-block pre .s { color: #C9A05D; }
+.rn-block pre .c { color: var(--muted-2); }
+
+/* ─────────── Design note ─────────── */
+.design-note {
+  max-width: 860px;
+  width: 100%;
+  padding: 20px 24px;
+  background: var(--sky-faint);
+  border: 0.5px solid var(--sky-border);
+  border-left: 2px solid var(--sky);
+  border-radius: 0 6px 6px 0;
+}
+.design-note .dn-head {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 10px;
+}
+.design-note p {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  margin-bottom: 10px;
+}
+.design-note p:last-child { margin-bottom: 0; }
+.design-note em {
+  font-style: normal;
+  color: var(--cream);
+}
+
+/* ─────────── Sample words panel ─────────── */
+.sample-words {
+  max-width: 860px;
+  width: 100%;
+  padding: 22px 28px 24px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 8px;
+}
+.sw-head {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 16px;
+}
+.sw-word {
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--faint);
+}
+.sw-word:last-child { border-bottom: none; padding-bottom: 0; }
+.sw-index {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  color: var(--muted-2);
+  margin-bottom: 7px;
+}
+.sw-text {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  margin-bottom: 6px;
+}
+.sw-attr {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ─────────── Invariants strip ─────────── */
+.invariants {
+  max-width: 860px;
+  width: 100%;
+  padding: 13px 20px;
+  border: 0.5px solid var(--red-mid);
+  border-left: 2px solid var(--red);
+  border-radius: 0 6px 6px 0;
+  background: rgba(217,89,79,0.03);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  align-items: center;
+}
+.inv-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.inv-item {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.inv-item::before { content: '·'; color: var(--muted-2); margin-right: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Page header -->
+<div class="page-head">
+  <div class="eyebrow">Claude Design · Persecuted Tab · Take Heart</div>
+  <h1>A word from your family</h1>
+  <p class="desc">
+    A new section on the Take Heart scene — words of encouragement submitted by leaders in the Replant network, reviewed and rotated. Attributed by <em>role + region only</em>. Display side only; submission flow is TBD.
+  </p>
+</div>
+
+<!-- Phone frame -->
+<div class="frame-wrap">
+  <div class="frame-label">Take Heart · iPhone Pro Max 393×852</div>
+  <div class="phone">
+    <div class="dynamic-island"></div>
+    <div class="left-edge-accent"></div>
+
+    <div class="tab-root">
+
+      <!-- Nav bar -->
+      <div class="persec-navbar">
+        <div class="title">Persecuted</div>
+        <div class="subtitle">A WORD · GUIDANCE · THE BODY WITH YOU</div>
+        <div class="hairline"></div>
+      </div>
+
+      <!-- Pill tab bar -->
+      <div class="pill-bar">
+        <div class="pill">Feed</div>
+        <div class="pill">My Heartcries</div>
+        <div class="pill">Bear Witness</div>
+        <div class="pill active">Take Heart</div>
+        <div class="pill">Together</div>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="surface-scroll">
+
+        <!-- 1. WORD FOR TODAY -->
+        <div class="word-today">
+          <div class="eyebrow">Word for today</div>
+          <div class="verse">"When you pass through the waters, I will be with you; and through the rivers, they shall not overwhelm you."</div>
+          <div class="ref">Isaiah 43:2</div>
+          <div class="verse-pager">
+            <span class="v-dot on-red"></span>
+            <span class="v-dot"></span>
+            <span class="v-dot"></span>
+            <span class="v-dot"></span>
+            <span class="v-dot"></span>
+          </div>
+        </div>
+
+        <!-- 2. A WORD FROM YOUR FAMILY (NEW) -->
+        <div class="section-row">
+          <span class="section-label">A word from your family</span>
+          <div class="section-rule"></div>
+        </div>
+
+        <div class="family-word-block">
+          <div class="family-word-text">
+            "We have not forgotten you. We speak your name before the Lord every morning. You are not alone in what you carry."
+          </div>
+          <div class="family-attribution">A Minister from East Africa</div>
+          <div class="family-pager">
+            <span class="v-dot on-sky"></span>
+            <span class="v-dot"></span>
+            <span class="v-dot"></span>
+            <span class="v-dot"></span>
+          </div>
+        </div>
+
+        <!-- 3. PRACTICAL GUIDANCE -->
+        <div class="section-row">
+          <span class="section-label">Practical guidance</span>
+          <div class="section-rule"></div>
+        </div>
+
+        <div class="guidance-list">
+          <div class="guidance-card">
+            <div class="guidance-icon">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <rect x="2.5" y="6" width="9" height="6.5" rx="1" stroke="currentColor" stroke-width="1" fill="none"/>
+                <path d="M4.5 6V4a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" stroke-width="1" fill="none"/>
+              </svg>
+            </div>
+            <div class="guidance-body">
+              <div class="guidance-title">Digital security, brief.</div>
+              <div class="guidance-sub">Six habits that protect you and the body.</div>
+            </div>
+            <svg class="guidance-chev" width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="guidance-card">
+            <div class="guidance-icon">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <rect x="3" y="2" width="8" height="11" stroke="currentColor" stroke-width="1" fill="none"/>
+                <circle cx="9" cy="7.5" r="0.6" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="guidance-body">
+              <div class="guidance-title">If your fellowship is raided.</div>
+              <div class="guidance-sub">Steps to protect the gathered and the records.</div>
+            </div>
+            <svg class="guidance-chev" width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="guidance-card">
+            <div class="guidance-icon">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1.5l4.5 1.5v4.5c0 2.5-2 4.5-4.5 5-2.5-0.5-4.5-2.5-4.5-5V3z" stroke="currentColor" stroke-width="1" fill="none"/>
+              </svg>
+            </div>
+            <div class="guidance-body">
+              <div class="guidance-title">If you are arrested.</div>
+              <div class="guidance-sub">What to say, what not to say, and how the body continues.</div>
+            </div>
+            <svg class="guidance-chev" width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="guidance-card">
+            <div class="guidance-icon">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <path d="M2 2.5h4a2 2 0 0 1 2 2v8a2 2 0 0 0-2-2H2z" stroke="currentColor" stroke-width="1" fill="none"/>
+                <path d="M12 2.5H8a2 2 0 0 0-2 2v8a2 2 0 0 1 2-2h4z" stroke="currentColor" stroke-width="1" fill="none"/>
+              </svg>
+            </div>
+            <div class="guidance-body">
+              <div class="guidance-title">Continuing under prohibition.</div>
+              <div class="guidance-sub">How the early church gathered when forbidden.</div>
+            </div>
+            <svg class="guidance-chev" width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 4. THE BODY WITH YOU (EAP) -->
+        <div class="section-row">
+          <span class="section-label">The body with you</span>
+          <div class="section-rule"></div>
+        </div>
+
+        <div class="body-with-you">
+          <div class="body-copy">Do you have an Emergency Action Plan with the churches around you?</div>
+          <div class="eap-cta">
+            <div class="eap-cta-label">Start an EAP Branch</div>
+          </div>
+        </div>
+
+        <!-- Scripture footer -->
+        <div class="scripture-foot">
+          <div class="eyebrow">Take Heart</div>
+          <div class="verse">"I have said these things to you, that in me you may have peace. In the world you will have tribulation. But take heart; I have overcome the world."</div>
+          <div class="ref">John 16:33</div>
+        </div>
+
+      </div><!-- /surface-scroll -->
+
+      <!-- Bottom tab bar -->
+      <div class="tc-tabbar">
+        <!-- Home -->
+        <div class="tc-tab">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <path d="M3 9.5L11 3l8 6.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.1" fill="none"/>
+            <path d="M8 20v-7h6v7" stroke="currentColor" stroke-width="1.1" fill="none"/>
+          </svg>
+          <span class="tab-label">Home</span>
+        </div>
+        <!-- Connect -->
+        <div class="tc-tab">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="8" r="3.5" stroke="currentColor" stroke-width="1.1" fill="none"/>
+            <path d="M4 19c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+          </svg>
+          <span class="tab-label">Connect</span>
+        </div>
+        <!-- Church -->
+        <div class="tc-tab">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2v4M9 4h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+            <rect x="3" y="9" width="16" height="11" rx="1" stroke="currentColor" stroke-width="1.1" fill="none"/>
+            <path d="M8 20v-5h6v5" stroke="currentColor" stroke-width="1.1" fill="none"/>
+          </svg>
+          <span class="tab-label">Church</span>
+        </div>
+        <!-- Prayer Wall -->
+        <div class="tc-tab">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <path d="M11 19C6 15.5 3 12.5 3 9a4 4 0 0 1 8 0 4 4 0 0 1 8 0c0 3.5-3 6.5-8 10z" stroke="currentColor" stroke-width="1.1" fill="none"/>
+          </svg>
+          <span class="tab-label">Prayer Wall</span>
+        </div>
+        <!-- Persecuted (active) -->
+        <div class="tc-tab active">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="11" r="8" stroke="#D9594F" stroke-width="1.1" fill="none"/>
+            <path d="M11 7v5M11 15v.5" stroke="#D9594F" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+          <span class="tab-label">Persecuted</span>
+        </div>
+      </div>
+
+    </div><!-- /tab-root -->
+  </div><!-- /phone -->
+</div><!-- /frame-wrap -->
+
+<!-- Sample words panel -->
+<div class="sample-words">
+  <div class="sw-head">Sample words — 4 entries for mockup rotation</div>
+
+  <div class="sw-word">
+    <div class="sw-index">Word 1 · shown in mockup</div>
+    <div class="sw-text">"We have not forgotten you. We speak your name before the Lord every morning. You are not alone in what you carry."</div>
+    <div class="sw-attr">A Minister from East Africa</div>
+  </div>
+
+  <div class="sw-word">
+    <div class="sw-index">Word 2</div>
+    <div class="sw-text">"The fire that is testing you is the same fire that proved gold in Shadrach and Meshach. We have watched the Lord walk in it with them. He walks in it with you."</div>
+    <div class="sw-attr">A Pastor from South Asia</div>
+  </div>
+
+  <div class="sw-word">
+    <div class="sw-index">Word 3</div>
+    <div class="sw-text">"Your faithfulness has reached us here and made us braver. We are praying for your family by name. The church is not silent."</div>
+    <div class="sw-attr">An Elder from South America</div>
+  </div>
+
+  <div class="sw-word">
+    <div class="sw-index">Word 4</div>
+    <div class="sw-text">"We do not fully understand what you are living. But we are here — in prayer, in fasting, in the same Spirit. What you suffer, we share with you."</div>
+    <div class="sw-attr">A Ministry Leader from West Africa</div>
+  </div>
+</div>
+
+<!-- RN Spec panel -->
+<div class="rn-spec">
+  <div class="rn-spec-head">
+    <div>
+      <div class="rn-spec-eyebrow">RN Spec</div>
+      <div class="rn-spec-title">A word from your family — new section</div>
+    </div>
+    <div class="rn-spec-meta">Take Heart scene · TakeHeartScene.tsx<br>Insert after Word for Today block</div>
+  </div>
+
+  <div class="rn-grid">
+
+    <!-- Section header -->
+    <div class="rn-block">
+      <div class="lbl">Section header (unchanged pattern)</div>
+      <ul>
+        <li><span class="k">fontFamily</span>: <span class="v">Typography.displayRegular</span> <span class="c">// Cormorant 400</span></li>
+        <li><span class="k">fontSize</span>: <span class="v">19</span>, <span class="k">letterSpacing</span>: <span class="v">0.19</span></li>
+        <li><span class="k">color</span>: <span class="v">Colors.text</span> <span class="c">// #F0EDE6</span></li>
+        <li><span class="k">rule</span>: <span class="v">flex:1</span>, <span class="k">height</span>: <span class="v">StyleSheet.hairlineWidth</span></li>
+        <li><span class="k">rule bg</span>: <span class="v">'rgba(240,237,230,0.08)'</span></li>
+        <li><span class="k">row paddingHorizontal</span>: <span class="v">22</span>, <span class="k">gap</span>: <span class="v">14</span></li>
+        <li><span class="k">marginTop</span>: <span class="v">22</span>, <span class="k">marginBottom</span>: <span class="v">14</span></li>
+      </ul>
+    </div>
+
+    <!-- Word body text -->
+    <div class="rn-block">
+      <div class="lbl">Word body text</div>
+      <ul>
+        <li><span class="k">fontFamily</span>: <span class="v">Typography.displayRegular</span> <span class="c">// roman, NOT italic</span></li>
+        <li><span class="k">fontSize</span>: <span class="v">19</span>, <span class="k">lineHeight</span>: <span class="v">29</span></li>
+        <li><span class="k">letterSpacing</span>: <span class="v">0.19</span></li>
+        <li><span class="k">color</span>: <span class="v">'#E6E1D5'</span> <span class="c">// CREAM const</span></li>
+        <li><span class="k">textAlign</span>: <span class="v">'center'</span></li>
+        <li><span class="k">marginBottom</span>: <span class="v">14</span></li>
+        <li><span class="c">// Do NOT use scriptureItalic — this is human voice</span></li>
+      </ul>
+    </div>
+
+    <!-- Attribution line -->
+    <div class="rn-block">
+      <div class="lbl">Attribution line</div>
+      <ul>
+        <li><span class="k">fontFamily</span>: <span class="v">Typography.scriptureItalic</span> <span class="c">// Cormorant 300 Light Italic</span></li>
+        <li><span class="k">fontSize</span>: <span class="v">13.5</span>, <span class="k">letterSpacing</span>: <span class="v">0.2</span></li>
+        <li><span class="k">color</span>: <span class="v">Colors.textMuted</span></li>
+        <li><span class="k">textAlign</span>: <span class="v">'center'</span></li>
+        <li><span class="k">marginBottom</span>: <span class="v">18</span></li>
+        <li><span class="c">// Format: "A [Role] from [Region]"</span></li>
+        <li><span class="c">// No name, no church, no country (region only)</span></li>
+      </ul>
+    </div>
+
+    <!-- Dot pager -->
+    <div class="rn-block">
+      <div class="lbl">Dot pager</div>
+      <ul>
+        <li><span class="k">dot width/height</span>: <span class="v">5</span>, <span class="k">borderRadius</span>: <span class="v">2.5</span></li>
+        <li><span class="k">gap</span>: <span class="v">6</span> (same as Word for Today)</li>
+        <li><span class="k">idle bg</span>: <span class="v">Colors.border</span> <span class="c">// rgba(240,237,230,0.08)</span></li>
+        <li><span class="k">active bg</span>: <span class="v">Colors.accent</span> <span class="c">// #6BB5E8 sky — NOT red</span></li>
+        <li><span class="k">row justifyContent</span>: <span class="v">'center'</span></li>
+        <li><span class="c">// Sky dot = human voice; red = threshold only</span></li>
+      </ul>
+    </div>
+
+    <!-- Container / surface -->
+    <div class="rn-block">
+      <div class="lbl">Container / surface</div>
+      <ul>
+        <li><span class="v">No card border</span> — open text within section</li>
+        <li><span class="k">paddingHorizontal</span>: <span class="v">26</span></li>
+        <li><span class="k">paddingBottom</span>: <span class="v">24</span></li>
+        <li>No <span class="k">backgroundColor</span> — sits directly on <span class="v">#080808</span></li>
+        <li><span class="c">// Open layout visually separates from</span></li>
+        <li><span class="c">// the bordered guidance cards below it</span></li>
+      </ul>
+    </div>
+
+    <!-- Auto-cycle behaviour -->
+    <div class="rn-block">
+      <div class="lbl">Auto-cycle behaviour</div>
+      <ul>
+        <li>Interval: <span class="v">12 000</span> ms (matches Word for Today)</li>
+        <li><span class="k">paused.current</span> = true on <span class="v">onPressIn</span></li>
+        <li><span class="k">paused.current</span> = false on <span class="v">onPressOut</span></li>
+        <li>Tap anywhere in block → advance index</li>
+        <li><span class="k">accessibilityRole</span>: <span class="v">'button'</span></li>
+        <li><span class="k">accessibilityHint</span>: <span class="v">'Tap for the next word'</span></li>
+        <li>Separate <span class="k">useRef</span> + <span class="k">useEffect</span> from verse cycle</li>
+      </ul>
+    </div>
+
+    <!-- Data shape -->
+    <div class="rn-block full">
+      <div class="lbl">Data shape (static array for now, DB-backed post-MVP)</div>
+      <pre><span class="c">// TakeHeartScene.tsx — static array (same pattern as ENCOURAGEMENT_VERSES)</span>
+<span class="k">const</span> FAMILY_WORDS = [
+  {
+    <span class="k">text</span>: <span class="s">'We have not forgotten you. We speak your name before the Lord every morning.'</span>,
+    <span class="k">attribution</span>: <span class="s">'A Minister from East Africa'</span>,
+  },
+  {
+    <span class="k">text</span>: <span class="s">'The fire that is testing you is the same fire that proved gold in Shadrach and Meshach...'</span>,
+    <span class="k">attribution</span>: <span class="s">'A Pastor from South Asia'</span>,
+  },
+  <span class="c">// ... (admin-seeded; reviewed before display)</span>
+];</pre>
+    </div>
+
+    <!-- State addition -->
+    <div class="rn-block full">
+      <div class="lbl">State addition to TakeHeartScene</div>
+      <pre><span class="c">// Add alongside existing verseIndex state:</span>
+<span class="k">const</span> [familyIndex, setFamilyIndex] = <span class="k">useState</span>(<span class="v">0</span>);
+<span class="k">const</span> familyPaused = <span class="k">useRef</span>(<span class="v">false</span>);
+
+<span class="c">// Separate interval — independent cycle from verses:</span>
+<span class="k">useEffect</span>(() => {
+  <span class="k">const</span> interval = <span class="k">setInterval</span>(() => {
+    <span class="k">if</span> (!familyPaused.current) {
+      setFamilyIndex((i) => (i + <span class="v">1</span>) % FAMILY_WORDS.length);
+    }
+  }, <span class="v">12000</span>);
+  <span class="k">return</span> () => <span class="k">clearInterval</span>(interval);
+}, []);
+
+<span class="k">const</span> cycleFamilyWord = <span class="k">useCallback</span>(() => {
+  setFamilyIndex((i) => (i + <span class="v">1</span>) % FAMILY_WORDS.length);
+}, []);</pre>
+    </div>
+
+    <!-- JSX skeleton -->
+    <div class="rn-block full">
+      <div class="lbl">JSX skeleton — new section</div>
+      <pre><span class="c">{/* A word from your family */}</span>
+<span class="k">&lt;SectionHeader</span> label=<span class="s">"A word from your family"</span> <span class="k">/&gt;</span>
+<span class="k">&lt;Pressable</span>
+  onPress={cycleFamilyWord}
+  onPressIn={() => { familyPaused.current = <span class="v">true</span>; }}
+  onPressOut={() => { familyPaused.current = <span class="v">false</span>; }}
+  accessibilityRole=<span class="s">"button"</span>
+  accessibilityHint=<span class="s">"Tap for the next word"</span>
+  style={styles.familyBlock}
+<span class="k">&gt;</span>
+  <span class="k">&lt;Text</span> style={styles.familyWord}&gt;{<span class="s">'"“'</span>}{fw.text}{<span class="s">'”"'</span>}<span class="k">&lt;/Text&gt;</span>
+  <span class="k">&lt;Text</span> style={styles.familyAttribution}&gt;{fw.attribution}<span class="k">&lt;/Text&gt;</span>
+  <span class="k">&lt;View</span> style={styles.dotPager}&gt;
+    {FAMILY_WORDS.map((_, i) => (
+      <span class="k">&lt;View</span>
+        key={i}
+        style={[
+          styles.dot,
+          i === familyIndex % FAMILY_WORDS.length && styles.dotActiveSky,
+        ]}
+      <span class="k">/&gt;</span>
+    ))}
+  <span class="k">&lt;/View&gt;</span>
+<span class="k">&lt;/Pressable&gt;</span></pre>
+    </div>
+
+    <!-- StyleSheet additions -->
+    <div class="rn-block full">
+      <div class="lbl">StyleSheet additions</div>
+      <pre>familyBlock: {
+  <span class="k">paddingHorizontal</span>: <span class="v">26</span>,
+  <span class="k">paddingBottom</span>: <span class="v">24</span>,
+},
+familyWord: {
+  <span class="k">fontFamily</span>: <span class="s">Typography.displayRegular</span>,  <span class="c">// roman — NOT scriptureItalic</span>
+  <span class="k">fontSize</span>: <span class="v">19</span>,
+  <span class="k">lineHeight</span>: <span class="v">29</span>,
+  <span class="k">letterSpacing</span>: <span class="v">0.19</span>,
+  <span class="k">color</span>: <span class="s">CREAM</span>,                          <span class="c">// '#E6E1D5'</span>
+  <span class="k">textAlign</span>: <span class="s">'center'</span>,
+  <span class="k">marginBottom</span>: <span class="v">14</span>,
+},
+familyAttribution: {
+  <span class="k">fontFamily</span>: <span class="s">Typography.scriptureItalic</span>, <span class="c">// Cormorant 300 Light Italic</span>
+  <span class="k">fontSize</span>: <span class="v">13.5</span>,
+  <span class="k">letterSpacing</span>: <span class="v">0.2</span>,
+  <span class="k">color</span>: <span class="s">Colors.textMuted</span>,
+  <span class="k">textAlign</span>: <span class="s">'center'</span>,
+  <span class="k">marginBottom</span>: <span class="v">18</span>,
+},
+dotActiveSky: {
+  <span class="k">backgroundColor</span>: <span class="s">Colors.accent</span>,        <span class="c">// '#6BB5E8' — sky, not red</span>
+},</pre>
+    </div>
+
+  </div><!-- /rn-grid -->
+</div><!-- /rn-spec -->
+
+<!-- Design note -->
+<div class="design-note">
+  <div class="dn-head">Design note — placement + visual logic</div>
+
+  <p>
+    <em>Placement between Word for Today and Practical Guidance</em> is the right call. The scene follows an emotional arc: God speaks first (scripture), then the Body speaks (family words), then action (guidance + EAP). Placing the human voice immediately after the divine word lets the persecuted leader experience community as a continuation of that encounter — not as an interruption or afterthought. It would feel wrong to put human words before God's, and putting them after the practical guidance would bury them under operational content.
+  </p>
+
+  <p>
+    <em>Open text, no card border.</em> The Word for Today and the scripture footer are also borderless centered blocks. The Practical Guidance section introduces bordered cards as a visual register shift — "these are things to do." The family words belong in the same register as the scripture: received, sat with, not acted on. A border would add utility-object energy to what should feel like a letter.
+  </p>
+
+  <p>
+    <em>Sky dot, not red.</em> Red in this tab is a severity signal. Using red here would bleed threshold meaning into a warmth context and dilute both. Sky is established as the accent color for human-network elements (guidance icons, EAP button, Connect tab) — it is the right color for words that come from verified brothers and sisters in the network.
+  </p>
+
+  <p>
+    <em>displayRegular (roman) for the body.</em> scriptureItalic is reserved for God's word and quoted historical witness. These are contemporary human words in present tense. Roman weight at 19px reads as "a letter" — warm, present, personal — without claiming the elevated register that italic connotes in this system.
+  </p>
+
+  <p>
+    <em>Attribution format: "A [Role] from [Region]."</em> Role + region follows Replant's identity safety rules for this surface. The indefinite article "A" matters: it makes each attribution feel like it could be any of many pastors in that region — which is true — and prevents the reader from fixating on a specific person rather than the word itself.
+  </p>
+</div>
+
+<!-- Invariants -->
+<div class="invariants">
+  <span class="inv-label">Hard invariants</span>
+  <span class="inv-item">No expo-blur</span>
+  <span class="inv-item">No expo-linear-gradient</span>
+  <span class="inv-item">No fontStyle:'italic' — use scriptureItalic asset</span>
+  <span class="inv-item">Dark theme only — base #080808</span>
+  <span class="inv-item">Red is threshold only — never used in this section</span>
+  <span class="inv-item">No leader identity beyond role + region</span>
+  <span class="inv-item">displayRegular (roman) for word body — NOT scriptureItalic</span>
+  <span class="inv-item">Sky accent for active dot</span>
+</div>
+
+</body>
+</html>

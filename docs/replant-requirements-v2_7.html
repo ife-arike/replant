@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Living Requirements Document v2.7</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --faint: #222222;
+    --muted: #555555;
+    --off-white: #F0EDE6;
+    --sky: #6BB5E8;
+    --sky-dim: rgba(107,181,232,0.12);
+    --amber: #D4A855;
+    --green: #5BAD7A;
+    --red: #E05555;
+    --text: #C8C4BC;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    padding: 2rem 1rem 6rem;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .doc-header {
+    border-bottom: 0.5px solid var(--faint);
+    padding-bottom: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .doc-eyebrow {
+    font-size: 0.55rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 0.6rem;
+  }
+
+  .doc-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 500;
+    color: var(--off-white);
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+
+  .doc-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .doc-meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+  .version-badge {
+    display: inline-block;
+    background: var(--sky-dim);
+    color: var(--sky);
+    border: 0.5px solid var(--sky);
+    border-radius: 3px;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    margin-left: 0.5rem;
+  }
+
+  /* Navigation */
+  .toc {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 3rem;
+  }
+
+  .toc-title {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 0.8rem;
+  }
+
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.25rem 1.5rem;
+  }
+
+  .toc a {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0;
+    transition: color 0.15s;
+  }
+
+  .toc a:hover { color: var(--sky); }
+  .toc-num { color: var(--muted); font-size: 0.68rem; }
+
+  /* Sections */
+  .section {
+    margin-bottom: 4rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 0.5px solid var(--faint);
+  }
+
+  .section-num {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sky);
+    white-space: nowrap;
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--off-white);
+  }
+
+  /* Decision blocks */
+  .decision-block {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .decision-block.closed { border-left: 3px solid var(--green); }
+  .decision-block.open { border-left: 3px solid var(--amber); }
+  .decision-block.escalated { border-left: 3px solid var(--red); }
+  .decision-block.postmvp { border-left: 3px solid var(--muted); }
+
+  .decision-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .decision-label.closed { color: var(--green); }
+  .decision-label.open { color: var(--amber); }
+  .decision-label.escalated { color: var(--red); }
+  .decision-label.postmvp { color: var(--muted); }
+
+  .decision-title {
+    color: var(--off-white);
+    font-weight: 500;
+    font-size: 0.88rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .decision-body {
+    color: var(--text);
+    font-size: 0.82rem;
+  }
+
+  /* Screen spec blocks */
+  .screen-block {
+    background: var(--surface2);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .screen-header {
+    background: var(--surface);
+    padding: 0.8rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    border-bottom: 0.5px solid var(--faint);
+  }
+
+  .screen-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--sky);
+  }
+
+  .screen-title {
+    color: var(--off-white);
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .screen-body { padding: 1.2rem 1.4rem; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.78rem;
+  }
+
+  th {
+    text-align: left;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.4rem 0.6rem;
+    border-bottom: 0.5px solid var(--faint);
+  }
+
+  td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 0.5px solid var(--faint);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  td code, th code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75em;
+    color: var(--sky);
+    background: var(--sky-dim);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+  }
+
+  /* Flags */
+  .flag {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 4px;
+    padding: 0.6rem 0.9rem;
+    margin: 0.6rem 0;
+    font-size: 0.78rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .flag-role {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--sky);
+    white-space: nowrap;
+    padding-top: 0.05rem;
+  }
+
+  /* AC list */
+  .ac-list {
+    list-style: none;
+    margin: 0.5rem 0;
+  }
+
+  .ac-list li {
+    padding: 0.2rem 0;
+    font-size: 0.8rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .ac-list li::before {
+    content: '☐';
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    border: 0.5px solid;
+  }
+
+  .tag-green { color: var(--green); border-color: var(--green); background: rgba(91,173,122,0.08); }
+  .tag-amber { color: var(--amber); border-color: var(--amber); background: rgba(212,168,85,0.08); }
+  .tag-red { color: var(--red); border-color: var(--red); background: rgba(224,85,85,0.08); }
+  .tag-blue { color: var(--sky); border-color: var(--sky); background: var(--sky-dim); }
+  .tag-muted { color: var(--muted); border-color: var(--muted); background: rgba(85,85,85,0.08); }
+
+  /* Inline notes */
+  .note {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+    margin: 0.3rem 0;
+  }
+
+  p { margin: 0.5rem 0; }
+
+  h3 {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--off-white);
+    margin: 1.2rem 0 0.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  h4 {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--sky);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 1rem 0 0.4rem;
+  }
+
+  /* Founder answer section */
+  .founder-section {
+    background: var(--surface);
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    padding: 1.4rem 1.6rem;
+    margin-top: 3rem;
+  }
+
+  .founder-section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    color: var(--amber);
+    margin-bottom: 1rem;
+  }
+
+  .founder-q {
+    background: var(--surface2);
+    border-left: 3px solid var(--amber);
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.8rem;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .founder-q-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--amber);
+    margin-bottom: 0.3rem;
+  }
+
+  .resolved {
+    opacity: 0.5;
+    text-decoration: line-through;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-eyebrow">Replant · Living Requirements Document</div>
+    <h1 class="doc-title">Spec + Grooming Decisions <span class="version-badge">v4.0</span></h1>
+    <div class="doc-meta">
+      <span>Updated: June 9, 2026</span>
+      <span>Covers: SPEC Docs 01–10 + all grooming decisions through D-64 + full mobile tab build-out (KAN-18/19/23/65/68/69/70/214) + Connect Ministries branches + KAN-207 + KAN-213 + KAN-217 + KAN-220 Done/TESTING + KAN-221/222 filed + 5-tab visual polish sprint commenced + KAN-69 connection request flow + Connect QA-complete 2026-06-09 + cross-tab routing fixes</span>
+      <span>Owner: BA → COO</span>
+      <span>Status: Active — update continuously</span>
+    </div>
+    <p style="margin-top:1rem;font-size:0.8rem;color:var(--muted);">This document is the single source of truth for all product requirements, grooming decisions, and founder rulings. SPEC docs are living — this file supersedes scattered chat outputs. BA owns updates. COO approves all changes before they enter Jira.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v2.6 changelog (8 May 2026):</strong> Audit_log canonical action set 11→22 (KAN-46 +3, KAN-110 +7, KAN-117 +1 forensic shape). Founder Decisions extended D-35→D-44 (Path B, KAN-110 Q1/Q3/Q5, KAN-114 tier ratification, KAN-117 audit-meta, KAN-119 must-have). Admin Dashboard screen statuses refreshed post-lockstep-close. Pending DBA + SEC items closed where shipped. Open Gaps closed for Login wireframes / password reset / session lifetime (KAN-46/99 shipped). Schema state v1.27.0 documented. Step-up framework architecture brief added.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v2.6 SPEC backfill (9 May 2026 — KAN-126):</strong> D-45 (message flagging MVP scope + DELIVER-ALWAYS delivery contract) and D-46 (pastoral routing surface + 3-band TIER split) integrated. Row 966 (DM flagging spec) reinforced. Rows 1191/1199 (Post-MVP flag categories entries) split to reflect flag_reason + categorized taxonomy promotion to MVP; flag_confidence + ML classification workstream remain Post-MVP. Locked Decisions extended D-44→D-46. G-25 flagging mechanism closed. Schema reference updated to v1.29.0 (<code>kan112_messages_flag_reason_v1</code>). Version not bumped — in-place reconciliation; v2.7 reserved for product-scope revision.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v3.1 — 29 May 2026 (full mobile tab build-out · Connect Ministries · KAN-207 · schema v1.35.0+):</strong> KAN-18/19 CAML + CAL (The Church Tab) built and <strong>Founder Done</strong> (PRs #91–#99, main @ <code>bb55774</code>). Full CAML flat Mapbox map + nearby list + RAG filter chips + DRAG-TO-EXPLORE + MY CHURCH LOCATION pill + recenter. CAL globe + count chip + Regions stub + RegionalPanel shell + PrayerWallPullUp. KAN-65 Persecuted Tab v2 built (PR #100, <code>c155467</code>) — threshold preamble, heartcry cards, region filter, red tab icon, migration <code>20260528000008_kan65_heartcry_feed_region</code> live — awaiting Founder device pass. KAN-23 Prayer Wall Landing v2 built (PR #101, main @ <code>70bff5f</code>) — hero intercession card, receive states, testimonies carousel (sky blue), write-RPCs wired (<code>stand_in_the_gap</code>, <code>celebrate</code>, <code>create_testimony</code>, <code>update_prayer_request</code>, <code>soft_delete_prayer_request</code>) — awaiting Founder device pass. Church tab states built (<code>83f9e01</code>): UnverifiedGateView (soft gate, zIndex 20, Phil 1:6), CamlLoadingView (static skeleton), CamlErrorView (zIndex 12, retry). Role label fix (<code>9694b15</code>): all 12 roles now map to display titles in <code>PRAYER_WALL_ROLE_LABELS</code> — Apostle/Prophet/Bishop/Teacher/etc. no longer fall through to Minister. <strong>KAN-207 church edit duplicate fix</strong> (<code>dfd7d12</code>): new <code>update-church</code> edge function (<code>verify_jwt=true</code>, ownership guard, underground strip preserved) — <code>RegisterChurchPage2Screen</code> now branches on <code>isEditMode</code> → UPDATE vs INSERT. Update-church deployed v1. <strong>KAN-214 Branches schema</strong> (PR #102, <code>22e1fa5</code>, Founder Done): <code>branches</code> + <code>branch_members</code> tables live; <code>messages.receiver_id</code> nullable + <code>message_belongs_to_one</code> 3-way CHECK; 6 SECURITY DEFINER RPCs; <code>send-branch-message</code> edge function (DELIVER-ALWAYS, D-45 clause 3 preserved); Realtime on branches + branch_members; audit_log <strong>38 → 42</strong> canonical actions (branch_created, branch_invite_responded, branch_member_removed, branch_activated). <strong>KAN-68/69/70 Connect Tab</strong> (PRs #103–#104, main @ <code>e9c4bc4</code>) — full Leaders DM sub-tab (thread list, leader search, 1:1 DM thread, optimistic send, Realtime, pagination, Covenant Notice) + <strong>Ministries sub-tab</strong> (branch list, InviteCard + consent flow, DeclineConfirm, forming state, BranchThreadView + group bubbles + consent progression, BranchCreate + 6-cap, MembersSheet) — awaiting Founder device pass. Follow-ups: <code>search_leaders</code>, <code>get_invite_candidates</code>, <code>mark_conversation_read</code>, <code>mark_branch_read</code> RPCs live; read-tracking columns on conversations + branch_members. Schema notes: <code>users.full_name</code> is a single column (no first/last split); FE adapts via split. <strong>New decisions D-58–D-63</strong> added below. <strong>Post-MVP update:</strong> group messaging (Ministries branches ≤7) promoted to MVP per Founder ruling 2026-05-29 — Post-MVP row updated.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v2.7 — 13 May 2026 (KAN-145 responsive admin shell decisions + KAN-147 region field close-out):</strong> Locked Decisions extended D-46→D-51 (admin responsive breakpoints, desktop-only screen guard, all-7-church-types Verification Queue). KAN-103/KAN-145 Open Gap resolved. Region display gap resolved via KAN-147. Version bumped to v2.7.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v3.0 — 19 May 2026 (mobile onboarding UAT · KAN-9 splash + KAN-13 Register Church · D-57 · churches.address schema):</strong> KAN-9 Splash Screen initial build shipped (PR #19, <code>7c360a8</code>) then FAILED QA — three issues: wrong logo asset (rp vector2 vs rp vector), viewBox crop + render size, timing. Fix committed (<code>68b035d</code>, branch <code>kan-9-failed-qa-fix</code>). Timing updated: 4s auto-advance / 6s tap prompt (Founder override of SPEC 2 May 2026 ruling). KAN-13 Register Church edge function — four bugs fixed (PR #20, <code>e57091c</code>): (1) <code>verify_jwt</code> deploy bug corrected (function now v2, <code>verify_jwt: false</code> — SEC-locked, load-bearing); (2) <code>church_without_walls</code> → <code>without_walls</code> enum alignment; (3) <code>para_ministry: 'Para Ministry'</code> label added; (4) underground RAG locked to Red only — <strong>D-57</strong>: Founder ruling 2026-05-19 UAT, underground churches must be Red, no other value permitted. Underground notice text corrected (City/Region + Address hidden; Country retained for internal categorisation, never shown publicly). <code>churches.address</code> column added by migration <code>20260519140000</code>; underground type force-strips address on insert (c.10167 invariant).</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v2.9 — 17 May 2026 (KAN-52 Network Announcements full build + D-54/55/56 + schema source_label + audit count sync 29→32):</strong> KAN-52 Network Announcements (Admin Screen 08) fully built across 3 CC passes — main @ <code>bb97fac</code> (17 May 2026). <strong>D-54</strong>: announcement status model — Draft/Scheduled/Posted derived from <code>published_at</code>; replaces Active/Inactive. <strong>D-55</strong>: scheduled posts promoted to MVP (founder override). <strong>D-56</strong>: mobile app displays "Replant Team" as announcement author — no admin name ever surfaces to app users; admin side retains <code>author_id</code> for audit. <strong>DD/MM/YYYY + UTC locked</strong> as pre-launch standard for all admin date display. <code>announcements.source_label varchar(30)</code> column added (<code>kan52_announcements_source_label_v1</code>); pre-launch: converts to category dropdown. KAN-52 in TESTING — 6 open items before Done (layout fix, composer UTC bug, mobile/tablet QA, source label dropdown, author attribution wiring, retention policy ruling). KAN-176 filed (pre-launch pagination umbrella). Audit log canonical action count synced 29 → 32 (post-v1.34.0: +<code>church_details_updated</code> KAN-147, +<code>admin_aal2_elevation</code> + <code>admin_mfa_factor_reset</code> KAN-97 D-52). Schema updated to v1.35.0+ (verify live). Locked Decisions extended D-52→D-56.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v2.8 — 14 May 2026 (KAN-145 batch 4 close + KAN-161 filed + email templates + audit action count sync):</strong> KAN-145 batch 4 (all 4 CSS batches) merged to main (commit <code>092f06d</code>, 14 May 2026) — responsive admin shell fully delivered. KAN-161 filed (High priority, Backlog) for remaining mobile/tablet rendering issues: sticky thead on iPad vertical, Queue card proportions on mobile, date input width on device. Admin email templates upgraded: <code>join-welcome</code> and <code>volunteer-welcome</code> Netlify functions now load production HTML from <code>netlify/functions/_emails/</code> via <code>fs.readFileSync</code> with <code>{{GREETING}}</code> placeholder. Audit log canonical action count synced from 22 → 29 (post-v1.32.0: +1 <code>flag_queue_opened</code> KAN-112, +2 <code>underground_oversight_opened</code> + <code>announcement_created</code> v1.30.0, +3 pastoral signal actions v1.31.0, +1 <code>pastoral_digest_emitted</code> v1.32.0). Schema still at v1.32.0 stable — no new migrations in this session.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v3.3 — 9 June 2026 (Connect QA-complete · KAN-69 connection request flow · D-64 branch bypass ruling · cross-tab routing):</strong>
+    <br><strong>Connect Tab QA-complete — Founder signed off 2026-06-09.</strong> Branch: <code>fix/connect-composer-height-members-remove-icons</code>. Commits: <code>f58ba5b</code> (Connect session), <code>1d9f756</code> (cross-tab routing).
+    <br><strong>KAN-69 extension — Connection Request Flow.</strong> Leaders outside the same church must send a connection request before DMing. Migrations 000001–000009 live on Supabase: <code>connection_requests</code> table + RLS + unique pending-pair index. RPCs: <code>send_connection_request</code>, <code>respond_to_connection_request</code>, <code>withdraw_connection_request</code>, <code>remove_connection_request</code>, <code>expire_pending_requests</code>, <code>get_or_create_conversation_if_permitted</code> (same-church-only bypass), <code>seed_accepted_request_message</code>. Edge function: <code>accept-connection-request</code> (deployed v1) — FLAG_TAXONOMY scan → respond RPC → seed RPC with correct <code>sender_id</code> (DELIVER-ALWAYS preserved). 30-day cooldown after decline. <code>DeclineRequestModal.tsx</code>: red X-circle, 30-day cooldown disclosure, Keep/Yes,Decline.
+    <br><strong>D-64 — Branch membership does NOT bypass connection request gate.</strong> A leader who joins a branch cannot see who else is in it before joining. Shared branch membership must not silently open unrequested 1:1 DM paths. Same <code>church_id</code> is the only bypass. Migration <code>20260609000009_remove_branch_bypass_from_conversation_permit_v1</code> removed the shared-active-branch EXISTS check. Post-MVP: surface branch member list before invite acceptance (see post-MVP backlog).
+    <br><strong>Unverified gate.</strong> Full-screen overlay matching Church tab spec (<code>ConnectGateView</code>) built. Two copy variants: church-pending ("Your account is being verified.") and leader-pending ("Your access is being confirmed."). Habakkuk 2:3 scripture box. NOT dismissible. Screen 16 spec updated accordingly.
+    <br><strong>Bug fixes from device pass.</strong> Single-digit Connect badge clipped (moved <code>paddingHorizontal: 6</code> into <code>badgeWide</code> only). Duplicate message/React key collision (stale <code>messagesRef</code> race fixed via sync update inside <code>setMessages</code> updater).
+    <br><strong>Cross-tab routing.</strong> <code>TabsParamList.Connect</code> typed with <code>&#123; initialSubTab?, conversationId? &#125;</code>. <code>ConnectScreen</code> reads params on focus via <code>useFocusEffect</code>. <code>TakeHeartScene</code> EAP branch CTA → <code>&#123; initialSubTab: 'ministries' &#125;</code> (was broken nested param). <code>MyHeartcriesScene</code> "Open Secure Message" → <code>&#123; conversationId &#125;</code> deep link (was broken DM route).
+    <br><strong>Mobile main HEAD:</strong> <code>1d9f756</code> · <strong>Schema:</strong> 9 connection_request migrations applied · 47 canonical audit actions (unchanged).</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--sky);"><strong>v3.2 — 2 June 2026 (KAN-213/217 Done · KAN-220 TESTING · KAN-221/222 filed · auth flash fix · 5-tab visual polish sprint):</strong>
+    <br><strong>KAN-217 (Welcome DM on Verification) — Founder Done 2026-06-02.</strong> All connect-polish PRs shipped to mobile main: device-pass-fixes-1 (PR #105 <code>48b539e6</code> + admin PR #63 <code>0220269d</code>), connect-polish-1 (PR #106 <code>389d2267</code>), connect-polish-2 (PR #107 <code>ab2ae129</code>), connect-polish-3 (PR #108 <code>1f5e2bf1</code>). Welcome DM internal auth model: <code>X-Internal-Token</code> header carrying <code>welcome_dm_internal_token</code> from Vault (SEC re-stamped c.15330). <strong>⚠ Pre-launch hard gate:</strong> <code>welcome_dm_internal_token</code> value was exposed in session transcript — must be rotated before any real external leader is verified. 3-step rotation procedure documented on KAN-220 c.15330: (1) <code>SELECT encode(gen_random_bytes(32),'hex');</code> (2) <code>SELECT vault.update_secret('&lt;new&gt;','welcome_dm_internal_token');</code> (3) Update Netlify env + redeploy admin BE + edge function.
+    <br><strong>KAN-213 (Church Profile Setup Flow) — Done.</strong> PR #109 merged → main <code>2b5607c</code>. Hotfix PR #110 merged <code>cdff51ae</code> — FK hint for <code>profile_completion_done_by</code> PostgREST FK disambiguation (login 500 restored). Auth flash fix → main <code>aa544d9</code>: INITIAL_SESSION race in AuthProvider eliminated — verification banner no longer flashes for active leaders on cold start. <code>expo-location</code> geocoding requires EAS dev client build (ID <code>7c069907</code>). Pending Founder device pass on Account B (What A God Ministries, <code>church_id 236719c3-...</code>). Reset SQL: <code>UPDATE public.churches SET profile_completion_done=false, profile_completion_done_by=NULL WHERE id='236719c3-43af-4057-a012-c49f81aecabe';</code>. Rulings locked: AC14 <code>update_leader_role</code> SECURITY DEFINER RPC (Option A); AC15 in-place type change, no re-verify; <code>profile_completion_done_by uuid NULL</code> added to <code>churches</code>; audit logs <code>church_details_updated</code> on completion + type change.
+    <br><strong>KAN-220 (Replant Team Inbox) — TESTING.</strong> Admin PRs #64 (<code>8a2c067</code>) + #65 (<code>c01242f</code>) + #66 (<code>5620aec</code>) merged to admin main. PR #67 (<code>7c4723b</code>, inbox styling pass against design reference) open — pending Founder review. Schema: <strong>47 canonical audit actions</strong> (<code>replant_team_reply_sent</code> added, 46→47). Device pass bugs fixed in PR #65: column name <code>user_role</code>→<code>role</code>; FK embed <code>church:church_id</code>→<code>church:churches</code>; info banner amber→sky blue per Founder direction.
+    <br><strong>KAN-221 filed</strong> — [SEC] Harden <code>users_update_own</code> RLS: add column-scope <code>WITH CHECK</code> before GA. Backlog, High priority. DBA + SEC lanes. Not blocking current sprint.
+    <br><strong>KAN-222 filed</strong> — Pre-launch copy sweep: wording audit across the whole app flagged by Founder during KAN-213 device pass 2026-06-02. Backlog, High priority. After all 5 tabs polished.
+    <br><strong>5-tab visual polish sprint commenced 2026-06-02.</strong> Tab order locked: Home → The Church → Persecuted → Prayer Wall → Connect. One tab at a time, all related tickets per tab, Founder acceptance before moving on. 70% milestone definition: all 5 tabs fully built and styled to Founder acceptance; then emails/notifications sprint, i18n planning, App Store prep. KAN-35 (Verification Countdown Banner) In Review — ACs met, 0-days-remaining copy reads "expires tomorrow" (copy fix deferred to KAN-222). KAN-5 (Home Screen Epic) to be transitioned to Testing. CD (Claude Design) engaged for Home tab hi-fi visual redesign pass.
+    <br><strong>Mobile main HEAD:</strong> <code>aa544d9</code> · <strong>Admin main HEAD:</strong> <code>5620aec</code> · <strong>Schema:</strong> v1.35.0+ · 47 canonical audit actions · <code>churches.address/lat/lng</code> live.</p>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <div class="toc-grid">
+      <a href="#globals"><span class="toc-num">01</span> Global Rules</a>
+      <a href="#tabbar"><span class="toc-num">02</span> Tab Bar (Final)</a>
+      <a href="#onboarding"><span class="toc-num">03</span> Onboarding — Screens 01–05</a>
+      <a href="#home"><span class="toc-num">04</span> Home Screen — Screen 07</a>
+      <a href="#local"><span class="toc-num">05</span> Local Tab — Screens 08–10</a>
+      <a href="#global"><span class="toc-num">06</span> Global Tab — Screen 11</a>
+      <a href="#prayerwall"><span class="toc-num">07</span> Prayer Wall — Screens 12–13</a>
+      <a href="#persecuted"><span class="toc-num">08</span> Persecuted — Screens 14–15</a>
+      <a href="#connect"><span class="toc-num">09</span> Connect — Screens 16–18</a>
+      <a href="#login"><span class="toc-num">10</span> Login / Auth — Screens 06, 06A, 06B</a>
+      <a href="#settings"><span class="toc-num">11</span> Settings — Screen 20</a>
+      <a href="#hamburger"><span class="toc-num">12</span> Hamburger — Screen 21</a>
+      <a href="#admin"><span class="toc-num">13</span> Admin Dashboard</a>
+      <a href="#decisions"><span class="toc-num">14</span> All Founder Decisions</a>
+      <a href="#postmvp"><span class="toc-num">15</span> Post-MVP Backlog</a>
+      <a href="#gaps"><span class="toc-num">16</span> Open Gaps</a>
+      <a href="#ba-flags"><span class="toc-num">17</span> BA Flags to COO</a>
+      <a href="#founder-answers"><span class="toc-num">18</span> Needs Founder Input</a>
+    </div>
+  </div>
+
+  <!-- 01 GLOBAL RULES -->
+  <div class="section" id="globals">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">Global Rules — Apply Everywhere</h2>
+    </div>
+
+    <table>
+      <tr><th>Rule</th><th>Detail</th><th>Source</th></tr>
+      <tr><td>2 leaders maximum per church</td><td>Enforced at DB level via trigger. Third registration attempt blocked with <code>LEADER_CAP_EXCEEDED</code>. No in-app "leave church" flow at MVP — admin manages manually.</td><td>D-03, DBA trigger</td></tr>
+      <tr><td>30-day verification window</td><td>Clock starts at account creation (UTC). Server enforces via nightly cron + login-time check. No grace period. Day 30 UTC timestamp is hard cutoff.</td><td>SPEC Doc 01, BE-02</td></tr>
+      <tr><td>Underground churches</td><td>Zero geographic data stored or transmitted. No city, country, lat, lng. DB constraint enforces null. Displays as "Underground Church" to all users. Never appears on any map.</td><td>D-16, QA-S15, SEC</td></tr>
+      <tr><td>Soft-delete pattern</td><td>Deactivated content flagged inactive (<code>is_active = false</code>), never deleted. Prayer requests, DMs, heartcries are never erased.</td><td>D-01</td></tr>
+      <tr><td>All timestamps in UTC</td><td>Server never uses local time for any calculation. FE displays in user's local timezone.</td><td>QA-S12</td></tr>
+      <tr><td>Masking is server-side</td><td>Unverified users never receive <code>name</code> field in API responses — it is absent, not hidden. FE never receives data and decides to mask it.</td><td>D-22, BE confirmed</td></tr>
+      <tr><td>churches_public view</td><td>All app queries use <code>churches_public</code> view — never raw <code>churches</code> table. View excludes underground, inactive, and <code>region_admin_only</code> column.</td><td>SA, DBA v1.8.0</td></tr>
+      <tr><td>Church (Branch) display</td><td>DB stores <code>branch</code>. UI displays "Church (Branch)" — matches parenthetical pattern of "Church (Main Campus)". Full display name reference below.</td><td>A-02 revised</td></tr>
+      <tr><td colspan="3" style="padding-top:0.8rem;">
+        <table style="width:100%;font-size:0.76rem;">
+          <tr><th>DB enum value</th><th>UI display name</th></tr>
+          <tr><td><code>main_campus</code></td><td>Church (Main Campus)</td></tr>
+          <tr><td><code>branch</code></td><td>Church (Branch)</td></tr>
+          <tr><td><code>house_church</code></td><td>House Church</td></tr>
+          <tr><td><code>ministry</code></td><td>Ministry</td></tr>
+          <tr><td><code>without_walls</code></td><td>Church Without Walls</td></tr>
+          <tr><td><code>underground</code></td><td>Underground Church</td></tr>
+        </table>
+      </td></tr>
+      <tr><td>Single church per leader</td><td>One <code>church_id</code> on users table. Multi-church to MVP 2.</td><td>D-03</td></tr>
+      <tr><td>Flagged messages mechanism</td><td>MVP is <code>flagged = true</code> on <code>messages</code> table — set by keyword detection. No classifier labels, no confidence scores, no categories, no versioned models. Admin reviews manually and clears or escalates. Flag categories and rules engine are post-MVP.</td><td>BE confirmed, SPEC amended 1 May</td></tr>
+      <tr><td>RAG override expiry (admin)</td><td>Admin manual RAG overrides on churches expire after 30 days. <code>rag_override_expires_at</code> field being added to <code>churches</code> table by DBA. Override is temporary by design — not permanent unless renewed.</td><td>D-24, Admin review 1 May</td></tr>
+      <tr><td>Admin dashboard</td><td>Separate web deployment at <code>admin.projectreplant.org</code>. Not part of the React Native app. 11 screens. Super-admin only. Prototype at <code>docs/Replant_Admin_standalone_.html</code> on GitHub. Visual spec PDF in project index.</td><td>ADMIN scope v2.0</td></tr>
+      <tr><td>Brand tokens — canonical</td><td>Background <code>#080808</code> · Dark Surface <code>#0F0F0F</code> · Elevated Surface <code>#141414</code> · Sky blue <code>#6BB5E8</code> · Text <code>#F0EDE6</code> · Muted text <code>rgba(240,237,230,0.45)</code> · Green <code>#5BAD7A</code> · Amber <code>#D4A855</code> · Red <code>#E05555</code>. Brand kit is canonical — not role brief shorthand.</td><td>UI/UX ruling 2 May</td></tr>
+      <tr><td>Heartcry submission — anonymous</td><td>Disclosure shown during submission: "Your heartcry goes directly and privately to the Replant team. No other leader will ever see it. The Replant team will know which church it came from so they can respond — no one else will." SEC approved wording. D-33.</td><td>D-33, SEC G-22 closed</td></tr>
+      <tr><td>Heartcry triage lead</td><td>Fixed designated person set in Team Management screen. Receives Resend ping on submission — static email only, no church data in email. Email address stored in Supabase Vault as <code>heartcry_triage_lead_email</code>. Rotatable post-MVP.</td><td>D-26, SEC G-24</td></tr>
+      <tr><td>Heartcry response — in-app DM</td><td>Admin responds via dashboard. Response delivered as secure DM in Connect tab. Leader notified: "The Replant team has responded — check your secure messages." No external contact unless leader consents.</td><td>D-27</td></tr>
+      <tr><td>Heartcry status — leader visible</td><td>Three states: Received (being prayed for) · Seen (Replant team has read it) · Responded (check your secure messages). Status tracker shows most recent submission only. No submission history at MVP.</td><td>D-28</td></tr>
+      <tr><td>Message keyword flagging</td><td>Keyword list stored in config table or environment variable — never hardcoded in edge function. Replant team defines the list. BE scaffolds the mechanism. Keywords are not a SPEC decision.</td><td>Doc 06, G-25</td></tr>
+      <tr><td>Not a social platform</td><td>No likes, no followers, no algorithms, no engagement metrics. No group chats, no channels, no media attachments at MVP.</td><td>Vision</td></tr>
+    </table>
+  </div>
+
+  <!-- 02 TAB BAR -->
+  <div class="section" id="tabbar">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">Tab Bar — Final, Locked</h2>
+    </div>
+
+    <div class="decision-block closed">
+      <div class="decision-label closed">Locked — D-34 (2 May 2026)</div>
+      <div class="decision-title">5-tab bar (final — D-34): Home · The Church · Persecuted · Prayer Wall · Connect</div>
+      <div class="decision-body">This is final. No further discussion. All 5 tab bar icons are locked and implemented on main per D-35 (2 May 2026): Home (H3) · The Church (V3c) · Persecuted (A) · Prayer Wall (F) · Connect (6C). BLOCK-02 closed. FE handoff: replant-tab-bar-v2-FINAL.html.</div>
+    </div>
+
+    <table>
+      <tr><th>Tab</th><th>Label</th><th>Icon (D-35)</th><th>Unverified access</th><th>Notes</th></tr>
+      <tr><td>1</td><td>Home</td><td>H3 — roof with chimney</td><td>✅ Full</td><td>Scripture strip, verification banner, network feed</td></tr>
+      <tr><td>2</td><td>The Church</td><td>V3c — stem with sprouting branches</td><td>✅ Read-only, names masked</td><td>D-34 (2 May 2026) — Local + Global merged. Swipe between "At My Location" (default) and "At Large". Page indicator shows active view.</td></tr>
+      <tr><td>3</td><td>Persecuted</td><td>A — cross under sheltering arc</td><td>❌ Locked</td><td>Distinct access wall modal (not standard locked tab pattern)</td></tr>
+      <tr><td>4</td><td>Prayer Wall</td><td>F — doorway</td><td>✅ Read-only</td><td>Full dedicated wall — same data layer as The Church tab pull-up panel</td></tr>
+      <tr><td>5</td><td>Connect</td><td>6C — linked nodes</td><td>❌ Locked</td><td>DMs — verified only</td></tr>
+    </table>
+
+    <p class="note">Locked tabs show modal on tap: "This section is available to verified leaders only. Your verification is pending — [X] days remaining."</p>
+  </div>
+
+  <!-- 03 ONBOARDING -->
+  <div class="section" id="onboarding">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2 class="section-title">Onboarding — Screens 01–05</h2>
+    </div>
+
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 01 + Doc 01 Amendment + Orphan-Prevention Architecture (2026-06-14 SME panel, Founder ratified 2026-06-18). All decisions below are current as of 2026-06-18. <strong>v4.0 reset:</strong> the original BE-03 7-step <em>create-then-rollback</em> account-creation sequence has been replaced by an atomic PL/pgSQL function (<code>create_account_atomic</code>) called from <code>create-account</code> v6. Church registration during signup no longer touches the database until "Enter Replant" fires; the church row is INSERTed inside the same transaction as the leader row, eliminating the orphan-church window. Screens 03–05 remain logically the same; their BE contracts are new. KAN-229 (name-fields restructure) and KAN-231 (optional personal phone) shipped 2026-06-12. Skip-for-now flow added 2026-06-17. Similar-church soft warning modal + branch-exemption + force-flag shipped 2026-06-18.</p>
+
+    <div class="flag" style="margin-bottom:1.2rem;">
+      <span class="flag-role">→ IN FLIGHT</span> Signup path still has meaningful build ahead: (1) required-fields audit per screen, (2) Branch flow build-out (currently shares standard flow — needs SEC + DBA + BA + BE + CD panel), (3) Underground flow separation (filter from RegCP1 dropdown + dedicated entry per <code>project_underground_signup_spec</code>), (4) <code>para_ministry</code> church-type addition (enum migration + downstream), (5) Jira backlog triage. State/province/region field per country pending SME panel (task #19). See <code>.claude/plans/handoff-signup-flow-continuation.md</code> for the full queue.
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 01</span>
+        <span class="screen-title">Splash Screen</span>
+      </div>
+      <div class="screen-body">
+        <p>Replant logo on dark screen. Auto-advances after <strong>4 seconds</strong> (Founder override of original 2s SPEC ruling — confirmed 2026-05-19 UAT). If not advanced after <strong>6 seconds</strong>: "Tap to continue" prompt appears (safety net — most users never see it). Returning user with valid, active session bypasses Splash and Declaration entirely — lands on Home. BE login-time status check (<code>active | pending | deactivated</code>) runs before routing. Logo: <code>rp vector.svg</code> inlined via <code>SvgXml</code>, viewBox cropped to content bounds (~460–1080 x / 190–750 y), rendered at 200×180. Floating bob animation (±8px, 1600ms sine-ease, native driver, loops indefinitely).</p>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 02</span>
+        <span class="screen-title">Declaration of Faith</span>
+      </div>
+      <div class="screen-body">
+        <p>Full-screen scrollable declaration text. Scroll-gate: pixel-based — <code>contentOffset.y + layoutHeight >= contentHeight - 20px</code>. Agree button only enabled when user has scrolled to bottom. Navigation locked — no back gesture, no tab bar, no header. "Exit App" modal on iOS: no programmatic close, user has no path forward. All onboarding screens portrait-locked.</p>
+        <div class="flag"><span class="flag-role">→ BA NOTE</span> BA wireframe shows "This is not a legal agreement. This is a test of the spirits." — see Founder Questions at bottom re: App Store ToS requirement.</div>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 03</span>
+        <span class="screen-title">Account Setup — Page 1 (ASP1)</span>
+      </div>
+      <div class="screen-body">
+        <h4>Name Fields (KAN-229 — shipped 2026-06-12)</h4>
+        <p>The legacy single <code>full_name</code> field has been split into structured columns. The leader enters:</p>
+        <table>
+          <tr><th>Field</th><th>Required?</th><th>DB column</th></tr>
+          <tr><td>First name</td><td>Yes</td><td><code>users.first_name</code> (NOT NULL)</td></tr>
+          <tr><td>Middle name</td><td>Optional</td><td><code>users.middle_name</code> (NOT NULL DEFAULT '')</td></tr>
+          <tr><td>Last name</td><td>Yes</td><td><code>users.last_name</code> (NOT NULL)</td></tr>
+          <tr><td>Honorific (post-MVP UI)</td><td>Optional, future</td><td><code>users.honorific</code> (nullable)</td></tr>
+          <tr><td>"Use last name first" toggle</td><td>Optional</td><td><code>users.last_name_first</code> (bool, default false)</td></tr>
+          <tr><td>"Include middle name in display"</td><td>Auto-set</td><td><code>users.include_middle_name</code> (bool — set to <code>true</code> at signup when middle was typed)</td></tr>
+        </table>
+        <p>The legacy <code>users.full_name</code> column is still NOT NULL and is populated by <code>create-account</code> as a single-space filtered join over the present name parts (Founder ruling 2026-06-14: no double-space when middle empty). The canonical display string is built by the DB function <code>public.resolve_display_name(first, middle, last, honorific, role, display_name_preference, last_name_first)</code> and read back by every consumer (Prayer Wall, Network Feed, Connect, admin). The FE does NOT prepend the role label — <code>resolve_display_name</code> already does it. (Founder bug 2026-06-18: double-prefix on every Prayer Wall surface was caused by FE re-prefixing; fixed by stripping FE prefix logic and trusting the BE string.)</p>
+
+        <h4>Personal Phone (KAN-231 — shipped 2026-06-12)</h4>
+        <p>Optional. Empty string when not provided. Stored in <code>users.phone</code> (nullable). Replant team fallback contact only — never surfaced to other leaders.</p>
+
+        <h4>Password Policy (QA-S06)</h4>
+        <table>
+          <tr><th>Rule</th><th>Value</th></tr>
+          <tr><td>Minimum length</td><td>8 characters</td></tr>
+          <tr><td>Must include</td><td>At least 1 number, at least 1 uppercase letter</td></tr>
+          <tr><td>Special characters</td><td>Not required at MVP</td></tr>
+          <tr><td>Maximum length</td><td>64 characters</td></tr>
+          <tr><td>Common password rejection</td><td>Post-MVP backlog</td></tr>
+        </table>
+        <p>All rules enforced inline as user types. No validation held until submit.</p>
+
+        <h4>Ministry Roles (12 — A-01)</h4>
+        <p>Pastor · Apostle · Prophet · Evangelist · Teacher · Elder · Bishop · Reverend · Intercessor · Psalmist · Ministry Leader · Other. Five-fold ministry (Eph 4:11) fully represented. Dropdown scrollable. "Other" stores string <code>"other"</code> — no free-text at MVP. Role label rendered via <code>resolve_display_name</code> ("Pastor", "Minister", etc.); honorific takes precedence when set.</p>
+
+        <h4>Duplicate Email Check (QA-S07)</h4>
+        <p>Fires on "Next" tap — not at final submission. BE edge function <code>check-email-available</code> — unauthenticated, boolean response only, rate-limited at 10 req/hr per IP via Upstash Redis (SEC confirmed). FE blocks forward navigation until clean.</p>
+
+        <h4>Cross-field rules</h4>
+        <p>Personal country and church country are not linked — a leader in Nigeria may register a church in Brazil (QA-S09).</p>
+
+        <h4>Keyboard inset hand-off (KAN-192 Session 4 — shipped 2026-06-14)</h4>
+        <p><code>handleNext</code> calls <code>Keyboard.dismiss()</code> before <code>navigation.navigate('AccountSetupPage2')</code>. Without this, the keyboard's <code>contentInset.bottom</code> (~959pt on iPhone 17 Pro Max) leaks into ASP2's <code>ScrollView</code> via the native-stack push, scrolling the entire ASP2 body off-screen at cold-mount. ASP2 has a defensive <code>useFocusEffect</code> that dismisses keyboard + scrolls to top as belt-and-suspenders. Same pattern shipped on RegCP1.</p>
+
+        <div class="flag"><span class="flag-role">→ BE</span> <code>check-email-available</code> staged, SEC-cleared for production. Payload validated by <code>create-account</code> v6 <code>parsePayload</code> (first/middle/last/phone all flow through).</div>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 04</span>
+        <span class="screen-title">Account Setup — Page 2 (ASP2 — Church Search + Bypass Card)</span>
+      </div>
+      <div class="screen-body">
+        <h4>Search (KAN-192)</h4>
+        <p>Search input lives <em>outside</em> the ScrollView to defeat iOS's <code>UITextInput.scrollRectToVisible</code> override (KAN-192 keyboard-fix v3, Founder ruling 2026-06-12). Live debounced fetch fires after 3 characters. Accepts church name OR Replant Network ID (<code>RPL-XXXXX</code>). Cap-of-2 enforced server-side; rows past capacity render at 50% opacity with "Leader slots full" tag and block selection. Two empty states: (A) searched-no-results → "No churches found. / Try a different name or Replant ID, or register your church below." (B) pre-search → wireframe v4 card with magnifier + "Search by church name or Replant ID / to find your church."</p>
+
+        <h4>Three church-attachment paths</h4>
+        <ol>
+          <li><strong>Join existing</strong> — tap a result row. Sets <code>selectedChurch</code> (truthy). Footer "Enter Replant" enabled. <code>create-account</code> v6 payload carries <code>churchId</code>.</li>
+          <li><strong>Register new</strong> — tap "Don't see your church? Register yours →" → navigates to RegCP1 → RegCP2 → returns to ASP2 with bypass card (see below). <code>create-account</code> v6 payload carries <code>newChurch: {...}</code>.</li>
+          <li><strong>Skip for now</strong> — tap "Skip for now" → modal "I acknowledge — Enter Replant." <code>create-account</code> v6 payload carries neither <code>churchId</code> nor <code>newChurch</code>. Leader gets <code>users.verification_deadline = now() + 7 days</code> (the skip-for-now countdown).</li>
+        </ol>
+        <p>Paths 1, 2, 3 are mutually exclusive and each maps to a distinct welcome-email variant (see Email Trigger Map below) and a distinct <code>auth-status-check</code> response.</p>
+
+        <h4>Bypass Card (orphan-prevention loopback — KAN-192 AC 5)</h4>
+        <p>When RegCP2 validation succeeds, RegCP2 navigates back to ASP2 with the church payload persisted to <code>OnboardingContext.loopbackChurch</code> and a placeholder id <code>'local-draft'</code> threaded through route params. ASP2's loopback <code>useEffect</code> sets <code>selectedChurch</code> + <code>isNewChurchFromLoopback</code> from those params, which triggers <code>isLoopbackBypass</code>. The standard search UI is replaced by a confirmation card:</p>
+        <ul>
+          <li><strong>✓ Registered</strong> ribbon + inline "Edit" button (returns to RegCP1 with <code>editChurch</code> params)</li>
+          <li>Church name + meta row (type · city, country)</li>
+          <li>Named verification status row ("Awaiting verification" with description / "Verified" tag) — locked Founder copy via CD redesign 2026-06-13</li>
+          <li>Quiet "Made a mistake? Switch ›" link below the card. Tap → confirmation modal → on Confirm, clears <code>OnboardingContext.loopbackChurch</code> + route params (<strong>no</strong> BE call — no DB row was ever written under the v4 architecture). Card disappears, leader lands back on search.</li>
+        </ul>
+        <p>The footer "Enter Replant" CTA is the SAME button across all three paths — it gates on <code>canSubmit = !!selectedChurch && !capError</code> (selected-church path) OR submits directly via the skip modal's "I acknowledge — Enter Replant" CTA.</p>
+
+        <h4>Atomic-write boundary (orphan-prevention architecture, 2026-06-14)</h4>
+        <p><strong>No write operations hit the server until "Enter Replant" fires <code>create-account</code> v6.</strong> Read-only lookups (duplicate email check, church search, similar-church check) are permitted before submit. When the atomic RPC succeeds, the auth.users row, the public.users row, AND the church row (when <code>newChurch</code> was supplied) all materialise in a single PL/pgSQL transaction (<code>public.create_account_atomic</code>). Any failure inside the function rolls back all writes. <strong>The orphan-church window is structurally eliminated</strong> — verified on-device 2026-06-18 (test scenario #4: force-quit between RegCP2 and Enter Replant left zero rows in <code>auth.users</code>, <code>public.users</code>, <code>public.churches</code>).</p>
+
+        <p>If the RPC fails AFTER the auth.users INSERT succeeded but BEFORE the public.users INSERT, <code>create-account</code> issues a compensating <code>auth.admin.deleteUser</code>. The auth-user orphan window is ~200ms (RPC + comp-delete). A "resume path" handles the case where comp-delete itself fails: a subsequent signup with the same email finds the existing auth.users row, no public.users row, and re-attempts the RPC using the existing <code>auth_id</code> without comp-delete on failure (see test scenario #8 — task #22).</p>
+
+        <div class="flag"><span class="flag-role">→ BE</span> <code>search-churches</code> live; returns <code>leader_count</code>, <code>at_capacity</code>, <code>verification_status</code>, <code>rag_status</code> for verified-vs-pending visual states. Founder ruling 2026-06-18: <code>create-account</code> v6 atomic write is the canonical signup boundary. The earlier "BE-03 7-step rollback" sequence is superseded.</div>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 05</span>
+        <span class="screen-title">Account Creation — Submit (Atomic Write, v6)</span>
+      </div>
+      <div class="screen-body">
+        <p style="margin-bottom:0.8rem;font-size:0.82rem;"><strong>v4.0 reset:</strong> the original 7-step "create then rollback" sequence is superseded. Account creation is now a single atomic PL/pgSQL transaction. The legacy table preserved for historical reference is omitted.</p>
+
+        <h4>create-account v6 flow (shipped 2026-06-18)</h4>
+        <table>
+          <tr><th>Step</th><th>Action</th></tr>
+          <tr><td>1</td><td>Per-IP rate limit (SEC-required — defeats email-rotation enumeration) THEN per-IP-per-email rate limit (anti-bruteforce on a single account). Two-layer.</td></tr>
+          <tr><td>2</td><td>Parse + validate payload: leader fields + optional <code>newChurch: {...}</code> OR <code>churchId: '&lt;uuid&gt;'</code> OR neither (skip path). Mutually exclusive.</td></tr>
+          <tr><td>3</td><td><code>findAuthUserByEmail</code> on Supabase Auth Admin. If found AND a matching public.users row exists → <code>user_already_exists</code>. If found AND NO public.users row → <strong>resume path</strong> (use existing authId, <code>created=false</code>). If not found → <code>createAuthUser</code>, <code>created=true</code>.</td></tr>
+          <tr><td>4</td><td>Call <code>public.create_account_atomic(auth_id, leader, new_church, existing_church_id)</code> — single PL/pgSQL transaction. Inside:
+            <ul style="margin:0.4rem 0 0.4rem 1.1rem;">
+              <li>If <code>new_church</code> supplied → INSERT into <code>public.churches</code> (verification_deadline auto-set by <code>set_verification_deadline</code> trigger to <code>created_at + 30 days</code>; region_admin_only auto-set from country)</li>
+              <li>Else if <code>existing_church_id</code> supplied → <code>SELECT … FOR UPDATE</code> on the church row + cap check (<code>users.is_active = true</code> count &lt; 2)</li>
+              <li>Else → skip path; <code>church_id</code> stays NULL</li>
+              <li>INSERT public.users row with <code>verification_status = 'pending'</code> + <code>verification_deadline = NULL</code> when attached to a church OR <code>now() + 7 days</code> when skip</li>
+            </ul>
+            Any error inside the function rolls back ALL writes (church + leader). Distinct ERRCODEs (P0001 LEADER_CAP_EXCEEDED, P0002 church_not_found, P0004–P0008 validation errors) map back to API error codes.
+          </td></tr>
+          <tr><td>5</td><td>On RPC error AND <code>created=true</code> → compensating <code>auth.admin.deleteUser</code>. Resume path skips comp-delete (we did not create the auth user).</td></tr>
+          <tr><td>6</td><td>Fire welcome email (fire-and-forget, three variants — see Email Trigger Map below).</td></tr>
+          <tr><td>7</td><td>Fire new-church admin notification (fire-and-forget) to <code>connect@projectreplant.org</code> when <code>newChurch</code> was supplied.</td></tr>
+          <tr><td>8</td><td>Return <code>{ userId, churchId }</code>. FE calls <code>signInWithPassword</code> with the just-set credentials; <code>AuthProvider</code>'s <code>onAuthStateChange</code> listener routes to Home.</td></tr>
+        </table>
+
+        <h4>Orphan windows</h4>
+        <table>
+          <tr><th>Window</th><th>Status</th><th>Mitigation</th></tr>
+          <tr><td>Church orphan (church row with no leader)</td><td><strong>Eliminated</strong></td><td>Atomic RPC. No church row materialises without its leader. <code>register-church</code> v7 is validation-only — no DB write.</td></tr>
+          <tr><td>Auth-user orphan (auth.users without public.users)</td><td><strong>Tiny residual</strong> (~200ms)</td><td>Compensating delete on RPC failure. Resume path on next signup if comp-delete also failed. (Founder ratified 2026-06-18: not a true "zero orphans" guarantee; honest framing is "zero church orphans, near-zero auth orphans.")</td></tr>
+        </table>
+
+        <h4>verify_jwt posture</h4>
+        <p><code>create-account</code> v6: <code>verify_jwt = false</code> (pre-auth surface — must accept callers with no JWT). <code>register-church</code> v7: <code>verify_jwt = false</code> (same reason). <code>auth-status-check</code> v7: <code>verify_jwt = true</code> (load-bearing — the only thing that rejects forged super_admin JWTs before the handler runs).</p>
+
+        <div class="flag"><span class="flag-role">→ BE</span> <code>create-account</code> v6, <code>register-church</code> v7, <code>auth-status-check</code> v7 all live. <code>create_account_atomic</code> + <code>find_similar_churches</code> RPCs live with SECURITY DEFINER + REVOKE FROM PUBLIC + GRANT TO service_role.</div>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 05a</span>
+        <span class="screen-title">Register Church — Page 1 (RegCP1)</span>
+      </div>
+      <div class="screen-body">
+        <h4>Reached from</h4>
+        <p>ASP2 "Register yours →" CTA. Pre-auth at this point (no Supabase session yet — leader hasn't created an account).</p>
+
+        <h4>Fields (current state — required-fields audit pending per handoff)</h4>
+        <ul>
+          <li>Church name (required)</li>
+          <li>Church type (required) — dropdown: <code>main_campus</code>, <code>branch</code>, <code>house_church</code>, <code>ministry</code>, <code>without_walls</code>, <code>underground</code>. <strong>Underground BUG (in punch list):</strong> currently appears in the dropdown; per Founder ruling underground has its own dedicated flow and should be filtered out (or selecting it should fork to the separate flow). Decision pending SME panel — task #19 / handoff.</li>
+          <li>Country (required) — dropdown with full ISO list</li>
+          <li>City / region (required for non-underground; null for underground per the canonical validator)</li>
+          <li>Address (optional)</li>
+          <li>Contact name (required)</li>
+          <li>At least one of contact_email OR contact_phone (required — enforced server-side)</li>
+          <li>RAG status (required) — green / amber / red. <strong>Underground locks to Red</strong> per D-57. <strong>BUG (in punch list):</strong> Red stickiness when switching church type away from Underground — ragStatus state doesn't clear.</li>
+        </ul>
+
+        <h4>Edit-mode (from ASP2 bypass card)</h4>
+        <p>When the leader taps "Edit" on the ASP2 bypass card, RegCP1 receives <code>editChurch</code> route params and pre-fills every field. Submitting from edit mode re-validates via <code>register-church</code> v7 and updates <code>OnboardingContext.loopbackChurch</code> in place (no DB write — there's no DB row to update under the v4 architecture, only context state).</p>
+
+        <h4>Keyboard inset hand-off</h4>
+        <p>Same KAN-192 Session 4 phantom-inset fix shipped here as on ASP1+ASP2. <code>useFocusEffect</code> dismisses keyboard + scrolls to top.</p>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 05b</span>
+        <span class="screen-title">Register Church — Page 2 (RegCP2 — Confirm)</span>
+      </div>
+      <div class="screen-body">
+        <h4>Fields</h4>
+        <ul>
+          <li>Current Status (RAG) — descriptive subtitles per RAG_OPTIONS</li>
+          <li>"What we have" (resources) — free-text, comma-separated → array</li>
+          <li>"What we need" (needs) — free-text, comma-separated → array. Both required; leader types "N/A" if they cannot answer (preserves a meaningful data signal vs blank)</li>
+          <li>Emergency action plan (Yes/No, optional)</li>
+          <li>Willing to strategize with nearby churches (Yes/No, optional)</li>
+        </ul>
+
+        <h4>Submit → register-church v7 (validation-only)</h4>
+        <p>"Register Church" tap calls <code>register-church</code> v7. <strong>No DB write.</strong> The function validates the payload via the canonical <code>parseChurchPayload</code> and runs the similar-church pre-flight check. Response shapes:</p>
+        <table>
+          <tr><th>Response</th><th>FE behaviour</th></tr>
+          <tr><td><code>200 {"valid": true}</code></td><td>Persist church payload to <code>OnboardingContext.loopbackChurch</code> with placeholder id <code>'local-draft'</code>. <code>CommonActions.reset</code> the stack to <code>[ASP1, ASP2]</code> so the leader lands on ASP2 with the bypass card.</td></tr>
+          <tr><td><code>200 {"valid": false, "similar": [{id, name, city, verification_status, match_reason}, ...]}</code></td><td>Open the similar-church modal. Modal copy lists the top match. Two CTAs: "Go back to search" (CommonActions.reset to ASP2 search) and "Continue anyway" (re-call <code>register-church</code> with <code>force: true</code>, skipping the similarity check).</td></tr>
+          <tr><td><code>400 {"valid": false, "error": "validation_error", "message": "..."}</code></td><td>Surface inline error.</td></tr>
+        </table>
+
+        <h4>Similar-church matching algorithm (v7 — Founder ruling 2026-06-18)</h4>
+        <p>The <code>find_similar_churches</code> RPC returns up to 3 candidates within the same country. A church is flagged similar when ANY of:</p>
+        <ul>
+          <li>Same case-insensitive normalised name AND same city (name+city match)</li>
+          <li>Same contact_email (case-insensitive) — strongest signal</li>
+          <li>Same contact_phone (digit-normalised last 10 digits) — strong signal</li>
+        </ul>
+        <p>Branches (<code>church_type = 'branch'</code>) are ALWAYS excluded from candidates (Founder ruling: branches are derivative entities under a parent; flagging them as duplicates produces noise). The skip is also enforced at the function-call layer: <code>register-church</code> v7 does NOT call the RPC when the incoming registration is a branch. Defense in depth.</p>
+        <p><strong>Known limitation (task #19):</strong> Cities can share names across states (Loganville GA vs Loganville TX both render as "Loganville, United States"). State/province/region disambiguation is pending SME panel + DB migration. Current modal copy nudges the leader to "Continue anyway" if the candidate is in a different state.</p>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 05c</span>
+        <span class="screen-title">Skip for now (no church attached)</span>
+      </div>
+      <div class="screen-body">
+        <p>Reached from ASP2 "Skip for now" link → confirmation modal → "I acknowledge — Enter Replant." <code>create-account</code> v6 is called with neither <code>churchId</code> nor <code>newChurch</code>. The atomic RPC creates the public.users row with <code>church_id = NULL</code> and <code>verification_deadline = now() + 7 days</code> (the skip-for-now countdown — locked Founder ruling, distinct from the 30-day church-side window).</p>
+
+        <h4>auth-status-check behaviour for skip leaders (Option Y override — Founder ratified 2026-06-18)</h4>
+        <p>The original KAN-36 Option Y locked NULL-deadline → fail-closed to <code>deactivated/support_contact</code>. That lock pre-dated the skip-for-now feature and structurally killed it (every skip leader was instantly deactivated on first auth-status-check). The v7 override branches: when <code>church_id IS NULL</code>, read <code>users.verification_deadline</code> instead of <code>church.verification_deadline</code>. Past → deactivate (route to <code>support_contact</code> — there's no church to renew). Future → return <code>pending</code> with <code>verification_deadline: null</code> + <code>days_remaining: null</code> intentionally masked, so the FE banner state-derivation lands on the locked "register" variant copy ("No church linked / You have 7 days from account creation…").</p>
+
+        <p>The Anomaly fail-closed semantic is preserved for <em>actual</em> anomalies (a skip leader missing <code>user_verification_deadline</code> = data-integrity issue → <code>support_contact</code>).</p>
+      </div>
+    </div>
+
+    <h3>Verification & Deactivation Rules (v7 — Founder ratified 2026-06-18)</h3>
+    <table>
+      <tr><th>Event</th><th>Behaviour</th></tr>
+      <tr><td>Account created — attached to a NEW church</td><td>Church-side 30-day countdown starts immediately on <code>churches.created_at</code> (set by <code>set_verification_deadline</code> trigger on INSERT). Leader's <code>users.verification_deadline</code> stays NULL — attached leaders ride the church's deadline, not their own.</td></tr>
+      <tr><td>Account created — joined an EXISTING church</td><td>Inherits the existing church's verification state. If the church is already verified, the leader is pending Replant team confirmation of their personal identity (no time-based countdown — admin owns the transition). If the church is pending, the leader rides the church's existing deadline.</td></tr>
+      <tr><td>Account created — Skip-for-now (no church)</td><td>User-side 7-day countdown: <code>users.verification_deadline = now() + 7 days</code>. <code>church_id IS NULL</code> by design — the canonical "skip leader" state.</td></tr>
+      <tr><td>Mid-session expiry</td><td>No mid-session lockout. Enforcement triggers on next <code>auth-status-check</code> call (login, app foreground, etc.).</td></tr>
+      <tr><td>Login-time check</td><td>See <code>auth-status-check</code> v7 matrix below. The check reads BOTH <code>users.verification_deadline</code> (for skip leaders) and <code>church.verification_deadline</code> (for attached leaders to PENDING churches), with the church's <code>verification_status</code> evaluated BEFORE its deadline (the verified-church + pending-leader case has no countdown at all).</td></tr>
+      <tr><td>Deactivation popup</td><td>Cannot be dismissed — "Close" calls <code>supabase.auth.signOut()</code>. Contact email for appeal shown. Copy variant driven by <code>recovery_path</code> field (<code>verification_renewal</code> vs <code>support_contact</code>) — see KAN-36 v2 lock.</td></tr>
+      <tr><td>Nightly cron</td><td>01:00 UTC — marks expired accounts deactivated, fires Resend email, writes audit log. Must mirror the v7 matrix branching (church verified → no deadline check; church pending → use church deadline; skip leader → use user deadline). <strong>Cron audit pending</strong> — confirm cron alignment with v7 logic.</td></tr>
+      <tr><td>PII scrub</td><td>02:00 UTC — scrubs contact email/phone 90 days after deactivation</td></tr>
+    </table>
+
+    <h4 style="margin-top:1.4rem;">auth-status-check v7 — resolveStatus Matrix (Founder ratified 2026-06-18)</h4>
+    <p style="margin-bottom:0.8rem;font-size:0.82rem;">Function reads <code>users.{verification_status, deactivated_at, is_active, church_id, verification_deadline}</code> AND the embedded <code>church.{verification_status, verification_deadline}</code>. Order of evaluation is load-bearing: church verification_status is read BEFORE church verification_deadline, because stale deadlines persist on verified-church rows (the <code>assign_church_code_on_verify</code> trigger assigns the RPL- code but does NOT clear the original 30-day-from-creation deadline). Reading deadline without first branching on status auto-deactivated every new leader joining a verified-with-stale-deadline church (root cause traced 2026-06-18, fix shipped as v7).</p>
+
+    <table>
+      <tr><th>users.verification_status</th><th>church_id</th><th>church.verification_status</th><th>deadline source</th><th>Resolved kind</th></tr>
+      <tr><td>verified</td><td>any</td><td>any</td><td>n/a</td><td>active</td></tr>
+      <tr><td>rejected</td><td>any</td><td>any</td><td>n/a</td><td>deactivated / support_contact</td></tr>
+      <tr><td>deactivated</td><td>any</td><td>any</td><td>existing logic</td><td>deactivated / renewal vs support (per KAN-36 v2)</td></tr>
+      <tr><td>pending</td><td>NULL (skip)</td><td>n/a</td><td><code>users.verification_deadline</code></td><td>past → deactivate/support_contact (skip path — no church to renew). future → pending (deadline + days_remaining MASKED to null so FE banner stays on "register" variant). null → anomaly fail-closed/support.</td></tr>
+      <tr><td>pending</td><td>set</td><td><strong>verified</strong></td><td>none</td><td><strong>pending with verification_deadline: null + days_remaining: null</strong> — admin owns the leader-confirmation transition; no countdown applies. FE banner picks the "leader" variant via <code>useChurchVerifiedStatus</code>.</td></tr>
+      <tr><td>pending</td><td>set</td><td>rejected | deactivated</td><td>n/a</td><td>deactivated / support_contact (church not in good standing)</td></tr>
+      <tr><td>pending</td><td>set</td><td>pending</td><td><code>church.verification_deadline</code></td><td>future → pending (deadline + days_remaining). past → pending_past_deadline_needs_write (writes <code>deactivated</code> atomically + audit_log row). null → anomaly fail-closed/support.</td></tr>
+    </table>
+
+    <h4 style="margin-top:1.4rem;">auth-status-check — Response Contract</h4>
+    <p style="margin-bottom:0.8rem;font-size:0.82rem;"><code>verify_jwt = true</code> at the platform (load-bearing — rejects forged super_admin JWTs before the handler runs). All timestamps UTC. Function reads <code>users</code> + embedded <code>churches</code> via the FK join.</p>
+    <table>
+      <tr><th>State</th><th>HTTP</th><th>Response body</th></tr>
+      <tr><td>Verified + active</td><td>200</td><td><code>{"verification_status":"active","verification_deadline":null,"days_remaining":null}</code></td></tr>
+      <tr><td>Pending, attached to pending church, deadline future</td><td>200</td><td><code>{"verification_status":"pending","verification_deadline":"&lt;ISO8601 UTC&gt;","days_remaining":&lt;integer&gt;}</code></td></tr>
+      <tr><td>Pending, attached to VERIFIED church (new)</td><td>200</td><td><code>{"verification_status":"pending","verification_deadline":null,"days_remaining":null}</code> — no countdown, admin owns transition</td></tr>
+      <tr><td>Pending, skip leader (no church), deadline future (new)</td><td>200</td><td><code>{"verification_status":"pending","verification_deadline":null,"days_remaining":null}</code> — countdown intentionally masked so FE banner picks the locked "register" variant copy</td></tr>
+      <tr><td>Pending, deadline past (login-time atomic write fires)</td><td>200</td><td><code>{"verification_status":"deactivated","verification_deadline":null,"days_remaining":null,"recovery_path":"verification_renewal"}</code> — or <code>"support_contact"</code> when <code>isSkipFlow=true</code> (no church to renew)</td></tr>
+      <tr><td>Cron-deactivated</td><td>200</td><td>byte-identical to login-time write for the same path</td></tr>
+      <tr><td>No JWT / anon JWT / malformed JWT</td><td>401</td><td>No body (no info leak)</td></tr>
+    </table>
+
+    <h4 style="margin-top:1.4rem;">Edge Case Behavioural Encodings (v4.0 — refreshed 2026-06-18)</h4>
+    <p style="margin-bottom:0.8rem;font-size:0.82rem;">Original three edge cases from KAN-44 QA sign-off (comments 10949, 10951, 10952; COO direction 5 May 2026) refreshed for the v6/v7 architecture. Two new edges added (4 + 5) for cases surfaced during 2026-06-18 testing. Reference: <code>handoff-signup-flow-continuation.md</code>.</p>
+
+    <table>
+      <tr><th>Edge case</th><th>SPEC ruling</th><th>Required behaviour</th></tr>
+
+      <tr>
+        <td><strong>Edge 1 — Deactivated church, verified leader</strong><br>
+        <code>users.verification_status='verified'</code> AND <code>users.is_active=true</code> AND <code>church.is_active=false</code></td>
+        <td>Propagation. Church deactivation must propagate to all associated leaders atomically. Updated for v7: covered by the comprehensive resolveStatus matrix.</td>
+        <td>When admin sets <code>church.is_active = false</code>, the admin action atomically writes: <code>users.is_active = false</code>, <code>users.verification_status = 'deactivated'</code>, <code>users.deactivated_at = now()</code>, plus an <code>audit_log</code> entry for each affected leader. <code>auth-status-check</code> v7 also defends against missed propagation via the rejected/deactivated church-status branches: a still-verified user attached to a rejected/deactivated church resolves to <code>deactivated/support_contact</code>. A verified leader MUST NOT receive <code>verification_status: 'active'</code> after their church has been deactivated.</td>
+      </tr>
+
+      <tr>
+        <td><strong>Edge 2 — Day-boundary and <code>days_remaining</code> semantics</strong><br>
+        Deactivation predicate: <code>deadline &lt;= now()</code><br>
+        <code>days_remaining</code> rounding: floor</td>
+        <td>Strict less-than-or-equal. Floor rounding.</td>
+        <td>At exactly <code>verification_deadline = now()</code>: the leader IS deactivated (predicate is <code>&lt;=</code> in the v7 code — confirmed in <code>logic.ts</code>). <strong>This differs from the earlier KAN-44 ruling of strict-less-than</strong> — the v7 implementation uses <code>dl &lt;= now</code> for the past-deadline branch. <strong>DBA + BA to confirm in next session</strong> whether to revert to strict-less-than per the original KAN-44 lock, or ratify the current <code>&lt;=</code> behaviour. Filed as a follow-up note.<br><br>
+        <code>days_remaining</code> rounding rule: <strong>FLOOR</strong>. <code>days_remaining = FLOOR((deadline - now()) / interval '1 day')</code>. If 0.8 days remain, <code>days_remaining = 0</code>. QA test assertions must use floor arithmetic. Any display showing 0 days remaining is not a deactivation signal — deactivation requires the predicate <code>deadline &lt;= now()</code> on the server.</td>
+      </tr>
+
+      <tr>
+        <td><strong>Edge 3a — Pending user with NULL <code>church_id</code></strong> (UPDATED 2026-06-18)</td>
+        <td>NO LONGER unreachable — this is the canonical <strong>skip-for-now</strong> state. KAN-36 Option Y overridden by Founder ratification 2026-06-18.</td>
+        <td>A pending user with <code>church_id IS NULL</code> AND <code>users.verification_deadline = now() + 7 days</code> is the canonical skip-for-now state, NOT a data anomaly. <code>auth-status-check</code> v7 branches: when <code>church_id IS NULL</code>, read <code>users.verification_deadline</code> instead of <code>church.verification_deadline</code>. Past → deactivate/support_contact. Future → return <code>pending</code> with deadline + days_remaining intentionally masked to null (FE banner picks the locked "register" variant copy). NULL <code>user_verification_deadline</code> on a pending skip user IS an anomaly → fail-closed to support_contact (Option Y preserved for anomalies only).</td>
+      </tr>
+
+      <tr>
+        <td><strong>Edge 3b — Orphaned <code>auth.users</code> row (no matching <code>public.users</code> row)</strong> (UPDATED 2026-06-18)</td>
+        <td>Rare residual under the v6 atomic-write architecture (~200ms window). Handled via the <strong>resume path</strong>, not via 401 rejection.</td>
+        <td>Can occur when <code>create_account_atomic</code> RPC succeeds at the auth INSERT then fails at a downstream step AND the compensating <code>auth.admin.deleteUser</code> also fails (network drop, timeout). When the leader retries signup with the same email, <code>create-account</code> v6's <code>findAuthUserByEmail</code> returns the orphaned auth row, <code>findPublicUserByAuthId</code> returns null → <strong>resume path</strong>: function re-uses the existing <code>auth_id</code>, calls <code>create_account_atomic</code> again with <code>created=false</code>, and does NOT comp-delete the auth user on subsequent failure (we did not create it). Test scenario #8 (task #22) — to verify by manually creating an orphaned auth.users row and walking the retry.</td>
+      </tr>
+
+      <tr>
+        <td><strong>Edge 4 — Pending leader attached to VERIFIED church with stale <code>verification_deadline</code></strong> (NEW 2026-06-18)</td>
+        <td>Read church verification_status BEFORE its deadline. Verified church + pending leader = no countdown (admin owns leader-confirmation transition).</td>
+        <td>Root cause traced 2026-06-18: <code>set_verification_deadline</code> trigger fires on INSERT only; <code>assign_church_code_on_verify</code> assigns the RPL- code on verify but does NOT clear <code>verification_deadline</code>. Every verified church carries a stale 30-day-from-creation timestamp. Reading deadline without first checking status auto-deactivated every new leader joining a verified church (real production scenario for any verified church whose original 30-day window has elapsed). v7 fix: resolveStatus branches on <code>church.verification_status</code> first; <code>'verified'</code> returns <code>pending</code> with null deadline + null days_remaining. FE banner picks "leader" variant via <code>useChurchVerifiedStatus</code>. Open SME question (task #21): keep the stale-deadline-as-forensic-record model or migrate to a <code>verified_at</code> column with deadline reset.</td>
+      </tr>
+
+      <tr>
+        <td><strong>Edge 5 — Similar-church matching across same-name cities in different states</strong> (NEW 2026-06-18)</td>
+        <td>Acknowledged limitation. Current matching is city + country only; state-level disambiguation requires schema + UI work.</td>
+        <td>Cities with the same name across US states (Loganville GA vs Loganville TX) both render as "Loganville, United States" in the similar-church modal. Founder flagged 2026-06-18: this can produce false-positive duplicate warnings. Interim mitigation: modal copy nudges leader to "Continue anyway" if the candidate is in a different state/region. Permanent fix pending SME panel (task #19) — conditional state dropdown in RegCP1 for countries with subnational divisions (US, CA, MX, BR, AU, IN, DE, AR, NG, ZA, RU, CN, ES, UK, PK at minimum); <code>churches.state</code> column; <code>find_similar_churches</code> matching extended to include state when present. Cross-lane (SEC + DBA + BA + BE + CD + CONTENT + ADMIN).</td>
+      </tr>
+    </table>
+
+    <h3>Email Trigger Map (BE-01 — v4.0 refresh)</h3>
+    <p style="margin-bottom:0.8rem;font-size:0.82rem;">Three welcome-email variants shipped 2026-06-18 in <code>create-account</code> v6. Variant chosen in the handler based on church-attachment state. From address: <code>Replant &lt;noreply@projectreplant.org&gt;</code>. New-church notification still goes to <code>connect@projectreplant.org</code>. Interim plain-text copy; HTML treatment polish in the email-story sprint. Final-polish ticket: task #20 + email-story sprint.</p>
+    <table>
+      <tr><th>Trigger</th><th>Recipient</th><th>Timing</th><th>Variant / copy</th></tr>
+      <tr><td>Account created — Skip-for-now path</td><td>Leader</td><td>Immediate</td><td><strong>skip</strong> — "You have 7 days to register your church or join an existing one. In the meantime, explore the Prayer Wall and keep up with the network through the Home tab."</td></tr>
+      <tr><td>Account created — attached to PENDING church (new OR existing pending)</td><td>Leader (new church) OR church's contact_email (existing church) — recipient swaps based on path</td><td>Immediate</td><td><strong>pending_church</strong> — "Your account is pending verification. The Replant team will reach out within {dynamic} {day/days} as your church is in the process of verification." Days computed from <code>church.verification_deadline</code>, floor-of-1 (we never email "0 days"). Fallback 30 if lookup fails.</td></tr>
+      <tr><td>Account created — joined an already-VERIFIED church</td><td>Church's contact_email</td><td>Immediate</td><td><strong>verified_church</strong> — "Your church is verified. The Replant team will reach out to confirm your account shortly."</td></tr>
+      <tr><td>New church registered</td><td>Replant team (<code>connect@projectreplant.org</code>)</td><td>Immediate</td><td>"New church registered in onboarding. / Church ID: … / Leader: … &lt;…&gt;" — fires only when <code>newChurch</code> was supplied AND atomic write succeeded.</td></tr>
+      <tr><td>7 days remaining</td><td>Leader</td><td>Day 23 (attached-to-pending only)</td><td>Cron-fired. Skip-leader 7-day reminders not yet specified.</td></tr>
+      <tr><td>1 day remaining</td><td>Leader</td><td>Day 29 (attached-to-pending only)</td><td>Cron-fired.</td></tr>
+      <tr><td>Account deactivated</td><td>Leader</td><td>On deactivation</td><td>Cron-fired. Copy variant on <code>recovery_path</code>.</td></tr>
+      <tr><td>Co-leader departed</td><td>Remaining leader</td><td>On deactivation of partner</td><td>Existing.</td></tr>
+    </table>
+
+    <p style="margin-top:0.8rem;font-size:0.82rem;"><strong>Resend Vault note (2026-06-14 rotation aftermath):</strong> <code>get_resend_api_key</code> RPC reads from Supabase Vault; the key was rotated 2026-06-18 to match the admin Netlify rotation. Future rotations must update BOTH (admin Netlify env vars AND Supabase Vault) — silent welcome-email + new-church-notification failures are the failure mode when Vault is missed.</p>
+  </div>
+
+  <!-- 04 HOME SCREEN -->
+  <div class="section" id="home">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">Home Screen — Screen 07</h2>
+    </div>
+
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 02 + all grooming decisions. <strong>Built — KAN-201 (Home visual chassis), KAN-16 (DailyScriptureStrip), KAN-17 (NetworkFeed), KAN-35 (Verification Countdown Banner).</strong> Mobile main HEAD: <code>aa544d9</code>. KAN-35 In Review — ACs met; 0-days-remaining copy reads "expires tomorrow" (fix deferred to KAN-222 copy sweep). KAN-5 (Home Screen Epic) to be transitioned to Testing. <strong>5-tab visual polish sprint: Home tab current.</strong> CD (Claude Design) engaged for hi-fi visual redesign — REPLANT all-caps wordmark, top bar unification, announcement card refresh, hero card concept, warmth exploration. No design handoff doc exists for Home — CD working from wireframe v4 + live screenshots. Founder acceptance required before moving to The Church tab.</p>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 07</span>
+        <span class="screen-title">Home Screen</span>
+      </div>
+      <div class="screen-body">
+        <h4>Screen Structure (top to bottom)</h4>
+        <table>
+          <tr><th>Zone</th><th>Content</th></tr>
+          <tr><td>Top bar</td><td>REPLANT wordmark (left) + hamburger menu (right)</td></tr>
+          <tr><td>Verification banner</td><td>Shown only to unverified users — see below</td></tr>
+          <tr><td>Scripture strip</td><td>Daily verse — Cormorant Garamond, display size</td></tr>
+          <tr><td>Network feed</td><td>Scrollable, read-only, 20 items per load</td></tr>
+          <tr><td>Tab bar</td><td>5 tabs, Home active</td></tr>
+        </table>
+
+        <h4>Scripture Strip (D-06)</h4>
+        <p>Option B confirmed: pre-loaded rotating schedule in <code>daily_scripture</code> DB table, date-keyed. One verse per UTC calendar day — does not change on reload. Typography: Cormorant Garamond display size. Reference in smaller DM Sans below verse.</p>
+
+        <h4>Verification Countdown Banner</h4>
+        <p>Shown only to <code>verification_status = pending</code> users. Persistent — cannot be permanently dismissed. Dismissible per session. Returns on next login. Disappears permanently when verified.</p>
+        <table>
+          <tr><th>Days remaining</th><th>Colour</th><th>Copy</th></tr>
+          <tr><td>&gt; 7 days</td><td>Neutral</td><td>"Verification pending — [X] days remaining. Your church is visible but limited until verified by Replant."</td></tr>
+          <tr><td>≤ 7 days</td><td>Amber</td><td>"Verification due soon — [X] days remaining. Contact connect@projectreplant.org if you've submitted."</td></tr>
+          <tr><td>≤ 1 day</td><td>Red</td><td>"Verification expires tomorrow. Contact connect@projectreplant.org immediately."</td></tr>
+        </table>
+        <p class="note">Day count always rounds down to whole days.</p>
+
+        <h4>Network Feed</h4>
+        <p>Sorted chronologically, newest first. Infinite scroll, 20 items per load. Pull-to-refresh. No filtering at MVP. Unverified users see full feed (read-only).</p>
+        <table>
+          <tr><th>Type</th><th>Display</th><th>Underground handling</th></tr>
+          <tr><td><code>church_verified</code></td><td>"[Church Name] joined the network in [City, Country]"</td><td>"A new church joined the network" — no name, no location</td></tr>
+          <tr><td><code>prayer_submitted</code></td><td>"A prayer request was submitted in [Region]"</td><td>"A prayer request was submitted" — no region</td></tr>
+          <tr><td>Admin announcement</td><td>Short message from Replant team — admin-posted</td><td>N/A</td></tr>
+        </table>
+        <p>DM activity, heartcry submissions, and individual user activity never appear in the feed.</p>
+
+        <h4>Encouragement Section</h4>
+        <div class="decision-block postmvp">
+          <div class="decision-label postmvp">Post-MVP</div>
+          <div class="decision-title">Encouragement section deferred</div>
+          <div class="decision-body">Present in wireframes — removed from MVP scope. Do not build at MVP.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 THE CHURCH TAB (formerly Local Tab) -->
+  <div class="section" id="local">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2 class="section-title">The Church Tab — CAML (Screens 08–10) · formerly Local Tab</h2>
+    </div>
+
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 03 + all grooming decisions. <strong>D-34 (2 May 2026): Local + Global merged into single "The Church" tab (Tab 2 of 5)</strong> — horizon-line switcher between CAML (At My Location) and CAL (At Large). <strong>Built — KAN-18/19 CAML (PRs #91–#99, main @ <code>bb55774</code>, Founder Done).</strong> Full Mapbox flat map + nearby list + RAG filter chips + DRAG-TO-EXPLORE + MY CHURCH LOCATION pill + recenter. Church tab states built (<code>83f9e01</code>): UnverifiedGateView (soft gate, Phil 1:6), CamlLoadingView (static skeleton), CamlErrorView (retry). KAN-207 (<code>dfd7d12</code>): church edit duplicate fix — <code>update-church</code> edge function live, <code>RegisterChurchPage2Screen</code> branches on <code>isEditMode</code>. KAN-213 (Done — PR #109 <code>2b5607c</code> + hotfix PR #110 <code>cdff51ae</code>): Church Profile Setup Flow built and merged. Pending Founder device pass on Account B.</p>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 08</span>
+        <span class="screen-title">Church at My Location — Map View</span>
+      </div>
+      <div class="screen-body">
+        <h4>Map Behaviour</h4>
+        <p>Mapbox map, full width, ~55% screen height. Default zoom level: 13 (street-level, ~2–3km radius). Centres on user GPS on load. Location denied: centres on profile country. Map load failure: dark screen + "Map unavailable. Check your connection and try again." + retry button. List loads independently of map failure.</p>
+
+        <h4>Dot Rules</h4>
+        <table>
+          <tr><th>Type</th><th>Colour</th><th>Animation</th><th>Condition</th></tr>
+          <tr><td>User location</td><td><code>#6BB5E8</code> sky blue</td><td>None</td><td>Always shown — largest dot</td></tr>
+          <tr><td>Verified Green</td><td><code>#5BAD7A</code></td><td>None</td><td><code>verified, rag_status = green</code></td></tr>
+          <tr><td>Verified Amber</td><td><code>#D4A855</code> solid</td><td>None</td><td><code>verified, rag_status = amber</code></td></tr>
+          <tr><td>Verified Red</td><td><code>#E05555</code></td><td>None</td><td><code>verified, rag_status = red</code></td></tr>
+          <tr><td>Pending church</td><td><code>#D4A855</code> pulsing ring</td><td>Pulsing ring — max 15 concurrent (D3-05)</td><td><code>verification_status = pending</code></td></tr>
+          <tr><td>Underground</td><td>—</td><td>—</td><td>Never rendered — excluded at view level</td></tr>
+        </table>
+
+        <h4>Clustering (D-18)</h4>
+        <p>Count-only at MVP. No RAG colour aggregation. Cluster marker: <code>#F0EDE6</code> number badge on <code>#080808</code> background. Architecture preserves individual RAG values for MVP 2 upgrade without rebuild.</p>
+
+        <h4>Church List</h4>
+        <p>50km default radius — expands to 100km if fewer than 3 results (D-14). Label updates: "Showing churches within 100km." Sorted by distance ascending. Tiebreaker: alphabetical by <code>name</code>. Pull-to-refresh refreshes list only — map does not recentre.</p>
+        <p>Distance calculated client-side from GPS coordinates in state. Locale-aware: miles for US, km for all others (D-20).</p>
+
+        <h4>Masking — Verified vs Unverified</h4>
+        <table>
+          <tr><th>Field</th><th>Verified sees</th><th>Unverified sees</th></tr>
+          <tr><td>Church name</td><td>Full name</td><td>Absent from API response — not hidden, not null, structurally absent (D-22)</td></tr>
+          <tr><td>Church type</td><td>Shown</td><td>Shown</td></tr>
+          <tr><td>City/Region</td><td>Shown</td><td>Shown</td></tr>
+          <tr><td>RAG dot</td><td>Shown</td><td>Shown</td></tr>
+          <tr><td>Distance</td><td>Shown</td><td>Shown</td></tr>
+        </table>
+        <p>Masking enforced server-side in <code>get-nearby-churches</code> edge function and at DB layer via CASE expression in <code>get_churches_within_radius</code> RPC (Option B, D-22).</p>
+
+        <h4>Church Profile</h4>
+        <p>Bottom sheet — half-screen default (D-19). Map remains interactive behind it. Dismissible by swipe down or tap outside. Fetched on tap via separate <code>get-church-profile</code> edge function — loading state required. Profile not pre-loaded with list.</p>
+        <p>Leader name: first name + role by default (e.g. "Pastor James"). User can update to full name via <code>display_name_preference</code> setting (D-15). Surname never appears in API response as standalone field.</p>
+        <p>No DM / contact button on church profile at MVP. Read-only.</p>
+
+        <h4>Unverified User Permissions</h4>
+        <table>
+          <tr><th>Action</th><th>Unverified</th></tr>
+          <tr><td>View map</td><td>✅</td></tr>
+          <tr><td>See RAG dots</td><td>✅</td></tr>
+          <tr><td>See church list</td><td>✅ — names masked at server level</td></tr>
+          <tr><td>Open church profile</td><td>❌ — toast: "Verify your account to view church details."</td></tr>
+          <tr><td>Register a church</td><td>❌ — button not shown</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 09</span>
+        <span class="screen-title">Register Church — Page 1</span>
+      </div>
+      <div class="screen-body">
+        <h4>Church Types (6)</h4>
+        <p>Church (Main Campus) · Church (Branch) · House Church · Ministry · Church Without Walls · Underground. DB stores enum values: <code>main_campus, branch, house_church, ministry, without_walls, underground</code>. UI displays "Church Branch" for <code>branch</code>.</p>
+
+        <h4>Field Visibility by Church Type</h4>
+        <table>
+          <tr><th>Field</th><th>Standard</th><th>Underground</th></tr>
+          <tr><td>Church Name</td><td>Shown</td><td>Stored in DB — accessible to Replant super-admin only via admin dashboard, never returned by any app-facing API. Displays as "Underground Church" to all users including verified leaders.</td></tr>
+          <tr><td>Country</td><td>Shown</td><td>Collected + stored for internal categorisation — never returned by any app-facing API or shown to other users. Retained for Replant oversight purposes only.</td></tr>
+          <tr><td>City/Region</td><td>Shown</td><td>Hidden immediately on type selection — not sent, not written</td></tr>
+          <tr><td>Address</td><td>Shown (optional)</td><td>Hidden — not sent, not written. BE force-strips on insert even if FE leaks it (c.10167 invariant)</td></tr>
+          <tr><td>RAG Status</td><td>Any value</td><td><strong>Red only — locked (D-57, Founder ruling 2026-05-19 UAT).</strong> Green and Amber options rendered at 35% opacity, disabled. Lock note shown below RAG group: "Status locked — underground churches are designated Not Operating Freely."</td></tr>
+        </table>
+        <p>Underground inline note on type selection: "City/Region and Address are hidden to protect your identity. Your church displays as 'Underground Church' to other users. Country is kept for internal categorisation only and is never shown publicly."</p>
+        <p>RAG reset behaviour on type change: if user selects Underground (Red auto-set) then changes to another type, RAG resets to no selection. Prevents silent Red RAG on non-underground churches.</p>
+
+        <h4>Register a Church — Access</h4>
+        <p>Floating "Register Church" button shown to verified users only. Verified user who already has a church: button not shown. Empty state for this user: "No other churches found nearby." — no CTA.</p>
+      </div>
+    </div>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 10</span>
+        <span class="screen-title">Register Church — Page 2 (Location Confirmation)</span>
+      </div>
+      <div class="screen-body">
+        <p>Skipped entirely for Underground type — submission goes direct from Page 1.</p>
+        <p>Mapbox map centred on geocoded address. Pin draggable. Geocoding failure: map centres on country, amber banner "We couldn't locate that address. Drag the pin to your church's location." Manual placement always valid. No geographic constraints on pin placement at MVP.</p>
+        <p>Confirm button: loading state on first tap — disabled immediately, no double-submit possible (QA-D3-23).</p>
+
+        <h4>Post-Submission</h4>
+        <p>User returned to Local tab map. Toast: "Your church has been submitted for verification. Look out for an email from Replant." — auto-dismisses after 4 seconds. New pending church dot appears on map immediately (pulsing amber ring). Resend email fires to Replant team (D-21).</p>
+
+        <div class="flag"><span class="flag-role">→ BE</span> <code>register-church</code> edge function staged. Underground type: lat/lng simply absent from payload — DB constraint enforces null. <code>network_updates</code> webhook fires automatically on INSERT.</div>
+        <div class="flag"><span class="flag-role">→ MAP</span> <code>MapPinSelector</code> component delivered. FE has integrated.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06 THE CHURCH TAB (formerly Global Tab) — CAL/Globe -->
+  <div class="section" id="global">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2 class="section-title">The Church Tab — CAL/Globe (Screen 11) · formerly Global Tab</h2>
+    </div>
+
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 04. <strong>D-34: merged into The Church Tab (Tab 2 of 5) as the "At Large" horizon-switcher sub-view (CAL).</strong> <strong>Built — KAN-21 CAL (PRs #91–#99, main @ <code>bb55774</code>, Founder Done).</strong> Mapbox globe + count chip + Regions stub + RegionalPanel shell + PrayerWallPullUp 3-state. Globe pauses when any overlay open or on CAML page. isOwnChurch gate on dot-tap. RegionalPanel body blocked pending DBA: <code>get_churches_in_region</code> RPC needed. All decisions below are final.</p>
+
+    <div class="screen-block">
+      <div class="screen-header">
+        <span class="screen-num">Screen 11</span>
+        <span class="screen-title">Church at Large — Globe View</span>
+      </div>
+      <div class="screen-body">
+        <p>Mapbox globe projection. Initial view: centred on user's profile country, continental context zoom. Atmosphere and star field enabled. Same RAG dot rules as Local tab. Sky blue dot on Global tab is user's registered <em>church location</em> — not live GPS (different data source from Local tab).</p>
+
+        <h4>Region Interaction</h4>
+        <p>Cluster tap: smooth zoom-in animation via <code>flyTo()</code> — standard SDK, no custom work needed (G-17 closed). Individual dot tap: church profile bottom sheet — same <code>get-church-profile</code> function. "Back to world view" affordance appears top-left after zoom-in.</p>
+
+        <h4>Prayer Wall Bottom Sheet</h4>
+        <p>Persistent drag handle above tab bar. Three snap points: collapsed (handle only), half (bottom 50%), full (85% screen). Globe visible and interactive in all states.</p>
+        <p>Scope: network-wide, verified churches only. Underground churches included with masked identity: <code>church_name = "Underground Church"</code>, <code>country = null</code> (D-23). Fetch on panel open — not on tab load. No real-time subscription at MVP. 20 per page, urgent first then newest. Filters applied client-side.</p>
+        <p>Post a Request button visible to verified users only. Opens modal form within panel. Submission writes to <code>prayer_requests</code> table. Toast: "Your request has been lifted to the wall." — 3 seconds.</p>
+
+        <h4>Unverified User Access — Global Tab</h4>
+        <table>
+          <tr><th>Element</th><th>Unverified</th></tr>
+          <tr><td>Globe view</td><td>✅ Full — all dots visible</td></tr>
+          <tr><td>Church profile (dot tap)</td><td>❌ Modal: "Verify your account to view church details."</td></tr>
+          <tr><td>Prayer Wall panel</td><td>✅ Read-only</td></tr>
+          <tr><td>Prayer Wall submission</td><td>❌ Button not shown</td></tr>
+        </table>
+
+        <div class="flag"><span class="flag-role">→ BE</span> <code>get-prayer-wall</code> RPC live (v1.12.0). Call: <code>supabase.rpc('get_prayer_wall', &#123; page_offset: 0 &#125;)</code>. Fields: <code>id, church_name, church_type, country, category, prayer_text, urgency, created_at, church_id</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRAYER WALL TAB -->
+  <div class="section" id="prayerwall">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2 class="section-title">Prayer Wall Tab — Screens 12–13</h2>
+    </div>
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 05 + design_handoff_prayer_wall_tab. Tab 4 of 5. <strong>Built — KAN-23 Landing v2 (PR #101, main @ <code>70bff5f</code>) — awaiting Founder device pass.</strong> Hero intercession card, receive states (locked/active), testimonies carousel (sky blue, auto-advance), write-RPCs live: <code>stand_in_the_gap</code>, <code>celebrate</code>, <code>create_testimony</code>, <code>update_prayer_request</code>, <code>soft_delete_prayer_request</code>. TestimonyCard + TestimoniesView + TestimonyDetailSheet all sky blue (Colors.accent). Covenant design: sky left border on cards, surface backgrounds, rag-colored dots on pull-up.</p>
+
+    <h3>Screen 12 — Prayer Wall (Full Screen)</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Filter bar</td><td>Category: All · Healing · Protection · Provision · Unity · Other. Urgency: All · Urgent only. Applied client-side — no second network call on filter change.</td></tr>
+      <tr><td>Prayer cards</td><td>Sorted: urgent first, then newest. 20 per page, infinite scroll. Underground: "Underground Church", null country.</td></tr>
+      <tr><td>Pull to refresh</td><td>Refreshes full list from <code>get_prayer_wall</code> RPC.</td></tr>
+      <tr><td>Post a Request</td><td>Verified users only — navigates to Screen 13 (full sub-screen, not modal). Button not shown to unverified users.</td></tr>
+      <tr><td>Empty state</td><td>Verified: "No prayer requests yet. Be the first to lift one up." Unverified: read-only message.</td></tr>
+      <tr><td>Unverified access</td><td>Read-only — can view wall, cannot post.</td></tr>
+    </table>
+
+    <h3>Screen 13 — Post a Prayer Request</h3>
+    <table>
+      <tr><th>Field</th><th>Spec</th></tr>
+      <tr><td>Prayer text</td><td>Required. Character count: amber at 250, red at 280, max 300.</td></tr>
+      <tr><td>Category</td><td>Required. Healing · Protection · Provision · Unity · Other.</td></tr>
+      <tr><td>Urgent toggle</td><td>Optional. Surfaces request at top of wall.</td></tr>
+      <tr><td>Submit</td><td>Toast on success: "Your request has been lifted to the wall." — 3 seconds. Writes to <code>prayer_requests</code> table.</td></tr>
+    </table>
+
+    <div class="flag"><span class="flag-role">→ BE</span> <code>get_prayer_wall</code> RPC live (migration <code>20260528000005_kan21_get_prayer_wall_rag_status</code>). Returns: <code>id, church_name, church_type, country, category, prayer_text, urgency, created_at, church_id, rag_status, leader_role, leader_anon, leader_name</code>. Write RPCs live: <code>stand_in_the_gap</code> (race-safe ON CONFLICT), <code>celebrate</code> (race-safe ON CONFLICT), <code>create_testimony</code> (poster-only gate), <code>update_prayer_request</code> (own-open gate), <code>soft_delete_prayer_request</code> (withdrawn status + audit_log). Schema: <code>kan23_prayer_wall_write_rpcs_v1</code> applied (DB <code>20260525172720</code>).</div>
+  </div>
+
+  <!-- PERSECUTED TAB -->
+  <div class="section" id="persecuted">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2 class="section-title">Persecuted Church Tab — Screens 14–15</h2>
+    </div>
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 07 + design_handoff_persecuted_tab + <strong>design_handoff_persecuted_tab v2</strong> (multi-page expansion, CD build 7 Jun 2026). Tab 3 of 5. The most sacred screen in the app — handled with full weight. G-02 fully closed 2 May. <strong>Multi-page expansion built (7 Jun 2026) — pill-tab navigation (Option B), 4 scenes + 4 pushed readers, uncommitted, Founder device-passing.</strong> PersecutedScreen refactored into TabView host (237 lines). Pill tabs: Feed · My Heartcries · Bear Witness · Take Heart (red accent, never sky). Together surface designed but feature-flagged off until 5k+ leaders across 20+ regions. Migration <code>20260607000001_persecuted_multipage_tables</code> adds <code>witnesses</code>, <code>articles</code>, <code>guidance</code> tables + 8 RPCs. Four guidance docs filled with real content (digital security, raid, arrest, prohibition). 365-witness global rotation planned for data seeding session. Copy locked: "suffering/safe/experiencing/shared" vocabulary; threshold body + action prompt in displayRegular (not italic per Founder ruling). Heartcry card text remains italic. "SET ASIDE FOR YOU" eyebrow on My Heartcries. Psalm 34:4 footer. EAP Branch CTA on Take Heart replaces body-with-you aggregate count. HeartcryEmpty icon brighter red (D9594F). Congregation_size_enum: <code>under_50 · 50_to_200 · 200_to_500 · over_500 · not_specified</code>.</p>
+
+    <h3>Screen 14 — Persecuted Tab (Main)</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Scripture anchor</td><td>Hebrews 13:3 — "Remember those in chains as if chained with them..."</td></tr>
+      <tr><td>Intro copy</td><td>"This space is for you. What you share here goes directly and securely to the Replant team — no other leader in the network will see it. We receive it, we pray over it, and we will respond." — Ife to confirm final wording.</td></tr>
+      <tr><td>Submit button</td><td>"Submit a Heartcry" — navigates to Screen 15 (full sub-screen, not modal).</td></tr>
+      <tr><td>Status tracker</td><td>Shown only if submission exists. Most recent only. Three states: Received (being prayed for) · Seen (Replant team has read it) · Responded (check your secure messages — tappable, routes to Connect DM).</td></tr>
+      <tr><td>Unverified access</td><td>Hard access wall — distinct from standard locked tab. Copy: "This section is available to verified leaders only. Verification confirms your place in the network and protects every voice here." Single "OK" button.</td></tr>
+    </table>
+
+    <h3>Screen 15 — Submit a Heartcry</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Anonymity disclosure (non-dismissible)</td><td>"Your heartcry goes directly and privately to the Replant team. No other leader will ever see it. The Replant team will know which church it came from so they can respond — no one else will." — SEC approved wording. D-33.</td></tr>
+      <tr><td>Heartcry text</td><td>Required. No character limit — a heartcry is not capped.</td></tr>
+      <tr><td>Severity</td><td>Required radio. 5 tiers: Active Persecution · Urgent · Serious · Ongoing · Informational.</td></tr>
+      <tr><td>Request type</td><td>Optional multi-select: Prayer · Practical support · Guidance · Just to be heard.</td></tr>
+      <tr><td>Submit</td><td>"Send My Heartcry". Toast: "Received. The Replant team has been notified and is praying for you." — 4 seconds.</td></tr>
+      <tr><td>Encryption</td><td>Content encrypted server-side via <code>encrypt_heartcry_content()</code> before any DB write. Key in Supabase Vault. Never stored plain.</td></tr>
+      <tr><td>Multiple submissions</td><td>Open — no friction before second heartcry. ESC-07 closed.</td></tr>
+    </table>
+
+    <h3>Heartcry Delivery — Admin Side</h3>
+    <table>
+      <tr><th>Item</th><th>Spec</th></tr>
+      <tr><td>Triage lead</td><td>Fixed designated person set in Team Management. Receives Resend ping only — static email, no church data. Email: "New heartcry received — Replant" + link to admin dashboard. Nothing else. D-26.</td></tr>
+      <tr><td>Triage lead email</td><td>Stored in Supabase Vault as <code>heartcry_triage_lead_email</code>. Never hardcoded.</td></tr>
+      <tr><td>Admin response</td><td>Admin types response in Heartcry Inbox. Response delivered as secure DM in Connect tab. D-27.</td></tr>
+      <tr><td>Leader notification</td><td>"The Replant team has responded — check your secure messages." Connect tab shows badge. Status tracker updates to Responded. D-28.</td></tr>
+    </table>
+
+    <h3>Heartcries Table — Current Shape (v1.17.0)</h3>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><code>id · church_id · user_id · content · request_type · severity · status · triage_lead_id · seen_at · responded_at · created_at</code></p>
+    <p class="note">Severity enum (5 tiers): <code>active_persecution · urgent · serious · ongoing · informational</code>. Status enum: <code>received · seen · responded</code>. D-30.</p>
+  </div>
+
+  <!-- CONNECT TAB -->
+  <div class="section" id="connect">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2 class="section-title">Connect Tab — Screens 16–18</h2>
+    </div>
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 06 + design_handoff_connect_tab. Tab 5 of 5. Verified users only. Two sub-tabs: <strong>Leaders</strong> (1:1 DMs) and <strong>Ministries</strong> (branch group chats ≤7 ministries, D-61). <strong>QA-complete — Founder signed off 2026-06-09.</strong> Branch: <code>fix/connect-composer-height-members-remove-icons</code>. Commits: <code>f58ba5b</code> (main session) + <code>1d9f756</code> (cross-tab routing). Schema: <code>conversations</code> + <code>messages</code> + <code>branches</code> + <code>branch_members</code> + <code>connection_requests</code> tables live. RPCs: <code>create_branch</code>, <code>respond_to_branch_invite</code>, <code>remove_ministry_from_branch</code>, <code>get_branch_list</code>, <code>get_branch_members</code>, <code>get_branch_messages</code>, <code>search_leaders</code>, <code>get_invite_candidates</code>, <code>mark_conversation_read</code>, <code>mark_branch_read</code>, <code>send_connection_request</code>, <code>respond_to_connection_request</code>, <code>withdraw_connection_request</code>, <code>remove_connection_request</code>, <code>expire_pending_requests</code>, <code>get_or_create_conversation_if_permitted</code>, <code>seed_accepted_request_message</code>. Edge functions: <code>send-message</code> (KAN-71, 1:1) + <code>send-branch-message</code> (KAN-214, branches) + <code>accept-connection-request</code> (KAN-69 extension, deployed v1). DELIVER-ALWAYS on all three (D-45). <strong>Open pre-launch items (not post-MVP):</strong> (A) search upgrade — RPL Network ID instead of church name, underground shows region (DBA stamp needed); (B) admin inbox routing — leader REPLIES only, blocked on replant-admin repo permissions.</p>
+
+    <h3>Screen 16 — Thread List (both sub-tabs)</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Sub-tab segmented control</td><td>Ministries | Leaders switcher under header. Default: Leaders. Compose affordance: + (Ministries → start-a-branch) or pencil (Leaders → new DM).</td></tr>
+      <tr><td>Secure Replant thread (Leaders)</td><td>Pinned first. Lock icon + "Replant Team" label + "Secure" tag. Initiated by Replant system only.</td></tr>
+      <tr><td>Thread items (Leaders)</td><td>Display name (via <code>getLeaderDisplayName</code>: anonymous = "RoleLabel · ChurchName", identified = "FirstName LastName · ChurchName") · Church name · Last message preview (60 chars) · Relative timestamp · Unread badge.</td></tr>
+      <tr><td>Branch rows (Ministries)</td><td>Branch name + optional amber Forming tag · "{N} ministries · {M} leaders" in sky mono · preview + timestamp + unread badge.</td></tr>
+      <tr><td>Invite-consent card (Ministries)</td><td>Amber-bordered card above list when caller's ministry is invited. Shows inviting ministry + member count. Actions: Decline (ghost, triggers confirm modal) + Join the branch (primary).</td></tr>
+      <tr><td>Sort</td><td>Leaders: Secure thread pinned, then peers by <code>last_message_at DESC</code>. Ministries: invited above active/forming.</td></tr>
+      <tr><td>Thread search (Leaders)</td><td>Minimum 2 characters. Matches leader name or church name only. No message content search. Underground: "Underground Church" as match target — real name never searchable.</td></tr>
+      <tr><td>Empty state</td><td>Leaders: "No conversations yet. Find a leader in the network and start one." + Find a Leader CTA. Ministries: "What would you like to start today?" + Start a branch CTA + John 15:5 verse.</td></tr>
+      <tr><td>Unverified access</td><td><strong>Full-screen overlay (ConnectGateView)</strong> — <code>rgba(8,8,8,0.92)</code> background. Sky cross glyph 44×44. <code>Typography.scriptureLight</code> title. Two copy variants: (A) church-pending: "Your account is being verified." (B) leader-pending: "Your access is being confirmed." Habakkuk 2:3 scripture box. <strong>NOT dismissible.</strong> Updated per v3.3 — prior spec (soft bottom-sheet gate, dismissible) superseded.</td></tr>
+      <tr><td>CovenantFooter</td><td>Persistent at bottom of both sub-tab lists. "Conversations within Replant are governed by our community covenant. Chats are protected within the network. Keywords flagged for review if misuse is detected."</td></tr>
+    </table>
+
+    <h3>Screen 17 — New DM Flow (Leader Search) + Start-a-Branch</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Leader search (Leaders compose)</td><td>Autofocused. Minimum 2 characters, ~250ms debounce. <code>search_leaders</code> RPC — verified+active only, caller excluded. Underground: "Underground Church", no location. Pre-2-char: serif-italic hint. Empty: "No leaders found matching that search."</td></tr>
+      <tr><td>Lazy thread creation</td><td>Tapping a leader where no thread exists does NOT create a conversations row. Thread is created server-side on first send only. Tapping existing contact navigates to existing thread — no duplicate.</td></tr>
+      <tr><td>Self-DM</td><td>Blocked server-side. Caller excluded from search results.</td></tr>
+      <tr><td>Start-a-branch (Ministries compose)</td><td>Branch name (max 48 chars) + host chip (locked, caller's ministry) + invite ministry picker via <code>get_invite_candidates</code> RPC (cap: 6 additional = 7 total). Underground ministries shown as "Underground Church", no location. Send invitations → <code>create_branch</code> RPC → branch status = forming.</td></tr>
+    </table>
+
+    <h3>Screen 18 — DM Thread View</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Message rendering</td><td>Sent: right-aligned, sky blue bubble. Received: left-aligned, dark surface bubble. Timestamps grouped per 5-minute window.</td></tr>
+      <tr><td>Real-time</td><td>Supabase Realtime subscription on thread open.</td></tr>
+      <tr><td>Optimistic send</td><td>Message appears immediately. Rolled back on failure. Failed message shows error indicator + tap to retry.</td></tr>
+      <tr><td>Pagination</td><td>30 messages on load. Scroll up loads previous 30.</td></tr>
+      <tr><td>Flagging</td><td>Keyword detection server-side on insert. <strong>D-45 (locked 2026-05-09) — DELIVER-ALWAYS posture: keyword match never gates, holds, queues, or delays delivery.</strong> Message is delivered to the recipient on the same code path whether or not a flag fires. On keyword match, sets both <code>flagged = true</code> AND <code>flag_reason</code> (text column, v1.29.0, <code>kan112_messages_flag_reason_v1</code>). On no match, <code>flagged = false</code> and <code>flag_reason = NULL</code>. Source-prefix convention: <code>&lt;source&gt;:&lt;reason_code&gt;</code> (e.g. <code>auto:fundraising</code>) per KAN-71 c.11405 (SEC ticket-level ruling — not at ADR level; ADR-016 is the admin-read pattern).<br><br><strong>Taxonomy (D-45 + D-46, 20 codes total, implementation KAN-124):</strong><br>• <em>Tier 1 — persecution-specific (6 auto: codes), routing: admin:</em> <code>location_disclosure</code> · <code>identity_probe</code> · <code>opsec_violation</code> · <code>recantation_pressure</code> · <code>slander_or_gossip</code> · <code>bribery_attempt</code><br>• <em>Tier 2 — doctrinal/ecclesial integrity (3 auto: codes), routing: admin:</em> <code>false_teaching</code> · <code>divisive_speech</code> · <code>spiritual_coercion</code><br>• <em>Tier 3 — standard moderation (6 auto: codes), routing: admin:</em> <code>threats</code> · <code>hate_or_targeting</code> · <code>fundraising</code> · <code>financial_exploitation</code> · <code>external_link</code> · <code>spam_pattern</code><br>• <em>Pastoral-routing (2 auto: codes), routing: pastoral (orthogonal to admin TIER):</em> <code>self_harm</code> · <code>pastoral_care_signal</code> — route to a <strong>separate pastoral-care queue surface</strong> (KAN-125), distinct from the Heartcry inbox (D-46)<br>• <em>manual:-only (3 codes), routing: admin, default Tier 3:</em> <code>idolatry_promotion</code> · <code>occult_reference</code> · <code>drunkenness</code> — admin-applied only; never auto-flagged (FP risk in pastoral teaching contexts); <code>patterns: []</code> in taxonomy file enforces this<br><br>TIER routes admin-queue prioritization (T1 expedited → T2 high → T3 standard) on the Flagged Messages surface. TIER never appears in delivery-path logic. Keyword list in config table — never hardcoded. G-25: flagging mechanism closed via D-45 (schema live at v1.29.0, KAN-124 implementation); wordlist content (specific keyword terms) owned by Replant team — non-blocking for build, required before go-live.</td></tr>
+      <tr><td>Secure Replant thread</td><td>Lock icon + "Replant Team — Secure Message" header in sky. Leader can reply. Cannot delete or archive at MVP. No system welcome message — first message is admin's actual response.</td></tr>
+      <tr><td>CovenantNotice</td><td>One-time modal on first DM ever (Leaders sub-tab only). Requires "I understand" tap — cannot dismiss without acknowledging. Flag stored in SecureStore key <code>'covenant_ack'</code>. Never shown again after acknowledgement.</td></tr>
+      <tr><td>CovenantStrip</td><td>Pinned above every composer (1:1 and branch): "Protected within the network · flagged keywords are reviewed".</td></tr>
+    </table>
+
+    <h3>Branch Group Thread View</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Header</td><td>Branch name + "{N} ministries · {M} leaders" + Members icon → members sheet.</td></tr>
+      <tr><td>Group bubbles</td><td>Received bubbles preceded by sender name (sky) + ministry (muted mono). Omitted for consecutive same-sender. System events centered in mono muted.</td></tr>
+      <tr><td>Forming state (composer locked)</td><td>Amber banner: "{joined} of {total} leaders have joined. Messages open once every leader accepts." Composer disabled.</td></tr>
+      <tr><td>Decline cascade</td><td>When all leaders of an invited ministry decline, host sees: "{Ministry} declined this branch." + Cancel branch / Continue without them. Continue → <code>remove_ministry_from_branch</code> RPC.</td></tr>
+      <tr><td>Members sheet</td><td>Per ministry: name + "Your ministry" tag (host) + per-leader consent badges: Joined (green) · Invited (subtle) · Declined (red). Removed ministries struck through.</td></tr>
+      <tr><td>Send</td><td>Uses <code>send-branch-message</code> edge function. Same optimistic-send + retry pattern as 1:1. DELIVER-ALWAYS (D-45) preserved.</td></tr>
+    </table>
+
+    <h3>Connection Request Flow (KAN-69 extension — shipped 2026-06-09)</h3>
+    <p style="margin-bottom:0.8rem;font-size:0.82rem;">Leaders outside the same church must send a connection request before 1:1 DMs are possible. Same-church leaders can DM immediately (no request needed). Migrations 000001–000009 on <code>jiyetphxxvyiicrnwlnx</code>. Security invariant: <strong>D-64 — branch membership does NOT bypass the request gate.</strong></p>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Request gate</td><td><code>get_or_create_conversation_if_permitted</code> RPC — same-church bypass only. Different-church leaders without an accepted request receive a <code>REQUEST_REQUIRED</code> status. FE routes to request-send flow on that status.</td></tr>
+      <tr><td>Sending a request</td><td><code>send_connection_request</code> RPC. Unique pending-pair index prevents duplicate requests. 30-day cooldown after a decline before re-requesting. Request appears in recipient's Leaders thread list as a "request card" (distinct from active thread rows, Realtime-subscribed).</td></tr>
+      <tr><td>Accepting a request</td><td>Routed through <code>accept-connection-request</code> edge function (deployed v1): FLAG_TAXONOMY scan on request message → <code>respond_to_connection_request</code> RPC → <code>seed_accepted_request_message</code> RPC. Seeded system message uses correct <code>sender_id</code>. Thread opens after acceptance.</td></tr>
+      <tr><td>Declining a request</td><td><code>DeclineRequestModal</code> — red X-circle, 30-day cooldown disclosure, Keep / Yes, Decline actions. On decline: <code>respond_to_connection_request</code> with declined status. Thread does not open. Sender cannot re-request for 30 days.</td></tr>
+      <tr><td>Withdrawing a request</td><td><code>withdraw_connection_request</code> RPC — sender can retract a pending outbound request before recipient acts.</td></tr>
+      <tr><td>Expiry</td><td><code>expire_pending_requests</code> RPC — pending requests older than 30 days transition to expired. Can be re-requested after expiry (no cooldown for natural expiry, only for decline).</td></tr>
+      <tr><td>Thread list integration</td><td>Request cards appear above active threads in Leaders sub-tab (same UNION query as threads, <code>row_kind</code> field distinguishes). Realtime on <code>connection_requests</code> table keeps list live.</td></tr>
+      <tr><td>D-64 (locked 2026-06-09)</td><td>Branch membership does NOT bypass the connection request gate. Shared active branch is NOT sufficient basis for direct 1:1 DM. Same <code>church_id</code> remains the only bypass. See Founder Decisions for full rationale.</td></tr>
+    </table>
+  </div>
+
+  <!-- LOGIN / AUTH -->
+  <div class="section" id="login">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2 class="section-title">Login / Auth — Screens 06, 06A, 06B</h2>
+    </div>
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 08 + AUTH role spec. Returning user flow. Screens 06, 06A, 06B not yet in Wireframes v4 — wireframes needed before FE builds.</p>
+
+    <h3>Screen 06 — Login Screen</h3>
+    <table>
+      <tr><th>Element</th><th>Spec</th></tr>
+      <tr><td>Fields</td><td>Email + Password (masked, show/hide toggle).</td></tr>
+      <tr><td>Sign In sequence</td><td>1. Supabase Auth validates credentials. 2. If invalid: "Incorrect email or password." 3. If valid: login-time status check runs.</td></tr>
+      <tr><td>Login-time status check</td><td>Verified + active → Home. Pending + within deadline → Home with countdown banner. Deactivated or past deadline → signOut() + deactivation popup.</td></tr>
+      <tr><td>Session on app launch</td><td>FE checks for existing session. Status check always runs — valid JWT is not sufficient alone.</td></tr>
+      <tr><td>Session storage</td><td>Expo SecureStore. Auto-refresh via Supabase Auth SDK.</td></tr>
+      <tr><td>Forgot password</td><td>Sub-screen: email input → Supabase Auth reset email → Screen 06B (confirmation). Success message shown regardless of whether email is registered. Reset link expires 1 hour.</td></tr>
+      <tr><td>Create Account link</td><td>Routes back to Declaration of Faith → Account Setup.</td></tr>
+      <tr><td>Sign out</td><td>Hamburger menu → Logout. Confirmation dialog. supabase.auth.signOut(). All local state cleared. Routes to Login.</td></tr>
+    </table>
+
+    <h3>Auth Error States</h3>
+    <table>
+      <tr><th>Error</th><th>Copy</th></tr>
+      <tr><td>Wrong password / unrecognised email</td><td>"Incorrect email or password. Please try again." — same copy for both (prevents enumeration)</td></tr>
+      <tr><td>Network failure</td><td>"No connection. Check your internet and try again."</td></tr>
+      <tr><td>Too many attempts</td><td>"Too many attempts. Please wait a few minutes and try again."</td></tr>
+      <tr><td>Status check failure</td><td>Call signOut(), show: "Something went wrong. Please sign in again."</td></tr>
+    </table>
+
+    <div class="flag"><span class="flag-role">→ SEC</span> Session lifetime review needed — Supabase default expiry for users in sensitive/persecuted regions. G pending.</div>
+    <div class="flag"><span class="flag-role">→ BE + OPS</span> Deep link URL scheme for password reset (<code>replant://reset-password</code>) needed before reset flow can be fully wired. High priority.</div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="section" id="settings">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <h2 class="section-title">Settings — Screen 20</h2>
+    </div>
+    <p style="margin-bottom:0.6rem;font-size:0.82rem;">Source: SPEC Doc 09. Accessed from hamburger menu. Not a tab. Full screen pushed onto navigation stack. Note: KAN-72 (merged <code>eccfa4f</code>, 12 May 2026) wired the navigator and added a temporary DEV-only gear icon in the header for sim testing. That icon is not a production affordance — it remains in place only while the hamburger menu and auth flow are not yet built. KAN-139 (pre-launch blocker, high priority) tracks its removal.</p>
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;"><strong>Visual design source:</strong> <code>Replant Settings - On-brand.html</code> (v2 on-brand pass, 12 May 2026). Interaction + write contracts: <code>replant-wireframes-screen20-settings.html</code> (Interaction + write contracts section only — wireframe visuals in that file superseded by on-brand doc). Visual treatment ticket: KAN-138 (To Do).</p>
+
+    <table>
+      <tr><th>Section</th><th>Content</th><th>Notes</th></tr>
+      <tr><td>01 — Account: Email</td><td>Read-only display of account email address.</td><td>No edit affordance at MVP per founder ruling.</td></tr>
+      <tr><td>01 — Account: Display name preference</td><td>Radio pair — "First name + role" (default) · "Full name + role". Italic serif live-preview specimen renders below selected option (e.g. <em>Pastor Daniel</em> / <em>Pastor Daniel Mwangi</em>) so the form is the preview.</td><td>Role always shown in rendered output whether leader is anon or not. Optimistic UI — takes effect immediately, no Save button. Writes to <code>users.display_name_preference</code> (<code>first_name_only</code> / <code>full_name</code> enum values). Reverts on error. D-15.</td></tr>
+      <tr><td>01 — Account: Password</td><td>Chevron row — "Change password".</td><td>Routes to existing Screen 06A reset flow. No inline password editing at MVP.</td></tr>
+      <tr><td>02 — Privacy: Anonymous mode</td><td>Toggle — Off by default. Helper copy: "When on, others see your role and church only — never your name."</td><td>ESC-08 open — what does anonymous = true mean app-wide? Helper copy is static at MVP; swaps at ESC-08 close. Optimistic PATCH <code>/users/me</code> <code>anonymous</code>; revert on error.</td></tr>
+      <tr><td>03 — Church: RAG status</td><td>Radio trio — Green · Amber · Red, each with plain-language description. Colored word is the visual swatch (no separate dot).</td><td>Verified leaders only; section renders read-only for unverified leaders. Optimistic write to <code>churches.status</code>. No confirmation step. No Leader 2 notification at MVP. Admin override note shown if active (post-MVP: informational copy explaining override stays in records — see post-MVP notes).</td></tr>
+      <tr><td>04 — Language</td><td>Coming soon — italic serif placeholder at MVP.</td><td>Post-MVP — full i18n workstream required.</td></tr>
+      <tr><td>05 — About</td><td>Declaration of Faith · Terms of use · Privacy policy — each a chevron row.</td><td>Chevrons navigate to read-only in-app content views. Copy from projectreplant.org; Ife to confirm final wording before FE hardcodes.</td></tr>
+      <tr><td>Connect block</td><td>Full-width mission-treatment block — <code>connect@projectreplant.org</code> in italic serif. Tap to copy + open mail composer.</td><td>Tap copies address to clipboard and opens default mail composer pre-filled. No CTA button — address is the action. Elevated from a plain row (v1) to mission treatment per on-brand design.</td></tr>
+      <tr><td>Foundation block</td><td>rp mark (28px, low opacity) · John 17:21 KJV in italic serif · citation in DM Mono · version stamp.</td><td>Brand system signature — same as projectreplant.org footer. Version stamp shows build version.</td></tr>
+      <tr><td>Destructive footer</td><td>Sign out (serif) · Deactivate account (DM Mono small-caps, muted).</td><td>Sign out: lightweight confirmation → <code>signOut()</code> → Screen 06 default state. Deactivate: step-up reauth modal → consequence screen → <code>deactivate_user</code> audit row + <code>scrub_user_pii</code> per 90-day window (D-42).</td></tr>
+    </table>
+  </div>
+
+  <!-- HAMBURGER MENU -->
+  <div class="section" id="hamburger">
+    <div class="section-header">
+      <span class="section-num">12</span>
+      <h2 class="section-title">Hamburger Menu — Screen 21</h2>
+    </div>
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Source: SPEC Doc 10. Slide-in overlay panel accessible from every main screen. Not a navigation stack screen. User location shown as City, Country format.</p>
+
+    <table>
+      <tr><th>Item</th><th>Destination</th><th>Notes</th></tr>
+      <tr><td>Vision</td><td>Full-screen static text</td><td>Replant vision statement. Copy from projectreplant.org — Ife to confirm final wording. G-26.</td></tr>
+      <tr><td>Outreach &amp; Missions</td><td>Full-screen static text</td><td>"Churches on Mission" framing. Copy from projectreplant.org. Ife to finalize. G-26.</td></tr>
+      <tr><td>Language</td><td>Settings language section</td><td>Shows coming-soon at MVP.</td></tr>
+      <tr><td>Settings</td><td>Screen 20</td><td>Full settings screen.</td></tr>
+      <tr><td>FAQ</td><td>Full-screen accordion</td><td>Content from projectreplant.org/faq. Accordion — one question open at a time. Ife to confirm final copy. G-26.</td></tr>
+      <tr><td>Logout</td><td>Confirmation dialog → signOut() → Login</td><td>Always at bottom, visually separated. "Are you sure you want to log out?" confirmation required.</td></tr>
+    </table>
+
+    <p class="note">Static content screens (Vision, Outreach, FAQ) are portrait-locked. All copy from projectreplant.org is the starting point — Ife finalizes before FE hardcodes.</p>
+  </div>
+
+  <!-- 13 ADMIN DASHBOARD -->
+  <div class="section" id="admin">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2 class="section-title">Admin Dashboard — Screens 00–11</h2>
+    </div>
+
+    <p style="margin-bottom:1.2rem;font-size:0.82rem;">Separate web deployment — not part of the React Native app. Hosted at <code>admin.projectreplant.org</code>. Super-admin only. Prototype: <code>docs/Replant_Admin_standalone_.html</code> on GitHub. Visual spec: Replant — Admin (Print).pdf in project index. Scope doc v2.0 in project index. All screens approved except where noted.</p>
+
+    <table>
+      <tr><th>Screen</th><th>Name</th><th>Status</th><th>Notes (updated 17 May 2026)</th></tr>
+      <tr><td>00</td><td>Login</td><td><span class="tag tag-green">Shipped</span></td><td>Supabase Auth + custom access-token hook (KAN-95) mints <code>super_admin: true</code> JWT claim from <code>app_metadata.role</code>. SessionWatchdog (30min idle + 8hr cap), RefreshAuditor (admin_session_refreshed), step-up framework (KAN-46 Layer 1-4). AC AMENDMENT 3 denial string per D-36. No self-registration. KAN-46 closed 8 May.</td></tr>
+      <tr><td>01</td><td>Verification Queue</td><td><span class="tag tag-green">Shipped</span></td><td>SLA colouring + Approve/Reject actions audit-logged. Step-up gated on Approve (KAN-114 Phase 2.A). KAN-119 Done 10 May: mandatory reason/notes on Approve + Reject (D-44). KAN-113 Done 17 May: FAILED-QA pass (mobile default-init timing, VQ active tab styling), filter/sort redesign (4 sorts, URL state), church_type More▼ filter. KAN-144 Done 16 May: <code>church_code</code> (RPL-XXXXX) surfaced on VQ church cards. <strong>KAN-116 TESTING</strong>: minor polish items pending Founder Done.</td></tr>
+      <tr><td>02</td><td>Underground Oversight</td><td><span class="tag tag-amber">Shipped, read-region.js redesign deferred</span></td><td>Filter fix landed (KAN-110). KAN-130 Done 17 May: BE endpoint (<code>underground-oversight.js</code>) + FE rewire + TOTP/AAL2 gate; <code>underground_oversight_opened</code> audit action. KAN-149 Done 16 May: AAL2 pre-screen gate (redirects to enrollment if AAL2 not active). D-50 desktop-only guard at phone breakpoint. <strong>Open (deferred):</strong> read-region.js full SELECT redesign — 8/10 phantom columns (KAN-111, deferred per founder ruling 8 May).</td></tr>
+      <tr><td>03</td><td>Heartcry Inbox</td><td><span class="tag tag-green">Shipped</span></td><td>Schema drifts fixed (KAN-110). KAN-92 Done 14 May: admin-open-heartcry FE + decrypt path wired — PGP-qualified, ciphertext-to-plaintext live. KAN-97 Done 14 May: AAL2/TOTP step-up (D-52 TIER 0) replaces original TIER 1 password step-up for <code>read-heartcry</code>; 5-min freshness window (config-tunable); <code>admin_aal2_elevation</code> + <code>read_heartcry</code> audit rows written per decrypt within window. KAN-149 Done 16 May: AAL2 pre-screen gate. D-50 desktop-only guard at phone breakpoint.</td></tr>
+      <tr><td>04</td><td>Flagged Messages</td><td><span class="tag tag-green">Shipped</span></td><td>BE clear-flag.js + escalate-flag.js schema-clean (KAN-110). KAN-112 FE bug fixed via KAN-55 (12 May, PRs #19–#23): flagged tab now correctly surfaces unreviewed rows; escalation path repaired. <strong>Open (deferred):</strong> DM storage format question (plaintext vs encrypted) — build path for Flagged content display needs SEC review before display wiring.</td></tr>
+      <tr><td>05</td><td>Network Overview</td><td><span class="tag tag-green">Shipped</span></td><td>Read-only stats — total churches, verification rate, RAG breakdown, new churches / 30 days. KAN-110 drift #10 fixed (<code>joined_at</code> → <code>created_at</code>).</td></tr>
+      <tr><td>06</td><td>Church Management</td><td><span class="tag tag-amber">Shipped, KAN-116 TESTING</span></td><td>Search + full profile panel + RAG override (30-day expiry per D-24) + Deactivate + Reinstate. KAN-119 Done 10 May: mandatory reason on Deactivate/Reinstate (D-44 propagation). KAN-127 Done 17 May: deactivated-row visibility + reinstate + Status filter chips (Active/Deactivated/All), auto-clear on chip switch. KAN-147 Done 13 May: church details edit surface + <code>church_details_updated</code> audit action. KAN-144 Done 16 May: <code>church_code</code> (RPL-XXXXX) surfaced on church cards. <strong>KAN-116 TESTING</strong> (17 May): column header/content mismatch, region display, search functionality, rejected-status pill styling — awaiting Founder Done.</td></tr>
+      <tr><td>07</td><td>Daily Scripture Seeding</td><td><span class="tag tag-amber">Shipped, KAN-116 TESTING</span></td><td>FE/BE field name reconciled (KAN-110 drift #15 + KAN-111). Auto-translation deferred post-MVP. <strong>KAN-116 TESTING</strong> (17 May): duplicate-date overwrite confirmation modal + edit affordance on existing rows — awaiting Founder Done.</td></tr>
+      <tr><td>08</td><td>Network Announcements</td><td><span class="tag tag-amber">TESTING — KAN-52 (6 open items)</span></td><td>Full compose/edit/delete/draft/schedule built (KAN-52, main @ <code>bb97fac</code>, 17 May). Status model: Draft / Scheduled / Posted derived from <code>published_at</code> (D-54). Scheduled posts at MVP (D-55). Author attribution: admin side shows <code>author_id</code>; mobile must show "Replant Team" (D-56). Status filter (VQ pattern, all 3 breakpoints). Banner auto-dismiss 4s. Rate-limited via Upstash. Schema: <code>source_label varchar(30)</code> added. <strong>Pre-launch open:</strong> (1) draft note layout fix, (2) composer UTC timezone bug (localDatetimeToIso → datetimeLocalUtcToIso), (3) mobile/tablet responsive QA, (4) source_label → category dropdown (category list to be defined), (5) "Replant Team" wiring on mobile feed, (6) retention policy ruling (Legal/COO). <strong>Forward-track:</strong> KAN-16/17 mobile Home feed must add <code>WHERE is_active=true AND published_at &lt;= now()</code>.</td></tr>
+      <tr><td>09</td><td>PII Scrub History</td><td><span class="tag tag-green">Shipped</span></td><td>Read-only. KAN-110 drifts #3/#4/#5 fixed (PiiHistory.jsx column renames + NULL guard). Surfaces <code>audit_log</code> entries where <code>action = pii_scrubbed</code>. Per <code>kan110_rejected_status_bundle_v1</code>: <code>scrub_user_pii</code> + <code>scrub_church_pii</code> rewritten with OR-branch (deactivated 90d / rejected 7d per D-42), <code>meta.trigger_state</code> for forensic distinction.</td></tr>
+      <tr><td>10</td><td>Audit Log</td><td><span class="tag tag-amber">Shipped, KAN-116 TESTING</span></td><td><strong>47 canonical action values</strong> as of v3.2 (was 42 at v3.1; +1 KAN-220: <code>replant_team_reply_sent</code>; +4 KAN-213: <code>church_details_updated</code> on profile completion + type change, <code>update_church_profile</code> audit entries). See v3.2 changelog for full audit action history. (was 11 at v2.0; +11 across KAN-46/110/117; +7 across KAN-112/130/128/125/137; +3 v1.34.0 window: <code>church_details_updated</code> + <code>admin_aal2_elevation</code> + <code>admin_mfa_factor_reset</code>; +1 KAN-208: <code>church_location_updated</code>; +4 KAN-214: <code>branch_created</code> + <code>branch_invite_responded</code> + <code>branch_member_removed</code> + <code>branch_activated</code>). Append-only via <code>prevent_audit_log_mutation</code> trigger. <strong>KAN-116 TESTING</strong> (17 May): windowed pagination navigator shipped, search field improvement (multi-field search + date range / action / actor filters) + ACTION chip label humanisation — awaiting Founder Done. CSV export deferred post-MVP.</td></tr>
+      <tr><td>11</td><td>Team Management</td><td><span class="tag tag-green">Shipped</span></td><td>KAN-104 Done 15 May: full architectural rewrite — <code>list-team-members.js</code> via <code>auth.admin.listUsers()</code> + audit_log join; Resend-owned invite path; <code>public.users</code> identity fix; step-up + flagged-msgs + founder guard + email + audit display. KAN-153 Done 15 May: Set Password screen for new admin onboarding. KAN-98 Done 16 May: TOTP/AAL2 gate (D-52 TIER 0) + <code>can_manage_admins</code> sub-tier gate (D-53) on grant-admin/revoke-admin; Founder + 1 TBD hold the flag at MVP. KAN-167 Done 17 May: admin password reset send-link surface + icon button actions. Admin password reset is ops-only per SECURITY.md (KAN-99). D-50 desktop-only guard at phone breakpoint.</td></tr>
+    </table>
+
+    <h3>Audit Log — Approved Action Values (v3.2 — 47 canonical actions, post-KAN-220)</h3>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>Original 11 (v2.0, 29 Apr 2026):</strong> <code>read_region</code> · <code>read_heartcry</code> · <code>verify_church</code> · <code>reject_church</code> · <code>deactivate_church</code> · <code>flag_cleared</code> · <code>flag_escalated</code> · <code>pii_scrubbed</code> · <code>announcement_deleted</code> · <code>team_member_added</code> · <code>team_member_removed</code></p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+3 v2.1 (KAN-46 admin-auth lifecycle, 7 May 2026):</strong> <code>admin_session_refreshed</code> · <code>admin_password_reset</code> · <code>admin_step_up_reauth</code></p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+7 v2.1 misc (audit completeness sweep, 7 May 2026):</strong> <code>flag_read</code> · <code>rag_overridden</code> · <code>rag_override_removed</code> · <code>super_admin_granted</code> · <code>super_admin_revoked</code> · <code>deactivate_user</code> · <code>reinstate_church</code></p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+1 v2.2 (KAN-110 Q3 ratification, 8 May 2026):</strong> <code>heartcry_responded</code> (state-transition forensic capture per founder ruling)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+1 v2.3 (KAN-112 Phase 2 admin-read pattern, 9 May 2026):</strong> <code>flag_queue_opened</code> (admin flagged-list load audit row; written even when count_returned=0 as reconnaissance signal)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+2 v2.3 (v1.30.0, 10 May 2026):</strong> <code>underground_oversight_opened</code> (KAN-130 — underground LIST audit, TIER 1 step-up gated) · <code>announcement_created</code> (KAN-128/KAN-132 — D-47 admin-authored plaintext exemption, create-path audit)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+3 v2.3 (v1.31.0 KAN-125, 11 May 2026):</strong> <code>pastoral_signal_seen</code> · <code>pastoral_signal_dispositioned</code> · <code>pastoral_context_expanded</code> (moderation_state pastoral-axis audit trail)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+1 v2.3 (v1.32.0 KAN-137, 12 May 2026):</strong> <code>pastoral_digest_emitted</code> (pg_cron daily pastoral digest audit row)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+3 v2.4 (v1.34.0 window, 13–16 May 2026):</strong> <code>church_details_updated</code> (KAN-147 — church detail edits surface audit) · <code>admin_aal2_elevation</code> · <code>admin_mfa_factor_reset</code> (KAN-97 D-52 TOTP/AAL2 crown-jewel step-up; migration <code>kan97_admin_aal2_canonical_actions_v1</code>, DBA-AUDIT c.12481 2026-05-14)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+4 v3.1 (KAN-214 Branches schema, 29 May 2026):</strong> <code>branch_created</code> · <code>branch_invite_responded</code> · <code>branch_member_removed</code> · <code>branch_activated</code> (migration <code>20260529000000_kan214_branches_schema_v1</code>)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>+1 v3.2 (KAN-220 Replant Team Inbox, 1 June 2026):</strong> <code>replant_team_reply_sent</code> (admin pastoral reply audit; migration applied 2026-06-01 per DBA c.15402)</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>Total: 47 canonical actions.</strong> Live CHECK constraint: <code>audit_log_action_check</code>. Migration history: <code>kan46_audit_log_actions_v2</code> → <code>kan110_rejected_status_bundle_v1</code> → <code>kan112_phase2_admin_read_v1</code> → <code>kan130_underground_oversight_opened_v1</code> → <code>kan128_audit_log_announcement_created_v1</code> → <code>kan125_moderation_state_v1</code> → <code>kan137_pastoral_digest_v1</code> → <code>kan97_admin_aal2_canonical_actions_v1</code> → KAN-147 <code>church_details_updated</code> → KAN-208 <code>church_location_updated</code> → KAN-214 <code>branch_*</code> (4 actions) → KAN-220 <code>replant_team_reply_sent</code>. Verify live before any ticket touching audit actions.</p>
+    <p class="note">Per KAN-117 SEC verification (d), every <code>admin_step_up_reauth</code> row carries <code>meta.action_attempted</code> + <code>meta.ip</code> + <code>meta.user_agent</code> (capped 500 chars) + <code>meta.success</code> (boolean). Failed rows additionally carry <code>meta.failure_reason</code> ∈ canonical 6-set: <code>token_missing</code> | <code>invalid_signature</code> | <code>token_expired</code> | <code>user_mismatch</code> | <code>action_mismatch</code> | <code>invalid_password</code>. Successful rows additionally carry <code>meta.actor_email</code>.</p>
+
+    <h3>Admin Dashboard — Pending DBA Actions (closed)</h3>
+    <table>
+      <tr><th>Action</th><th>Field/Table</th><th>Status</th></tr>
+      <tr><td>Add <code>announcement_deleted</code> to audit_log CHECK</td><td><code>audit_log.action</code></td><td><span class="tag tag-green">DONE</span> per <code>kan46_audit_log_actions_v2</code></td></tr>
+      <tr><td>Add <code>team_member_added</code>, <code>team_member_removed</code> to audit_log CHECK</td><td><code>audit_log.action</code></td><td><span class="tag tag-green">DONE</span> per <code>kan46_audit_log_actions_v2</code></td></tr>
+      <tr><td>Confirm <code>heartcries.responded_at</code> field exists or add it</td><td><code>heartcries</code></td><td><span class="tag tag-green">DONE</span> verified via Supabase MCP audit (KAN-110)</td></tr>
+      <tr><td>Add <code>rag_override_expires_at</code> field</td><td><code>churches</code></td><td><span class="tag tag-green">DONE</span> live (per KAN-102 audit + KAN-110 schema state)</td></tr>
+    </table>
+
+    <h3>Admin Dashboard — Pending SEC Confirmations (closed)</h3>
+    <table>
+      <tr><th>Item</th><th>Status</th></tr>
+      <tr><td>DM storage format — plaintext or encrypted — for Screen 04 content display</td><td><span class="tag tag-amber">Open</span> — Screen 04 (Flagged Messages) FE bug under [KAN-112](https://projectreplant.atlassian.net/browse/KAN-112); storage format question remains for build</td></tr>
+      <tr><td>super_admin JWT claim assignment/revocation via server-side edge function</td><td><span class="tag tag-green">DONE</span> via [KAN-95](https://projectreplant.atlassian.net/browse/KAN-95) — <code>custom_access_token_hook</code> deployed; mints <code>super_admin: true</code> from <code>auth.users.app_metadata.role</code>. Session invalidation behavior per [KAN-46](https://projectreplant.atlassian.net/browse/KAN-46) Layer 2 SessionWatchdog (30min idle + 8hr cap).</td></tr>
+    </table>
+
+    <h3>Step-up Framework Architecture (KAN-46 Layer 4 + KAN-114 + KAN-117)</h3>
+    <p style="font-size:0.8rem;margin:0.5rem 0;">Sensitive admin actions require fresh password re-entry via the step-up modal before proceeding. Per SEC ratification ([KAN-114 comment 11256](https://projectreplant.atlassian.net/browse/KAN-114?focusedCommentId=11256)):</p>
+    <ul style="font-size:0.8rem;margin:0.5rem 0 1rem 1.2rem;list-style:disc;">
+      <li><strong>TIER 1</strong> (require step-up, 14 actions): <code>approve-church</code>, <code>reject-church</code>, <code>deactivate-church</code>, <code>reinstate-church</code>, <code>delete-announcement</code>, <code>post-announcement</code>, <code>grant-admin</code>, <code>revoke-admin</code>, <code>read-heartcry</code>, <code>mark-heartcry-responded</code>, <code>rag-override</code>, <code>seed-scripture</code>, <code>read-region</code>, <code>clear-flag</code></li>
+      <li><strong>TIER 2</strong> (no step-up, 1 action): <code>escalate-flag</code> (defensive direction; no exposure expansion)</li>
+      <li><strong>TIER 3</strong> (auto/meta paths, 2 actions): <code>log-session-refresh</code>, <code>request-step-up</code></li>
+    </ul>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>Token shape:</strong> HMAC-SHA256 JWT with <code>{ user_id, action, exp: now+TTL }</code>. <strong>Action-binding contract:</strong> a token issued for action A cannot be replayed against action B (verified by <code>validateStepUp({ expectedAction, expectedUserId, event })</code> at every consumer endpoint). <strong>Per-action TTL:</strong> default 5 min; <code>read-heartcry</code> tightened to 90s per SEC threat-model framing (life-safety surface). <strong>FE cache key:</strong> <code>(userId, actionName)</code> — cross-action replay structurally impossible at FE layer.</p>
+    <p style="font-size:0.8rem;margin:0.5rem 0;"><strong>Wired consumers (as of 17 May 2026):</strong><br>
+    &bull; <code>approve-church</code> — TIER 1 password step-up (KAN-114 Phase 2.A, 8 May)<br>
+    &bull; <code>read-heartcry</code> — <strong>upgraded to AAL2/TOTP TIER 0</strong> (KAN-97, D-52, 14 May). Original TIER 1 password step-up removed.<br>
+    &bull; <code>grant-admin</code>, <code>revoke-admin</code> — <strong>upgraded to AAL2/TOTP TIER 0</strong> + <code>can_manage_admins</code> D-53 gate (KAN-98, 16 May).<br>
+    <strong>Phase 2.C+ remaining (TIER 1 password step-up, 10 actions):</strong> <code>reject-church</code> · <code>deactivate-church</code> · <code>reinstate-church</code> · <code>delete-announcement</code> · <code>post-announcement</code> · <code>mark-heartcry-responded</code> · <code>rag-override</code> · <code>seed-scripture</code> · <code>read-region</code> · <code>clear-flag</code>. Atomic FE+BE per-action PR per D-43.</p>
+  </div>
+
+  <!-- 08 FOUNDER DECISIONS -->
+  <div class="section" id="decisions">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2 class="section-title">All Founder Decisions — Chronological</h2>
+    </div>
+
+    <table>
+      <tr><th>ID</th><th>Decision</th><th>Ruling</th><th>Date</th></tr>
+      <tr><td>D-01</td><td>Deactivated content</td><td>Soft-delete — data stays, flagged inactive, never deleted</td><td>29 Apr</td></tr>
+      <tr><td>D-02</td><td>Leader slot on departure</td><td>Reopens automatically. Remaining leader notified, no confirmation. Admin manages edge cases manually.</td><td>29 Apr</td></tr>
+      <tr><td>D-03</td><td>Multi-church association</td><td>Single church per leader. Multi-church to MVP 2.</td><td>29 Apr</td></tr>
+      <tr><td>D-04</td><td>Contact PII post-verification</td><td>Retained. Scrubbed 90 days after deactivation.</td><td>29 Apr</td></tr>
+      <tr><td>D-05</td><td>Macro-region enum (9 regions)</td><td>Approved 29 Apr 2026. No country-level specificity.</td><td>29 Apr</td></tr>
+      <tr><td>D-06</td><td>Scripture strip source</td><td>Option B — pre-loaded <code>daily_scripture</code> table, date-keyed.</td><td>29 Apr</td></tr>
+      <tr><td>D-07</td><td>Connect tab placement</td><td>6th tab, standalone. Not nested inside another tab.</td><td>29 Apr</td></tr>
+      <tr><td>D-08</td><td>Tab bar icons</td><td>Flame + praying hands rejected. UI/UX to propose replacements.</td><td>29 Apr</td></tr>
+      <tr><td>D-09</td><td>PII scrub policy</td><td>Active churches retain indefinitely. Deactivated: scrubbed after 90 days.</td><td>29 Apr</td></tr>
+      <tr><td>D-10</td><td>region_admin_only conditions</td><td>5 SEC conditions confirmed: macro-regions only, super_admin RLS, never in app, audit logging mandatory, founder approves enum.</td><td>29 Apr</td></tr>
+      <tr><td>D-11</td><td>audit_log system actor</td><td>Option B — nullable <code>accessed_by</code> + <code>triggered_by text</code>.</td><td>29 Apr</td></tr>
+      <tr><td>D-12</td><td>audit_log event context</td><td>Option A — <code>meta jsonb</code>. No sensitive data in meta ever.</td><td>29 Apr</td></tr>
+      <tr><td>D-13</td><td>Tab bar initial labels</td><td>Home · Local · Global · Persecuted · Prayer Wall · Connect — superseded by D-34.</td><td>29 Apr</td></tr>
+      <tr><td>D-34</td><td>Local + Global merged → "The Church" tab</td><td>5 tabs final: Home · The Church · Persecuted · Prayer Wall · Connect. Local and Global views merged into single "The Church" tab. Swipe between "At My Location" (default) and "At Large". Page indicator shows active view. KAN-7 cancelled. KAN-6 renamed to "The Church Tab".</td><td>2 May</td></tr>
+      <tr><td>D-35</td><td>Tab bar icons — final locked set</td><td>Home: H3 (roof with chimney) · The Church: V3c (stem with sprouting branches) · Persecuted: A (cross under sheltering arc) · Prayer Wall: F (doorway) · Connect: 6C (linked nodes). BLOCK-02 closed. Implemented on main.</td><td>2 May</td></tr>
+      <tr><td>D-14</td><td>Church list radius</td><td>50km default, expands to 100km if &lt;3 results.</td><td>30 Apr</td></tr>
+      <tr><td>D-15</td><td>Leader name display</td><td>First name + role default. User updates to full name via settings.</td><td>30 Apr</td></tr>
+      <tr><td>D-16</td><td>Underground filter</td><td>Enforced at <code>churches_public</code> view level. Not rendering logic.</td><td>30 Apr</td></tr>
+      <tr><td>D-17</td><td>Distance calculation</td><td>Client-side. GPS coords already in state from map load.</td><td>30 Apr</td></tr>
+      <tr><td>D-18</td><td>Cluster behaviour</td><td>Count-only at MVP. No RAG aggregation. MVP 2 ready.</td><td>30 Apr</td></tr>
+      <tr><td>D-19</td><td>Bottom sheet snap</td><td>Half-screen — map top 50%, sheet bottom 50%.</td><td>30 Apr</td></tr>
+      <tr><td>D-20</td><td>Distance unit</td><td>Locale-aware — miles for US, km for all others.</td><td>30 Apr</td></tr>
+      <tr><td>D-21</td><td>Post-submission transition</td><td>Toast 4 seconds, return to Local tab, pending dot appears immediately.</td><td>30 Apr</td></tr>
+      <tr><td>D-22</td><td>Name masking enforcement</td><td>Option B — enforced at DB layer in RPC via CASE expression. Closes direct-RPC gap.</td><td>30 Apr</td></tr>
+      <tr><td>D-24</td><td>RAG override expiry — admin</td><td>30-day expiry on manual admin RAG overrides. rag_override_expires_at field added to churches table.</td><td>1 May</td></tr>
+      <tr><td>D-23</td><td>Underground on Prayer Wall</td><td>Yes — included with masked identity. "Underground Church", null country.</td><td>30 Apr</td></tr>
+      <tr><td>D-25</td><td>RAG revert value on expiry</td><td>Option A — reverts to leader's last declared value via <code>rag_status_before_override</code> field. Null fallback: Green.</td><td>1 May</td></tr>
+      <tr><td>D-26</td><td>Heartcry triage lead</td><td>Fixed designated person set in Team Management. Rotatable post-MVP. Resend ping only — no church data in email.</td><td>2 May</td></tr>
+      <tr><td>D-27</td><td>Heartcry response channel</td><td>In-app DM via Connect tab. No external contact unless leader consents. Response visible to submitting leader only.</td><td>2 May</td></tr>
+      <tr><td>D-28</td><td>Heartcry status visibility</td><td>Three states: Received · Seen · Responded. Leader sees status on Persecuted tab. Responded state is tappable — routes to Connect DM.</td><td>2 May</td></tr>
+      <tr><td>D-29</td><td>Heartcry anonymity disclosure</td><td>Disclosure shown during submission. Team sees church, no other leaders do. Non-dismissible.</td><td>2 May</td></tr>
+      <tr><td>D-30</td><td>Heartcry severity enum — 5 tiers</td><td><code>active_persecution · urgent · serious · ongoing · informational</code>. Existing rows unaffected.</td><td>2 May</td></tr>
+      <tr><td>D-31</td><td>ESC-07 — heartcry multiple submissions</td><td>Open submission — no friction before second heartcry. No limit.</td><td>2 May</td></tr>
+      <tr><td>D-32</td><td>UI/UX mobile scope</td><td>Mobile and tablet are NOT out of scope. Admin dashboard needs mobile + tablet support. Design to all breakpoints 375px–1280px+.</td><td>2 May</td></tr>
+      <tr><td>D-33</td><td>Heartcry anonymity disclosure — final wording</td><td>"Your heartcry goes directly and privately to the Replant team. No other leader will ever see it. The Replant team will know which church it came from so they can respond — no one else will." SEC approved.</td><td>2 May</td></tr>
+      <tr><td>D-36</td><td>Admin denial-string AC AMENDMENT 3 (KAN-46)</td><td>Non-super-admin denial string locked: <em>"Your account does not have administrator access. Contact the Replant team if you believe this is an error."</em> Personal framing ("Your account") + acknowledges possibility of mis-revoked admin. Supersedes original AC and deployed-string drafts.</td><td>8 May</td></tr>
+      <tr><td>D-37</td><td>Admin session lifetime — application-level enforcement (KAN-46 / KAN-101 forward-track)</td><td>168hr leader refresh-token (KAN-41) cannot be globally tightened to admin-required 8hr without breaking leader-app. SEC ratified application-level enforcement: SessionWatchdog (30min idle + 8hr hard cap) + step-up framework as compensating controls. Server-side per-role TTL is the long-term right-fix forward-tracked as KAN-101.</td><td>7 May</td></tr>
+      <tr><td>D-38</td><td>Path B — framework-only deferral isn't Done (KAN-46 close)</td><td>A framework with zero consumers does not satisfy founder verification gate, regardless of ship-time deferral notes. KAN-46 close required at least one TIER 1 consumer wired end-to-end (approve-church via KAN-114 Phase 2.A) before transition 51 fired. Rule applies to all future framework-vs-consumer-wiring splits.</td><td>8 May</td></tr>
+      <tr><td>D-39</td><td>verification_status_enum — add 'rejected' (KAN-110 Q1)</td><td>'rejected' is a meaningfully distinct lifecycle state from 'deactivated' (different cause, different recovery path). Reason stays in <code>audit_log.meta</code>, not on church row. Added BEFORE 'deactivated' in enum sortorder per <code>kan110_rejected_status_bundle_v1</code>. Cascade audit: 4 RLS / 3 functions / 0 triggers all positive-list (DBA confirmed). DO NOT add reject_reason column to churches (sneaky option (c) explicitly rejected).</td><td>8 May</td></tr>
+      <tr><td>D-40</td><td>heartcry_responded canonical action — naming + addition (KAN-110 Q3 + Q6)</td><td>Heartcries carry safety-critical content; actor on state transition matters pastorally and forensically. Action added to canonical 22-set. Naming follows <code>subject_state</code> family (mirrors <code>flag_cleared</code> / <code>flag_escalated</code>) — NOT <code>mark_heartcry_responded</code> (would be only 3-token member). FE function name (<code>mark-heartcry-responded.js</code>) decoupled from audit_log action name.</td><td>8 May</td></tr>
+      <tr><td>D-41</td><td>Soft-delete reaffirmed for announcements (KAN-110 Q4)</td><td>Re-ratification of D-01 (soft-delete everywhere) for the announcements surface. <code>delete-announcement.js</code> uses <code>UPDATE is_active=false</code>, not hard DELETE. NOT a fresh product call — D-01 is the project-wide default unless founder explicitly overrides for a specific surface.</td><td>8 May</td></tr>
+      <tr><td>D-42</td><td>Asymmetric PII retention — rejected (7d) vs deactivated (90d) (KAN-110 Q5-revisit)</td><td>'rejected' applicants have NO legitimate ongoing Replant relationship; PII is pure liability. SEC threat-model framing: 90 days of stored "applied + rejected + identity + region" is real exposure window for persecuted-leader threat profile. 7-day window covers "rejected by accident, reverse it" ops case. Implementation: <code>scrub_user_pii()</code> + <code>scrub_church_pii()</code> OR-branch on <code>verification_status</code>; <code>rejected_at</code> column added to both tables; <code>meta.trigger_state</code> on <code>pii_scrubbed</code> rows for forensic distinction.</td><td>8 May</td></tr>
+      <tr><td>D-43</td><td>Step-up TIER ratification — 14/1/2 split + action-binding mandatory (KAN-114)</td><td>SEC reclassifications from SM proposal: <code>read-region</code> TIER 2→1 (access risk for underground regions = exfiltration vector), <code>clear-flag</code> TIER 2→1 (asymmetric with escalate; removes protection), <code>post-announcement</code> TIER 2→1 (network-wide broadcast surface). Final: TIER 1 = 14, TIER 2 = 1, TIER 3 = 2. Action-binding hardening REQUIRED — step-up JWT mints with <code>action</code> claim; <code>validateStepUp(token, { expectedAction, expectedUserId, event })</code> enforces all three. Bundle atomicity per-action (no FE-only or BE-only rollouts).</td><td>8 May</td></tr>
+      <tr><td>D-44</td><td>Mandatory reason/notes on Approve + Reject (KAN-119)</td><td><em>"Reason should be provided for approve and reject church (not optional — need to know how they were contacted to approve or why we are rejecting.) This is a must have."</em> Both <code>approve-church.js</code> and <code>reject-church.js</code> validate <code>notes?.trim().length > 0</code> / <code>reason?.trim().length > 0</code> at BE; FE forms enforce non-empty submission. UX disposition for the reject-flow redesign (modal vs inline vs side-panel vs route) ratified separately under KAN-119. Mobile broken-fully captured in same scope.</td><td>8 May</td></tr>
+      <tr><td>D-45</td><td>Message flagging — MVP scope and delivery contract</td><td>Three clauses, locked 2026-05-09: (1) <strong>Categorized taxonomy + <code>flag_reason</code> promoted from Post-MVP to MVP.</strong> <code>kan112_messages_flag_reason_v1</code> applied at schema v1.29.0 (live). (2) <strong>Taxonomy</strong> = 17-code <code>auto:</code> + 3-code <code>manual:</code>-only. Source-prefix convention <code>&lt;source&gt;:&lt;reason_code&gt;</code> per KAN-71 c.11405 (SEC ruling — NOT at ADR level; ADR-016 is the admin-read pattern). 500-char SEC budget cap. (3) <strong>DELIVER-ALWAYS</strong> on keyword match — never HOLD-on-keyword. TIER routes admin-queue prioritization; it does NOT gate delivery. A delivery hold requires explicit admin action; an automatic keyword trigger must NEVER produce a hold. Reasoning: fail-open posture for persecuted-leader threat model — silent hold of a coded warning is the dangerous failure mode. Rows 1191/1199 updated per this backfill; G-25 mechanism closed. Implementation: KAN-124.</td><td>9 May</td></tr>
+      <tr><td>D-46</td><td>Message flagging — pastoral routing surface + 3-band TIER split</td><td>Two clauses, refinements of D-45 captured during KAN-124 grooming (KAN-124 c.11422): (1) <strong>Pastoral routing surface</strong> — <code>self_harm</code> and <code>pastoral_care_signal</code> auto-codes carry <code>routing: pastoral</code> and route to a <strong>separate pastoral-care queue surface, distinct from the Heartcry inbox.</strong> Reasoning: heartcries are leader-deliberately-submitted with explicit triage opt-in (D-26); DM pastoral flags are incidental signals where the leader did not choose to triage. Surface design: KAN-125. (2) <strong>3-band TIER split</strong> — Tier 1 persecution-specific (6 codes: <code>location_disclosure</code>, <code>identity_probe</code>, <code>opsec_violation</code>, <code>recantation_pressure</code>, <code>slander_or_gossip</code>, <code>bribery_attempt</code>) / Tier 2 doctrinal-ecclesial integrity (3 codes: <code>false_teaching</code>, <code>divisive_speech</code>, <code>spiritual_coercion</code>) / Tier 3 standard moderation (6 codes: <code>threats</code>, <code>hate_or_targeting</code>, <code>fundraising</code>, <code>financial_exploitation</code>, <code>external_link</code>, <code>spam_pattern</code>). Pastoral-routing codes (2) orthogonal to admin TIER. <code>manual:</code>-only codes (3: <code>idolatry_promotion</code>, <code>occult_reference</code>, <code>drunkenness</code>) default Tier 3, display-ordering only. <strong>Architectural primitive:</strong> taxonomy data file uses orthogonal <code>routing</code> + <code>tier</code> fields rather than overloading the TIER axis with surface-destination semantics (BA judgment call ratified in KAN-124 c.11425).</td><td>9 May</td></tr>
+      <tr><td>D-49</td><td>Admin responsive breakpoints — 390px / 768px / 1024px / 1280px+</td><td>Admin dashboard supports four breakpoints: 390px (phone), 768px (tablet portrait), 1024px (tablet landscape), 1280px+ (desktop). Navigation pattern: hamburger + 260px slide-over drawer at ≤1023px; full desktop sidebar at ≥1024px. (KAN-145, May 2026)</td><td>13 May</td></tr>
+      <tr><td>D-50</td><td>Desktop-only screen guard — phones (≤767px) only; iPads get full access at 768px+</td><td>Screens that surface sensitive or layout-complex data show a "use desktop" message at ≤767px (phone breakpoint only). iPads at 768px+ get full access — no guard. Guarded screens: Audit Log, PII Scrub History, Team Management, Underground Oversight, Heartcry Inbox. (KAN-145, May 2026)</td><td>13 May</td></tr>
+      <tr><td>D-51</td><td>All 7 church types eligible for Verification Queue — no type exclusions</td><td>All seven church types (Main Campus, Branch, House Church, Ministry, Without Walls, Underground, Para Ministry) appear in the Verification Queue and its filter chips. No type is excluded from verification eligibility. TYPE_LABELS lookup added for human-readable pills. (KAN-145, May 2026)</td><td>13 May</td></tr>
+      <tr><td>D-52</td><td>TOTP/AAL2 step-up for crown-jewel admin surfaces (KAN-97/98)</td><td>Five clauses locked 2026-05-13. (1) Mechanism: Supabase native TOTP/MFA. PIN/SMS/magic-link rejected (SEC threat model). (2) Freshness: 5-minute window, config-tunable (not hardcoded). (3) Two-tier: TIER 0 = AAL2/TOTP (KAN-97/98); TIER 1 = existing password re-entry (KAN-114). (4) Lost-authenticator: founder-mediated via <code>admin_mfa_factor_reset</code>. (5) Self-lockout bootstrap: dual-device enrollment + break-glass OPS-03 procedure. Audit_log: 2 new actions (<code>admin_aal2_elevation</code> + <code>admin_mfa_factor_reset</code>).</td><td>13 May</td></tr>
+      <tr><td>D-53</td><td><code>can_manage_admins</code> sub-tier gate on grant/revoke</td><td>Grant-admin.js and revoke-admin.js enforce a secondary claim (<code>app_metadata.can_manage_admins = true</code>) beyond AAL2 gate. Super_admin without flag gets 403. At MVP: Founder + 1 TBD. Fail-fast before TOTP check. KAN-98 c.12594.</td><td>15 May</td></tr>
+      <tr><td>D-54</td><td>Announcement status model — Draft / Scheduled / Posted</td><td>Status derived at render time from <code>published_at</code> + <code>is_active</code>. No status column. Draft = <code>published_at IS NULL</code>; Scheduled = <code>published_at &gt; now()</code>; Posted = <code>published_at &lt;= now() AND is_active=true</code>; Deleted = <code>is_active=false</code> (soft-delete, not shown). Replaces Active/Inactive model. Founder-ratified during KAN-52 QA 2026-05-17.</td><td>17 May</td></tr>
+      <tr><td>D-55</td><td>Scheduled posts promoted to MVP (KAN-52)</td><td>Originally scoped post-MVP. Founder overrode during KAN-52 QA 2026-05-17. <code>scheduled_for</code> datetime input on compose form; <code>published_at</code> set to future ISO UTC timestamp on POST. All datetime-local inputs treated as UTC. Noted at KAN-52 c.12851.</td><td>17 May</td></tr>
+      <tr><td>D-56</td><td>Announcement author attribution — "Replant Team" on mobile app</td><td>Admin dashboard retains <code>author_id</code> for audit trail (join <code>users.full_name</code> for internal display). Mobile app must display "Replant Team" as the announcement author — no admin name, email, or identifier ever surfaces to app users. If wireframes show no byline, omit attribution entirely. Pre-launch requirement. KAN-52 c.12853, 2026-05-17.</td><td>17 May</td></tr>
+      <tr><td>D-57</td><td>Underground RAG locked to Red only (KAN-13 UAT fix)</td><td>Underground churches must always carry RAG = Red. No other value permitted at registration or edit. Green and Amber options rendered at 35% opacity, disabled in the Register Church and edit flows. Lock note: "Status locked — underground churches are designated Not Operating Freely." <code>register-church</code> enforces on insert; <code>update-church</code> enforces on update. Founder ruling 2026-05-19 UAT.</td><td>19 May</td></tr>
+      <tr><td>D-58</td><td>Admin filter and sort design standard — VQ-style vs CM-style</td><td>Three clauses: (1) <strong>Filters</strong> — VQ-style (inline chips, multi-select) when ≤5 options AND layout has room; CM-style (<code>FiltersTrigger + DropdownPanel</code>, multi-select) when &gt;5 options or space constrained. VQ is the only &gt;5-option exception. (2) <strong>Sort</strong> — always CM <code>SortTrigger</code>. (3) <strong>Date pickers</strong> — acceptable as-is. Applies retroactively and prospectively to all admin screens. Locked during UAT round-1 pass (main @ <code>1ae7de8</code> + <code>6b342e9</code>).</td><td>18 May</td></tr>
+      <tr><td>D-59</td><td>Profile completion flow — <code>show_contact_on_profile</code> defaults to true (KAN-213)</td><td><code>show_contact_on_profile</code> default changed from <code>false</code> (KAN-208) to <code>true</code>. The completion flow UI initialises the toggle to ON regardless of DB value when <code>profile_completion_done = false</code> — no explicit choice has been made yet. Existing rows unaffected (no leader has completed the flow). Founder ruling 2026-05-29 KAN-213.</td><td>29 May</td></tr>
+      <tr><td>D-60</td><td>Profile completion flow — re-shows on skip, no permanent dismiss (KAN-213)</td><td>Skip re-triggers on every Church tab entry until the leader completes Step 3. No permanent dismiss. <code>profile_completion_done</code> flips to <code>true</code> only on Step 3 completion. Per-step saves are independent — flow resumes where leader left off. Second leader on a church with <code>profile_completion_done = true</code> sees Intro only, then enters freely. Founder ruling 2026-05-29 KAN-213.</td><td>29 May</td></tr>
+      <tr><td>D-61</td><td>Connect Ministries branches promoted to MVP — cap ≤7 ministries (KAN-33/214)</td><td>Connect tab ships with two sub-tabs: <strong>Leaders</strong> (1:1 DMs) and <strong>Ministries</strong> (branch group chats, ≤7 ministries). Every leader of every invited ministry must consent before the branch opens. Consent state: <code>invited → joined | declined</code>. Host can remove a declined ministry and proceed. Overrides prior "no group messaging at MVP" classification. Group messaging &gt;7 ministries remains Post-MVP. Founder ruling 2026-05-29.</td><td>29 May</td></tr>
+      <tr><td>D-62</td><td>Branch forming stall — accept at MVP, no timeout (KAN-214 OQ-2)</td><td>If a declined ministry is never removed by the host, the branch stalls in <code>forming</code> indefinitely at MVP. No timeout, no background job, no nudge. Post-MVP: design host-side nudge after N stalled days. Founder ruling 2026-05-29 KAN-214 OQ-2.</td><td>29 May</td></tr>
+      <tr><td>D-63</td><td>Anonymous mode — inline toggle on AccountSetupPage1, not standalone screen (KAN-83/196)</td><td>D-37's standalone Screen 03A superseded. Anonymous mode is an inline toggle + single-line explanation on <code>AccountSetupPage1Screen.tsx</code>. KAN-83: SPEC copy-lock for toggle label + explanation. KAN-196: FE build + removal of <code>AnonymousModeScreen.tsx</code>. Default <code>false</code>. KAN-83 blocked by SPEC copy lock; KAN-196 blocked by KAN-83. Founder ruling 2026-05-20.</td><td>20 May</td></tr>
+      <tr><td>D-64</td><td>Branch membership does NOT bypass the connection request gate (KAN-69 extension)</td><td>Shared active branch membership is NOT sufficient basis to open a 1:1 DM path without a prior connection request. Rationale: a leader joining a branch cannot see who else is in it before joining; shared branch membership must not silently open unrequested direct-message paths. <strong>Same <code>church_id</code> is the only bypass.</strong> Implementation: migration <code>20260609000009_remove_branch_bypass_from_conversation_permit_v1</code> removed the shared-active-branch EXISTS check from <code>get_or_create_conversation_if_permitted</code>. Post-MVP: surface branch member list before invite acceptance so leaders can make an informed join decision (see post-MVP backlog). Founder ruling 2026-06-09.</td><td>9 Jun</td></tr>
+    </table>
+  </div>
+
+  <!-- 08 POST-MVP -->
+  <div class="section" id="postmvp">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2 class="section-title">Post-MVP Backlog</h2>
+    </div>
+
+    <p style="margin-bottom:1rem;font-size:0.82rem;">These were explicitly deferred. Do not build at MVP. Do not spec at MVP. Log in Jira as "Won't Have — MVP 2."</p>
+
+    <table>
+      <tr><th>Item</th><th>Context</th></tr>
+      <tr><td>RAG update confirmation step</td><td>No confirmation before change commits at MVP</td></tr>
+      <tr><td>Leader 2 notification on RAG change</td><td>No notification at MVP</td></tr>
+      <tr><td>Multi-church association</td><td>Single church per leader at MVP</td></tr>
+      <tr><td>In-app "leave church" flow</td><td>Admin manages manually at MVP</td></tr>
+      <tr><td>Deep-link from feed to prayer request</td><td>reference_id not in schema at MVP</td></tr>
+      <tr><td>Ocean/invalid pin placement detection</td><td>Any lat/lng accepted at MVP</td></tr>
+      <tr><td>Deactivated church dot cleanup on map</td><td>Amber dot persists after deactivation at MVP</td></tr>
+      <tr><td>Common password rejection</td><td>Not enforced at MVP</td></tr>
+      <tr><td>Free-text for "Other" role</td><td>Stores string "other" only at MVP</td></tr>
+      <tr><td>Underground name partial masking</td><td>Displays as "Underground Church" uniformly at MVP</td></tr>
+      <tr><td>Encouragement section (Home)</td><td>Present in wireframes — removed from MVP</td></tr>
+      <tr><td>Real-time Prayer Wall updates</td><td>Fetch on open at MVP</td></tr>
+      <tr><td>User-adjustable radius</td><td><code>preferred_radius</code> scaffolded in schema — not wired at MVP</td></tr>
+      <tr><td>RAG cluster colour aggregation</td><td>Count-only at MVP — data preserved for MVP 2</td></tr>
+      <tr><td>Upstash self-hosted rate limiting</td><td>SEC flagged for review if underground leaders hit onboarding at scale</td></tr>
+      <tr><td>Push Notifications (PN)</td><td>Deferred role — open before MVP handoff</td></tr>
+      <tr><td>App Store Presence (ASP)</td><td>Deferred role — open before MVP handoff</td></tr>
+      <tr><td>Data &amp; Analytics (DA)</td><td>Deferred role — open before MVP handoff</td></tr>
+      <tr><td>Auto-translation for daily scripture</td><td>Requires translation service integration + storage model for translated verse variants. Admin dashboard Screen 07.</td></tr>
+      <tr><td>Audit Log CSV export</td><td>Requires SEC review of data sensitivity before scoping. Log contains underground church IDs and admin identities. Admin dashboard Screen 10.</td></tr>
+      <tr><td>Flag confidence scoring — ML-assisted classification</td><td><strong>Partially promoted to MVP via D-45 (2026-05-09):</strong> <code>flag_reason</code> column and the categorized 20-code taxonomy (17-code <code>auto:</code> + 3-code <code>manual:</code>-only) are <strong>MVP</strong> — shipped at schema v1.29.0 via <code>kan112_messages_flag_reason_v1</code>; implementation KAN-124. <strong>Remaining Post-MVP:</strong> <code>flag_confidence</code> field and ML-assisted confidence scoring (algorithmic classifier, confidence thresholds, model versioning). Full ML rules engine workstream requires DBA + SPEC + COO before any build starts. Pre-D-45 category names (SOLICITATION, EXTERNAL_LINK, PII, DOCTRINAL, TONE) are superseded by the D-45/D-46 20-code taxonomy (see row 966 + D-45/D-46 in the locked decisions table for canonical codes).</td></tr>
+      <tr><td>Declaration of Faith decline option</td><td>Founder wants to explore X/decline path on Declaration of Faith screen. Ministry and UX decision needed. KAN-25 created as placeholder.</td></tr>
+      <tr><td>Read receipts — Connect DM</td><td>Not at MVP.</td></tr>
+      <tr><td>Typing indicators — Connect DM</td><td>Not at MVP.</td></tr>
+      <tr><td>Message deletion or editing</td><td>Not at MVP.</td></tr>
+      <tr><td>Thread archiving</td><td>Not at MVP.</td></tr>
+      <tr><td>Branch member list on invite (Connect)</td><td>Surface who is in a branch before a leader accepts the invite, so they can make an informed join decision. Gate kept at MVP because leaders currently cannot see members before joining. Requires CD mockup + Founder design approval before build. Linked to D-64 rationale. Chip task_3788993e.</td></tr>
+      <tr><td>Mute chat — DM + branch threads (Connect)</td><td>Per-thread mute for both 1:1 DMs and Ministries branch threads. Do not scope until post-launch sprint. No design exists.</td></tr>
+      <tr><td>Connect swipe-to-reveal message timestamp</td><td>Horizontal pan on DMThreadView + BranchThreadView reveals per-message send time (iMessage style). Do not build until post-launch sprint.</td></tr>
+      <tr><td>Group messaging &gt;7 ministries</td><td><strong>Partially promoted to MVP via D-61 (2026-05-29):</strong> Connect Ministries branches (≤7 ministries, every leader consents) are <strong>MVP</strong> — built KAN-68/69/70 + KAN-214. <strong>Remaining Post-MVP:</strong> branches with more than 7 ministries. No group channels or broadcast rooms at MVP 2 either — requires separate design phase.</td></tr>
+      <tr><td>Voice or media attachments</td><td>Not at MVP.</td></tr>
+      <tr><td>Flag rules engine — ML workstream</td><td><strong>Partially promoted to MVP via D-45 (2026-05-09):</strong> Categorized taxonomy and <code>flag_reason</code> column are <strong>MVP</strong> — D-45, schema v1.29.0 (<code>kan112_messages_flag_reason_v1</code>), implementation KAN-124. <strong>Remaining Post-MVP:</strong> ML-assisted confidence scoring, <code>flag_confidence</code> field, full algorithmic rules engine workstream. Pre-D-45 category names (SOLICITATION, EXTERNAL_LINK, PII, DOCTRINAL, TONE) are superseded by the D-45/D-46 taxonomy; do not use those names in new tickets. DBA + SPEC + COO required before any ML workstream build starts.</td></tr>
+      <tr><td>Heartcry triage lead rotation</td><td>Fixed person at MVP. Rotatable assignment post-MVP.</td></tr>
+      <tr><td>RAG admin override notification to leader</td><td>Leader not notified that an override is active at MVP.</td></tr>
+      <tr><td>Anonymous mode — Settings privacy section</td><td>ESC-08 — what does anonymous = true mean in the app? Pinned for later decision.</td></tr>
+      <tr><td>Language / i18n</td><td>Full internationalisation workstream. RTL support. Coming soon placeholder at MVP.</td></tr>
+      <tr><td>Concurrent session restriction</td><td>No single-device enforcement at MVP. Multiple devices permitted.</td></tr>
+      <tr><td>Biometric sign-in</td><td>Not at MVP.</td></tr>
+      <tr><td>Brute-force login protection</td><td>Supabase Auth rate limiting only at MVP. Additional protection to MVP 2.</td></tr>
+      <tr><td>Heartcry push notification</td><td>PN role deferred — hook scaffolded in heartcry response flow for future wiring.</td></tr>
+      <tr><td>Outreach &amp; Missions screen content</td><td>Static placeholder at MVP. Real content when Replant team defines the outreach programme.</td></tr>
+      <tr><td>Audit log retention policy — KAN-58</td><td>Current MVP behaviour: <code>audit_log</code> is append-only forever (no expiry, no archival). This is acceptable at MVP scale. A retention policy covering retention duration per action type, archival vs deletion, compliance constraints, and performance impact must be designed before MVP 2. Owning roles when activated: SPEC, BA, SEC, DBA, BE, Legal/Founder. Reference: COO direction 2 May 2026, KAN-57 (current MVP forever-retention behaviour).</td></tr>
+      <tr><td>Scheduled posts for announcements</td><td><strong>Promoted to MVP via D-55 (17 May 2026, founder override).</strong> No longer post-MVP — see KAN-52 (TESTING) and D-55 in locked decisions. <em>This row retained as a cross-reference to note the promotion.</em></td></tr>
+      <tr><td>Announcement templates dropdown</td><td>Founder noted during KAN-52 QA — template selector for common announcement types. Deferred to MVP 2 until core Announcements flow ships Done. KAN-52 c.12853 (mentioned as future consideration).</td></tr>
+      <tr><td>Bulk select / bulk actions on Announcements</td><td>Multi-select for bulk delete or bulk post. Deferred to MVP 2. KAN-52 c.12853.</td></tr>
+      <tr><td>Announcement retention / auto-expiry</td><td>Posted cards do not auto-delete at MVP. Retention policy (duration + trigger) needs Legal/COO ruling before implementation. KAN-52 c.12853.</td></tr>
+    </table>
+
+    <h3>Admin Dashboard Forward-Track (post-lockstep-close, 8 May 2026)</h3>
+    <table>
+      <tr><th>Item</th><th>Context</th></tr>
+      <tr><td>KAN-114 Phase 2.C — wire remaining 10 TIER 1 step-up consumers</td><td>Phase 2.A (approve-church) shipped 8 May. <code>read-heartcry</code> + <code>grant-admin</code> + <code>revoke-admin</code> upgraded to AAL2/TOTP TIER 0 (KAN-97 + KAN-98, 14–16 May) — removed from TIER 1 password step-up scope. <strong>Remaining Phase 2.C (10 actions):</strong> <code>reject-church</code>, <code>deactivate-church</code>, <code>reinstate-church</code>, <code>delete-announcement</code>, <code>post-announcement</code>, <code>mark-heartcry-responded</code>, <code>rag-override</code>, <code>seed-scripture</code>, <code>read-region</code>, <code>clear-flag</code>. Atomic FE+BE per-action PR per D-43.</td></tr>
+      <tr><td>KAN-118 — step-up framework hardening (3 items)</td><td>(1) Shared action-name constants consolidation — currently duplicated <code>src/lib/action-names.js</code> ESM + <code>netlify/functions/_lib/action-names.js</code> CJS due to Vite/Netlify build boundary; refactor to single source. (2) Per-action TTL configurability — read-heartcry already at 90s; framework supports overrides. (3) <code>request-step-up.js</code> rate-limit verification — chicken-and-egg endpoint relies on Supabase Auth's signInWithPassword built-in rate limit (~30/5min/IP per memory); verify and document, OR add app-layer rate limit if gap.</td></tr>
+      <tr><td>KAN-107 — Netlify functions smoke harness</td><td>Forward-track from KAN-106 (auth.admin.getUser typo class of bug). Build minimal smoke harness exercising every <code>verifySuperAdmin</code>-using endpoint with synthetic super_admin / non-super-admin / no-token JWTs; assert 200/401/403 across the three caller types. Catches BE-typo-but-compiles-clean class of bug at deploy time, not at first real founder click.</td></tr>
+      <tr><td>KAN-109 — TypeScript migration for <code>netlify/functions/_lib/</code></td><td>Forward-track from KAN-106 SEC ruling: TS literal-union types for action names + Supabase SDK types would have caught the <code>auth.admin.getUser</code> typo at compile time. Phase 1: migrate auth-critical helpers (<code>supabase-admin.js</code> + <code>validate-step-up.js</code>). Phase 2 (optional): full <code>netlify/functions/*.js</code> migration.</td></tr>
+      <tr><td>KAN-100 — Refresh anomaly detection</td><td>Forward-track from KAN-46 Layer 3. Current RefreshAuditor writes <code>admin_session_refreshed</code> on every TOKEN_REFRESHED auth event. Anomaly detection: flag refresh-burst patterns (e.g., 10+ refreshes in 60 seconds) as potential session-token-replay or extension-bug indicator.</td></tr>
+      <tr><td>KAN-101 — Server-side per-role TTL (admin = 8hr, leader = 168hr)</td><td>Long-term right-fix for D-37. Application-level enforcement (SessionWatchdog + step-up framework) is the MVP interim. Post-MVP: per-role JWT TTL configured server-side via Supabase Auth GoTrue role-mapped session config (when supported) or custom token-mint flow.</td></tr>
+      <tr><td>KAN-108 — DBA-flagged FE extras (KAN-110 Q3 informational)</td><td>Q3 ruling preserved DBA-flagged "extra columns" the FE doesn't currently query: <code>heartcries.seen_at/status/triage_lead_id</code>, <code>audit_log.triggered_by/id</code> (PiiHistory), <code>churches_public.verification_status/verification_deadline/rag_status</code> (NetworkOverview). Per-extra grooming decision (surface / data-only / defer) needed before any build.</td></tr>
+      <tr><td>read-region.js redesign — KAN-110 drift #6</td><td>Underground Oversight expand currently filter-fixed but SELECT shape has 8 of 10 phantom columns. Full redesign requires SEC + product call: add columns to live (gap-to-fix) OR redesign FE to fit live shape. Ticket to be filed when scheduled (deferred per founder ruling 8 May).</td></tr>
+      <tr><td>KAN-119 Phase 2 — Approve/Reject UX redesign</td><td>D-44 mandatory reason/notes founder must-have. Phase 1 BE-only validation is the fast compliance path. Phase 2: FE form redesign — modal overlay vs side panel vs inline-redesigned vs route. UX disposition needed. Mobile broken-fully resolved here.</td></tr>
+      <tr><td>KAN-145 — Admin shell mobile responsive (delivered, all batches merged)</td><td>All 4 CSS batches merged to main. Final commit: <code>092f06d</code> (14 May 2026, branch-on-main). Responsive admin shell shipped at 390px / 768px / 1024px / 1280px+. Hamburger + 260px slide-over drawer ≤1023px; full sidebar ≥1024px. Desktop-only screen guard at ≤767px (phones). D-49 + D-50 locked. <strong>Remaining issues filed as KAN-161</strong> (High priority, Backlog): sticky thead on iPad vertical, Queue card proportions on mobile, date input width on physical device.</td></tr>
+      <tr><td>KAN-116 — Admin UX/UI polish umbrella — TESTING on main @ 8b8cf05</td><td>Shipped to main 17 May 2026 (6 commits, direct FF, no PR). Covers: Audit Log windowed pagination navigator, ACTION chip label humanisation, Target column restoration, Login/SetPassword footer branding, mixed-case copy. All earlier KAN-116 rounds (PRs #24–#31, 12 May) also on main. Awaiting Founder Done. Remaining open items after Done: search field improvement disposition (KAN-116 sub-item, needs grooming for multi-field + date-range + action + actor scope).</td></tr>
+    </table>
+  </div>
+
+  <!-- 09 OPEN GAPS -->
+  <div class="section" id="gaps">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2 class="section-title">Open Gaps</h2>
+    </div>
+
+    <table>
+      <tr><th>Gap</th><th>Status</th><th>Owner</th><th>Blocking</th></tr>
+      <tr><td>G-02 — Heartcry / Persecuted Church handling</td><td><span class="tag tag-green">Closed</span></td><td>Ife ✅</td><td>—</td></tr>
+      <tr><td>G-07 — Declaration of Faith covenant language</td><td><span class="tag tag-amber">Open</span></td><td>Ife</td><td>Screen 02 content</td></tr>
+      <tr><td>G-11 — Underground region field for admin oversight</td><td><span class="tag tag-green">Resolved</span></td><td>SEC ✅ / FE ✅</td><td>Resolved via KAN-147 (May 2026) — region field live in Church Management table and detail panel; <code>REGION_LABELS</code> extracted to shared lib; <code>churches_admin</code> view updated with <code>region_admin_only</code> column. Region enum values display with human-readable labels wherever they appear.</td></tr>
+      <tr><td>G-19 — Prayer Wall tab Doc 05</td><td><span class="tag tag-green">Complete</span></td><td>SPEC ✅</td><td>—</td></tr>
+      <tr><td>G-22 — Heartcry disclosure wording</td><td><span class="tag tag-green">Closed</span></td><td>Ife ✅ SEC ✅</td><td>—</td></tr>
+      <tr><td>G-23 — Heartcry encryption key management</td><td><span class="tag tag-green">Closed</span></td><td>SEC ✅</td><td>—</td></tr>
+      <tr><td>G-24 — Triage lead email content</td><td><span class="tag tag-green">Closed</span></td><td>SEC ✅</td><td>—</td></tr>
+      <tr><td>G-25 — Keyword list for message flagging</td><td><span class="tag tag-green">Mechanism Closed / Wordlist Pending</span></td><td>Replant team (wordlist content)</td><td>Flagging mechanism closed per D-45 (2026-05-09): schema live at v1.29.0, KAN-124 implements the 20-code taxonomy and send-message wiring. <strong>Remaining open:</strong> specific keyword terms (word-boundary patterns) in the taxonomy data file — owned by Replant team, non-blocking for build, required before go-live. See row 966 for full spec.</td></tr>
+      <tr><td>G-26 — Static content copy (Vision, Outreach, FAQ)</td><td><span class="tag tag-amber">Open</span></td><td>Ife</td><td>FE static screens (non-blocking — projectreplant.org is starting point)</td></tr>
+      <tr><td>BLOCK-02 — Tab bar icon replacements</td><td><span class="tag tag-green">Closed</span></td><td>UI/UX ✅ FE ✅</td><td>D-35 — all 5 icons locked and implemented on main. H3 · V3c · A · F · 6C.</td></tr>
+      <tr><td>ESC-08 — Anonymous mode definition</td><td><span class="tag tag-amber">Pinned</span></td><td>Ife</td><td>Settings privacy section</td></tr>
+      <tr><td>App Store ToS vs Declaration of Faith</td><td><span class="tag tag-amber">Open</span></td><td>Ife + SEC + LEGAL</td><td>App Store submission</td></tr>
+      <tr><td>Wireframes — Screens 06, 06A, 06B (Login flow)</td><td><span class="tag tag-green">Closed</span></td><td>FE ✅ / SEC ✅ / Founder ✅</td><td>KAN-46 shipped 8 May 2026 (Layers 1-4 + 1 wired consumer); 4 layers verified live</td></tr>
+      <tr><td>Password reset deep link URL scheme</td><td><span class="tag tag-green">Closed</span></td><td>SEC ✅ / OPS ✅ / Founder ✅</td><td>KAN-99 SECURITY.md ratified Path A (Supabase Auth admin-side magic link via <code>auth.admin.generateLink</code>); ops-only, no leader-facing flow at MVP</td></tr>
+      <tr><td>Session lifetime SEC review</td><td><span class="tag tag-green">Closed</span></td><td>SEC ✅ / Founder ✅</td><td>KAN-46 + D-37 application-level enforcement (SessionWatchdog 30min idle + 8hr hard cap) + step-up framework (KAN-114) compensating controls. Server-side per-role TTL forward-tracked as KAN-101.</td></tr>
+      <tr><td>KAN-92 — Admin-open-heartcry decryption path</td><td><span class="tag tag-green">Resolved</span></td><td>BE ✅ / SEC ✅</td><td>Done 14 May 2026: admin-open-heartcry FE + decrypt path wired — PGP-qualified, ciphertext-to-plaintext live. AAL2/TOTP step-up gate active (KAN-97, D-52 TIER 0). <code>admin_aal2_elevation</code> + <code>read_heartcry</code> audit rows written per decrypt within 5-min freshness window.</td></tr>
+      <tr><td>KAN-104 — Team Management architectural rewrite</td><td><span class="tag tag-green">Resolved</span></td><td>BE ✅ / FE ✅ / SEC ✅</td><td>Done 15 May 2026: full rewrite — <code>list-team-members.js</code> via <code>auth.admin.listUsers()</code> + audit_log join; Resend invite path; <code>public.users</code> identity fix; step-up + founder guard + email + audit display. KAN-98 Done 16 May: AAL2/TOTP TIER 0 + <code>can_manage_admins</code> D-53 gate.</td></tr>
+      <tr><td>KAN-213 — Church Profile Setup Flow</td><td><span class="tag tag-green">Done — 2026-06-01</span></td><td>—</td><td>PR #109 merged → main <code>2b5607c</code>. Hotfix PR #110 <code>cdff51ae</code>. Auth flash fix <code>aa544d9</code>. Rulings locked: AC14 <code>update_leader_role</code> SECURITY DEFINER RPC; AC15 in-place type change, no re-verify; <code>profile_completion_done_by uuid NULL</code> on <code>churches</code>. DBA: 5 migrations applied. expo-location geocoding, EAS dev client build <code>7c069907</code>. Pending Founder device pass on Account B (What A God Ministries).</td></tr>
+      <tr><td>KAN-103 / KAN-145 — Admin shell mobile responsive</td><td><span class="tag tag-green">Resolved</span></td><td>FE ✅</td><td>Resolved via KAN-145 all 4 batches (commit <code>092f06d</code>, 14 May 2026) — responsive admin shell shipped at all breakpoints (390px / 768px / 1024px / 1280px+). D-49 + D-50 locked.</td></tr>
+      <tr><td>KAN-161 — Admin mobile/tablet rendering regressions</td><td><span class="tag tag-amber">Open — Backlog</span></td><td>FE</td><td>High priority. 3 issues confirmed on physical device post-KAN-145: (1) sticky thead broken on iPad vertical — first row clips above column headers; (2) Queue card proportions off on mobile (card layout); (3) date input wider than field on device (iOS WebKit native calendar chrome). Not blocked on app build — will be addressed before go-live.</td></tr>
+      <tr><td>KAN-112 — Flagged Messages FE filter bug</td><td><span class="tag tag-amber">Open</span></td><td>FE</td><td>Page shows "0 open" despite 2 unreviewed flagged rows in live <code>messages</code>. KAN-102 audit confirmed messages references schema-clean; this is FE-logic bug (filter expression OR FK join failure).</td></tr>
+      <tr><td>KAN-113 — Verification Queue tab filter + tab coverage</td><td><span class="tag tag-amber">Open</span></td><td>FE / UI/UX</td><td>Tab filters return empty (Title-Case label literals vs lowercase enum values — same pattern family as KAN-110 drift #7). Tabs missing for <code>main_campus</code>, <code>branch</code>, <code>without_walls</code>. Disposition (multi-value catch-all vs full 6-tab UX) needs founder + UX call.</td></tr>
+    </table>
+  </div>
+
+  <!-- 10 BA FLAGS -->
+  <div class="section" id="ba-flags">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2 class="section-title">BA Flags to COO</h2>
+    </div>
+
+    <div class="decision-block closed">
+      <div class="decision-label closed">Resolved</div>
+      <div class="decision-title">AUTH role naming confusion</div>
+      <div class="decision-body">BA flagged that role 09 in dev-roles doc was listed as "Persecuted Church &amp; Encryption" but memory listed it as "Authentication." Clarification: AUTH in the role index refers to the Authentication role (role 09 in the current numbering). BE handles standard auth flows. AUTH role is separate and not yet opened. DBA owns encryption implementation for heartcries. No conflict — BA was reading an older version of the roles doc. Current doc (v with BA added) has AUTH at position 09 correctly.</div>
+    </div>
+
+    <div class="decision-block closed">
+      <div class="decision-label closed">Resolved</div>
+      <div class="decision-title">SA status</div>
+      <div class="decision-body">SA is active — opened early in the build. SA has ruled on G-12, G-13, G-16, G-17, and the globe projection assessment. SA sits between SPEC and all technical roles. All architecture decisions flow through SA before DBA/BE/FE.</div>
+    </div>
+
+    <div class="decision-block closed">
+      <div class="decision-label closed">Resolved</div>
+      <div class="decision-title">Wireframe issues — 5 items flagged by BA</div>
+      <div class="decision-body">
+        <p><strong>1. "Declaration of State" on both pages:</strong> Resolved in SPEC Doc 03 — RAG status (state declaration) lives on Church Registration Page 1. Not on Page 2. Wireframe duplicate is a copy-paste artifact. Disregard.</p>
+        <p><strong>2. Contact Details block duplicated in wireframe:</strong> Confirmed artifact. Use SPEC Doc 03 field list — single contact block on Church Registration Page 1.</p>
+        <p><strong>3. Church type list inconsistency:</strong> Resolved — canonical enum is 6 types: <code>main_campus, branch, house_church, ministry, without_walls, underground</code>. Display names: Church (Main Campus), Church (Branch), House Church, Ministry, Church Without Walls, Underground Church. This is final.</p>
+        <p><strong>4. Underground church + required location conflict:</strong> Resolved — location is NOT stored for underground churches. Zero geographic data at any layer. DB constraint enforces null. Field hidden in UI on Underground type selection. Not stored encrypted, not displayed suppressed — simply not collected.</p>
+        <p><strong>5. 2-leader cap collision behaviour:</strong> Resolved — third registration attempt is blocked at DB level via trigger (<code>LEADER_CAP_EXCEEDED</code>). BE <code>search-churches</code> returns <code>at_capacity: true</code> so FE blocks selection before submission. No queue, no admin review at MVP.</p>
+      </div>
+    </div>
+
+    <div class="decision-block open">
+      <div class="decision-label open">Open — for Ife</div>
+      <div class="decision-title">30-day clock SLA concern</div>
+      <div class="decision-body">BA flagged: at scale (hundreds of signups in a launch week), the manual verification process becomes a bottleneck. Does the 30-day clock pause while verification is pending with the Replant team? Or does the clock run regardless? ADMIN dashboard SLA alerts may be needed. Flagging for COO + Ife to discuss when ADMIN role is opened.</div>
+    </div>
+
+    <div class="decision-block open">
+      <div class="decision-label open">Open — for Ife + SEC</div>
+      <div class="decision-title">App Store ToS vs Declaration of Faith</div>
+      <div class="decision-body">BA flagged: Declaration of Faith states "This is not a legal agreement." Most app stores (Apple, Google) expect a Terms of Service acceptance event for user data processing. There may need to be a quiet, separate ToS acceptance underneath the spiritual declaration — without undermining the ministry framing. SEC and Ife to confirm whether a separate ToS is needed before App Store submission.</div>
+    </div>
+  </div>
+
+  <div class="founder-section" id="founder-answers">
+    <div class="founder-section-title">⚠️ Needs Founder Input — Ife</div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1.2rem;">These are the only open items requiring your direct answer. Everything else in this document is resolved.</p>
+
+    <div class="founder-q">
+      <div class="founder-q-label">G-07 — Declaration of Faith Covenant Language</div>
+      <p style="font-size:0.82rem;">Do you want to add formal covenant language to the Declaration of Faith screen, or keep it as currently written? This affects Screen 02 content only — not the architecture.</p>
+    </div>
+
+    <div class="founder-q">
+      <div class="founder-q-label">ESC-08 — Anonymous Mode</div>
+      <p style="font-size:0.82rem;">The <code>anonymous</code> boolean exists on the users table but was never defined. What does anonymous = true actually do in the app? Does it hide the leader's name from church profiles? From leader search? From Prayer Wall attributions? All of the above? Pinned — come back with a clear mind.</p>
+    </div>
+
+    <div class="founder-q">
+      <div class="founder-q-label">G-26 — Static Content Copy (Vision, Outreach, FAQ)</div>
+      <p style="font-size:0.82rem;">FE can use projectreplant.org as the starting point for Vision and FAQ copy. Outreach & Missions needs your direction. Confirm or revise all three before FE hardcodes. Non-blocking for now.</p>
+    </div>
+
+    <div class="founder-q">
+      <div class="founder-q-label">App Store ToS vs Declaration of Faith</div>
+      <p style="font-size:0.82rem;">The Declaration of Faith states it is not a legal agreement. Apple and Google require ToS acceptance for apps that process user data. Do you want a separate ToS acceptance (small checkbox linking to projectreplant.org/terms) alongside the Declaration — or handled differently? LEGAL and SEC should weigh in once you decide direction.</p>
+    </div>
+
+    <div class="founder-q">
+      <div class="founder-q-label">G-25 — Keyword List for Message Flagging</div>
+      <p style="font-size:0.82rem;">BE has scaffolded the keyword flagging mechanism — keyword list is stored in a config table, not hardcoded. The Replant team needs to define the actual keyword list. What terms should trigger a flag for admin review? Solicitation, external links, and other categories to consider. Non-blocking for build but needed before go-live.</p>
+    </div>
+
+    <div class="founder-q resolved">
+      <div class="founder-q-label">KAN-213 — Profile Completion Flow rulings — ✅ RESOLVED 2026-06-01</div>
+      <p style="font-size:0.82rem;"><strong>(1) AC 14 — Role write-path: Option A locked.</strong> Separate <code>update_leader_role</code> SECURITY DEFINER RPC. Direct client UPDATE rejected as unsafe (SEC c.15473).<br><br><strong>(2) AC 15 — Church type edit: In-place, no re-verify. Locked.</strong> Type change is a label correction. Email on type change scoped to KAN-81. Underground excluded from picker — RPC hard-rejects it.<br><br><strong>(3) AC 2 — Second-leader attribution: Approved. Locked.</strong> <code>profile_completion_done_by uuid NULL</code> added to <code>churches</code>. Built and shipped in PR #109.</p>
+    </div>
+
+    <div class="founder-q">
+      <div class="founder-q-label">⚠ Token Rotation — Pre-launch hard gate</div>
+      <p style="font-size:0.82rem;"><code>welcome_dm_internal_token</code> value was exposed in a session transcript during KAN-217/220 work (2026-05-31). <strong>Must be rotated before any real external leader is verified through the system.</strong> 3-step procedure: (1) <code>SELECT encode(gen_random_bytes(32),'hex');</code> (2) <code>SELECT vault.update_secret('&lt;new_value&gt;', 'welcome_dm_internal_token');</code> (3) Update Netlify env <code>WELCOME_DM_INTERNAL_TOKEN</code> → new value, redeploy admin BE + edge function. Full procedure documented on KAN-220 c.15330.</p>
+    </div>
+
+    <div class="founder-q">
+      <div class="founder-q-label">KAN-198 — Password Reset OTP: blocked on CD design</div>
+      <p style="font-size:0.82rem;">Highest priority pre-launch blocker for auth. Single gate: UI/UX 3-state 06A design not yet delivered. Once CD delivers the design → CC dispatch immediately. Also needs KAN-39/40 close-out ruling (Forgot Password flow — currently In Progress, superseded by KAN-198; cancel or absorbed ruling needed from Founder).</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

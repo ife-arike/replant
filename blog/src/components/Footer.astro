@@ -1,0 +1,51 @@
+---
+const year = new Date().getFullYear()
+---
+
+<footer>
+  <span class="footer-logo">Replant</span>
+  <span class="footer-meta">
+    <a href="/rss.xml">RSS</a>
+    <span class="dot">·</span>
+    <a href="https://projectreplant.org">projectreplant.org</a>
+    <span class="dot">·</span>
+    <span>© {year}</span>
+  </span>
+</footer>
+
+<style>
+  footer {
+    padding: 2rem 4rem;
+    border-top: 0.5px solid var(--ink-faint);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.73rem;
+    color: var(--ink-mid);
+    background: var(--bg);
+  }
+  .footer-logo {
+    font-family: var(--serif);
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-mid);
+  }
+  .footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--sans);
+    letter-spacing: 0.05em;
+  }
+  .footer-meta a {
+    color: var(--ink-mid);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-meta a:hover { color: var(--ink); }
+  .dot { color: var(--ink-faint); }
+
+  @media (max-width: 640px) {
+    footer { flex-direction: column; gap: 0.6rem; text-align: center; padding: 2rem 1.5rem; }
+  }
+</style>

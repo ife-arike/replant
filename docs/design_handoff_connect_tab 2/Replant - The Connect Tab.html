@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — The Connect Tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="connect-tab/styles.css">
+</head>
+<body>
+
+  <div class="page-head">
+    <div class="eyebrow">Replant · Connect · Tab 5 of 5</div>
+    <h1>A sealed letter, <em>not a feed</em>.</h1>
+    <p>
+      The private layer of the network — verified leader to verified leader, and the Replant team
+      to a single leader. Sky is the only accent; everything else is ink on near-black. No blur
+      anywhere. Tap the compose icon to find a leader, tap any thread to open it. The Tweaks panel
+      (bottom-right) switches verification, list states, connection, send outcome, and resets the
+      one-time covenant notice.
+    </p>
+  </div>
+
+  <div class="frames-row">
+    <div class="frame-stack">
+      <div style="
+        position: relative;
+        width: 430px;
+        height: 932px;
+        border-radius: 60px;
+        background: #050505;
+        box-shadow:
+          0 50px 120px rgba(0,0,0,0.55),
+          0 0 0 1.5px rgba(240,237,230,0.05),
+          inset 0 0 0 6px #0a0a0a,
+          inset 0 0 0 8px rgba(240,237,230,0.05);
+        overflow: hidden;
+      ">
+        <!-- Dynamic island -->
+        <div style="
+          position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+          width: 126px; height: 37px; background: #000; border-radius: 22px; z-index: 100;
+        "></div>
+        <!-- status bar -->
+        <div style="
+          position: absolute; top: 22px; left: 32px;
+          font-family: -apple-system, system-ui, sans-serif; font-weight: 590; font-size: 16px;
+          color: #F0EDE6; z-index: 99;
+        ">9:41</div>
+        <div style="
+          position: absolute; top: 23px; right: 30px; z-index: 99;
+          display: flex; gap: 7px; align-items: center; color: #F0EDE6;
+        ">
+          <svg width="18" height="12" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="0.6" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" rx="0.6" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" rx="0.6" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="0.6" fill="currentColor"/></svg>
+          <svg width="25" height="12" viewBox="0 0 24 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.6"/><rect x="2" y="2" width="18" height="8" rx="1.5" fill="currentColor"/><path d="M22.5 4v4c0.7-0.2 1.3-1 1.3-2c0-1-0.6-1.8-1.3-2z" fill="currentColor" fill-opacity="0.6"/></svg>
+        </div>
+        <!-- home indicator -->
+        <div style="
+          position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+          width: 140px; height: 5px; border-radius: 100px;
+          background: rgba(240,237,230,0.4); z-index: 100; pointer-events: none;
+        "></div>
+
+        <div id="root" style="position: absolute; inset: 0;"></div>
+      </div>
+      <div class="label">iPhone 15 Pro Max · 430 × 932 pt · Connect</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="connect-tab/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="connect-tab/data.jsx"></script>
+  <script type="text/babel" src="connect-tab/states.jsx"></script>
+  <script type="text/babel" src="connect-tab/covenant.jsx"></script>
+  <script type="text/babel" src="connect-tab/screen-16.jsx"></script>
+  <script type="text/babel" src="connect-tab/screen-17.jsx"></script>
+  <script type="text/babel" src="connect-tab/screen-18.jsx"></script>
+  <script type="text/babel" src="connect-tab/screen-ministries.jsx"></script>
+  <script type="text/babel" src="connect-tab/screen-branch.jsx"></script>
+  <script type="text/babel" src="connect-tab/branch-create.jsx"></script>
+  <script type="text/babel" src="connect-tab/app.jsx"></script>
+
+</body>
+</html>

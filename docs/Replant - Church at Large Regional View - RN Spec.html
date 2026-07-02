@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Church at Large · Regional View · RN Spec</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-2: rgba(240,237,230,0.30);
+    --muted-strong: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hair: rgba(240,237,230,0.18);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --red: #E05555;
+    --red-mid: rgba(224,85,85,0.45);
+    --red-dim: rgba(224,85,85,0.10);
+    --amber: #D4A855;
+    --amber-mid: rgba(212,168,85,0.45);
+    --amber-dim: rgba(212,168,85,0.12);
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-dim: rgba(91,173,122,0.10);
+  }
+
+  body {
+    background: #0d0d0d;
+    font-family: var(--sans);
+    font-weight: 300;
+    color: var(--text);
+    padding: 3rem 2rem 6rem;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  .doc { max-width: 1040px; margin: 0 auto; }
+
+  /* HEADER */
+  .doc-header { padding-bottom: 1.8rem; margin-bottom: 1.4rem; border-bottom: 0.5px solid var(--faint); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--sky); margin-bottom: 14px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .eyebrow::before { content:''; width:8px; height:8px; border-radius:50%; background: var(--sky); }
+  .doc-title { font-family: var(--serif); font-size: 2.7rem; font-weight: 300; letter-spacing: 0.02em; margin-bottom: 10px; line-height: 1.05; }
+  .doc-title em { font-style: italic; color: var(--sky); }
+  .doc-subtitle { font-size: 0.96rem; color: var(--muted-strong); max-width: 760px; line-height: 1.7; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 26px; margin-top: 20px;
+    font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .meta-row strong { color: var(--text); font-weight: 500; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 10px;
+    border-radius: 99px; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
+    text-transform: uppercase; border: 0.5px solid; margin-top: 16px;
+  }
+  .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-pill.green { color: var(--green); border-color: var(--green-mid); background: var(--green-dim); }
+  .status-pill.green .dot { background: var(--green); }
+
+  /* SECTIONS */
+  section { margin: 3.4rem 0 0; }
+  .section-eyebrow { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sky); margin-bottom: 10px; }
+  .section-title { font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: 0.01em; margin-bottom: 8px; }
+  .section-sub { font-size: 0.86rem; color: var(--muted-strong); max-width: 780px; margin-bottom: 1.6rem; }
+  h3.sub { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin: 1.8rem 0 0.8rem; }
+
+  /* DESIGNER NOTE */
+  .sm-notes { background: var(--surface); border: 0.5px solid var(--sky-mid); border-radius: 8px; padding: 24px 28px; margin: 1.6rem 0 0; }
+  .sm-notes-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .sm-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--sky-dim); border: 0.5px solid var(--sky-mid); display: flex; align-items: center; justify-content: center; font-family: var(--serif); color: var(--sky); font-size: 1.05rem; font-weight: 500; flex-shrink: 0; }
+  .sm-from { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sky); margin-bottom: 2px; }
+  .sm-byline { color: var(--muted); font-size: 0.78rem; }
+  .sm-notes p { font-size: 0.92rem; color: var(--muted-strong); line-height: 1.75; margin-bottom: 12px; }
+  .sm-notes p:last-child { margin-bottom: 0; }
+  .sm-notes strong { color: var(--text); font-weight: 500; }
+  .sm-notes em { color: var(--sky); font-style: italic; }
+  .sm-notes code { font-family: var(--mono); font-size: 0.78rem; color: var(--sky); background: var(--sky-dim); padding: 1px 6px; border-radius: 3px; }
+
+  /* PANELS / CARDS */
+  .card { background: var(--surface); border: 0.5px solid var(--faint); border-radius: 8px; padding: 24px 28px; margin-bottom: 1.3rem; }
+  .card h4 { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; margin-bottom: 6px; }
+  .card p { font-size: 0.86rem; color: var(--muted-strong); line-height: 1.7; margin-bottom: 10px; }
+  .card p:last-child { margin-bottom: 0; }
+  .card strong { color: var(--text); font-weight: 500; }
+  .card em { color: var(--sky); font-style: italic; }
+  code { font-family: var(--mono); font-size: 0.78rem; color: var(--sky); background: var(--sky-dim); padding: 1px 5px; border-radius: 3px; }
+
+  /* CODE BLOCK */
+  pre { background: #0a0a0a; border: 0.5px solid var(--faint); border-radius: 8px; padding: 20px 22px; overflow-x: auto; margin: 1rem 0 1.4rem; }
+  pre code { display: block; background: none; padding: 0; color: var(--muted-strong); font-size: 0.76rem; line-height: 1.75; letter-spacing: 0; }
+  pre .c { color: var(--muted-2); font-style: italic; }
+  pre .k { color: var(--sky); }
+  pre .s { color: var(--green); }
+  pre .n { color: var(--amber); }
+
+  /* FLOW STRIP */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; margin: 1.2rem 0 1.6rem; }
+  .flow-step { flex: 1; min-width: 150px; background: var(--surface); border: 0.5px solid var(--faint); border-radius: 8px; padding: 16px 16px; position: relative; }
+  .flow-arrow { display: flex; align-items: center; justify-content: center; width: 30px; color: var(--muted-2); font-size: 1.1rem; flex-shrink: 0; }
+  .flow-step .n { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.16em; color: var(--sky); text-transform: uppercase; margin-bottom: 8px; }
+  .flow-step .t { font-family: var(--serif); font-size: 1.05rem; color: var(--text); margin-bottom: 4px; line-height: 1.25; }
+  .flow-step .d { font-size: 0.74rem; color: var(--muted); line-height: 1.5; }
+
+  /* SPEC TABLE */
+  table { width: 100%; border-collapse: collapse; margin: 0.6rem 0 1.4rem; font-size: 0.8rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 0.5px solid var(--faint); vertical-align: top; line-height: 1.55; }
+  th { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  td { color: var(--muted-strong); }
+  td strong { color: var(--text); font-weight: 500; }
+  td.tok { font-family: var(--mono); font-size: 0.72rem; color: var(--sky); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+
+  /* REGION BUCKET GRID */
+  .buckets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 1rem 0 1.4rem; }
+  .bucket { background: var(--surface); border: 0.5px solid var(--faint); border-radius: 8px; padding: 16px 18px; }
+  .bucket .bh { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .bucket .bn { font-family: var(--serif); font-size: 1.15rem; color: var(--text); }
+  .bucket .bc { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em; color: var(--muted); }
+  .rag-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; background: #1a1a1a; margin-bottom: 12px; }
+  .rag-bar i { display: block; height: 100%; }
+  .rag-bar i.g { background: var(--green); } .rag-bar i.a { background: var(--amber); } .rag-bar i.r { background: var(--red); }
+  .bucket ul { list-style: none; }
+  .bucket li { font-size: 0.76rem; color: var(--muted); padding: 2px 0; display: flex; align-items: center; gap: 7px; }
+  .bucket li .d { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .bucket li .d.g { background: var(--green); } .bucket li .d.a { background: var(--amber); } .bucket li .d.r { background: var(--red); }
+  .bucket.ug { border-color: var(--red-mid); }
+  .bucket .ug-note { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.05em; color: var(--red); margin-top: 8px; opacity: 0.85; }
+
+  /* AC CHECKLIST */
+  .ac-list { font-size: 0.84rem; line-height: 1.7; }
+  .ac-list li { list-style: none; padding-left: 24px; position: relative; padding-top: 5px; padding-bottom: 5px; color: var(--muted-strong); }
+  .ac-list li::before { content: ''; position: absolute; left: 0; top: 9px; width: 11px; height: 11px; border: 0.5px solid var(--hair); border-radius: 2px; }
+  .ac-list li strong { color: var(--text); font-weight: 500; }
+
+  /* OPEN Q */
+  .q-list { list-style: none; }
+  .q-list li { padding: 12px 0; border-top: 0.5px solid var(--faint); display: grid; grid-template-columns: 150px 1fr; gap: 18px; font-size: 0.84rem; line-height: 1.65; color: var(--muted-strong); }
+  .q-list li:first-child { border-top: none; }
+  .q-list li strong { color: var(--text); font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; padding-top: 2px; }
+
+  .lede { font-size: 0.86rem; color: var(--muted-strong); line-height: 1.7; max-width: 800px; margin-bottom: 1rem; }
+  .lede strong { color: var(--text); font-weight: 500; }
+  .pill-inline { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); border: 0.5px solid var(--faint); border-radius: 99px; padding: 3px 9px; display: inline-flex; align-items: center; gap: 6px; }
+  .pill-inline .ring { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--muted); }
+  hr.rule { border: none; border-top: 0.5px solid var(--faint); margin: 2.2rem 0; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <!-- HEADER -->
+  <header class="doc-header">
+    <div class="eyebrow">The Church at Large · CAL · Screen 11</div>
+    <h1 class="doc-title">Regional View — <em>React Native</em> Build Spec</h1>
+    <p class="doc-subtitle">The globe, dots, profile sheet, prayer pull-up, tutorial, and all states already ship. This document covers the one remaining piece of the screen: the <strong>regional view</strong> — naming the region a leader is looking at, and opening its churches on tap.</p>
+    <div class="status-pill green"><span class="dot"></span> Ready to build · last piece of CAL</div>
+    <div class="meta-row">
+      <span>Screen · <strong>The Church at Large</strong></span>
+      <span>Component · <strong>RegionalView</strong></span>
+      <span>Model · <strong>Tap-a-region</strong></span>
+      <span>Prototype · <strong>church-tab/globe.jsx</strong></span>
+      <span>Updated · <strong>02 Jun 2026</strong></span>
+    </div>
+  </header>
+
+  <!-- DESIGNER NOTE -->
+  <div class="sm-notes">
+    <div class="sm-notes-head">
+      <div class="sm-avatar">R</div>
+      <div>
+        <div class="sm-from">From design</div>
+        <div class="sm-byline">Context before you start</div>
+      </div>
+    </div>
+    <p>We evaluated two ways to enter a region — pinch-to-zoom and tap. <strong>Tap won; zoom-to-enter is dropped.</strong> Pinch on the globe is now <em>only</em> a "look closer" magnifier (1.0–2.4×) with a plain <code>%</code> readout. It does not open anything.</p>
+    <p>The regional view is the <strong>only unbuilt behavior on this screen.</strong> Everything around it — globe rotation/pause/resume, RAG dots, the profile sheet, the global prayer pull-up — is done. Wire this into the existing globe; don't rebuild the screen.</p>
+  </div>
+
+  <!-- 1 · MODEL -->
+  <section>
+    <div class="section-eyebrow">01 — The model</div>
+    <h2 class="section-title">Tap a region</h2>
+    <p class="section-sub">The globe rotates slowly. A pill, top-right, always names whichever region is <em>facing the viewer</em>. Tapping that pill — or tapping the globe body itself — opens a right-hand slide-over listing that region's churches. Tapping a church row opens the existing profile sheet. Nothing else changes.</p>
+
+    <div class="flow">
+      <div class="flow-step"><div class="n">Idle</div><div class="t">Globe rotates</div><div class="d">Pill names the centered region; it updates as the globe turns.</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="n">Tap</div><div class="t">Pill or globe body</div><div class="d">Opens the centered region. Tapping a dot still opens that church, not the region.</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="n">Panel</div><div class="t">Regional slide-over</div><div class="d">Region name, RAG summary, church list. Slides in from the right.</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="n">Row tap</div><div class="t">Profile sheet</div><div class="d">Reuses the existing church profile sheet — already built.</div></div>
+    </div>
+
+    <p class="lede">The pill renders as: <span class="pill-inline"><span class="ring"></span> East Asia</span> — mono, 8.5px, uppercase, 0.16em tracking, on a blurred dark capsule, top-right, 16px inset. Before the first region is resolved it reads <code>Regions</code>.</p>
+  </section>
+
+  <!-- 2 · DATA MODEL -->
+  <section>
+    <div class="section-eyebrow">02 — Data model</div>
+    <h2 class="section-title">Regions by nearest center</h2>
+    <p class="section-sub">There is no per-church region field to maintain. Eight macro-region <strong>centers</strong> are defined; every church is assigned to the nearest center by great-circle distance. Buckets stay self-consistent as churches are added — and the same centers drive "which region is the globe facing."</p>
+
+    <h3 class="sub">Region centers — REGION_DEFS</h3>
+    <table>
+      <thead><tr><th>key</th><th>name</th><th>center (lat, lon)</th><th>underground</th></tr></thead>
+      <tbody>
+        <tr><td class="tok">na</td><td><strong>North America</strong></td><td class="tok">40, −100</td><td>—</td></tr>
+        <tr><td class="tok">la</td><td><strong>Latin America</strong></td><td class="tok">−15, −60</td><td>—</td></tr>
+        <tr><td class="tok">eu</td><td><strong>Europe</strong></td><td class="tok">50, 15</td><td>—</td></tr>
+        <tr><td class="tok">af</td><td><strong>Africa</strong></td><td class="tok">5, 20</td><td>—</td></tr>
+        <tr><td class="tok">me</td><td><strong>Middle East</strong></td><td class="tok">32, 50</td><td>yes</td></tr>
+        <tr><td class="tok">sa</td><td><strong>South Asia</strong></td><td class="tok">22, 78</td><td>yes</td></tr>
+        <tr><td class="tok">ea</td><td><strong>East Asia</strong></td><td class="tok">32, 115</td><td>yes</td></tr>
+        <tr><td class="tok">oc</td><td><strong>Asia–Pacific</strong></td><td class="tok">−10, 130</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub">Assignment + grouping</h3>
+    <pre><code><span class="c">// great-circle distance in radians (haversine)</span>
+<span class="k">function</span> greatCircle(aLat, aLon, bLat, bLon) {
+  <span class="k">const</span> r = Math.PI / <span class="n">180</span>;
+  <span class="k">const</span> dLat = (bLat - aLat) * r, dLon = (bLon - aLon) * r;
+  <span class="k">const</span> h = Math.sin(dLat/<span class="n">2</span>)**<span class="n">2</span>
+    + Math.cos(aLat*r) * Math.cos(bLat*r) * Math.sin(dLon/<span class="n">2</span>)**<span class="n">2</span>;
+  <span class="k">return</span> <span class="n">2</span> * Math.asin(Math.min(<span class="n">1</span>, Math.sqrt(h)));
+}
+
+<span class="c">// each church → the region whose center is closest</span>
+<span class="k">function</span> regionKeyForChurch(c) {
+  <span class="k">let</span> best = null, bestD = Infinity;
+  <span class="k">for</span> (<span class="k">const</span> r <span class="k">of</span> REGION_DEFS) {
+    <span class="k">const</span> d = greatCircle(c.lat, c.lon, r.lat, r.lon);
+    <span class="k">if</span> (d &lt; bestD) { bestD = d; best = r.key; }
+  }
+  <span class="k">return</span> best;
+}
+
+<span class="c">// regions that actually hold a church, churches grouped in</span>
+<span class="k">const</span> REGIONS = REGION_DEFS
+  .map(r =&gt; ({
+    ...r,
+    churches: GLOBAL_CHURCHES.filter(c =&gt; regionKeyForChurch(c) === r.key),
+    underground: UNDERGROUND_REGIONS.includes(r.name),
+  }))
+  .filter(r =&gt; r.churches.length &gt; <span class="n">0</span>);</code></pre>
+    <p class="lede"><strong>Schema note.</strong> The prototype computes this client-side from <code>churches.lat/lon</code>. For production, either keep it client-side (cheap, deterministic) or have the API return a precomputed <code>region_key</code> per church and a <code>/regions</code> rollup. See open questions.</p>
+  </section>
+
+  <!-- 3 · EXPECTED BUCKETS -->
+  <section>
+    <div class="section-eyebrow">03 — Expected output</div>
+    <h2 class="section-title">The 8 buckets (current mock data)</h2>
+    <p class="section-sub">All 40 global churches map into exactly one region — no orphans. Use this as the acceptance fixture: the same lat/lon set must reproduce these groupings and RAG counts.</p>
+
+    <div class="buckets">
+      <div class="bucket">
+        <div class="bh"><span class="bn">North America</span><span class="bc">6 · g5 a0 r1</span></div>
+        <div class="rag-bar"><i class="g" style="width:83.3%"></i><i class="r" style="width:16.7%"></i></div>
+        <ul><li><span class="d g"></span>Loganville · Washington · Mexico City · Toronto · Vancouver</li><li><span class="d r"></span>Port-au-Prince</li></ul>
+      </div>
+      <div class="bucket">
+        <div class="bh"><span class="bn">Latin America</span><span class="bc">3 · g2 a1 r0</span></div>
+        <div class="rag-bar"><i class="g" style="width:66.7%"></i><i class="a" style="width:33.3%"></i></div>
+        <ul><li><span class="d g"></span>Quito · Buenos Aires</li><li><span class="d a"></span>Rio de Janeiro</li></ul>
+      </div>
+      <div class="bucket">
+        <div class="bh"><span class="bn">Europe</span><span class="bc">7 · g4 a1 r2</span></div>
+        <div class="rag-bar"><i class="g" style="width:57.1%"></i><i class="a" style="width:14.3%"></i><i class="r" style="width:28.6%"></i></div>
+        <ul><li><span class="d g"></span>Rome · Madrid · Berlin · London</li><li><span class="d a"></span>Istanbul</li><li><span class="d r"></span>Kyiv · Moscow</li></ul>
+      </div>
+      <div class="bucket">
+        <div class="bh"><span class="bn">Africa</span><span class="bc">7 · g4 a1 r2</span></div>
+        <div class="rag-bar"><i class="g" style="width:57.1%"></i><i class="a" style="width:14.3%"></i><i class="r" style="width:28.6%"></i></div>
+        <ul><li><span class="d g"></span>Lagos · Nairobi · Cape Town · Addis Ababa</li><li><span class="d a"></span>Kinshasa</li><li><span class="d r"></span>Khartoum · Mogadishu</li></ul>
+      </div>
+      <div class="bucket ug">
+        <div class="bh"><span class="bn">Middle East</span><span class="bc">3 · g0 a1 r2</span></div>
+        <div class="rag-bar"><i class="a" style="width:33.3%"></i><i class="r" style="width:66.7%"></i></div>
+        <ul><li><span class="d a"></span>Cairo</li><li><span class="d r"></span>Damascus · Tehran</li></ul>
+        <div class="ug-note">+ gatherings we cannot name</div>
+      </div>
+      <div class="bucket ug">
+        <div class="bh"><span class="bn">South Asia</span><span class="bc">6 · g0 a3 r3</span></div>
+        <div class="rag-bar"><i class="a" style="width:50%"></i><i class="r" style="width:50%"></i></div>
+        <ul><li><span class="d a"></span>Mumbai · Delhi · Dhaka</li><li><span class="d r"></span>Yangon · Karachi · Kabul</li></ul>
+        <div class="ug-note">+ gatherings we cannot name</div>
+      </div>
+      <div class="bucket ug">
+        <div class="bh"><span class="bn">East Asia</span><span class="bc">5 · g3 a2 r0</span></div>
+        <div class="rag-bar"><i class="g" style="width:60%"></i><i class="a" style="width:40%"></i></div>
+        <ul><li><span class="d g"></span>Manila · Seoul · Tokyo</li><li><span class="d a"></span>Hong Kong · Bangkok</li></ul>
+        <div class="ug-note">+ gatherings we cannot name</div>
+      </div>
+      <div class="bucket">
+        <div class="bh"><span class="bn">Asia–Pacific</span><span class="bc">3 · g2 a1 r0</span></div>
+        <div class="rag-bar"><i class="g" style="width:66.7%"></i><i class="a" style="width:33.3%"></i></div>
+        <ul><li><span class="d g"></span>Sydney · Singapore</li><li><span class="d a"></span>Jakarta</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · FACED REGION -->
+  <section>
+    <div class="section-eyebrow">04 — Faced-region detection</div>
+    <h2 class="section-title">Which region is the globe facing?</h2>
+    <p class="section-sub">The pill must track the centered region as the globe rotates or is dragged. The contract is the same regardless of rendering engine: <strong>the faced region is the region center nearest the point at the front-center of the globe.</strong></p>
+
+    <h3 class="sub">Prototype (SVG orthographic globe)</h3>
+    <p class="lede">The globe spins in longitude only, so the front-center is <code>(lat 0, lon = lon0)</code>. Project each region center and pick the one with the largest <code>z</code> (closest to the camera). Recompute on rotation; fire the change callback <strong>only when the region key changes</strong> — not every frame.</p>
+    <pre><code><span class="k">const</span> faced = useMemo(() =&gt; {
+  <span class="k">let</span> best = null, bestZ = -Infinity;
+  <span class="k">for</span> (<span class="k">const</span> r <span class="k">of</span> REGIONS) {
+    <span class="k">const</span> p = project(r.lat, r.lon, lon0); <span class="c">// orthographic</span>
+    <span class="k">if</span> (p.z &gt; bestZ) { bestZ = p.z; best = r; }
+  }
+  <span class="k">return</span> best;
+}, [lon0]);</code></pre>
+
+    <h3 class="sub">Production (Mapbox globe in React Native)</h3>
+    <p class="lede">The SVG globe is replaced by Mapbox's globe projection. There is no <code>z</code> — instead read the <strong>camera center coordinate</strong> and pick the nearest region center by the same <code>greatCircle()</code>. Debounce on camera idle so the pill doesn't thrash mid-gesture.</p>
+    <pre><code><span class="c">// @rnmapbox/maps — on camera change / idle</span>
+<span class="k">const</span> { center } = <span class="k">await</span> mapRef.current.getCenter(); <span class="c">// [lon, lat]</span>
+<span class="k">let</span> best = null, bestD = Infinity;
+<span class="k">for</span> (<span class="k">const</span> r <span class="k">of</span> REGIONS) {
+  <span class="k">const</span> d = greatCircle(center[<span class="n">1</span>], center[<span class="n">0</span>], r.lat, r.lon);
+  <span class="k">if</span> (d &lt; bestD) { bestD = d; best = r; }
+}
+<span class="k">if</span> (best.key !== facedKeyRef.current) {
+  facedKeyRef.current = best.key;
+  setFacedRegion(best);
+}</code></pre>
+  </section>
+
+  <!-- 5 · COMPONENTS + STATE -->
+  <section>
+    <div class="section-eyebrow">05 — Components &amp; state</div>
+    <h2 class="section-title">Wiring</h2>
+    <p class="section-sub">Three additions sit on top of the existing globe component. No new screens, no navigation.</p>
+    <table>
+      <thead><tr><th>piece</th><th>role</th><th>key props / state</th></tr></thead>
+      <tbody>
+        <tr><td><strong>RegionPill</strong></td><td>Absolute top-right capsule naming the faced region; pressable.</td><td class="tok">facedRegion, onPress</td></tr>
+        <tr><td><strong>RegionalPanel</strong></td><td>Right slide-over with header + church list. Reuses church-row + RAG styling.</td><td class="tok">open, region, onClose, onPickChurch</td></tr>
+        <tr><td><strong>Globe (existing)</strong></td><td>Emits faced-region changes; a body tap opens the centered region.</td><td class="tok">onFaceRegion, onPickRegion, onPickChurch</td></tr>
+      </tbody>
+    </table>
+    <pre><code><span class="c">// container state</span>
+<span class="k">const</span> [facedRegion, setFacedRegion] = useState(null); <span class="c">// centered region</span>
+<span class="k">const</span> [openRegion,  setOpenRegion]  = useState(null); <span class="c">// region shown in panel</span>
+<span class="k">const</span> panelOpen = !!openRegion;
+
+<span class="k">const</span> pickRegion = (region) =&gt; setOpenRegion(region ?? facedRegion);
+
+<span class="c">// globe callbacks</span>
+onFaceRegion = setFacedRegion;          <span class="c">// pill label</span>
+onPickRegion = pickRegion;              <span class="c">// body tap → open centered</span>
+onPickChurch = openProfileSheet;        <span class="c">// dot tap → existing sheet</span></code></pre>
+  </section>
+
+  <!-- 6 · PANEL UI SPEC -->
+  <section>
+    <div class="section-eyebrow">06 — Regional panel · UI spec</div>
+    <h2 class="section-title">Measurements &amp; type</h2>
+    <p class="section-sub">Lifted verbatim from the prototype (<code>church-tab/styles.css</code>). All colors are the shared CAL tokens; nothing new is introduced.</p>
+
+    <h3 class="sub">Container — slide-over</h3>
+    <table>
+      <thead><tr><th>prop</th><th>value</th></tr></thead>
+      <tbody>
+        <tr><td>Width</td><td class="tok">80% of screen</td></tr>
+        <tr><td>Height</td><td class="tok">100% (full screen height, anchored right)</td></tr>
+        <tr><td>Background</td><td class="tok">--bg #080808</td></tr>
+        <tr><td>Left border</td><td class="tok">0.5px var(--faint)</td></tr>
+        <tr><td>Shadow</td><td class="tok">−20px 0 60px rgba(0,0,0,0.6)</td></tr>
+        <tr><td>Enter / exit</td><td class="tok">translateX(100% → 0), 450ms cubic-bezier(.22,.61,.36,1)</td></tr>
+        <tr><td>Elevation</td><td class="tok">above globe + chips, below profile sheet</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub">Header</h3>
+    <table>
+      <thead><tr><th>element</th><th>spec</th></tr></thead>
+      <tbody>
+        <tr><td>Padding</td><td class="tok">18 / 18 / 14, bottom border 0.5px faint</td></tr>
+        <tr><td>Eyebrow "Region"</td><td class="tok">mono 9px · 0.22em · uppercase · --sky · mb 6</td></tr>
+        <tr><td>Region name (h3)</td><td class="tok">serif 24px · weight 300 · 0.02em</td></tr>
+        <tr><td>RAG summary</td><td class="tok">row, gap 10, 11px --muted, mt 12 · 7px dots g/a/r</td></tr>
+        <tr><td>Close (✕)</td><td class="tok">28×28, top 18 / right 18, --muted</td></tr>
+      </tbody>
+    </table>
+    <p class="lede">RAG summary copy, only for non-zero counts: <code>N freely operating</code> · <code>N with limitations</code> · <code>N not freely</code> — each preceded by its colored dot.</p>
+
+    <h3 class="sub">Church row (reuses <code>.list-row</code>)</h3>
+    <table>
+      <thead><tr><th>element</th><th>spec</th></tr></thead>
+      <tbody>
+        <tr><td>Row</td><td class="tok">flex, align top, gap 12, padding 14/8, bottom border 0.5px faint, pressable</td></tr>
+        <tr><td>RAG marker</td><td class="tok">8px dot, mt 6, glow: 0 0 6px of its RAG color</td></tr>
+        <tr><td>Name</td><td class="tok">serif 17px · weight 400 · line 1.2</td></tr>
+        <tr><td>Leader line</td><td class="tok">11.5px --muted, mt 3 · "{Role} {Surname}" or just "{Role}" if anon, joined " · ", then " · {city}" in --muted-2</td></tr>
+        <tr><td>RPL ID</td><td class="tok">mono 9px · 0.18em · --muted · mt 5</td></tr>
+        <tr><td>Tap</td><td class="tok">opens the existing profile sheet for that church</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub">Underground footer</h3>
+    <p class="lede">Rendered only when <code>region.underground === true</code>, as the last item in the body — never as a church row.</p>
+    <table>
+      <thead><tr><th>element</th><th>spec</th></tr></thead>
+      <tbody>
+        <tr><td>Container</td><td class="tok">flex, gap 8, mt 10, padding 12/14, border 0.5px DASHED faint, radius 10</td></tr>
+        <tr><td>Dot</td><td class="tok">7px --red @ 0.7 opacity</td></tr>
+        <tr><td>Label</td><td class="tok">mono 10px · 0.06em · --muted — "+ gatherings we cannot name"</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 7 · UNDERGROUND RULE -->
+  <section>
+    <div class="section-eyebrow">07 — Underground rule</div>
+    <h2 class="section-title">What the panel must never show</h2>
+    <p class="section-sub">Underground churches are not pictured anywhere — not on the globe, not in any list, and <strong>not as a row in the regional panel.</strong> A region only <em>acknowledges</em> them with the dashed footer.</p>
+    <div class="card">
+      <p><strong>Flag source.</strong> A region's <code>underground</code> flag is true when its name is in <code>UNDERGROUND_REGIONS</code> — currently <em>North Africa, Central Asia, East Asia, Middle East, South Asia</em>. Of the live buckets, that lights up <strong>Middle East, South Asia, East Asia</strong>.</p>
+      <p><strong>Counts stay aggregate.</strong> The per-region footer is qualitative only — no number. The global <code>+18 hidden</code> count stays in the CAL header chip, exactly as it is today. Do not break the 18 down per region.</p>
+    </div>
+  </section>
+
+  <!-- 8 · INTERACTION CONTRACT -->
+  <section>
+    <div class="section-eyebrow">08 — Interaction contract</div>
+    <h2 class="section-title">Edge behavior</h2>
+    <pre><code><span class="c">// pill / globe-body tap</span>
+on press(pill)         → openRegion = facedRegion
+on tap(globe body)     → openRegion = facedRegion   <span class="c">// no drag, not a dot</span>
+on tap(dot)            → openProfileSheet(church)    <span class="c">// region NOT opened</span>
+on drag(globe)         → rotate; this is a drag, not a tap → no region open
+
+<span class="c">// panel</span>
+on press(row)          → openProfileSheet(church)
+on press(close ✕)      → openRegion = null
+on press(scrim/back)   → openRegion = null           <span class="c">// Android back closes panel first</span>
+
+<span class="c">// pill label lifecycle</span>
+faced region changes   → update pill text only (debounced on key change)
+before first resolve   → pill reads "Regions"
+
+<span class="c">// magnifier (unchanged, separate concern)</span>
+pinch / wheel          → scale globe 1.0–2.4×, show "NNN%" + Reset
+                         NEVER opens a region</code></pre>
+  </section>
+
+  <!-- 9 · ACCEPTANCE -->
+  <section>
+    <div class="section-eyebrow">09 — Acceptance criteria</div>
+    <h2 class="section-title">Done when</h2>
+    <ul class="ac-list">
+      <li>The top-right pill <strong>names the centered region</strong> and updates as the globe rotates or is dragged.</li>
+      <li>Tapping the pill <strong>or</strong> the globe body opens the centered region's slide-over; tapping a dot opens that church instead.</li>
+      <li>Panel header shows region name + a <strong>RAG summary</strong> matching the bucket counts in §03.</li>
+      <li>Church rows render name / leader+city / RPL and open the <strong>existing profile sheet</strong> on tap.</li>
+      <li>Regions flagged underground (<strong>Middle East, South Asia, East Asia</strong>) show the dashed footer; no underground church ever appears as a row.</li>
+      <li>All 40 fixture churches map into <strong>exactly one</strong> region — no orphans, counts reproduce §03.</li>
+      <li>Pinch/zoom shows only <code>%</code> + Reset and <strong>never</strong> opens a region.</li>
+      <li>Panel slides in from the right over ~450ms; close + Android back dismiss it.</li>
+    </ul>
+  </section>
+
+  <!-- 10 · OPEN QUESTIONS -->
+  <section>
+    <div class="section-eyebrow">10 — Open questions for eng</div>
+    <h2 class="section-title">Decisions to confirm</h2>
+    <ul class="q-list">
+      <li><strong>Region source</strong><span>Compute <code>region_key</code> on the client from lat/lon (prototype's approach), or have the API return it + a <code>/regions</code> rollup with counts? Client-side is fine for &lt; a few thousand churches.</span></li>
+      <li><strong>Center vs. lock</strong><span>The pill always names the live centered region. When the panel is open and the globe keeps rotating, do we keep the opened region pinned (current intent) — confirmed?</span></li>
+      <li><strong>Panel width on tablet</strong><span>80% reads well on phone. On larger widths, cap at ~420px instead of 80%?</span></li>
+      <li><strong>Region naming</strong><span>"Asia–Pacific" currently absorbs Oceania + maritime SE Asia (Sydney, Jakarta, Singapore). Keep that label or split?</span></li>
+      <li><strong>Empty region</strong><span>Regions with zero verified churches are filtered out today, so they never become "faced." Confirm we never want to surface an empty region's underground footer on its own.</span></li>
+    </ul>
+  </section>
+
+  <hr class="rule">
+  <p style="font-family:var(--mono);font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted-2);text-align:center;">Replant · The Church at Large · Regional View · RN build spec · 02 Jun 2026</p>
+
+</div>
+</body>
+</html>

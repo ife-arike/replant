@@ -1,0 +1,513 @@
+/* Intercession Journal — nested surface inside Prayer Wall tab.
+   Sky-blue only. Same vocabulary as the Prayer Wall and Church tabs. */
+
+@import url('../shared/shared.css');
+
+.ij { position: relative; }
+
+/* a quiet sky glow at the top — sanctuary feel, same as the parent tab */
+.ij::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: radial-gradient(ellipse at 50% -40%, rgba(107,181,232,0.10), transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─────────── sub-header (nested surface, back to Prayer Wall) ─────────── */
+.ij-head {
+  padding: 56px 22px 14px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.ij-head .back-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color .2s;
+  white-space: nowrap;
+}
+.ij-head .back-row:hover { color: var(--sky); }
+.ij-head .back-row svg { color: var(--sky); }
+.ij-head .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+.ij-head h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+.ij-head .subtitle {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─────────── segmented pill (Churches / Standing in Gap) ─────────── */
+.ij-seg {
+  position: relative;
+  display: flex;
+  margin: 18px 22px 8px;
+  padding: 3px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 100px;
+  z-index: 2;
+}
+.ij-seg .thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: calc(50% - 3px);
+  border-radius: 100px;
+  background: rgba(107,181,232,0.12);
+  border: 0.5px solid var(--sky-mid);
+  transition: left .22s cubic-bezier(.3,.7,.4,1);
+}
+.ij-seg .thumb.left { left: 3px; }
+.ij-seg .thumb.right { left: calc(50%); }
+.ij-seg .opt {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  text-align: center;
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.ij-seg .opt.active { color: var(--sky); }
+.ij-seg .opt .count {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--muted-2);
+  padding: 1px 6px;
+  border-radius: 100px;
+  border: 0.5px solid var(--faint);
+  background: var(--black);
+  transition: color .2s, border-color .2s;
+}
+.ij-seg .opt.active .count { color: var(--sky); border-color: var(--sky-mid); }
+
+/* sub-counter under the pill — left-aligned status line for the chosen list */
+.ij-counter {
+  padding: 0 22px;
+  margin: 8px 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ij-counter > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ij-counter .right { color: var(--sky); cursor: pointer; }
+.ij-counter .right:hover { color: var(--sky-bright); }
+.ij-counter .cap {
+  font-family: var(--mono);
+  color: var(--muted-2);
+}
+.ij-counter .cap.near { color: var(--sky); }
+
+/* ─────────── list container with gentle separators ─────────── */
+.ij-list {
+  padding: 6px 22px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─────────── CHURCHES — row ─────────── */
+.ij-church {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0 16px;
+  border-bottom: 0.5px solid var(--faint);
+  cursor: pointer;
+  transition: background .2s;
+}
+.ij-church:last-child { border-bottom: none; }
+.ij-church .rpl-glyph {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.ij-church .rpl-glyph .ini {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--sky);
+  letter-spacing: 0.02em;
+}
+.ij-church .body { flex: 1; min-width: 0; }
+.ij-church .name {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.2;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ij-church .rpl {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: var(--muted-2);
+}
+.ij-church .meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ij-church .meta .sep { color: var(--muted-2); margin: 0 5px; }
+.ij-church .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sky);
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 4px;
+  margin-left: 8px;
+}
+.ij-church .status .d {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sky);
+  box-shadow: 0 0 5px var(--sky);
+  animation: livePulse 2.4s ease-in-out infinite;
+}
+
+/* one row in revealed/swiped state — shows remove affordance */
+.ij-church.swiped {
+  transform: translateX(-72px);
+  transition: transform .25s cubic-bezier(.3,.7,.4,1);
+}
+.ij-church.swiped + .swipe-action { opacity: 1; pointer-events: auto; }
+.swipe-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+  cursor: pointer;
+}
+.swipe-action:hover { color: var(--off-white); }
+.swipe-action .gx {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.swipe-row-wrap { position: relative; overflow: hidden; }
+
+/* swipe hint — a small arrow on one row to suggest the gesture */
+.swipe-hint {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ─────────── full-list inline prompt ─────────── */
+.ij-full-notice {
+  margin: 14px 22px 6px;
+  padding: 14px 16px;
+  border: 0.5px dashed var(--sky-mid);
+  border-radius: 8px;
+  background: var(--sky-faint);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  position: relative;
+  z-index: 2;
+}
+.ij-full-notice .glyph {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 0.5px solid var(--sky-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sky);
+  flex-shrink: 0;
+}
+.ij-full-notice .body { flex: 1; min-width: 0; }
+.ij-full-notice .head {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+.ij-full-notice .sub {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.ij-full-notice .sub .pending {
+  color: var(--sky);
+  font-weight: 500;
+}
+
+/* ─────────── STANDING IN GAP — row ─────────── */
+.ij-gap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--faint);
+  cursor: pointer;
+}
+.ij-gap:last-child { border-bottom: none; }
+.ij-gap .row1 {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ij-gap .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sky);
+  box-shadow: 0 0 5px var(--sky);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+.ij-gap .text {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--cream);
+  letter-spacing: 0.005em;
+  flex: 1;
+  min-width: 0;
+  /* truncate to one line per CD brief */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ij-gap .row2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-left: 15px;
+}
+.ij-gap .row2 .who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ij-gap .row2 .who .sep { color: var(--muted-2); margin: 0 5px; }
+.ij-gap .row2 .standing {
+  color: var(--sky);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ij-gap .row2 .standing .num { font-weight: 500; }
+
+/* ─────────── empty states ─────────── */
+.ij-empty {
+  margin: 24px 22px;
+  padding: 44px 24px 40px;
+  text-align: center;
+  border: 0.5px dashed var(--faint-2);
+  border-radius: 10px;
+  background: rgba(8,8,8,0.4);
+}
+.ij-empty .glyph {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 18px;
+  opacity: 0.85;
+}
+.ij-empty .title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--off-white);
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+.ij-empty .body {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 260px;
+  margin: 0 auto 16px;
+}
+.ij-empty .cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 100px;
+  color: var(--sky);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  white-space: nowrap;
+}
+.ij-empty .cta:hover { background: var(--sky-dim); color: var(--sky-bright); }
+
+/* ─────────── footer scripture (slimmer than parent tab) ─────────── */
+.ij-foot {
+  margin: 28px 22px 28px;
+  padding: 18px 0 4px;
+  border-top: 0.5px solid var(--faint);
+  text-align: center;
+}
+.ij-foot .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 12px;
+}
+.ij-foot .verse {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  max-width: 280px;
+  margin: 0 auto 10px;
+}
+.ij-foot .ref {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* frame label override for handoff page — adds a tiny state badge */
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 100px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sky);
+  background: var(--sky-faint);
+}

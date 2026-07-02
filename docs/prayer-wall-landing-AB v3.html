@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Prayer Wall Landing · A/B Exploration v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-strong: rgba(240,237,230,0.60);
+    --muted-65: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.45);
+    --sky-dim: rgba(107,181,232,0.10);
+    --sky-border-card: rgba(107,181,232,0.25);
+
+    --green: #5BAD7A;
+    --green-mid: rgba(91,173,122,0.45);
+    --green-dim: rgba(91,173,122,0.10);
+    --green-tint: rgba(91,173,122,0.06);
+    --green-border-card: rgba(91,173,122,0.30);
+
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', ui-monospace, monospace;
+  }
+
+  html, body {
+    background: #0a0a0a;
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 64px 48px 96px; }
+
+  /* ────────── page header ────────── */
+  .page-header {
+    max-width: 1280px;
+    margin: 0 auto 56px;
+    padding-bottom: 28px;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .page-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 10px;
+  }
+  .page-title {
+    font-family: var(--serif);
+    font-size: 34px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+  .page-sub {
+    font-size: 13px;
+    color: var(--muted-strong);
+    line-height: 1.65;
+    max-width: 760px;
+  }
+  .page-flag {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(212,168,85,0.08);
+    border: 0.5px solid rgba(212,168,85,0.30);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: rgba(240,237,230,0.85);
+    max-width: 760px;
+  }
+  .page-flag b { color: #D4A855; font-weight: 500; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; margin-right: 8px; }
+
+  /* ────────── frames row ────────── */
+  .frames {
+    display: flex;
+    gap: 96px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .frame-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  .frame-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--muted-strong);
+    text-transform: uppercase;
+  }
+  .frame-tag .letter {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 0.5px solid var(--sky-mid);
+    color: var(--sky);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .frame-tag.b .letter { border-color: var(--green-mid); color: var(--green); }
+
+  .frame-note {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted-strong);
+    max-width: 360px;
+    text-align: center;
+    line-height: 1.55;
+  }
+  .frame-note em { color: var(--text); font-style: italic; }
+
+  /* ────────── phone (430 × 932 pt) ────────── */
+  .phone {
+    width: 430px;
+    height: 932px;
+    background: var(--bg);
+    border-radius: 56px;
+    border: 2px solid rgba(240,237,230,0.14);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.55),
+                inset 0 0 0 6px #000;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 122px;
+    height: 36px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 20;
+  }
+
+  .status-bar {
+    height: 59px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 28px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .status-icons { display: flex; gap: 6px; align-items: center; opacity: 0.9; }
+  .home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    background: var(--text);
+    border-radius: 3px;
+    opacity: 0.85;
+    z-index: 30;
+  }
+
+  .body-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ────────── shared chrome ────────── */
+  .top-bar {
+    height: 56px;
+    flex-shrink: 0;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .top-bar-title {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .scroll-area {
+    flex: 1;
+    overflow: hidden;
+    display: block; /* fixed v2.1 — was flex; children were shrinking below natural height */
+  }
+  .scroll-area > * { flex-shrink: 0; }
+
+  /* ────────── welcome (Option A only) ────────── */
+  .welcome {
+    padding: 8px 24px 0;
+    text-align: center;
+  }
+  .welcome p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--muted-strong);
+    max-width: 320px;
+    margin: 0 auto;
+    text-wrap: pretty;
+  }
+
+  /* ────────── scripture footer (bottom, above tab bar) ────────── */
+  .scripture-footer {
+    margin-top: 10px;
+    padding: 0 20px;
+  }
+  .scripture-rule {
+    height: 0.5px;
+    background: var(--faint);
+    width: 100%;
+  }
+  .scripture-footer-inner {
+    padding: 14px 0 6px;
+    text-align: center;
+  }
+  .scripture-verse {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--muted-strong);
+    max-width: 320px;
+    margin: 0 auto 12px;
+    text-wrap: pretty;
+  }
+  .scripture-ref {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ────────── action cards ────────── */
+  /* cards start padding under top bar */
+  .cards {
+    padding: 8px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cards.tight-top { padding-top: 4px; }
+
+  .action-card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 16px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .action-card.make { border: 0.5px solid var(--sky-border-card); }
+  .action-card.receive { border: 0.5px solid var(--green-border-card); }
+
+  .ac-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .ac-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ac-icon.sky { background: var(--sky-dim); border: 0.5px solid var(--sky-mid); color: var(--sky); }
+  .ac-icon.green { background: var(--green-dim); border: 0.5px solid var(--green-mid); color: var(--green); }
+  .ac-icon svg { width: 24px; height: 24px; }
+
+  .ac-text { flex: 1; min-width: 0; }
+  .ac-title {
+    font-family: var(--serif);
+    font-size: 19px; /* smaller — was 22; visual flow */
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.005em;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .ac-sub {
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: 13px; /* smaller — was 15; visual flow */
+    line-height: 1.5;
+    color: var(--muted-65);
+    text-wrap: pretty;
+  }
+
+  .ac-cta {
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .ac-cta.sky-solid { background: var(--sky); color: var(--bg); }
+  .ac-cta.locked {
+    background: transparent;
+    border: 0.5px solid rgba(91,173,122,0.30);
+    color: var(--muted);
+    font-style: italic;
+    font-weight: 400;
+    display: inline-flex;
+    gap: 8px;
+  }
+  .ac-cta.locked .lock { opacity: 0.75; }
+
+  /* ────────── view my open prayers ────────── */
+  .open-prayers {
+    margin-top: 16px;
+    text-align: center;
+    padding: 0 24px 4px;
+  }
+  .open-prayers a {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--sky);
+    text-decoration: none;
+    letter-spacing: 0.005em;
+  }
+
+  /* ────────── testimony rotator ────────── */
+  /* tighter rotator margins to make room for scripture footer */
+  .rotator-section {
+    margin-top: 10px;
+    padding: 0 24px;
+  }
+  .rotator-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .rotator-eyebrow {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--green);
+  }
+  .rotator-see-all {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--green);
+    text-decoration: none;
+  }
+
+  .rotator-track {
+    /* simulate scroll with peek of next card */
+    display: flex;
+    gap: 12px;
+    overflow: hidden;
+  }
+  .rotator-card {
+    flex-shrink: 0;
+    width: 100%;
+    background: var(--green-tint);
+    border: 0.5px solid rgba(91,173,122,0.20);
+    border-left: 2px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+  }
+  .rotator-loc {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--green);
+    line-height: 1.3;
+    margin-bottom: 2px;
+  }
+  .rotator-author {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .rotator-body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.5;
+    color: rgba(240,237,230,0.85);
+    text-wrap: pretty;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .rotator-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .rotator-dots .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--faint);
+  }
+  .rotator-dots .dot.active { background: var(--green); }
+
+  /* ────────── tab bar (5 tabs, locked v2 set) ────────── */
+  .tab-bar {
+    height: 83px;
+    flex-shrink: 0;
+    background: rgba(8,8,8,0.96);
+    border-top: 0.5px solid var(--faint);
+    padding: 8px 6px 34px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.45;
+    padding: 4px 6px;
+    flex: 1;
+  }
+  .tab-item.active { opacity: 1; }
+  .tab-item svg { width: 24px; height: 24px; stroke: var(--text); }
+  .tab-item.active svg { stroke: var(--sky); }
+  .tab-item .tab-label {
+    font-family: var(--sans);
+    font-size: 10px;
+    color: var(--text);
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+  }
+  .tab-item.active .tab-label { color: var(--sky); }
+
+  /* spacer pushing scripture/rotator stack down if needed */
+  .bottom-spacer { height: 0; }
+
+  /* ────────── compare bar ────────── */
+  .compare-bar {
+    max-width: 1280px;
+    margin: 64px auto 0;
+    padding-top: 36px;
+    border-top: 0.5px solid var(--faint);
+    display: flex;
+    gap: 28px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .compare-card {
+    flex: 1;
+    min-width: 280px;
+    max-width: 440px;
+    border: 0.5px solid var(--faint);
+    border-radius: 12px;
+    padding: 22px 24px;
+    background: var(--surface);
+  }
+  .compare-card.a { border-color: var(--sky-mid); }
+  .compare-card.b { border-color: var(--green-mid); }
+  .compare-card h4 {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    color: var(--sky);
+  }
+  .compare-card.b h4 { color: var(--green); }
+  .compare-card p {
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--muted-strong);
+    margin-bottom: 8px;
+  }
+  .compare-card p:last-child { margin-bottom: 0; }
+  .compare-card b { color: var(--text); font-weight: 500; }
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <p class="page-eyebrow">UI/UX · Prayer Wall · Landing · A/B exploration · v3 · scripture footer · 27 May 2026</p>
+  <h1 class="page-title">Scripture moves to the bottom</h1>
+  <p class="page-sub">
+    Per the dispatch — scripture is now anchoring the foot of the scroll, above the tab bar, with a hairline divider separating it from the testimony rotator. Welcome line A/B remains the only delta between frames; everything else (cards, View my open prayers, rotator, tabs) is held verbatim from v2.
+  </p>
+  <div class="page-flag">
+    <b>Deviation from v8</b>Action-card title 22→<b style="margin:0; font-family:var(--serif); font-size:13px; color:#fff;">19 pt</b> and subtitle 15→<b style="margin:0; font-family:var(--serif); font-size:13px; color:#fff;">13 pt</b> per Founder note ("feels too big/accessibility-like"). Pre-empts v8 Item 03 — needs confirmation before re-redlining.
+  </div>
+</div>
+
+<div class="frames">
+
+  <!-- ════════════════════════════════════════ -->
+  <!-- OPTION A · welcome line above scripture  -->
+  <!-- ════════════════════════════════════════ -->
+  <div class="frame-col">
+    <div class="frame-tag a">
+      <span class="letter">A</span>
+      <span>Welcome line · above scripture</span>
+    </div>
+
+    <div class="phone" data-screen-label="A · Welcome line">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="status-icons">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="0.5"/><rect x="4.5" y="4" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1"><path d="M1 4 Q8 -1 15 4"/><path d="M3.5 6.5 Q8 3 12.5 6.5"/><circle cx="8" cy="9" r="1" fill="currentColor"/></svg>
+          <svg width="25" height="11" viewBox="0 0 25 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="1" width="21" height="9" rx="2"/><rect x="2" y="2.5" width="17" height="6" rx="1" fill="currentColor"/><rect x="22.5" y="4" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="body-area">
+        <div class="top-bar">
+          <span class="top-bar-title">Prayer Wall</span>
+        </div>
+
+        <div class="scroll-area">
+
+          <!-- Welcome -->
+          <div class="welcome">
+            <p>A place where the body lifts one another up in prayer.</p>
+          </div>
+          <!-- Action cards -->
+          <div class="cards">
+
+            <!-- Make Intercession -->
+            <div class="action-card make">
+              <div class="ac-head">
+                <div class="ac-icon sky">
+                  <!-- Incense bowl with three small steam curls -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- bowl -->
+                    <path d="M5 17 H19 L17.5 20 H6.5 Z"/>
+                    <line x1="5" y1="17" x2="19" y2="17"/>
+                    <!-- steam curls -->
+                    <path d="M8.5 14.5 c0 -1.5 1 -2 0 -3.5 c-1 -1.5 0 -2 0 -3.5"/>
+                    <path d="M12 14.5 c0 -1.5 -1 -2 0 -3.5 c1 -1.5 0 -2 0 -3.5"/>
+                    <path d="M15.5 14.5 c0 -1.5 1 -2 0 -3.5 c-1 -1.5 0 -2 0 -3.5"/>
+                  </svg>
+                </div>
+                <div class="ac-text">
+                  <p class="ac-title">Make Intercession</p>
+                  <p class="ac-sub">Pray through the wall of requests from churches around the world.</p>
+                </div>
+              </div>
+              <div class="ac-cta sky-solid">Enter the prayer wall</div>
+            </div>
+
+            <!-- Receive Intercession -->
+            <div class="action-card receive">
+              <div class="ac-head">
+                <div class="ac-icon green">
+                  <!-- Candle with flame -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- flame -->
+                    <path d="M12 3 C 13.5 5, 14.5 6.5, 14.5 8.5 C 14.5 10.2, 13.4 11.2, 12 11.2 C 10.6 11.2, 9.5 10.2, 9.5 8.5 C 9.5 6.5, 10.5 5, 12 3 Z"/>
+                    <!-- wick -->
+                    <line x1="12" y1="11.2" x2="12" y2="13"/>
+                    <!-- candle body -->
+                    <rect x="9" y="13" width="6" height="7.5" rx="0.5"/>
+                    <!-- saucer -->
+                    <line x1="7" y1="20.5" x2="17" y2="20.5"/>
+                  </svg>
+                </div>
+                <div class="ac-text">
+                  <p class="ac-title">Receive Intercession</p>
+                  <p class="ac-sub">Let the body stand with your church in prayer.</p>
+                </div>
+              </div>
+              <div class="ac-cta locked">
+                <span class="lock">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11 V8 a4 4 0 0 1 8 0 V11"/></svg>
+                </span>
+                <span>Coming soon</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- View open prayers -->
+          <div class="open-prayers">
+            <a href="#">View my open prayers</a>
+          </div>
+
+          <!-- Testimony rotator -->
+          <div class="rotator-section">
+            <div class="rotator-head">
+              <span class="rotator-eyebrow">Testimonies</span>
+              <a href="#" class="rotator-see-all">See all</a>
+            </div>
+            <div class="rotator-track">
+              <div class="rotator-card">
+                <p class="rotator-loc">Abundant Life Church Mumbai · India</p>
+                <p class="rotator-author">Minister Priya Thomas</p>
+                <p class="rotator-body">Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown and were able to remove it cleanly. She is at home…</p>
+              </div>
+            </div>
+            <div class="rotator-dots">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
+
+          <!-- Scripture footer (per dispatch) -->
+          <div class="scripture-footer">
+            <div class="scripture-rule"></div>
+            <div class="scripture-footer-inner">
+              <p class="scripture-verse">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+              <p class="scripture-ref">Ephesians 6:18 · KJV</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab bar — 5 tabs (locked v2 set) -->
+        <div class="tab-bar">
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14 L12 7 L20 14"/><path d="M6 13 V20 H18 V13"/></svg>
+            <span class="tab-label">Home</span>
+          </div>
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 V20"/><path d="M12 8 H17"/></svg>
+            <span class="tab-label">The Church</span>
+          </div>
+          <div class="tab-item">
+            <!-- shelter over cross — crossbar moved to upper third -->
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9 Q12 4 19 9"/><path d="M12 11 V20"/><path d="M9 14 H15"/></svg>
+            <span class="tab-label">Persecuted</span>
+          </div>
+          <div class="tab-item active">
+            <!-- doorway (locked v2 spec — Prayer Wall) -->
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21 V11 Q5 4 12 4 Q19 4 19 11 V21"/><path d="M9 21 V15 H15 V21"/></svg>
+            <span class="tab-label">Prayer Wall</span>
+          </div>
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/></svg>
+            <span class="tab-label">Connect</span>
+          </div>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <p class="frame-note">
+      Welcome leads, scripture echoes, action follows. Three soft beats stacked — adds ~58 pt of vertical before the first card.
+    </p>
+  </div>
+
+
+  <!-- ════════════════════════════════════════ -->
+  <!-- OPTION B · scripture only                -->
+  <!-- ════════════════════════════════════════ -->
+  <div class="frame-col">
+    <div class="frame-tag b">
+      <span class="letter">B</span>
+      <span>Scripture only · current build</span>
+    </div>
+
+    <div class="phone" data-screen-label="B · No welcome">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="status-icons">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="0.5"/><rect x="4.5" y="4" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1"><path d="M1 4 Q8 -1 15 4"/><path d="M3.5 6.5 Q8 3 12.5 6.5"/><circle cx="8" cy="9" r="1" fill="currentColor"/></svg>
+          <svg width="25" height="11" viewBox="0 0 25 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="1" width="21" height="9" rx="2"/><rect x="2" y="2.5" width="17" height="6" rx="1" fill="currentColor"/><rect x="22.5" y="4" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </div>
+
+      <div class="body-area">
+        <div class="top-bar">
+          <span class="top-bar-title">Prayer Wall</span>
+        </div>
+
+        <div class="scroll-area">
+          <!-- Cards -->
+          <div class="cards">
+
+            <div class="action-card make">
+              <div class="ac-head">
+                <div class="ac-icon sky">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 17 H19 L17.5 20 H6.5 Z"/>
+                    <line x1="5" y1="17" x2="19" y2="17"/>
+                    <path d="M8.5 14.5 c0 -1.5 1 -2 0 -3.5 c-1 -1.5 0 -2 0 -3.5"/>
+                    <path d="M12 14.5 c0 -1.5 -1 -2 0 -3.5 c1 -1.5 0 -2 0 -3.5"/>
+                    <path d="M15.5 14.5 c0 -1.5 1 -2 0 -3.5 c-1 -1.5 0 -2 0 -3.5"/>
+                  </svg>
+                </div>
+                <div class="ac-text">
+                  <p class="ac-title">Make Intercession</p>
+                  <p class="ac-sub">Pray through the wall of requests from churches around the world.</p>
+                </div>
+              </div>
+              <div class="ac-cta sky-solid">Enter the prayer wall</div>
+            </div>
+
+            <div class="action-card receive">
+              <div class="ac-head">
+                <div class="ac-icon green">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3 C 13.5 5, 14.5 6.5, 14.5 8.5 C 14.5 10.2, 13.4 11.2, 12 11.2 C 10.6 11.2, 9.5 10.2, 9.5 8.5 C 9.5 6.5, 10.5 5, 12 3 Z"/>
+                    <line x1="12" y1="11.2" x2="12" y2="13"/>
+                    <rect x="9" y="13" width="6" height="7.5" rx="0.5"/>
+                    <line x1="7" y1="20.5" x2="17" y2="20.5"/>
+                  </svg>
+                </div>
+                <div class="ac-text">
+                  <p class="ac-title">Receive Intercession</p>
+                  <p class="ac-sub">Let the body stand with your church in prayer.</p>
+                </div>
+              </div>
+              <div class="ac-cta locked">
+                <span class="lock">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11 V8 a4 4 0 0 1 8 0 V11"/></svg>
+                </span>
+                <span>Coming soon</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="open-prayers">
+            <a href="#">View my open prayers</a>
+          </div>
+
+          <div class="rotator-section">
+            <div class="rotator-head">
+              <span class="rotator-eyebrow">Testimonies</span>
+              <a href="#" class="rotator-see-all">See all</a>
+            </div>
+            <div class="rotator-track">
+              <div class="rotator-card">
+                <p class="rotator-loc">Abundant Life Church Mumbai · India</p>
+                <p class="rotator-author">Minister Priya Thomas</p>
+                <p class="rotator-body">Our pastor's wife came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown and were able to remove it cleanly. She is at home…</p>
+              </div>
+            </div>
+            <div class="rotator-dots">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
+
+          <!-- Scripture footer (per dispatch) -->
+          <div class="scripture-footer">
+            <div class="scripture-rule"></div>
+            <div class="scripture-footer-inner">
+              <p class="scripture-verse">"Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance and supplication for all saints;"</p>
+              <p class="scripture-ref">Ephesians 6:18 · KJV</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14 L12 7 L20 14"/><path d="M6 13 V20 H18 V13"/></svg>
+            <span class="tab-label">Home</span>
+          </div>
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 V20"/><path d="M12 8 H17"/></svg>
+            <span class="tab-label">The Church</span>
+          </div>
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9 Q12 4 19 9"/><path d="M12 11 V20"/><path d="M9 14 H15"/></svg>
+            <span class="tab-label">Persecuted</span>
+          </div>
+          <div class="tab-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21 V11 Q5 4 12 4 Q19 4 19 11 V21"/><path d="M9 21 V15 H15 V21"/></svg>
+            <span class="tab-label">Prayer Wall</span>
+          </div>
+          <div class="tab-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/></svg>
+            <span class="tab-label">Connect</span>
+          </div>
+        </div>
+
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <p class="frame-note">
+      Matches the current v7 build verbatim. Scripture alone carries the reverential beat — no welcome chrome before the action.
+    </p>
+  </div>
+
+</div>
+
+<div class="compare-bar">
+  <div class="compare-card a">
+    <h4>Option A — pros</h4>
+    <p>A pastoral greeting <b>before</b> the verse softens the surface for first-time visitors who haven't built a habit yet.</p>
+    <p>Echoes the "speak first" voice we use in Persecuted + Heartcry pastoral intros.</p>
+    <p>Two-line beats in sequence (welcome → verse) build rhythm rather than competing for weight.</p>
+  </div>
+  <div class="compare-card b">
+    <h4>Option B — pros</h4>
+    <p>Scripture-only carries more <b>singular</b> weight. The verse becomes the welcome.</p>
+    <p>No new chrome — already matches the v7 build; ship-safe.</p>
+    <p>Less vertical before the action cards; returning leaders see CTAs sooner.</p>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,634 @@
+/* Prayer Wall Tab — sky-blue, sanctuary feel. NO multicolor palette. */
+
+@import url('../shared/shared.css');
+
+.prayer-wall { position: relative; }
+
+/* a quiet sky-blue glow at the top — sanctuary feel */
+.prayer-wall::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: radial-gradient(ellipse at 50% -40%, rgba(107,181,232,0.10), transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─────────── hero: tonight, the body intercedes ─────────── */
+.hero-prayer {
+  position: relative;
+  margin: 8px 0 20px;
+  padding: 24px 22px 24px;
+  background: linear-gradient(180deg, rgba(107,181,232,0.04) 0%, var(--surface) 100%);
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 10px;
+  overflow: hidden;
+}
+/* subtle candle-flame glow in the corner */
+.hero-prayer::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107,181,232,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-prayer .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-prayer .eyebrow .live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sky);
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.hero-prayer .verse {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  margin-bottom: 10px;
+  position: relative;
+}
+.hero-prayer .ref {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+/* preview rows — used in Make + Receive — same primitive both places */
+.preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+}
+.preview-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  background: rgba(8,8,8,0.45);
+  border: 0.5px solid var(--faint);
+  border-radius: 6px;
+  min-width: 0;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.preview-row:hover {
+  border-color: var(--sky-mid);
+  background: rgba(107,181,232,0.04);
+}
+.preview-row .preview-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+.preview-row .preview-dot.g { background: var(--sky); box-shadow: 0 0 5px var(--sky); }
+.preview-row .preview-dot.a { background: var(--sky); box-shadow: 0 0 5px var(--sky); opacity: 0.7; }
+.preview-row .preview-dot.r { background: var(--sky); box-shadow: 0 0 5px var(--sky); opacity: 0.85; }
+.preview-row .preview-body {
+  flex: 1;
+  min-width: 0;
+}
+.preview-row .preview-text {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--cream);
+  letter-spacing: 0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-row .preview-meta {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 5px;
+  white-space: nowrap;
+}
+.preview-row .preview-meta .hl { color: var(--sky); }
+.hero-prayer .stats {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hero-prayer .stats > span { white-space: nowrap; }
+.hero-prayer .stats .num {
+  color: var(--sky);
+  font-weight: 500;
+}
+.hero-prayer .stats .dot { color: var(--muted-2); }
+.hero-prayer .cta {
+  position: relative;
+  z-index: 2;
+}
+
+/* SHARED — hero-title / hero-sub / stats used by both Make + Receive */
+.hero-title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.15;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 2;
+}
+.hero-sub {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 18px;
+  max-width: 96%;
+  position: relative;
+  z-index: 2;
+}
+.stats {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+}
+.stats > span { white-space: nowrap; }
+.stats .num { color: var(--sky); font-weight: 500; }
+.stats .dot { color: var(--muted-2); }
+
+/* ─────────── receive (active, built-out) ─────────── */
+.receive-active {
+  margin: 14px 0;
+  padding: 22px 22px 18px;
+  background: linear-gradient(180deg, var(--surface) 0%, rgba(107,181,232,0.03) 100%);
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.receive-active::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107,181,232,0.10) 0%, transparent 60%);
+  pointer-events: none;
+}
+.receive-active .head { position: relative; z-index: 2; }
+.receive-active .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.receive-active .eyebrow .live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sky);
+  animation: livePulse 2s ease-in-out infinite;
+}
+.receive-active .title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+}
+.receive-active .sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  max-width: 96%;
+}
+
+.receive-active .open-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.receive-active .open-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(8,8,8,0.45);
+  border: 0.5px solid var(--faint);
+  border-radius: 6px;
+}
+.receive-active .open-row .rag {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+.receive-active .open-row .rag.g { background: var(--sky); box-shadow: 0 0 5px var(--sky); }
+.receive-active .open-body { flex: 1; min-width: 0; }
+.receive-active .open-text {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--cream);
+  letter-spacing: 0.005em;
+}
+.receive-active .open-meta {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 6px;
+  white-space: nowrap;
+}
+.receive-active .open-meta .hl { color: var(--sky); }
+
+.receive-active .actions {
+  display: flex;
+  gap: 8px;
+  position: relative;
+  z-index: 2;
+}
+.receive-active .share-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-color: var(--sky-mid);
+  color: var(--sky);
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+/* empty state inside receive-active */
+.receive-active .receive-empty {
+  padding: 24px 16px 22px;
+  text-align: center;
+  border: 0.5px dashed var(--faint-2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: rgba(8,8,8,0.3);
+}
+.receive-active .receive-empty svg {
+  display: block;
+  margin: 0 auto 12px;
+  opacity: 0.7;
+}
+.receive-active .receive-empty .empty-title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 17px;
+  color: var(--off-white);
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+.receive-active .receive-empty .empty-body {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+  max-width: 240px;
+  margin: 0 auto;
+}
+/* ─────────── secondary card: receive intercession (locked) ─────────── */
+.receive {
+  margin: 14px 0;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+.receive .lock-glyph {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 0.5px solid var(--faint-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.receive .body { flex: 1; min-width: 0; min-height: 0; }
+.receive .title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 17px;
+  color: var(--off-white);
+  margin-bottom: 3px;
+  letter-spacing: 0.01em;
+}
+.receive .sub {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.receive .badge {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 9px;
+  border-radius: 100px;
+  border: 0.5px solid var(--faint);
+  background: var(--surface2);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ─────────── journal link ─────────── */
+.journal-link {
+  margin: 20px 0 8px;
+  padding: 14px 18px;
+  background: transparent;
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.journal-link:hover {
+  border-color: var(--sky-mid);
+  background: var(--sky-faint);
+}
+.journal-link .icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sky);
+  flex-shrink: 0;
+}
+.journal-link .body { flex: 1; min-width: 0; }
+.journal-link .title {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 2px;
+}
+.journal-link .sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.journal-link .chev {
+  color: var(--sky);
+  flex-shrink: 0;
+}
+
+/* ─────────── testimony card ─────────── */
+/* Same primitive as intercession card. Sky-blue left accent.
+   Optional "AMEN" check ribbon for answered prayers. */
+.testimony {
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-left: 2px solid var(--sky);
+  border-radius: 0 8px 8px 0;
+  padding: 16px 18px;
+  position: relative;
+}
+.testimony .head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+.testimony .head .d {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sky);
+}
+.testimony .head .loc { font-weight: 500; }
+.testimony .head .rpl {
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  margin-left: auto;
+}
+.testimony .leader {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  letter-spacing: 0.01em;
+}
+.testimony .text {
+  font-family: var(--serif);
+  font-size: 15.5px;
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--cream);
+  letter-spacing: 0.005em;
+}
+.testimony .meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.testimony .meta .amen {
+  color: var(--sky);
+  cursor: pointer;
+}
+.testimony .meta .when {
+  color: var(--muted-2);
+}
+
+/* answered badge */
+.testimony.answered::before {
+  content: 'Answered';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sky);
+  background: var(--surface2);
+  padding: 4px 9px;
+  border-bottom-left-radius: 6px;
+  border-left: 0.5px solid var(--sky-mid);
+  border-bottom: 0.5px solid var(--sky-mid);
+}
+
+/* testimonies — single card at a time, swipeable, with chevrons. A deliberate
+   "break in normalcy" — the rest of the tab scrolls vertically, this one moves
+   sideways. Cards take ~94% width so they read as full panels, not peeks. */
+.testimony-carousel {
+  position: relative;
+  margin: 0 -22px 0;
+}
+.testimony-scroller {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 6px 22px 12px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.testimony-scroller::-webkit-scrollbar { display: none; height: 0; }
+.testimony-scroller .testimony {
+  flex: 0 0 calc(100% - 44px);
+  scroll-snap-align: center;
+  min-width: 0;
+}
+
+.testimony-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(8,8,8,0.75);
+  backdrop-filter: blur(10px);
+  border: 0.5px solid var(--faint-2);
+  color: var(--sky);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: opacity .2s, border-color .2s, background .2s;
+}
+.testimony-nav:hover { border-color: var(--sky-mid); background: rgba(18,18,20,0.92); }
+.testimony-nav.disabled { opacity: 0.25; cursor: default; }
+.testimony-nav.prev { left: 4px; }
+.testimony-nav.next { right: 4px; }
+
+/* dot pagination */
+.scroll-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.scroll-dots .dot {
+  width: 22px;
+  height: 3px;
+  border-radius: 100px;
+  background: var(--faint);
+  transition: background .25s;
+}
+.scroll-dots .dot.active { background: var(--sky); }
+
+/* ─────────── stat row (above hero, optional) ─────────── */
+.stat-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+.stat-cell {
+  flex: 1;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 8px;
+  text-align: left;
+}
+.stat-cell .num {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--sky);
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+.stat-cell .lbl {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.3;
+}

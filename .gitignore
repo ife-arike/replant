@@ -55,3 +55,7 @@ flag_taxonomy_secret.json
 
 # Local Netlify folder
 .netlify
+
+# AI-tooling scratch (never commit)
+.playwright-mcp/
+.claude/worktrees/

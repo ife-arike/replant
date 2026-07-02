@@ -1,0 +1,84 @@
+---
+interface Props {
+  href: string
+  title: string
+  eyebrow?: string
+  date: Date
+  author: string
+  summary: string
+}
+const { href, title, eyebrow, date, author, summary } = Astro.props
+const formatted = date.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+})
+---
+
+<a class="card" href={href}>
+  {eyebrow ? <span class="eyebrow">{eyebrow}</span> : null}
+  <h2 class="title" set:html={title} />
+  <p class="summary">{summary}</p>
+  <span class="meta">
+    <span>{formatted}</span>
+    <span class="dot">·</span>
+    <span>{author}</span>
+  </span>
+</a>
+
+<style>
+  .card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: 2.4rem 0;
+    border-bottom: 0.5px solid var(--ink-faint);
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-bottom-color: var(--sky-mid); }
+  .card:hover .title { color: var(--sky); }
+  .eyebrow {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 0.8rem;
+  }
+  .title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.5rem, 3.2vw, 2.1rem);
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 0.7rem;
+    transition: color 0.2s;
+  }
+  .title :global(em) {
+    font-style: italic;
+    color: var(--sky);
+  }
+  .summary {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--ink-mid);
+    max-width: 62ch;
+    margin-bottom: 1.1rem;
+  }
+  .meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    color: var(--ink-mid);
+    text-transform: uppercase;
+  }
+  .dot { color: var(--ink-faint); }
+</style>

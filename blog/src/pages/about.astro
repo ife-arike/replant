@@ -1,0 +1,64 @@
+---
+import Base from '../layouts/Base.astro'
+import '../styles/prose.css'
+---
+
+<Base
+  title="About · Replant Blog"
+  description="Why we write. Placeholder until Founder drafts the final copy."
+>
+  <article>
+    <header class="header">
+      <span class="eyebrow">About</span>
+      <h1>Why we <em>write</em>.</h1>
+    </header>
+    <div class="prose">
+      <p>
+        <strong>This page is a placeholder.</strong> Founder will draft the
+        final copy before the blog ships to a public DNS. The shape below is
+        what the page will hold:
+      </p>
+      <ul>
+        <li>One paragraph on what Replant is — a secure communication platform for Christian leaders globally, with particular care for the persecuted church.</li>
+        <li>One paragraph on what this blog is for — a quieter surface, sporadic by design, for letters and field reports.</li>
+        <li>One paragraph on how readers can contact us — submission, prayer requests, partnership inquiries.</li>
+        <li>A closing scripture or sentence.</li>
+      </ul>
+      <p>
+        No author byline goes on this page. The blog speaks as <em>Replant</em>,
+        not in any one person's voice.
+      </p>
+    </div>
+  </article>
+</Base>
+
+<style>
+  article { padding: 5rem 1.5rem 6rem; }
+  .header {
+    max-width: 68ch;
+    margin: 0 auto 3rem;
+    text-align: center;
+  }
+  .eyebrow {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 1.2rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.15;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--sky);
+  }
+</style>
