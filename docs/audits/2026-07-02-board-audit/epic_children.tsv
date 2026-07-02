@@ -1,0 +1,66 @@
+KAN-4	KAN-9	Done	Splash Screen
+KAN-4	KAN-10	Done	Declaration of Faith
+KAN-4	KAN-11	Done	Account Setup — Page 1 (Personal Details)
+KAN-4	KAN-12	Done	Account Setup — Page 2 (Church Search & Submit)
+KAN-4	KAN-15	Cancelled	[CANCELLED — SPLIT] Verification system (banner + popup + cron)
+KAN-4	KAN-25	Backlog	[POST-MVP] Declaration of Faith — decline / exit option exploration
+KAN-4	KAN-36	Done	Deactivation Routing & Login-Time Enforcement
+KAN-4	KAN-37	Cancelled	Verification BE Jobs — Cron, Reminders & PII Scrub
+KAN-4	KAN-61	Backlog	[KAN-37a] Verification Deadline Sweep Cron
+KAN-4	KAN-62	Backlog	[KAN-37b] Verification Reminder Emails — Day 23 and Day 29
+KAN-4	KAN-63	TESTING	[KAN-37c] PII Scrub Cron — 90-Day Post-Deactivation
+KAN-4	KAN-83	In Progress	Anonymous Mode — SPEC copy lock for inline toggle on AccountSetupPage1 (post-pivot)
+KAN-5	KAN-16	Done	Daily Scripture Strip
+KAN-5	KAN-17	Done	Home Network Feed
+KAN-5	KAN-35	In Review	Verification Countdown Banner
+KAN-6	KAN-13	Done	Register Church Page 1 — church details and type selection
+KAN-6	KAN-14	In Review	Register Church Page 2 — map pin location confirmation
+KAN-6	KAN-18	Done	Local tab — Mapbox map view with RAG dots and clustering
+KAN-6	KAN-19	Done	Local tab — nearby church list with distance and masking
+KAN-6	KAN-20	Done	Local tab — church profile bottom sheet
+KAN-6	KAN-21	Done	Global tab — Mapbox globe view with worldwide RAG dots
+KAN-6	KAN-22	Done	Global tab — Prayer Wall pull-up bottom sheet panel
+KAN-8	KAN-23	Done	Prayer Wall tab — full-screen request list with filters
+KAN-8	KAN-24	Done	Prayer Wall — Post a Request sub-screen
+KAN-26	KAN-38	Backlog	Login Screen — Sign In with Status Routing
+KAN-26	KAN-39	In Progress	Forgot Password — Request Reset Email
+KAN-26	KAN-40	Cancelled	Password Reset Confirmation — Set New Password via Deep Link
+KAN-26	KAN-41	Backlog	Session Restoration on App Launch
+KAN-26	KAN-42	Done	Sign-Out Flow — Confirmation + State Clear
+KAN-26	KAN-43	Backlog	[POST-MVP] Biometric Sign-In
+KAN-26	KAN-44	Done	[BE Enabler] auth-status-check Edge Function Contract
+KAN-27	KAN-72	Done	[KAN-27a] Settings — Account Section + Language Placeholder (Screen 20) 🔥 HIGH PRIORITY
+KAN-27	KAN-73	To Do	[KAN-27b] Settings — Church Section: RAG Status (Screen 20)
+KAN-27	KAN-74	To Do	[KAN-27c] Settings — Security Section: Change Password (Screen 20)
+KAN-27	KAN-75	Backlog	[KAN-27d] Settings — Privacy Section: Anonymous Mode (Screen 20) ✅ ESC-08 CLOSED
+KAN-28	KAN-76	Done	[KAN-28a] Hamburger Menu — Slide-In Overlay Panel (Screen 21)
+KAN-28	KAN-77	Backlog	[KAN-28b] Static Content Screens — Vision · Outreach &amp; Missions · FAQ (Screen 21)
+KAN-29	KAN-78	Backlog	[KAN-29a] Tab Bar Navigator + Locked Modal — Scaffold + Remaining Build (Screen 02)
+KAN-30	KAN-46	Done	[Admin Screen 00] Admin Login — Super-Admin Sign-In
+KAN-30	KAN-47	Done	[Admin Screen 02] Underground Oversight — Audit-Logged Real-Name Access
+KAN-30	KAN-48	Done	[Admin Screen 05] Network Overview — Health Stats Dashboard
+KAN-30	KAN-49	Done	[Admin Screen 09] PII Scrub History — Audit Log View
+KAN-30	KAN-50	Done	[Admin Screen 06] Church Management — Search, Profile, RAG Override, Deactivate, Reinstate
+KAN-30	KAN-51	Backlog	[Admin Screen 03] Heartcry Inbox — Decrypt, Triage, Respond
+KAN-30	KAN-52	Done	[Admin Screen 08] Network Announcements — Compose, Edit, Delete
+KAN-30	KAN-53	Backlog	[Admin Screen 11] Team Management — Add & Remove Super-Admins
+KAN-30	KAN-54	Done	[Admin Screen 01] Verification Queue — Approve & Reject Pending Churches
+KAN-30	KAN-55	Done	[Admin Screen 04] Flagged Messages — Audit-Logged Read, Clear, Escalate
+KAN-30	KAN-56	Done	[Admin Screen 07] Daily Scripture Seeding — Add, Edit, Delete Verses
+KAN-30	KAN-57	Done	[Admin Screen 10] Audit Log View — Forensic Browse with Resolve
+KAN-30	KAN-58	Backlog	[POST-MVP] Audit Log Retention Policy
+KAN-30	KAN-59	Done	[DBA Enabler] Migration v1.20.0 — Audit Log Expansion + Admin Schema Additions
+KAN-30	KAN-82	Done	[DBA Enabler] Batch D Migration — audit_log CHECK additions + admin schema fields
+KAN-31	KAN-60	Backlog	API & Integration Reference — Document All Edge Functions
+KAN-31	KAN-79	Done	[KAN-31a] OPS: Resend Account + Domain + DNS Verification — GATE STORY
+KAN-31	KAN-80	Backlog	[KAN-31b] BE: Resend SDK + sendEmail() Utility + Retry / Bounce Handling
+KAN-31	KAN-81	Backlog	[KAN-31c] OPS+BE: Scaffold 8 Email Templates in Resend (Variable Maps + Underground Branch)
+KAN-32	KAN-64	Done	[KAN-32a] Heartcry Submission Form — Screen 15
+KAN-32	KAN-65	Done	[KAN-32b] Persecuted Tab Main View + Status Tracker — Screen 14
+KAN-32	KAN-66	Done	[KAN-32c] BE: submit-heartcry Edge Function — DONE pending QA
+KAN-32	KAN-67	Done	[KAN-32d] BE: admin-open-heartcry Decryption — Cross-Ref to KAN-51, DONE pending QA
+KAN-33	KAN-45	Backlog	[POST-MVP] DM Content Encryption at Rest
+KAN-33	KAN-68	Done	[KAN-33a] Connect Tab — Thread List (Screen 16)
+KAN-33	KAN-69	Done	[KAN-33b] Connect — New DM Flow / Leader Search (Screen 17)
+KAN-33	KAN-70	Done	[KAN-33c] Connect — DM Thread View (Screen 18)
+KAN-33	KAN-71	Done	[KAN-33d] BE: send-message Edge Function + Keyword Flagging — BE confirms status
