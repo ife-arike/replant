@@ -134,9 +134,13 @@ export default function TestimonyCard({
 
   const locationLine = getLocationLine(row.church_name, row.country);
   // v8 Fix H3 — attribution flows through shared formatLeaderLine
-  // helper. isAnonymous derived from leader_display_name === null
-  // (server-side mask returns null for anonymous + underground
-  // posts; no separate wire flag).
+  // helper. isAnonymous derived from leader_display_name === null.
+  //
+  // Decoupled 2026-06-21: get_testimonies returns NULL for
+  // leader_display_name ONLY when t.anonymous = true. Underground
+  // church status does NOT mask the leader's name — the church is
+  // masked independently via church_name/country. An underground
+  // leader who did not toggle anonymous surfaces their real name here.
   const leaderLine = formatLeaderLine(
     row.leader_role,
     row.leader_display_name,
@@ -354,7 +358,9 @@ const styles = StyleSheet.create({
     // v8 Fix H3 — attribution 14 pt DM Sans 400, lh 1.3, muted-45%.
     // Directly below the Church · Country (green) line with 2 pt
     // top-margin. Content formatted via formatLeaderLine: role
-    // prefix + name, or "A fellow leader" when anonymous/underground.
+    // prefix + name, or "A fellow leader" when the leader is
+    // anonymous (decoupled from underground 2026-06-21 — underground
+    // masks the church, anonymous masks the leader).
     marginTop: 2,
     fontFamily: Typography.body,
     fontSize: 14,

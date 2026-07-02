@@ -12,10 +12,15 @@
 // comment thread renders. The commentCount / onCommentPosted props are
 // accepted for routing-shape parity but intentionally unused.
 //
-// Underground masking: the author is resolved upstream in NetworkFeed's
-// EncouragementFeedItem (underground churches are masked to "A leader in
-// the network" before this card renders — SEC Obs D). author_id never
-// reaches this component.
+// Author masking: resolved upstream in NetworkFeed's useResolvedLeaderAuthor.
+// Two independent axes (decoupled 2026-06-21):
+//   • users.anonymous = true → name becomes "A fellow {role}", initial "A".
+//   • underground church + safe (show_church_name=false) → church display
+//     becomes '' (no name, no city, no country).
+// Both can be true, neither, or either. An underground leader who chose
+// to be known by name still arrives here with their real name + initial,
+// just with the church display held. author_id NEVER reaches this
+// component (SEC Obs D).
 // ─────────────────────────────────────────────
 
 import React from 'react';

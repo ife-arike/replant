@@ -3,6 +3,8 @@ import {
   buildResponse,
   decodeJwtPayload,
   isSuperAdmin,
+  isUndergroundJoinCodePendingReveal,
+  resolveBranchSubstate,
   resolveStatus,
 } from "./logic.ts";
 
@@ -19,6 +21,26 @@ export interface Deps {
     churchId: string | null,
     nowISO: string,
   ): Promise<{ wrote: boolean }>;
+  // Underground reveal-eligibility extension (Founder ratification
+  // 2026-06-20). Returns the data needed by
+  // isUndergroundJoinCodePendingReveal:
+  //   - churchType / churchVerificationStatus / undergroundJoinCodeRevealedAt
+  //     come from the church row (already fetched in fetchUserStatus
+  //     for the verification join, but we re-read the underground
+  //     fields explicitly so we don't widen the existing SELECT).
+  //   - foundingLeaderId comes from a separate "oldest active leader"
+  //     lookup scoped to the church.
+  // Returns null when the caller is not attached to a church OR the
+  // church type is not 'underground' (cheap short-circuit).
+  fetchUndergroundRevealContext(
+    userId: string,
+    churchId: string,
+  ): Promise<{
+    churchType: string | null;
+    churchVerificationStatus: string | null;
+    undergroundJoinCodeRevealedAt: string | null;
+    foundingLeaderId: string | null;
+  } | null>;
   now(): Date;
 }
 
@@ -98,7 +120,60 @@ export function createHandler(deps: Deps) {
         await deps.deactivateAtomically(row.id, row.church_id, nowISO);
       }
 
-      return json(200, buildResponse(resolved));
+      const responseBody: AuthStatusResponse = buildResponse(resolved);
+
+      // Underground reveal-eligibility decoration (Founder ratification
+      // 2026-06-20). Only meaningful for attached, active leaders whose
+      // church is verified underground. We DO NOT add the flag for
+      // deactivated/rejected paths (those leaders should not see the
+      // reveal surface). We DO compute it on the active+pending paths;
+      // for "active" status with a verified church, this is the
+      // primary moment the flag fires.
+      //
+      // We omit the flag entirely (rather than emitting `false`) when
+      // not eligible — minimizes wire surface and avoids advertising
+      // the feature's existence to non-underground viewers.
+      // Underground Verification Queue branch_substate decoration
+      // (2026-06-22 — Q1/Q2/Q3 mini-panel synthesis).
+      //
+      // Surfaced for any non-super_admin path that has a church row,
+      // regardless of resolved.kind — the leader needs to see the
+      // rejection/request_info modal whether their formal status is
+      // pending, active, or deactivated. Generic-chrome invariant
+      // (mobile FE branches on this field; field is OMITTED when
+      // neither substate applies). Pure function over row; no DB call.
+      const substate = resolveBranchSubstate(row);
+      if (substate !== undefined) {
+        responseBody.branch_substate = substate;
+      }
+
+      if (
+        row.church_id !== null &&
+        (resolved.kind === "active" || resolved.kind === "pending")
+      ) {
+        try {
+          const ctx = await deps.fetchUndergroundRevealContext(row.id, row.church_id);
+          if (ctx !== null) {
+            const pending = isUndergroundJoinCodePendingReveal({
+              callerUserId: row.id,
+              churchType: ctx.churchType,
+              churchVerificationStatus: ctx.churchVerificationStatus,
+              undergroundJoinCodeRevealedAt: ctx.undergroundJoinCodeRevealedAt,
+              foundingLeaderId: ctx.foundingLeaderId,
+            });
+            if (pending) {
+              responseBody.underground_join_code_pending_reveal = true;
+            }
+          }
+        } catch {
+          // Decoration failure is non-fatal — the core status response
+          // is more important than the reveal-prompt hint. The FE will
+          // see no flag and won't surface the prompt this cycle; next
+          // refresh will catch it. Do NOT 500 the whole call here.
+        }
+      }
+
+      return json(200, responseBody);
     } catch {
       return error500();
     }

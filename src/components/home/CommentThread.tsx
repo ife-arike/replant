@@ -5,10 +5,15 @@
 // italic). Fetches its own data on mount via get_comments(announcementId)
 // and posts via post_comment — the parent card does NOT pre-fetch.
 //
-// Under-threat (underground) leaders post with a held identity: lock
-// avatar, "A leader in the network", region withheld. Masking is enforced
-// server-side in the RPC (is_masked / masked_region); the client never
-// receives author_id and never renders a name/location for masked rows.
+// Two independent masking axes (decoupled 2026-06-21):
+//   1. users.anonymous → the LEADER's name is held → author_name === null
+//      on the wire → "A fellow {role}" label, square avatar with "A".
+//   2. churches.type='underground' + show_church_name=false → the CHURCH is
+//      held → church_name === null on the wire → region label fallback,
+//      round avatar with lock icon.
+// The two are independent: an underground leader who did NOT toggle
+// anonymous still surfaces their real name. Masking is enforced
+// server-side in get_comments; the client never receives author_id.
 //
 // Two ways to close: the parent card's footer toggle, or the "Hide"
 // control in this thread header. Tapping inside the thread must not
@@ -68,20 +73,20 @@ const MASKED_NAME = 'A leader in the network';
 
 // Resolve the rendered author name for a comment row.
 //
-// mask_reason === 'none'  → use author_name as-is. The server-side helper
-//                           public.resolve_display_name() already returns
-//                           the fully-composed string with honorific/role
-//                           prefix + first/middle/last per the leader's
-//                           display_name_preference + last_name_first
-//                           toggle. The FE no longer adds a prefix here.
-// mask_reason === 'anon' or 'underground' with a role → "A fellow {role}"
-//                           (lowercase role, e.g. "A fellow minister").
-// No role or 'no_church'  → MASKED_NAME constant.
+// Decoupled 2026-06-21: the LEADER's anonymity (users.anonymous) is the
+// only axis that masks the name. Church-side underground masking does not
+// erase a leader who chose to be known by name. The RPC encodes this:
+//   author_name !== null → leader is NOT anonymous → show real name
+//                          (server-composed via resolve_display_name —
+//                          honorific/role prefix + first/middle/last per
+//                          the leader's display preference; FE adds no
+//                          prefix).
+//   author_name === null + role → leader is anonymous OR has no church
+//                                  on record → "A fellow {role}".
+//   author_name === null + no role → MASKED_NAME constant fallback.
 function displayName(c: Comment): string {
-  if (c.mask_reason === 'none') {
-    const name = c.author_name?.trim() ?? '';
-    return name || MASKED_NAME;
-  }
+  const name = c.author_name?.trim() ?? '';
+  if (name) return name;
   if (c.role) {
     return 'A fellow ' + (ROLE_DISPLAY[c.role] ?? 'leader').toLowerCase();
   }
@@ -233,21 +238,32 @@ export function CommentThread({
             // masked_region carries the region label for underground rows.
             // This single expression covers all four mask_reason values.
             const church = c.church_name ?? c.masked_region ?? '';
-            // Avatar shape + content:
-            //   none       → square container, real name initial
-            //   anon       → square container (same style, no avRound), "A"
-            //   underground / no_church → round container (avRound), LockIcon
+            // Avatar logic — decoupled 2026-06-21.
+            // Underground church status (round lock) is the stronger
+            // protection signal; if both axes are masked, underground wins.
+            //
+            //   none                            → square, real-name initial
+            //   anon (non-underground)          → square, letter "A"
+            //   underground + non-anon (name)   → round, real-name initial
+            //                                     (round shape still signals
+            //                                     underground church context)
+            //   underground + anon              → round, LockIcon
+            //   underground without resolvable
+            //     name (legacy/edge)            → round, LockIcon
+            //   no_church                       → round, LockIcon
             const isRound =
               c.mask_reason === 'underground' || c.mask_reason === 'no_church';
+            const hasRealName = !!c.author_name;
+            const showLetterA = c.mask_reason === 'anon';
             return (
               <View key={c.id} style={s.row}>
                 <View style={[s.av, isRound && s.avRound]}>
-                  {isRound ? (
-                    <LockIcon />
-                  ) : c.mask_reason === 'anon' ? (
+                  {hasRealName ? (
+                    <Text style={s.avInitial}>{initialOf(c.author_name)}</Text>
+                  ) : showLetterA ? (
                     <Text style={s.avInitial}>A</Text>
                   ) : (
-                    <Text style={s.avInitial}>{initialOf(c.author_name)}</Text>
+                    <LockIcon />
                   )}
                 </View>
                 <View style={{ flex: 1 }}>

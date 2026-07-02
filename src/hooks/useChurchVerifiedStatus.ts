@@ -1,13 +1,21 @@
 // useChurchVerifiedStatus — distinguishes two "pending" leader scenarios:
 //
 //   churchVerified = true  → second leader joining an already-verified
-//                            church (rag_status green/amber/red). The
+//                            church (verification_status='verified'). The
 //                            church is in the network; only the leader's
 //                            personal account needs confirmation.
 //   churchVerified = false → original leader whose church is still pending
-//                            verification by the Replant team.
+//                            verification by the Replant team (or any
+//                            non-verified status).
 //   churchVerified = null  → check in flight (caller should default to
 //                            the church-pending variant while loading).
+//
+// Bug fix 2026-06-14 (Founder report): hook previously read rag_status
+// (safety/risk indicator: green/amber/red for persecuted-zone risk) and
+// treated any of those as "verified" — wrong column entirely. New-church
+// signups land with a default rag_status but verification_status='pending'
+// → banner picked the leader variant and falsely said "Your church is
+// verified." Read verification_status directly.
 //
 // Only runs when branch === 'pending'. Active leaders don't need this.
 // Follows the same single-round-trip join pattern as useViewerChurch.
@@ -15,8 +23,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthProvider';
 import { supabase } from '../lib/supabase';
-
-const VERIFIED_RAG = ['green', 'amber', 'red'];
 
 async function checkChurchVerified(): Promise<boolean> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -26,17 +32,17 @@ async function checkChurchVerified(): Promise<boolean> {
   // FK hint required: see useChurchesGlobal comment — same disambiguation needed.
   const { data, error } = await supabase
     .from('users')
-    .select('churches!users_church_id_fkey ( rag_status )')
+    .select('churches!users_church_id_fkey ( verification_status )')
     .eq('auth_id', authId)
     .single();
 
   if (error || !data) return false;
 
   const row = data as unknown as {
-    churches: { rag_status: string | null } | { rag_status: string | null }[] | null;
+    churches: { verification_status: string | null } | { verification_status: string | null }[] | null;
   };
   const c = Array.isArray(row.churches) ? (row.churches[0] ?? null) : row.churches;
-  return VERIFIED_RAG.includes(c?.rag_status ?? '');
+  return c?.verification_status === 'verified';
 }
 
 export function useChurchVerifiedStatus(): boolean | null {

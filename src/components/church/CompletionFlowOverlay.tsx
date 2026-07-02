@@ -128,10 +128,11 @@ const CONGREGATION_SIZE_CHIPS: { label: string; value: string }[] = [
 ];
 
 // Church type options — underground excluded per spec invariant.
-// Derived from CHURCH_TYPES with underground filtered out at render.
-const COMPLETION_CHURCH_TYPES = CHURCH_TYPES.filter(
-  (t) => t.value !== 'underground',
-);
+// As of 2026-06-18, displayHelpers.CHURCH_TYPES no longer contains underground
+// (Founder ruling: underground entry moved to RegisterIntroScreen chooser tile).
+// Map to mutable shape via spread for downstream consumers that expect a plain array.
+const COMPLETION_CHURCH_TYPES: { label: string; value: string }[] =
+  CHURCH_TYPES.map((t) => ({ label: t.label, value: t.value }));
 
 // ─── Sub-components ─────────────────────────────────────────────────────
 

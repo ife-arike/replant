@@ -258,12 +258,13 @@ Deno.test("parsePayload — KAN-13 v2 contact_name preserved on underground (NOT
   }
 });
 
-Deno.test("parsePayload — type must be one of the canonical 6", () => {
+Deno.test("parsePayload — type must be one of the canonical set", () => {
   for (const valid of CHURCH_TYPES) {
     const r = parsePayload(basePayload({ type: valid, city: valid === "underground" ? undefined : "Nairobi", rag_status: valid === "underground" ? "red" : "green" }));
     assertEquals(r.ok, true, `expected accept for type=${valid}`);
   }
-  for (const bad of ["urban", "suburban", "rural", "house", "network_hub", "para_ministry", "MAIN_CAMPUS", ""]) {
+  // `para_ministry` removed from this list as of 2026-06-18 — it is now a valid type.
+  for (const bad of ["urban", "suburban", "rural", "house", "network_hub", "MAIN_CAMPUS", ""]) {
     const r = parsePayload(basePayload({ type: bad }));
     assertEquals(r.ok, false, `expected reject for type=${bad}`);
   }

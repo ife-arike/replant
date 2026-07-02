@@ -32,6 +32,7 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Switch,
@@ -328,14 +329,12 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
       // otherwise pass undefined so the field stays unset in context.
       otherRole: role === 'other' ? otherRole.trim() : undefined,
     });
+    Keyboard.dismiss();
     navigation.navigate('AccountSetupPage2');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
 
       {/* Back affordance — sits above the step label inside the header.
@@ -413,6 +412,7 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
         {/* Email */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Personal Email</Text>
+          <Text style={styles.fieldNote}>This will be your login email.</Text>
           <TextInput
             style={[styles.input, emailCheckError ? styles.inputError : null]}
             value={email}
@@ -761,7 +761,7 @@ export default function AccountSetupPage1Screen({ navigation }: Props) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

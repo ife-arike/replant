@@ -5,18 +5,19 @@
 // ─────────────────────────────────────────────
 
 // Church type: API value → display label
-// Values mirror the canonical `church_type` enum in public.churches —
-// `without_walls` (not `church_without_walls`) and `para_ministry` are
-// the live values per migrations kan146_* and the register-church c.10167
-// contract. Unknown values fall through to apiValue verbatim.
+// Values mirror the canonical `church_type` enum in public.churches.
+// Labels locked Founder 2026-06-18:
+//   - 'branch'         → "Church branch" (drop parens; always lead with "Church")
+//   - 'para_ministry'  → "Christian Organization (Para-ministry)"
+// Admin / network surfaces still render every value, incl. 'underground'.
 export function getChurchTypeLabel(apiValue: string): string {
   const map: Record<string, string> = {
     main_campus: 'Church (Main Campus)',
-    branch: 'Church (Branch)',       // API: branch → Display: Church (Branch) per A-02 revised
+    branch: 'Church branch',
     house_church: 'House Church',
     ministry: 'Ministry',
     without_walls: 'Church Without Walls',
-    para_ministry: 'Para Ministry',
+    para_ministry: 'Christian Organization (Para-ministry)',
     underground: 'Underground',
   };
   return map[apiValue] ?? apiValue;
@@ -95,18 +96,26 @@ export function getRoleLabel(role: string | null | undefined): string {
 
 // KAN-23 v8 Item 05 / H5 — one canonical attribution-string builder
 // for every Prayer Wall card type (prayer card + prayer detail sheet
-// + testimony card + testimony detail sheet). Anonymous always wins
-// over role/name. Non-anonymous renders `<RoleLabel> <DisplayName>`
-// trimmed — handles a null name defensively (still trims clean).
-// Consumers should prefer this over composing the string locally so
-// the four card types stay in lockstep.
+// + testimony card + testimony detail sheet).
+//
+// Founder bug 2026-06-18: the DB function resolve_display_name already
+// prepends the role/honorific prefix to `name` (e.g. "Pastor Priya").
+// Re-prefixing here produced "Pastor Pastor Priya" across every Prayer
+// Wall surface. BE is the canonical owner of the display string (it
+// knows about honorific overrides + display_name_preference +
+// last_name_first); FE should trust it and just pass it through.
+//
+// The `role` parameter is retained for signature compatibility — every
+// caller threads it through and updating each one is unnecessary churn.
+// Anonymous still wins because it short-circuits before name.
 export function formatLeaderLine(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   role: string | null | undefined,
   name: string | null | undefined,
   isAnonymous: boolean,
 ): string {
   if (isAnonymous) return 'A fellow leader';
-  return `${getRoleLabel(role)} ${name ?? ''}`.trim();
+  return (name ?? '').trim();
 }
 
 // Role list — 12 items, order locked per SPEC Doc 01 Amendment
@@ -125,15 +134,94 @@ export const ROLES = [
   { label: 'Other',           value: 'other' },   // label only — no free text at MVP
 ] as const;
 
-// Church type options for registration dropdown
+// Church type options for the RegCP1 registration dropdown.
+// 2026-06-18 — Founder rulings:
+//   - 'underground' REMOVED from this dropdown; underground is surfaced via the
+//     RegisterIntroScreen chooser tile (see branch-flow plan §1).
+//   - 'branch' filtered out at render time (its own entry tile on the chooser;
+//     RegCP1 in entry='branch' mode hides the type picker entirely).
+//   - 'para_ministry' added with label "Christian Organization (Para-ministry)".
 export const CHURCH_TYPES = [
-  { label: 'Main Campus',          value: 'main_campus' },
-  { label: 'Church (Branch)',        value: 'branch' },
-  { label: 'House Church',         value: 'house_church' },
-  { label: 'Ministry',             value: 'ministry' },
-  { label: 'Church Without Walls', value: 'without_walls' },
-  { label: 'Underground',          value: 'underground' },
+  { label: 'Main Campus',                            value: 'main_campus' },
+  { label: 'Church branch',                          value: 'branch' },
+  { label: 'House Church',                           value: 'house_church' },
+  { label: 'Ministry',                               value: 'ministry' },
+  { label: 'Church Without Walls',                   value: 'without_walls' },
+  { label: 'Christian Organization (Para-ministry)', value: 'para_ministry' },
+  // 'underground' intentionally NOT listed.
 ] as const;
+
+// Tooltip for the Para-ministry row. Tap-reveal ⓘ pill on that row only
+// (hidden by default — NOT always-on). Locked 2026-06-18 (CONTENT F2):
+// leads with affirmation, not exclusion.
+export const PARA_MINISTRY_TOOLTIP =
+  "Christian organizations serving the wider Body — missions, training, media, " +
+  "campus, counseling, relief & development, advocacy. " +
+  "Choose this if your work isn't centered on a local congregation.";
+
+// True when the type is para_ministry — drives the conditional "church" → "organization" copy swap.
+export const isParaMinistry = (type: string | null | undefined): boolean =>
+  type === 'para_ministry';
+
+// orgCopy(type) — single source of truth for the church/organization copy swap.
+// Use everywhere; no per-screen string forking.
+// 2026-06-18 — Founder + CONTENT F7 locked the FULL word "Organization" (not "Org").
+export function orgCopy(type: string | null | undefined) {
+  const para = isParaMinistry(type);
+  return {
+    stepLabel:               para ? 'REGISTER ORGANIZATION · 1 OF 2' : 'REGISTER CHURCH · 1 OF 2',
+    stepLabel2:              para ? 'REGISTER ORGANIZATION · 2 OF 2' : 'REGISTER CHURCH · 2 OF 2',
+    screenTitle:             para ? 'Organization Details' : 'Church Details',
+    screenTitle2:            para ? 'Confirm Your Organization' : 'Confirm Your Church',
+    asp2Title:               para ? 'Your Organization' : 'Your Church',
+    nameLabel:               para ? 'Organization Name' : 'Church Name',
+    namePlaceholder:         para ? 'Enter organization name' : 'Enter church name',
+    typeLabel:               para ? 'Organization Type' : 'Church Type',
+    sizeLabel:               para ? 'Organization Size' : 'Congregation Size',
+    contactNamePlaceholder:  para ? 'Primary contact for this organization' : 'Primary contact for this church',
+    contactValidationNote:   para
+      ? 'We will reach out to this email and/or phone to validate your organization.'
+      : 'We will reach out to this email address and/or phone number to validate your church.',
+    emergencyPlanLabel:      para
+      ? 'Does your organization have an emergency action plan…'
+      : 'Does your church have an emergency action plan…',
+    collaborationLabel:      para
+      ? 'Would you be willing to strategize with nearby churches and organizations on emergency preparedness?'
+      : 'Would you be willing to strategize with nearby churches on emergency preparedness?',
+    // 2026-06-19 — Founder ruling: keep "What we have" / "What we need" for church,
+    // swap to "What we can offer" / "What we're seeking" for org. Placeholders kept
+    // generic ("your ministry") since they already work for both per the
+    // "some 'church' copy can stay" rule from the same ruling.
+    whatWeHaveLabel:         para ? 'What we can offer' : 'What we have',
+    whatWeNeedLabel:         para ? "What we're seeking" : 'What we need',
+    submitButtonLabel:       para ? 'Register Organization' : 'Register Church',
+    // 2026-06-19 — RAG section is now rendered for para too. Founder revoked the
+    // earlier hide-for-para lock: "a para can be under persecution and not free to
+    // bring assistance." Field stays gated by the same RAG_OPTIONS as church.
+    showRag:                 true,
+    // Para cannot be a branch (Founder ruling MVP).
+    allowBranchAttach:       !para,
+  };
+}
+
+// HQ "Mark as Headquarters" checkbox visibility. HQ is a self-asserted boolean
+// on parentable church types only. Excluded for branch / para / underground per
+// Founder ruling 2026-06-18 + branch-flow trigger fence.
+export const canMarkHeadquarters = (type: string | null | undefined): boolean =>
+  !!type && type !== 'para_ministry' && type !== 'branch' && type !== 'underground';
+
+// viewerOrgCopy(viewerChurchType) — for post-verification surfaces (Home/Settings/
+// Connect/Persecuted/Church/PrayerWall) that say "your church" today. Para directors
+// see "your organization" instead. BA-para #1 / CONTENT F7 expansion.
+export function viewerOrgCopy(viewerChurchType: string | null | undefined) {
+  const para = isParaMinistry(viewerChurchType);
+  return {
+    yourChurchOrOrg:     para ? 'your organization' : 'your church',
+    yourChurchOrOrgCap:  para ? 'Your organization' : 'Your church',
+    churchOrOrgNoun:     para ? 'organization' : 'church',
+    churchOrOrgNounCap:  para ? 'Organization' : 'Church',
+  };
+}
 
 // RAG options for self-declaration. Descriptions added (KAN-13/KAN-12
 // finalization 2026-05-22) — surfaced beneath each option on

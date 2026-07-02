@@ -51,7 +51,8 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase } from '../../lib/supabase';
-import { getRoleLabel } from '../../utils/displayHelpers';
+import { getRoleLabel, viewerOrgCopy } from '../../utils/displayHelpers';
+import { useViewerChurch } from '../../hooks/useViewerChurch';
 
 import ConnectHeader from '../../components/connect/ConnectHeader';
 import Segmented from '../../components/connect/Segmented';
@@ -159,8 +160,17 @@ function useToast() {
 //
 // NOT dismissible — this is a protection layer, not an info sheet.
 // Copy is Connect-specific (not "The Church tab" language).
-function ConnectGateView({ churchVerified }: { churchVerified: boolean | null }) {
+function ConnectGateView({ churchVerified, viewerChurchType }: { churchVerified: boolean | null; viewerChurchType: string | null | undefined }) {
   const isLeaderPending = churchVerified === true;
+  const viewer = viewerOrgCopy(viewerChurchType);
+  // Founder ruling #6 (locked 2026-06-21) is PRESERVED: the timeline
+  // copy is the SAME phrase for surface and underground — no
+  // differential, no fingerprint. The phrase now states both the
+  // 30-day max AND the 24-72hr typical window universally.
+  // viewerChurchType is intentionally NOT branched on here.
+  // para-ministry copy swap (church → organization) still applies via
+  // viewer.yourChurchOrOrg per BA-para #1.
+  void viewerChurchType;
   return (
     <View style={styles.gate}>
       {/* Sky cross glyph — identical to TheChurchScreen */}
@@ -175,20 +185,12 @@ function ConnectGateView({ churchVerified }: { churchVerified: boolean | null })
       </Text>
       <Text style={styles.gateBody}>
         {isLeaderPending
-          ? "Your church is already part of the Replant network. Once the team confirms your account, you'll unlock Connect and be able to reach leaders directly."
-          : "Once your church is confirmed by a Replant team member, you'll unlock Connect — letters between verified leaders around the world."}
+          ? `${viewer.yourChurchOrOrgCap} is already part of the Replant network. Once the team confirms your account, you'll unlock Connect and reach verified leaders around the world.`
+          : `Once ${viewer.yourChurchOrOrg} is confirmed by a Replant team member, you'll unlock Connect and reach verified leaders around the world.`}
       </Text>
       <Text style={styles.gateTiny}>
-        {isLeaderPending
-          ? 'Confirmation usually takes 24–72 hours.'
-          : 'Most verifications complete in 24–72 hours.'}
+        This process may take up to 30 days, but reviews are typically complete within 24-72 hours.
       </Text>
-      <View style={styles.gateScripture}>
-        <Text style={styles.gateScriptureText}>
-          "For the vision is yet for an appointed time, but at the end it shall speak, and not lie: though it tarry, wait for it; because it will surely come, it will not tarry."
-        </Text>
-        <Text style={styles.gateScriptureRef}>HABAKKUK 2:3</Text>
-      </View>
     </View>
   );
 }
@@ -227,12 +229,22 @@ function useCallerIdentity() {
 export default function ConnectScreen() {
   const { branch } = useAuth();
   const verified = branch === 'active';
+  // Underground Verification Queue (manifest 2026-06-22) — a soft-deleted
+  // leader can READ existing threads + ministries but cannot WRITE.
+  // - Compose hidden (no new DM / branch).
+  // - Gate overlay NOT mounted (would block reading the leader's own
+  //   threads, which is the explicit read-only experience the queue
+  //   guarantees during the 30-day window).
+  // RLS enforces write-block server-side; this is FE defense-in-depth.
+  const isSoftDeleted = branch === 'soft_deleted';
   // Distinguish church-pending vs leader-pending for the gate copy.
   // useChurchVerifiedStatus only fires a DB query when branch === 'pending';
   // it is a no-op (returns null) for active leaders — zero extra cost.
   const churchVerified = useChurchVerifiedStatus();
   const { pendingInvites } = useConnectBadge();
   const { callerUserId, callerChurchId, callerChurchName } = useCallerIdentity();
+  // Para-ministry copy swap on the unverified gate (BA-para #1).
+  const { church: viewerChurch } = useViewerChurch();
 
   const [subTab, setSubTab] = useState<SubTab>('leaders');
   const [view, setView] = useState<ConnectView>({ kind: 'list' });
@@ -604,8 +616,14 @@ export default function ConnectScreen() {
       {/* Unverified gate — full-screen overlay (zIndex 20) matching the
           Church tab gate style. NOT dismissible — protection layer.
           Covers the list AND any push surface that might be behind it.
-          Two copy variants: church-pending vs leader-pending. */}
-      {!verified ? <ConnectGateView churchVerified={churchVerified} /> : null}
+          Two copy variants: church-pending vs leader-pending.
+          Queue §4 (manifest 2026-06-22): soft-deleted leaders SKIP this
+          gate — they get a read-only Connect with compose hidden so
+          their existing threads remain accessible during the 30-day
+          window. RLS enforces write-block server-side. */}
+      {!verified && !isSoftDeleted ? (
+        <ConnectGateView churchVerified={churchVerified} viewerChurchType={viewerChurch?.type} />
+      ) : null}
 
       {/* iOS toast (Android uses ToastAndroid). */}
       {toastNode}
@@ -624,15 +642,18 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   // ── ConnectGateView — full-screen overlay (mirrors TheChurchScreen) ──
+  // Full-screen overlay. Top-aligned (no justifyContent:'center') so
+  // the glyph sits ~marginTop:300 below the screen top, matching the
+  // Persecuted gate's lower-anchored feel. Scripture block removed
+  // 2026-06-22.
   gate: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
     backgroundColor: 'rgba(8,8,8,0.92)',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 28,
   },
-  gateCrossGlyph: { marginBottom: 28 },
+  gateCrossGlyph: { marginTop: 300, marginBottom: 28 },
   gateTitle: {
     fontFamily: Typography.scriptureLight,
     fontSize: 28,
@@ -653,36 +674,12 @@ const styles = StyleSheet.create({
   },
   gateTiny: {
     fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.1,
+    fontSize: 10.5,
+    letterSpacing: 2.31, // 0.22em × 10.5
     textTransform: 'uppercase',
     color: Colors.accent,
-    marginBottom: 28,
-  },
-  gateScripture: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(107,181,232,0.06)',
-    borderWidth: 0.5,
-    borderColor: Colors.borderAccent,
-    borderRadius: 10,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-  },
-  gateScriptureText: {
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 16.5,
-    color: Colors.text,
-    lineHeight: 25,
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  gateScriptureRef: {
-    fontFamily: Typography.mono,
-    fontSize: 9.5,
-    letterSpacing: 2.09,
-    textTransform: 'uppercase',
-    color: Colors.accent,
+    marginBottom: 28,
   },
   // ── toast (iOS only; Android uses ToastAndroid) ──
   toast: {

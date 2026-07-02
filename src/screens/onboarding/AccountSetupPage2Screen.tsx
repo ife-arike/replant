@@ -12,7 +12,7 @@
 // authenticated branch. No manual nav.reset needed.
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -22,20 +22,23 @@ import {
   StyleSheet,
   StatusBar,
   ActivityIndicator,
+  Keyboard,
   Modal,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding, type OnboardingLoopbackChurch } from '../../context/OnboardingContext';
 import { useAuth } from '../../contexts/AuthProvider';
-import { getChurchTypeLabel } from '../../utils/displayHelpers';
+import { getChurchTypeLabel, orgCopy } from '../../utils/displayHelpers';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '../../lib/supabase';
 import {
   type CallerContext,
   shouldFireOptimisticPending,
 } from '../../utils/asp2OptimisticPending';
+import { newIdempotencyKey } from '../../utils/idempotency';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'AccountSetupPage2'>;
 
@@ -60,13 +63,11 @@ export interface ChurchResult {
 const SEARCH_CHURCHES_URL = `${SUPABASE_URL}/functions/v1/search-churches`;
 const CREATE_ACCOUNT_URL = `${SUPABASE_URL}/functions/v1/create-account`;
 const CHECK_EMAIL_URL = `${SUPABASE_URL}/functions/v1/check-email-available`;
-// KAN-192 AC 5 — user-initiated delete of a just-registered church.
-// Backs the bypass card's "Delete and search again" button. Auth posture
-// mirrors register-church (verify_jwt = false, pre-auth surface). Locked
-// invariants: only deletes churches with zero active leaders AND created
-// within the current session window AND contact_email match. SEC/DBA
-// review tracked on KAN-192 c.15743.
-const REGISTER_CHURCH_DELETE_URL = `${SUPABASE_URL}/functions/v1/register-church-delete`;
+// register-church-delete is dead code under the orphan-prevention
+// architecture (2026-06-14). The bypass card's "Switch / Delete"
+// affordance now clears OnboardingContext only — no DB row exists yet
+// (register-church v6 is validation-only). Edge function deployment
+// stays one cycle as defense; removed in a follow-up cleanup PR.
 
 // Debounce window for the live search useEffect — matches KAN-12 dispatch.
 const SEARCH_DEBOUNCE_MS = 300;
@@ -321,6 +322,13 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // newer query has been kicked off but the abort hasn't propagated.
   const searchVersionRef = useRef(0);
 
+  // create-account v8 (Founder ruling #28) — idempotency key REQUIRED.
+  // We mint at first submit and REUSE across retries within this submission
+  // intent. Cleared/reset only on a fresh user-intent (which in practice
+  // happens when ASP2 unmounts after success). Same key sent on EVERY retry
+  // so the server's idempotency cache replays the prior success body.
+  const idempotencyKeyRef = useRef<string | null>(null);
+
   // KAN-192 — scroll-to-top on church select. After the cap-error
   // path (tap an at-capacity church), the user may be scrolled deep
   // in the results list. Picking a different church hides results
@@ -360,6 +368,25 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }
   }, [selectedChurch]);
+
+  // KAN-192 — phantom-inset defense on screen focus. On her iPhone the
+  // ScrollView mounts with contentInset.bottom ≈ 959pt (confirmed via
+  // [ASP2] offsetY instrumentation 2026-06-14) despite
+  // automaticallyAdjustKeyboardInsets={false} +
+  // contentInsetAdjustmentBehavior="never". Both props prevent iOS from
+  // ADJUSTING the inset going forward but do not zero an inset already
+  // present at mount — and the previous screen (ASP1) wraps its inputs
+  // in KeyboardAvoidingView, so keyboard state leaks across the
+  // navigation transition. Forcing scrollTo({y:0}) + Keyboard.dismiss()
+  // on every focus restores a usable cold landing regardless of the
+  // residual inset. Paired with the Keyboard.dismiss() right before
+  // navigation.navigate('AccountSetupPage2') in ASP1's handleNext.
+  useFocusEffect(
+    useCallback(() => {
+      Keyboard.dismiss();
+      scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+    }, []),
+  );
 
   // ── Live (debounced) search ────────────────────────────────────────
   useEffect(() => {
@@ -518,8 +545,14 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     setShowReplaceModal(false);
   };
 
+  // 2026-06-18 — Founder ruling: route to RegisterIntro chooser tile screen
+  // (Standalone / Church branch / Underground) instead of straight to RegCP1.
+  // The chooser dispatches to RegCP1 with the appropriate `entry` param.
+  // Edit path (handleBypassEdit) still goes straight to RegCP1 since the
+  // existing church already has a type.
   const handleRegisterNew = () => {
-    navigation.navigate('RegisterChurchPage1');
+    Keyboard.dismiss();
+    navigation.navigate('RegisterIntro');
   };
 
   // KAN-192 AC 5 — bypass card Edit affordance. Identical contract to
@@ -529,7 +562,19 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // to fire on the new newChurchId param after Apply Changes lands.
   const handleBypassEdit = () => {
     if (!selectedChurch) return;
+    // 2026-06-19/20 — preserve entry mode on Edit roundtrip so the type
+    // dropdown stays HIDDEN for branch + underground (both are
+    // mutually-exclusive entry paths whose type is determined by tile
+    // selection on RegisterIntroScreen, not the dropdown). Standalone
+    // is the only mode where the dropdown is visible.
+    const entry =
+      selectedChurch.type === 'branch'
+        ? 'branch'
+        : selectedChurch.type === 'underground'
+        ? 'underground'
+        : 'standalone';
     navigation.navigate('RegisterChurchPage1', {
+      entry,
       editChurch: {
         churchId: selectedChurch.id,
         churchName: selectedChurch.name,
@@ -562,58 +607,41 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
 
   const handleDeleteConfirm = async () => {
     if (!selectedChurch || deleting) return;
-    const contactEmail = state.churchDetails.contactEmail ?? '';
-    if (!contactEmail) {
-      // Defensive — the loopback path always seeds contactEmail via
-      // RegCP2's setChurchDetails. If we land here without it, surface
-      // a generic error rather than firing a request the BE will reject.
-      setDeleteError('We could not verify ownership of this church. Please contact accounts@projectreplant.org.');
-      return;
-    }
+    // Orphan-prevention v4 (2026-06-14): "Switch / Delete" on the bypass
+    // card is now a pure context-clear. No DB row exists yet (RegCP2
+    // didn't write — v6 validation-only). Removing the just-collected
+    // church details from OnboardingContext is the full action.
+    // register-church-delete is dead code under the new architecture
+    // and will be removed in a follow-up cleanup PR.
     setDeleting(true);
     setDeleteError(null);
     try {
-      const response = await fetch(REGISTER_CHURCH_DELETE_URL, {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          churchId: selectedChurch.id,
-          contactEmail,
-        }),
+      setSelectedChurch(null);
+      setIsNewChurchFromLoopback(false);
+      setLoopbackChurch(null);
+      setChurchDetails({
+        churchId: undefined,
+        churchName: undefined,
+        churchType: undefined,
+        country: undefined,
+        cityRegion: undefined,
+        address: undefined,
+        contactName: undefined,
+        contactEmail: undefined,
+        contactPhone: undefined,
+        ragStatus: undefined,
+        lat: undefined,
+        lng: undefined,
+        hasText: undefined,
+        needsText: undefined,
+        hasEmergencyPlan: null,
+        openToCollaboration: null,
       });
-      if (response.ok) {
-        // Hard-delete confirmed by the BE — drop ALL loopback state and
-        // clear the route params so isLoopbackBypass goes false on the
-        // next render. The leader lands on a clean search UI.
-        setSelectedChurch(null);
-        setIsNewChurchFromLoopback(false);
-        setLoopbackChurch(null);
-        setShowDeleteModal(false);
-        // setParams (not reset) avoids remounting the screen and losing
-        // OnboardingContext state. Cast to `as never` is React Nav's
-        // standard escape hatch for partial-param updates.
-        navigation.setParams({ newChurch: undefined, newChurchId: undefined } as never);
-        return;
-      }
-      // Map the BE error codes back to copy. The BE returns 403 when the
-      // contact_email doesn't match (proof-of-ownership failure) and 409
-      // when the row already has at least one active leader (i.e. the
-      // create-account write landed before the delete) — that case is
-      // recoverable by tapping Enter Replant.
-      if (response.status === 403) {
-        setDeleteError('We could not verify ownership of this church. Please contact accounts@projectreplant.org.');
-        return;
-      }
-      if (response.status === 409) {
-        setDeleteError('This church is already linked to a leader account. Tap "Enter Replant" to continue.');
-        return;
-      }
-      setDeleteError('Could not delete this church. Please try again, or contact accounts@projectreplant.org.');
-    } catch {
-      setDeleteError('Network error. Please check your connection and try again.');
+      setShowDeleteModal(false);
+      // setParams (not reset) avoids remounting the screen and losing
+      // OnboardingContext state. Cast to `as never` is React Nav's
+      // standard escape hatch for partial-param updates.
+      navigation.setParams({ newChurch: undefined, newChurchId: undefined } as never);
     } finally {
       setDeleting(false);
     }
@@ -721,8 +749,26 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     // batches state updates; we'd read stale skippedChurch inside the
     // same tick. The explicit parameter avoids that closure trap.
     const isSkip = opts?.skip === true;
-    if ((!canSubmit && !isSkip) || submitting) return;
-    if (!selectedChurch && !isSkip) return;
+    // Diagnostic — proves handleSubmit fired at all. If this log doesn't
+    // appear in Metro when "Enter Replant" is tapped, the button itself
+    // isn't dispatching (disabled state, or stale submitError UI).
+    console.log('[ASP2 submit] entered', {
+      isSkip,
+      canSubmit,
+      submitting,
+      hasSelectedChurch: !!selectedChurch,
+      selectedChurchId: selectedChurch?.id,
+      isNewChurchFromLoopback,
+      submitError,
+    });
+    if ((!canSubmit && !isSkip) || submitting) {
+      console.log('[ASP2 submit] early-return: canSubmit/submitting guard');
+      return;
+    }
+    if (!selectedChurch && !isSkip) {
+      console.log('[ASP2 submit] early-return: no selectedChurch');
+      return;
+    }
     if (
       !personalDetails.firstName ||
       !personalDetails.lastName ||
@@ -762,13 +808,115 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       // the arbiter on the 'network' branch.
 
       // ── create-account call ──────────────────────────────────────
+      // Orphan-prevention v4 contract (2026-06-14): mutually-exclusive
+      // payload — pass `newChurch` (atomic write) OR `churchId` (join
+      // existing). When isNewChurchFromLoopback is true, the FE holds
+      // the church payload in OnboardingContext (no DB write happened
+      // at RegCP2 anymore — that's the point). Build the BE-shaped
+      // newChurch object here from context and pass it; create-account
+      // v4 writes the church + the leader atomically via the
+      // create_account_atomic RPC.
+      let newChurchForBe: Record<string, unknown> | undefined;
+      if (isNewChurchFromLoopback && !isSkip) {
+        const cd = state.churchDetails;
+        // Diagnostic — surface which church fields are missing from
+        // OnboardingContext so we know which screen failed to persist.
+        // Orphan-prevention v4 (2026-06-14) requires the FE to hand v4
+        // a complete church payload at submit time; gaps here mean
+        // RegCP1 or RegCP2 didn't write to context.
+        const missing: string[] = [];
+        if (!cd.churchName) missing.push('church name');
+        if (!cd.churchType) missing.push('church type');
+        if (!cd.country) missing.push('country');
+        if (!cd.contactName) missing.push('contact name');
+        if (!cd.ragStatus) missing.push('current status (RAG)');
+        if (missing.length > 0) {
+          console.log('[ASP2 submit] missing church fields from context', {
+            missing,
+            cd_keys: Object.keys(cd),
+            churchName: cd.churchName,
+            churchType: cd.churchType,
+            country: cd.country,
+            contactName: cd.contactName,
+            ragStatus: cd.ragStatus,
+          });
+          setSubmitError(
+            `We're missing some church details from the previous step (${missing.join(', ')}). Go back to "Register Church" and complete those fields, then try again.`,
+          );
+          return;
+        }
+        const nc: Record<string, unknown> = {
+          name: cd.churchName.trim(),
+          type: cd.churchType,
+          country: cd.country,
+          city: cd.cityRegion ?? null,
+          contact_name: cd.contactName.trim(),
+          rag_status: cd.ragStatus,
+          state_declaration:
+            'I affirm the Replant Declaration of Faith — Jesus Christ as Lord and Saviour, the Holy Bible as our only source of truth.',
+          lat: cd.lat ?? null,
+          lng: cd.lng ?? null,
+        };
+        if (cd.address && cd.address.trim()) nc.address = cd.address.trim();
+        if (cd.contactEmail && cd.contactEmail.trim()) nc.contact_email = cd.contactEmail.trim();
+        if (cd.contactPhone && cd.contactPhone.trim()) nc.contact_phone = cd.contactPhone.trim();
+        if (cd.hasEmergencyPlan !== null && cd.hasEmergencyPlan !== undefined) {
+          nc.has_emergency_plan = cd.hasEmergencyPlan;
+        }
+        if (cd.openToCollaboration !== null && cd.openToCollaboration !== undefined) {
+          nc.open_to_collaboration = cd.openToCollaboration;
+        }
+        // KAN-13 — needs/resources as comma-split arrays. Same shape
+        // RegCP2 used to send to register-church v5.
+        if (cd.needsText && cd.needsText.trim()) {
+          nc.needs = cd.needsText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+        if (cd.hasText && cd.hasText.trim()) {
+          nc.resources = cd.hasText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+        // Underground flow (Ruling #10, 2026-06-19) — forward the
+        // name-visibility choice captured on NameVisibilityChoice.
+        // create-account v8 only honors this field when type='underground';
+        // for all other church types it's ignored server-side. Defaults
+        // to false (the Migration A server-side default) when undefined.
+        if (cd.churchType === 'underground') {
+          nc.show_church_name = cd.showChurchName === true;
+        }
+        newChurchForBe = nc;
+      }
+
+      // 2026-06-18 — Branch-flow extensions (create-account v7):
+      // branchOfChurchId / pendingParentClaim / isHeadquarters live in
+      // OnboardingContext (populated by RegCP1 branch entry). Only valid
+      // alongside a newChurch payload; pass null/false otherwise so existing
+      // standalone + skip + existing-church paths stay unchanged.
+      const isNewBranchChurch = !!newChurchForBe && (newChurchForBe.type as string) === 'branch';
+      const branchOfChurchId = isNewBranchChurch ? (state.parentRef?.id ?? null) : null;
+      const pendingParentClaim =
+        isNewBranchChurch && state.pendingParentClaim ? state.pendingParentClaim : null;
+      const isHeadquarters = !!newChurchForBe ? state.isHeadquarters : false;
+
+      // create-account v8 (Founder ruling #28) — idempotency key REQUIRED.
+      // Mint once per submission intent; reuse across all retries until
+      // success. Server replays the cached success body on a key replay,
+      // so a 5xx-and-retry can never accidentally create two accounts.
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = newIdempotencyKey();
+      }
+      const idempotencyKey = idempotencyKeyRef.current;
+
       const response = await fetch(CREATE_ACCOUNT_URL, {
         method: 'POST',
         headers: {
           apikey: SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({
+          // create-account v8 reads Idempotency-Key header first, with
+          // body.idempotencyKey as fallback. We send both so a gateway
+          // that strips the header still authenticates the request.
+          idempotencyKey,
           firstName: personalDetails.firstName,
           // KAN-229: empty string is the canonical "no middle name" value
           // and lands as '' in users.middle_name (NOT NULL).
@@ -780,10 +928,16 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           password: personalDetails.password,
           role: personalDetails.role,
           anonymous: personalDetails.anonymous ?? false,
-          churchId,
-          // isNewChurch can only be true on the non-skip path. A skip
-          // leader hasn't registered anything.
-          isNewChurch: isNewChurchFromLoopback && !isSkip,
+          // Mutually exclusive — pass exactly one OR neither (skip).
+          // When isNewChurchFromLoopback the church is born atomically
+          // here via newChurch; churchId stays null.
+          churchId: newChurchForBe ? null : churchId,
+          newChurch: newChurchForBe,
+          // create-account v7 branch-flow fields (2026-06-18). Validated
+          // server-side; null/false when not applicable.
+          branchOfChurchId,
+          pendingParentClaim,
+          isHeadquarters,
         }),
       });
 
@@ -890,7 +1044,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
           <Text style={styles.backText}>‹ Back</Text>
         </TouchableOpacity>
         <Text style={styles.stepLabel}>ACCOUNT SETUP · 2 OF 2</Text>
-        <Text style={styles.title}>Your Church</Text>
+        <Text style={styles.title}>{orgCopy(selectedChurch?.type).asp2Title}</Text>
         <Text style={styles.subtitle}>
           Every leader in the Replant network is tied to a church. Search for yours below, or register a new one.
         </Text>
@@ -982,7 +1136,7 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
                 <View style={styles.bypassRibbonCheck}>
                   <Text style={styles.bypassRibbonCheckGlyph}>✓</Text>
                 </View>
-                <Text style={styles.bypassRibbonLabel}>Registered</Text>
+                <Text style={styles.bypassRibbonLabel}>Ready to Register</Text>
               </View>
               <TouchableOpacity
                 onPress={handleBypassEdit}
@@ -1000,9 +1154,31 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
               <Text style={styles.bypassChurchMeta}>
                 {getChurchTypeLabel(selectedChurch.type)}
                 <Text style={styles.bypassChurchMetaSep}>  ·  </Text>
-                {selectedChurch.city}
-                {selectedChurch.country ? `, ${selectedChurch.country}` : ''}
+                {/* 2026-06-20 — Underground rows have city stripped to NULL
+                    server-side (underground_no_location invariant). Avoid the
+                    dangling "Underground · , Country" comma by composing
+                    "city, country" only when at least one is present. */}
+                {selectedChurch.city && selectedChurch.country
+                  ? `${selectedChurch.city}, ${selectedChurch.country}`
+                  : selectedChurch.city || selectedChurch.country || ''}
               </Text>
+
+              {/* 2026-06-18 — Branch attribution. When the loopback church is
+                  a branch with a resolved parent in OnboardingContext, surface
+                  "Church branch of {parent}" so the leader sees the link they
+                  just established. Deferred-parent variant shows amber pending
+                  copy instead. */}
+              {selectedChurch.type === 'branch' && state.parentRef && (
+                <Text style={[styles.bypassChurchMeta, { marginTop: 4 }]}>
+                  Church branch of {state.parentRef.name}
+                  {state.parentRef.city ? ` · ${state.parentRef.city}` : ''}
+                </Text>
+              )}
+              {selectedChurch.type === 'branch' && !state.parentRef && state.pendingParentClaim && (
+                <Text style={[styles.bypassChurchMeta, { marginTop: 4, color: Colors.amber }]}>
+                  Parent church to be linked · {state.pendingParentClaim.name}
+                </Text>
+              )}
 
               {/* Status row — the heart of the CD redesign. The
                   unlabeled amber dot was the screen's biggest
@@ -1013,6 +1189,26 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
               <BypassStatusRow status={selectedChurch.verification_status} />
             </View>
           </View>
+
+          {/* 2026-06-20 — Underground reassurance note. Two variants based
+              on the NameVisibilityChoice the leader made.
+              SAFE (show_church_name=false, default): name stays hidden in the
+                network; bypass card shows it only for confirmation.
+              BRAVE (show_church_name=true): name will be visible in the
+                network — affirms the leader's chosen posture and reassures
+                that location/identifying details still stay hidden.
+              Uses the canonical infoNotice treatment (soft-blue accent, ⓘ icon,
+              bordered card). Sits UNDER the card, not inside it. */}
+          {selectedChurch.type === 'underground' && (
+            <View style={styles.bypassUndergroundNoteCard}>
+              <Text style={styles.bypassUndergroundNoteIcon}>ⓘ</Text>
+              <Text style={styles.bypassUndergroundNoteText}>
+                {state.churchDetails.showChurchName === true
+                  ? "Your church name will be visible in the network — that's the choice you made. Your location and identifying details still stay hidden everywhere."
+                  : "Your church name stays private. It's shown here only so you can confirm what you submitted — only Replant's verification team will see it."}
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity
             onPress={handleBypassDelete}
@@ -1953,6 +2149,34 @@ const styles = StyleSheet.create({
   // "Made a mistake? Switch ›" lives BELOW the card. Quiet text link
   // — destructive confirmation lives inside the Switch flow, not on
   // this screen surface. Centered.
+  // 2026-06-20 — Underground safe-mode reassurance, OUTSIDE the bypass
+  // card per Founder ruling. Canonical infoNotice treatment to match the
+  // para tooltip pattern on RegCP1 (soft-blue background tint, bordered,
+  // ⓘ icon prefix). Reads as informational, not free-floating.
+  bypassUndergroundNoteCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: 'rgba(107, 181, 232, 0.08)',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(107, 181, 232, 0.25)',
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  bypassUndergroundNoteIcon: {
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.accent,
+    marginTop: 1,
+  },
+  bypassUndergroundNoteText: {
+    flex: 1,
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.textMuted,
+  },
   bypassSwitchLink: {
     alignSelf: 'center',
     marginTop: Spacing.md + 2,

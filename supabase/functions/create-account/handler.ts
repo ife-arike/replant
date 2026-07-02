@@ -1,27 +1,29 @@
-// KAN-12 create-account — handler factory (createHandler pattern).
+// create-account v4 — handler factory.
 //
-// Mirrors check-email-available / register-church. Deps are injected so
-// the orchestration is unit-testable without the Supabase Auth Admin API,
-// without a real DB connection, and without Upstash / Resend.
+// Per SME-reviewed orphan-prevention architecture (2026-06-14): this
+// function owns the atomic signup write. Church creation moves out of
+// register-church (now validation-only at v6) and into this function's
+// single RPC call to public.create_account_atomic.
 //
-// Response contract (SEC-mapped):
-//   200 { userId: string }                            — happy path
-//   400 { error: 'validation_error', message }        — payload reject
-//   400 { error: 'user_already_exists' }              — Layer 3 finds duplicate
-//   400 { error: 'LEADER_CAP_EXCEEDED' }              — capacity guard rejects
-//   429 { error: ..., retry_after_seconds }           — rate-limit (per IP+email)
-//   500 { error: 'internal_error' }                   — server-side fault (no raw
-//                                                       Postgres / Auth Admin
-//                                                       details leaked)
-//
-// Three-layer idempotency: this handler implements LAYER 3 per SPEC
-// c.10175. Layer 1 (pre-check) and Layer 2 (post-error retry guard) are
-// FE responsibilities on AccountSetupPage2Screen.
+// Flow:
+//   1. Rate-limit per-IP (SEC) + per-IP-per-email
+//   2. Parse + validate payload (leader + optional newChurch / churchId)
+//   3. Find existing auth.users by email; if found, find public.users by auth_id
+//      - both exist → USER_ALREADY_EXISTS
+//      - auth exists, public missing → resume path (use existing authId,
+//        DO NOT comp-delete on RPC failure since we didn't create it)
+//      - neither → createAuthUser, set created=true
+//   4. Call createAccountAtomic(authId, leader, newChurch, churchId)
+//   5. Map RPC errors back to API error codes via PG ERRCODE
+//      - on failure AND created=true → comp-delete auth user
+//   6. Fire welcome email + new-church email (fire-and-forget)
+//   7. Return 200 { userId, churchId }
 
 import {
-  computeVerificationDeadline,
   ERROR_CODES,
-  exceedsCapacity,
+  idempotencyCacheKey,
+  IDEMPOTENCY_CACHE_TTL_SECONDS,
+  isValidIdempotencyKey,
   parsePayload,
   rateLimitKey,
   RATE_LIMIT_MAX_REQUESTS,
@@ -29,183 +31,270 @@ import {
   type Role,
 } from "./logic.ts";
 
-export interface AuthUserRef {
-  id: string;
-  email: string;
+export interface AuthUserRef { id: string; email: string; }
+
+// PostgrestError-shaped — what supabase-js surfaces on rpc() failure.
+export interface RpcError extends Error {
+  code?: string;
+  details?: string;
+  hint?: string;
 }
 
-export interface InsertPublicUserRow {
-  auth_id: string;
-  // Legacy concat — phased out as RPCs migrate to structured fields.
-  full_name: string;
-  // KAN-229 structured-name surface — NOT NULL on schema. middle_name
-  // is '' when no middle name was entered (the canonical "no middle"
-  // value, not NULL).
-  first_name: string;
-  middle_name: string;
-  last_name: string;
-  // KAN-231 — optional. null = not provided.
-  phone: string | null;
-  email: string;
-  role: Role;
-  // Finalization fix 4 — nullable for the skip-flow path. public.users.
-  // church_id is uuid NULL on the live schema (verified 2026-05-22).
-  church_id: string | null;
-  anonymous: boolean;
-  declaration_affirmed: true;
-  declaration_date: string;
-  verification_status: "pending";
-  verification_deadline: string;
+export interface CreateAccountAtomicResult {
+  userId: string;
+  churchId: string | null;
 }
 
 export interface Deps {
-  // ─── Layer 3 duplicate detection ───
-  /**
-   * Look up an existing auth.users row by canonical lowercase email.
-   * Returns null if none exists. The lookup is the gatekeeper for the
-   * "auth user exists, public user does not" resume path.
-   */
-  findAuthUserByEmail(emailLower: string): Promise<AuthUserRef | null>;
-  /**
-   * Look up an existing public.users row by auth_id. Returns null if
-   * none exists — the resume path.
-   */
-  findPublicUserByAuthId(authId: string): Promise<{ id: string } | null>;
-
-  // ─── Step 1 — Auth create + compensating delete ───
-  /**
-   * Create the auth.users row via `supabase.auth.admin.createUser`.
-   * MUST set `email_confirm: true` — onboarding doesn't run the email
-   * confirmation flow at MVP; leaders are considered confirmed at
-   * account creation.
-   */
-  createAuthUser(opts: { email: string; password: string }): Promise<AuthUserRef>;
-  /**
-   * Compensating delete for the auth.users row created earlier in this
-   * request, when the subsequent INSERT fails. Best-effort: a failure
-   * here is logged but does NOT change the response (the request already
-   * failed; we just leak an orphan auth row that Layer 3 will resolve on
-   * the next retry).
-   */
-  deleteAuthUser(authId: string): Promise<void>;
-
-  // ─── Capacity guard ───
-  countActiveUsersInChurch(churchId: string): Promise<number>;
-
-  // ─── Step 2-5 — public.users INSERT (single statement, atomic by Postgres) ───
-  insertPublicUser(row: InsertPublicUserRow): Promise<{ id: string }>;
-
-  // ─── Step 6-7 — fire-and-forget Resend ───
-  /**
-   * Welcome email to the new leader. Failure logged warn, NOT awaited
-   * (request returns success regardless). KAN-31 owns the template.
-   */
-  sendWelcomeEmail(opts: { email: string; firstName: string }): Promise<void>;
-  /**
-   * Finalization fix 4 — look up the church's contact_email so the
-   * welcome email routes to the ministry inbox the leader chose
-   * during registration (not the personal auth email). Returns null
-   * if the church has no contact_email or the lookup fails; the
-   * caller falls back to the personal auth email defensively.
-   */
-  getChurchContactEmail(churchId: string): Promise<string | null>;
-  /**
-   * "New church registered" email to the Replant team, fired ONLY when
-   * `isNewChurch === true` (the leader registered a fresh church in this
-   * onboarding flow via KAN-13 loopback). Failure logged warn, NOT
-   * awaited. KAN-31 owns the destination + template.
-   */
-  sendNewChurchEmail(opts: { churchId: string; leaderEmail: string; leaderFullName: string }): Promise<void>;
-
-  // ─── Plumbing ───
-  rateLimit(ip: string, emailLower: string): Promise<
+  findAuthUserByEmail(e: string): Promise<AuthUserRef | null>;
+  findPublicUserByAuthId(id: string): Promise<{ id: string } | null>;
+  createAuthUser(o: { email: string; password: string }): Promise<AuthUserRef>;
+  deleteAuthUser(id: string): Promise<void>;
+  // The single atomic write — invokes public.create_account_atomic.
+  // p_new_church / p_existing_church_id are mutually exclusive at the
+  // call site; the function raises P0007 if both are passed (programming
+  // guard; FE never reaches that state).
+  createAccountAtomic(
+    authId: string,
+    leader: Record<string, unknown>,
+    newChurch: Record<string, unknown> | null,
+    existingChurchId: string | null,
+    // Branch-flow extensions (2026-06-18). Defaults preserve v3 behavior.
+    branchOfChurchId?: string | null,
+    pendingParentClaim?: Record<string, unknown> | null,
+    isHeadquarters?: boolean,
+  ): Promise<CreateAccountAtomicResult>;
+  // Branched welcome-email copy. `kind` drives which copy variant fires;
+  // `daysRemaining` is the count to surface in the pending-church variant
+  // (7 for skip; null for verified-church). `churchType` drives the
+  // "church" → "organization" conditional swap for para-ministry (CONTENT F6,
+  // 2026-06-18). Null when no church attached (skip path).
+  sendWelcomeEmail(o: {
+    email: string;
+    firstName: string;
+    // v8 — added "underground_pending" kind (Founder ruling #5,
+    // CONTENT B2). Generic body, no church/role/region/country
+    // reference. Used for underground founders AND underground join-by-code
+    // second leaders. Identical generic message — email channel must not
+    // reveal underground membership.
+    kind: "skip" | "pending_church" | "verified_church" | "underground_pending";
+    daysRemaining: number | null;
+    churchType: string | null;
+  }): Promise<void>;
+  // Replaces getChurchContactEmail: same contact_email lookup plus the
+  // fields needed to drive the welcome-email kind + dynamic days. Returns
+  // null on lookup failure so the handler can degrade gracefully.
+  getChurchInfo(id: string): Promise<{
+    contact_email: string | null;
+    verification_status: string;
+    verification_deadline: string | null;
+  } | null>;
+  sendNewChurchEmail(o: { churchId: string; leaderEmail: string; leaderFullName: string }): Promise<void>;
+  rateLimit(ip: string, email: string): Promise<
     | { allowed: true; count: number }
     | { allowed: false; retryAfterSeconds: number }
   >;
+  // Per-IP-only rate limit (SEC-required) — defeats email-rotation
+  // enumeration. Looser budget than per-IP-per-email.
+  perIpRateLimit(ip: string): Promise<
+    | { allowed: true; count: number }
+    | { allowed: false; retryAfterSeconds: number }
+  >;
+  // v8 idempotency cache (Founder ruling #28). cacheGet returns the
+  // cached JSON-encoded response body on replay (status always 200 since
+  // we only cache successful 200s); null on miss or backend failure.
+  // cacheSet stores the response body string (caller serializes) with
+  // TTL. On Upstash backend failure, cacheSet swallows so the live
+  // response still reaches the client.
+  idempotencyCacheGet(key: string): Promise<string | null>;
+  idempotencyCacheSet(key: string, value: string, ttlSeconds: number): Promise<void>;
   getIp(req: Request): string;
   now(): Date;
-  log(level: "info" | "warn" | "error", event: string, fields: Record<string, unknown>): void;
+  log(l: "info" | "warn" | "error", e: string, f: Record<string, unknown>): void;
 }
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+const json = (s: number, b: unknown) =>
+  new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json" } });
+const err = (s: number, c: string, m?: string) =>
+  json(s, m ? { error: c, message: m } : { error: c });
 
-const errorRes = (status: number, code: string, message?: string) =>
-  json(status, message ? { error: code, message } : { error: code });
+function djb2(s: string): string {
+  let h = 5381 >>> 0;
+  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, "0");
+}
+
+function probEmail(b: unknown): string | null {
+  if (b && typeof b === "object" && !Array.isArray(b)) {
+    const e = (b as Record<string, unknown>).email;
+    if (typeof e === "string" && e.length > 0 && e.length < 500) return e.trim().toLowerCase();
+  }
+  return null;
+}
+
+// ── ERRCODE → API error mapping ─────────────────────────────────────
+//
+// Returns the API-facing { status, errorCode, message? } for a given
+// PostgrestError-shaped error from create_account_atomic. Order matters
+// — check unique-violation constraints first (more specific) before
+// generic SQLSTATEs.
+interface MappedError {
+  status: number;
+  errorCode: string;
+  message?: string;
+}
+
+function mapRpcError(e: RpcError): MappedError {
+  const code = e.code ?? "";
+  const details = e.details ?? "";
+  const message = e.message ?? "";
+  const haystack = `${message} ${details}`;
+
+  // Unique violations — inspect constraint name
+  if (code === "23505") {
+    if (haystack.includes("churches_contact_email_unique_excl_campus")) {
+      return {
+        status: 409,
+        errorCode: ERROR_CODES.CONTACT_EMAIL_TAKEN,
+        message:
+          "This email is already registered to another church. If this is your parent campus, change your church type to Main Campus or Branch. Otherwise use a different contact email.",
+      };
+    }
+    if (haystack.includes("users_email")) {
+      // Shouldn't fire — pre-check covers this case. If it does, it's a
+      // race: a competing signup landed between the pre-check and the
+      // atomic write.
+      return { status: 400, errorCode: ERROR_CODES.USER_ALREADY_EXISTS };
+    }
+    return { status: 400, errorCode: ERROR_CODES.VALIDATION_ERROR, message: "Duplicate value." };
+  }
+
+  // PL/pgSQL RAISE EXCEPTION ... USING ERRCODE = '...'
+  switch (code) {
+    case "P0001":
+      return { status: 400, errorCode: ERROR_CODES.LEADER_CAP_EXCEEDED };
+    case "P0002":
+      return {
+        status: 400,
+        errorCode: ERROR_CODES.CHURCH_NOT_FOUND,
+        message: "Selected church no longer available.",
+      };
+    case "P0004":
+    case "P0005":
+    case "P0006":
+    case "P0007":
+    case "P0008":
+      return { status: 400, errorCode: ERROR_CODES.VALIDATION_ERROR, message };
+  }
+
+  // CHECK constraint violation
+  if (code === "23514") {
+    return {
+      status: 400,
+      errorCode: ERROR_CODES.VALIDATION_ERROR,
+      message: "Submission failed validation.",
+    };
+  }
+
+  // NOT NULL violation — shouldn't fire (validation + function guards
+  // cover the required columns) but surface as internal_error so we
+  // notice in logs.
+  return { status: 500, errorCode: ERROR_CODES.INTERNAL_ERROR };
+}
 
 export function createHandler(deps: Deps) {
   return async (req: Request): Promise<Response> => {
     try {
-      if (req.method !== "POST") {
-        return errorRes(405, "method_not_allowed");
+      if (req.method !== "POST") return err(405, "method_not_allowed");
+
+      const ip = deps.getIp(req);
+
+      // SEC — per-IP-only rate limit FIRST (defeats email rotation
+      // enumeration; the per-IP-per-email rate-limit below would be
+      // bypassed by an attacker cycling through emails).
+      const perIp = await deps.perIpRateLimit(ip);
+      if (!perIp.allowed) {
+        deps.log("warn", "rate_limited_per_ip", {
+          ip_hash: djb2(ip),
+          retry_after_seconds: perIp.retryAfterSeconds,
+        });
+        return json(429, { error: "rate_limited", retry_after_seconds: perIp.retryAfterSeconds });
       }
 
-      // Rate-limit consumes the bucket BEFORE body parse, BUT we need
-      // the email to scope the key. Pull body first, then key.
-      // A malformed body still ticks the rate-limit by IP-only (no
-      // email available) — see fallback below.
       let body: unknown;
       try {
         body = await req.json();
       } catch {
-        // No email yet — use the IP-only bucket so spammers can't bypass
-        // by sending malformed payloads to bypass the email-scoped key.
-        const ip = deps.getIp(req);
-        const ipOnlyRl = await deps.rateLimit(ip, "_invalid_body_");
-        if (!ipOnlyRl.allowed) {
-          return json(429, {
-            error: "rate_limited",
-            retry_after_seconds: ipOnlyRl.retryAfterSeconds,
-          });
+        const rl = await deps.rateLimit(ip, "_invalid_body_");
+        if (!rl.allowed) {
+          return json(429, { error: "rate_limited", retry_after_seconds: rl.retryAfterSeconds });
         }
-        return errorRes(400, ERROR_CODES.VALIDATION_ERROR, "Request body must be valid JSON");
+        return err(400, ERROR_CODES.VALIDATION_ERROR, "Request body must be valid JSON");
       }
 
-      const parsed = parsePayload(body);
+      // v8 — idempotency key REQUIRED (Founder ruling #28). Resolve from
+      // Idempotency-Key header first, falling back to body.idempotencyKey.
+      // Missing or malformed → 400 idempotency_key_required (don't burn
+      // a rate-limit budget on a bad client).
+      const headerKey = req.headers.get("Idempotency-Key");
+      const bodyKey = body && typeof body === "object" && !Array.isArray(body)
+        ? (body as Record<string, unknown>).idempotencyKey
+        : undefined;
+      const rawIdempKey = (typeof headerKey === "string" && headerKey.length > 0)
+        ? headerKey.trim()
+        : (typeof bodyKey === "string" ? bodyKey.trim() : "");
+      if (!isValidIdempotencyKey(rawIdempKey)) {
+        return err(400, ERROR_CODES.IDEMPOTENCY_KEY_REQUIRED);
+      }
+
+      // Cache hit → return cached 200 body verbatim. (We only cache
+      // successful 200s, so a hit means the prior call succeeded and the
+      // FE is retrying after a timeout/network blip.)
+      const idempKey = idempotencyCacheKey(rawIdempKey);
+      try {
+        const cached = await deps.idempotencyCacheGet(idempKey);
+        if (cached) {
+          deps.log("info", "idempotency_replay", { ip_hash: djb2(ip) });
+          return new Response(cached, {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      } catch (e) {
+        // Cache backend failure — do NOT short-circuit. Log + fall
+        // through to a fresh call. (Worst case is duplicate-email 400
+        // on the second submit, which the existing layer-3 detection
+        // already handles.)
+        deps.log("warn", "idempotency_cache_get_failed", { message: (e as Error).message });
+      }
+
+      const parsed = parsePayload(body, deps.now(), rawIdempKey);
       if (!parsed.ok) {
-        // Tick the rate-limit on validation failure too — same anti-probe
-        // posture as the JSON-parse branch above. Scope by IP+best-email
-        // we can recover from the payload (or `_invalid_payload_` if not).
-        const probableEmail = extractProbableEmail(body) ?? "_invalid_payload_";
-        const ip = deps.getIp(req);
-        await deps.rateLimit(ip, probableEmail);
-        return errorRes(400, ERROR_CODES.VALIDATION_ERROR, parsed.error);
+        await deps.rateLimit(ip, probEmail(body) ?? "|invalid|");
+        return err(400, ERROR_CODES.VALIDATION_ERROR, parsed.error);
       }
       const input = parsed.input;
 
-      const ip = deps.getIp(req);
       const rl = await deps.rateLimit(ip, input.email);
       if (!rl.allowed) {
-        deps.log("warn", "create_account_rate_limited", {
-          ip_hash: hashIp(ip),
-          email_hash: hashEmail(input.email),
+        deps.log("warn", "rate_limited", {
+          ip_hash: djb2(ip),
+          email_hash: djb2(input.email),
           retry_after_seconds: rl.retryAfterSeconds,
         });
-        return json(429, {
-          error: "rate_limited",
-          retry_after_seconds: rl.retryAfterSeconds,
-        });
+        return json(429, { error: "rate_limited", retry_after_seconds: rl.retryAfterSeconds });
       }
 
-      // ─── Layer 3 — duplicate detection ───
-      //
-      // Three possible states:
-      //   (A) both rows exist  → user_already_exists, reject
-      //   (B) only auth exists → resume mid-transaction (reuse authId,
-      //       skip Step 1, proceed to capacity + INSERT)
-      //   (C) neither exists   → fresh flow (Step 1 then 2-5)
+      // ── Pre-check: existing auth.users + public.users ───────────
       let existingAuth: AuthUserRef | null;
       try {
         existingAuth = await deps.findAuthUserByEmail(input.email);
       } catch (e) {
-        deps.log("error", "create_account_auth_lookup_failed", {
-          email_hash: hashEmail(input.email),
+        deps.log("error", "auth_lookup_failed", {
+          email_hash: djb2(input.email),
           message: (e as Error).message,
         });
-        return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
+        return err(500, ERROR_CODES.INTERNAL_ERROR);
       }
 
       let existingPublic: { id: string } | null = null;
@@ -213,224 +302,248 @@ export function createHandler(deps: Deps) {
         try {
           existingPublic = await deps.findPublicUserByAuthId(existingAuth.id);
         } catch (e) {
-          deps.log("error", "create_account_public_lookup_failed", {
-            email_hash: hashEmail(input.email),
+          deps.log("error", "public_lookup_failed", {
+            email_hash: djb2(input.email),
             message: (e as Error).message,
           });
-          return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
+          return err(500, ERROR_CODES.INTERNAL_ERROR);
         }
       }
 
       if (existingAuth && existingPublic) {
-        // State (A) — both rows exist → reject.
-        deps.log("info", "create_account_duplicate", {
-          email_hash: hashEmail(input.email),
-        });
-        return errorRes(400, ERROR_CODES.USER_ALREADY_EXISTS);
+        deps.log("info", "duplicate", { email_hash: djb2(input.email) });
+        return err(400, ERROR_CODES.USER_ALREADY_EXISTS);
       }
 
-      // ─── Capacity guard ───
-      //
-      // Race window with concurrent submits is acknowledged in the
-      // dispatch out-of-scope (DBA-side trigger is a follow-up). For
-      // MVP, the count-then-INSERT race is bounded by the 3-req/hr
-      // rate-limit per IP+email.
-      //
-      // Finalization fix 4 — skip-flow path: when churchId is null
-      // there's no church to check capacity against. We skip the
-      // guard entirely; a leader who later joins a church goes
-      // through the church-management flow which re-runs the check.
-      if (input.churchId !== null) {
-        let activeCount: number;
-        try {
-          activeCount = await deps.countActiveUsersInChurch(input.churchId);
-        } catch (e) {
-          deps.log("error", "create_account_capacity_check_failed", {
-            email_hash: hashEmail(input.email),
-            church_id: input.churchId,
-            message: (e as Error).message,
-          });
-          return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
-        }
-        if (exceedsCapacity(activeCount)) {
-          deps.log("info", "create_account_capacity_exceeded", {
-            email_hash: hashEmail(input.email),
-            church_id: input.churchId,
-            active_count: activeCount,
-          });
-          return errorRes(400, ERROR_CODES.LEADER_CAP_EXCEEDED);
-        }
-      }
-
-      // ─── Step 1 — Auth createUser (or resume) ───
-      let authUserId: string;
-      let authUserCreatedThisRun = false;
+      // ── Resolve auth user ────────────────────────────────────────
+      // Resume path: existingAuth && !existingPublic. The auth user was
+      // created by a prior failed attempt; we re-attach a public-side
+      // record. `created = false` here is LOAD-BEARING — do NOT
+      // comp-delete the auth user on RPC failure since we didn't
+      // create it (would clobber a real user's auth record).
+      let authId: string;
+      let created = false;
       if (existingAuth && !existingPublic) {
-        // State (B) — resume path. Don't create a second auth row.
-        authUserId = existingAuth.id;
-        deps.log("info", "create_account_resume_from_auth", {
-          email_hash: hashEmail(input.email),
-        });
+        authId = existingAuth.id;
+        deps.log("info", "resume", { email_hash: djb2(input.email) });
       } else {
-        // State (C) — fresh flow.
         try {
-          const created = await deps.createAuthUser({
-            email: input.email,
-            password: input.password,
-          });
-          authUserId = created.id;
-          authUserCreatedThisRun = true;
+          const a = await deps.createAuthUser({ email: input.email, password: input.password });
+          authId = a.id;
+          created = true;
         } catch (e) {
-          deps.log("error", "create_account_auth_create_failed", {
-            email_hash: hashEmail(input.email),
-            message: (e as Error).message,
-          });
-          return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
+          deps.log("error", "auth_create_failed", { message: (e as Error).message });
+          return err(500, ERROR_CODES.INTERNAL_ERROR);
         }
       }
 
-      // ─── Steps 2-5 — public.users INSERT ───
-      const nowTs = deps.now();
-      const row: InsertPublicUserRow = {
-        auth_id: authUserId,
-        full_name: input.fullName,
-        first_name: input.firstName,
-        middle_name: input.middleName,
-        last_name: input.lastName,
-        phone: input.phone,
+      // ── Atomic RPC call ─────────────────────────────────────────
+      // Leader payload — serialized for the PL/pgSQL function.
+      const leaderForRpc: Record<string, unknown> = {
+        firstName: input.firstName,
+        middleName: input.middleName,
+        lastName: input.lastName,
+        fullName: input.fullName,
         email: input.email,
+        phone: input.phone,
         role: input.role,
-        church_id: input.churchId,
         anonymous: input.anonymous,
-        declaration_affirmed: true,
-        declaration_date: nowTs.toISOString(),
-        verification_status: "pending",
-        verification_deadline: computeVerificationDeadline(nowTs),
+        includeMiddleName: input.includeMiddleName,
+        // null when attached to a church; ISO ts (7 days out) when skip.
+        verificationDeadline: input.userVerificationDeadline,
       };
 
-      let inserted: { id: string };
+      // newChurch payload — pass the canonical ChurchPayload directly.
+      const newChurchForRpc: Record<string, unknown> | null = input.newChurch
+        ? (input.newChurch as unknown as Record<string, unknown>)
+        : null;
+
+      let result: CreateAccountAtomicResult;
       try {
-        inserted = await deps.insertPublicUser(row);
+        result = await deps.createAccountAtomic(
+          authId,
+          leaderForRpc,
+          newChurchForRpc,
+          input.churchId,
+          input.branchOfChurchId,
+          input.pendingParentClaim as Record<string, unknown> | null,
+          input.isHeadquarters,
+        );
       } catch (e) {
-        // Compensating DELETE — only when we created the auth row in THIS
-        // request. If we resumed an existing auth row (State B), leaving
-        // it alone is correct: the next retry of Layer 3 will resolve.
-        if (authUserCreatedThisRun) {
+        const rpcErr = e as RpcError;
+        const mapped = mapRpcError(rpcErr);
+        // Compensating delete only when we ourselves created the auth
+        // user. The resume path leaves the existing auth user alone.
+        if (created) {
           try {
-            await deps.deleteAuthUser(authUserId);
-          } catch (delErr) {
-            // Best-effort. Surface as a separate log line so OPS can
-            // reconcile any rare orphan auth rows.
-            deps.log("error", "create_account_compensating_delete_failed", {
-              auth_id: authUserId,
-              email_hash: hashEmail(input.email),
-              message: (delErr as Error).message,
+            await deps.deleteAuthUser(authId);
+          } catch (de) {
+            deps.log("error", "comp_delete_failed", {
+              auth_id_hash: djb2(authId),
+              message: (de as Error).message,
             });
           }
         }
-        deps.log("error", "create_account_insert_failed", {
-          email_hash: hashEmail(input.email),
-          church_id: input.churchId,
-          message: (e as Error).message,
+        deps.log("error", "atomic_failed", {
+          code: rpcErr.code ?? "",
+          mapped: mapped.errorCode,
+          email_hash: djb2(input.email),
+          had_new_church: newChurchForRpc !== null,
+          had_existing_church_id: input.churchId !== null,
+          message: rpcErr.message,
         });
-        return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
+        return err(mapped.status, mapped.errorCode, mapped.message);
       }
 
-      // ─── Steps 6-7 — fire-and-forget Resend (NOT awaited) ───
+      // ── Side effects — email (fire-and-forget) ───────────────────
+      // Welcome email goes to the leader. When the leader is attached
+      // to an existing church, swap the recipient to that church's
+      // contact_email so the message reaches the registered Replant
+      // contact instead of the personal address. For the new-church
+      // path the leader IS the contact, so no swap.
       //
-      // Failure here does not roll back account creation (COO c.10131).
-      // OPS monitors Resend delivery failures via the warn logs.
-      //
-      // Finalization fix 4 — route the welcome email to the church's
-      // contact_email (the ministry inbox the leader chose during
-      // registration), not the personal auth email. Fault-tolerant:
-      // missing contact_email or lookup failure falls back to the
-      // personal email so a leader is never silently un-emailed.
-      let welcomeEmail = input.email;
-      if (input.churchId !== null) {
-        try {
-          const contactEmail = await deps.getChurchContactEmail(input.churchId);
-          if (contactEmail) welcomeEmail = contactEmail;
-        } catch {
-          // Fault-tolerant: keep personal auth email as the fallback.
+      // Three copy variants (KAN-TBD 2026-06-18):
+      //   skip            — no church attached. 7-day countdown.
+      //   pending_church  — attached to a pending church (new OR
+      //                     existing-pending). Dynamic daysRemaining
+      //                     derived from church.verification_deadline.
+      //   verified_church — joined an already-verified church. No
+      //                     countdown; team confirms account.
+      let welcomeEmailTarget = input.email;
+      let welcomeKind: "skip" | "pending_church" | "verified_church" | "underground_pending";
+      let welcomeDays: number | null;
+
+      const isSkipPath = input.churchId === null && newChurchForRpc === null;
+      // v8 (Founder ruling #5) — underground founder gets generic
+      // pending email. NO church name, role, region, country, or
+      // "underground" mention. Skip all the dynamic body computation
+      // below for this path.
+      const isUndergroundFounder = input.newChurch !== null && input.newChurch.type === "underground";
+
+      if (isUndergroundFounder) {
+        welcomeKind = "underground_pending";
+        welcomeDays = null;
+        // Recipient stays as input.email — the personal email the leader
+        // typed at signup. No church contact swap (the underground
+        // founder IS the contact and we never expose it elsewhere).
+      } else if (isSkipPath) {
+        welcomeKind = "skip";
+        welcomeDays = 7;
+      } else {
+        // Default to pending_church + 30-day fallback in case the church
+        // lookup fails — better to send something close than to log "no
+        // info" silently.
+        welcomeKind = "pending_church";
+        welcomeDays = 30;
+
+        const churchIdForLookup = input.churchId ?? result.churchId;
+        if (churchIdForLookup !== null) {
+          try {
+            const info = await deps.getChurchInfo(churchIdForLookup);
+            if (info) {
+              // Existing-church flow only: swap to the church's
+              // registered contact_email. New-church flow keeps the
+              // leader as the recipient (they typed the contact email
+              // moments ago).
+              if (input.churchId !== null && info.contact_email) {
+                welcomeEmailTarget = info.contact_email;
+              }
+              if (info.verification_status === "verified") {
+                welcomeKind = "verified_church";
+                welcomeDays = null;
+              } else if (info.verification_deadline) {
+                const deadlineMs = Date.parse(info.verification_deadline);
+                const nowMs = deps.now().getTime();
+                if (!Number.isNaN(deadlineMs) && deadlineMs > nowMs) {
+                  // Ceil to whole days, floor of 1 so we never email
+                  // "0 days" (which would lie about the surface in a
+                  // demoralizing way for a brand-new leader).
+                  welcomeDays = Math.max(1, Math.ceil((deadlineMs - nowMs) / 86_400_000));
+                }
+              }
+            }
+          } catch (e) {
+            deps.log("warn", "church_info_lookup_failed", { message: (e as Error).message });
+          }
         }
       }
-      void deps.sendWelcomeEmail({ email: welcomeEmail, firstName: input.firstName })
-        .catch((err) => {
-          deps.log("warn", "create_account_welcome_email_failed", {
-            email_hash: hashEmail(input.email),
-            message: (err as Error).message,
-          });
-        });
 
-      // Finalization fix 4 — defensive double-guard. isNewChurch can
-      // only be true on the non-skip path (FE forces it false on skip
-      // already), but a malformed client could send isNewChurch=true
-      // with churchId=null — guard belt-and-suspenders so the new-church
-      // email never fires without a churchId.
-      if (input.isNewChurch && input.churchId !== null) {
+      // CONTENT F6 (2026-06-18): pass church type so the body can swap
+      // "church" → "organization" for para_ministry.
+      const welcomeChurchType: string | null = input.newChurch
+        ? (input.newChurch.type as string)
+        : null;
+
+      void deps.sendWelcomeEmail({
+        email: welcomeEmailTarget,
+        firstName: input.firstName,
+        kind: welcomeKind,
+        daysRemaining: welcomeDays,
+        churchType: welcomeChurchType,
+      }).catch(e => deps.log("warn", "welcome_email_failed", { message: (e as Error).message }));
+
+      // New-church admin email fires only when the atomic write created
+      // a church row this call.
+      //
+      // v8 (Founder rulings #5 + #22, 2026-06-19): underground founder
+      // signups DO NOT trigger the connect@ admin email. The email
+      // channel must not leak underground membership (subpoena/breach
+      // surface). Underground-pending churches surface via the
+      // dedicated admin-side underground queue + `audit_log_underground`,
+      // NOT via team@/connect@ inbox. The `account_created` log line
+      // below carries church_id only (no name, no leader name) — admin
+      // queue picks it up from the DB row.
+      if (
+        newChurchForRpc !== null &&
+        result.churchId !== null &&
+        !isUndergroundFounder
+      ) {
         void deps.sendNewChurchEmail({
-          churchId: input.churchId,
+          churchId: result.churchId,
           leaderEmail: input.email,
           leaderFullName: input.fullName,
-        })
-          .catch((err) => {
-            deps.log("warn", "create_account_new_church_email_failed", {
-              email_hash: hashEmail(input.email),
-              church_id: input.churchId,
-              message: (err as Error).message,
-            });
-          });
+        }).catch(e => deps.log("warn", "new_church_email_failed", { message: (e as Error).message }));
       }
 
-      deps.log("info", "create_account_success", {
-        user_id: inserted.id,
-        email_hash: hashEmail(input.email),
-        church_id: input.churchId,
-        resumed: !authUserCreatedThisRun && existingAuth !== null,
-        is_new_church: input.isNewChurch,
+      deps.log("info", "account_created", {
+        user_id: result.userId,
+        // v8 — for underground founders, suppress church_id from the
+        // routine log line (don't bind user_id ↔ underground church_id
+        // in telemetry). The audit_log_underground row carries the link
+        // under stricter RLS.
+        church_id: isUndergroundFounder ? null : result.churchId,
+        email_hash: djb2(input.email),
+        church_created: newChurchForRpc !== null,
+        was_skip: input.churchId === null && newChurchForRpc === null,
+        was_underground_founder: isUndergroundFounder,
+        resumed: !created && existingAuth !== null,
         rate_count: rl.count,
+        per_ip_count: perIp.count,
       });
 
-      return json(200, { userId: inserted.id });
-    } catch (e) {
-      deps.log("error", "create_account_unexpected", {
-        message: (e as Error).message,
+      // v8 — cache the success body for idempotency replays. 1h TTL
+      // (Founder ruling #28). Cache backend failure is non-fatal: log
+      // and continue — the FE still gets the success response from this
+      // call; a future replay would just rerun the path and hit the
+      // layer-3 duplicate guard (or succeed if no row was actually
+      // written, which is harmless).
+      const successBody = JSON.stringify({ userId: result.userId, churchId: result.churchId });
+      try {
+        await deps.idempotencyCacheSet(idempKey, successBody, IDEMPOTENCY_CACHE_TTL_SECONDS);
+      } catch (e) {
+        deps.log("warn", "idempotency_cache_set_failed", { message: (e as Error).message });
+      }
+
+      return new Response(successBody, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
       });
-      return errorRes(500, ERROR_CODES.INTERNAL_ERROR);
+    } catch (e) {
+      deps.log("error", "unexpected", { message: (e as Error).message });
+      return err(500, ERROR_CODES.INTERNAL_ERROR);
     }
   };
 }
 
-// ─── Best-effort email extraction from a malformed-but-object body, ───
-// solely for rate-limit-key scoping. Returns null when no plausible
-// email field is present — caller falls back to a sentinel.
-function extractProbableEmail(body: unknown): string | null {
-  if (body && typeof body === "object" && !Array.isArray(body)) {
-    const e = (body as Record<string, unknown>).email;
-    if (typeof e === "string" && e.length > 0 && e.length < 500) {
-      return e.trim().toLowerCase();
-    }
-  }
-  return null;
-}
-
-// Non-cryptographic hashes for logs — never log raw IPs or raw emails.
-// djb2-8 chars; correlation possible across repeated attempts from the
-// same source without leaking the source value itself.
-function hashIp(ip: string): string {
-  return djb2(ip);
-}
-function hashEmail(emailLower: string): string {
-  return djb2(emailLower);
-}
-function djb2(s: string): string {
-  let h = 5381 >>> 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (((h << 5) + h) ^ s.charCodeAt(i)) >>> 0;
-  }
-  return h.toString(16).padStart(8, "0");
-}
-
-// Re-export for index.ts single-import.
-export { RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS, rateLimitKey };
+export { RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS };
+export type { Role };

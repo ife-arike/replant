@@ -56,7 +56,8 @@ import {
   type PrayerRow,
   type TestimonyRow,
 } from './PrayerWallLogic';
-import { formatLeaderLine } from '../../utils/displayHelpers';
+import { formatLeaderLine, viewerOrgCopy } from '../../utils/displayHelpers';
+import { useViewerChurch } from '../../hooks/useViewerChurch';
 
 // ── Static copy ──────────────────────────────────────────────────────
 
@@ -66,14 +67,12 @@ const HERO_SUB = 'Pray through the wall of requests from churches around the wor
 const HERO_CTA = 'ENTER THE PRAYER WALL';
 
 const RECEIVE_LOCKED_TITLE = 'Receive intercession';
-const RECEIVE_LOCKED_SUB = 'Let the body lift your church in prayer.';
+// "your church" / "your organization" + "YOUR CHURCH" / "YOUR ORGANIZATION"
+// eyebrow are resolved at render via viewerOrgCopy (BA-para #1).
 const RECEIVE_LOCKED_BADGE = 'AVAILABLE ON VERIFICATION';
 
-const RECEIVE_ACTIVE_EYEBROW = 'YOUR CHURCH';
 const RECEIVE_ACTIVE_TITLE = 'Receive intercession';
-const RECEIVE_ACTIVE_SUB = 'Let the body stand with you. Share what your church is carrying.';
 const RECEIVE_ACTIVE_EMPTY_TITLE = 'No open requests yet.';
-const RECEIVE_ACTIVE_EMPTY_BODY = 'Share what your church is carrying.';
 const RECEIVE_ACTIVE_CTA = 'SHARE A NEED';
 
 const JOURNAL_TITLE = 'Your intercession journal';
@@ -138,6 +137,9 @@ export default function PrayerWallLanding({
 }: Props) {
   const { branch, session } = useAuth();
   const isVerified = branch === 'active';
+  // Para-ministry copy swap on the receive-intercession card (BA-para #1).
+  const { church: viewerChurch } = useViewerChurch();
+  const viewer = viewerOrgCopy(viewerChurch?.type);
 
   const [previewRows, setPreviewRows] = useState<PrayerRow[]>([]);
   const [previewLoaded, setPreviewLoaded] = useState<boolean>(false);
@@ -241,9 +243,9 @@ export default function PrayerWallLanding({
         <View style={styles.heroHairline} />
 
         {isVerified ? (
-          <ReceiveActiveCard requests={ownRequests} onPost={onPost} />
+          <ReceiveActiveCard requests={ownRequests} onPost={onPost} viewer={viewer} />
         ) : (
-          <ReceiveLockedCard />
+          <ReceiveLockedCard viewer={viewer} />
         )}
 
         <JournalLinkRow onPress={onViewJournal} />
@@ -402,7 +404,7 @@ function PreviewSkeleton() {
 // ReceiveLockedCard
 // ─────────────────────────────────────────────────────────────────────
 
-function ReceiveLockedCard() {
+function ReceiveLockedCard({ viewer }: { viewer: ReturnType<typeof viewerOrgCopy> }) {
   return (
     <View style={styles.receiveLocked}>
       <View style={styles.receiveLockGlyph}>
@@ -413,9 +415,12 @@ function ReceiveLockedCard() {
       </View>
       <View style={styles.receiveLockedBody}>
         <Text style={styles.receiveLockedTitle}>{RECEIVE_LOCKED_TITLE}</Text>
-        <Text style={styles.receiveLockedSub}>{RECEIVE_LOCKED_SUB}</Text>
+        <Text style={styles.receiveLockedSub}>{`Let the body lift ${viewer.yourChurchOrOrg} in prayer.`}</Text>
+        {/* Founder ruling 2026-06-18 — badge stacks under the sub text
+            rather than eating the right side of the card. alignSelf
+            keeps it from stretching to full width. */}
+        <Text style={styles.receiveLockedBadge}>{RECEIVE_LOCKED_BADGE}</Text>
       </View>
-      <Text style={styles.receiveLockedBadge}>{RECEIVE_LOCKED_BADGE}</Text>
     </View>
   );
 }
@@ -424,24 +429,30 @@ function ReceiveLockedCard() {
 // ReceiveActiveCard
 // ─────────────────────────────────────────────────────────────────────
 
-function ReceiveActiveCard({ requests, onPost }: { requests: OpenPrayerRow[]; onPost?: () => void }) {
+function ReceiveActiveCard({ requests, onPost, viewer }: { requests: OpenPrayerRow[]; onPost?: () => void; viewer: ReturnType<typeof viewerOrgCopy> }) {
   const handleShareNeed = () => {
     onPost?.();
   };
   const isEmpty = requests.length === 0;
+  // "YOUR CHURCH" / "YOUR ORGANIZATION" eyebrow + sub copy resolved here
+  // so para-ministry directors don't read "your church" on a missions-org
+  // surface (BA-para #1).
+  const eyebrow = viewer.churchOrOrgNounCap === 'Organization' ? 'YOUR ORGANIZATION' : 'YOUR CHURCH';
+  const sub = `Let the body stand with you. Share what ${viewer.yourChurchOrOrg} is carrying.`;
+  const emptyBody = `Share what ${viewer.yourChurchOrOrg} is carrying.`;
   return (
     <View style={styles.receiveActive}>
       <View style={styles.heroEyebrowRow}>
         <LiveDot />
-        <Text style={styles.receiveActiveEyebrow}>{RECEIVE_ACTIVE_EYEBROW}</Text>
+        <Text style={styles.receiveActiveEyebrow}>{eyebrow}</Text>
       </View>
       <Text style={styles.receiveActiveTitle}>{RECEIVE_ACTIVE_TITLE}</Text>
-      <Text style={styles.receiveActiveSub}>{RECEIVE_ACTIVE_SUB}</Text>
+      <Text style={styles.receiveActiveSub}>{sub}</Text>
 
       {isEmpty ? (
         <View style={styles.receiveActiveEmpty}>
           <Text style={styles.receiveActiveEmptyTitle}>{RECEIVE_ACTIVE_EMPTY_TITLE}</Text>
-          <Text style={styles.receiveActiveEmptyBody}>{RECEIVE_ACTIVE_EMPTY_BODY}</Text>
+          <Text style={styles.receiveActiveEmptyBody}>{emptyBody}</Text>
         </View>
       ) : (
         <View style={styles.previewList}>
@@ -599,8 +610,12 @@ function TestimonyCardView({
   onPress: () => void;
 }) {
   const location = getLocationLine(row.church_name, row.country);
-  // Anonymous + underground masked posts return leader_display_name === null;
-  // formatLeaderLine handles that with its internal isAnonymous flag.
+  // Decoupled 2026-06-21: get_landing_testimonies masks
+  // leader_display_name to NULL ONLY when t.anonymous = true (the
+  // leader's own choice). Underground church status does NOT mask the
+  // leader's name — church identity is masked via church_name/country
+  // independently. So leader_display_name === null is a clean signal
+  // that the leader is anonymous.
   const leader = formatLeaderLine(
     row.leader_role,
     row.leader_display_name,
@@ -920,6 +935,11 @@ const styles = StyleSheet.create({
     borderColor: FAINT,
     backgroundColor: '#18181b',
     overflow: 'hidden',
+    // Founder ruling 2026-06-18 — badge stacks under the sub text in
+    // the column body. alignSelf keeps the pill at intrinsic width
+    // instead of stretching to fill the body container.
+    alignSelf: 'flex-start',
+    marginTop: 8,
   },
 
   // ── Receive active

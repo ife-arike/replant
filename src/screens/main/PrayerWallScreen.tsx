@@ -114,6 +114,14 @@ async function fetchPage(
 
 export default function PrayerWallScreen() {
   const { branch, session } = useAuth();
+  // Underground Verification Queue (manifest 2026-06-22): soft-deleted
+  // leaders READ + INTERCEDE (Pray) but cannot POST during the 30-day
+  // window. `isVerified` already gates all post paths (no `+ Post`
+  // button, no Receive-card Share-a-need CTA, no PostPrayerRequestModal
+  // entry) — soft_deleted falls into the non-verified branch and
+  // inherits that gating. Reading the wall + Praying for others is
+  // unaffected (no gate overlay on this screen). RLS enforces write-
+  // block server-side; FE gating is defense-in-depth.
   const isVerified = branch === 'active';
   const navigation = useNavigation<BottomTabNavigationProp<TabsParamList>>();
   const route = useRoute<RouteProp<TabsParamList, 'Prayer Wall'>>();
@@ -126,6 +134,7 @@ export default function PrayerWallScreen() {
 
   // Church context for PostPrayerRequestModal — fetched once when verified.
   const [viewerChurchId, setViewerChurchId] = useState<string | null>(null);
+  const [viewerChurchType, setViewerChurchType] = useState<string | null>(null);
   const [postChurchName, setPostChurchName] = useState<string | null>(null);
   const [postIsUnderground, setPostIsUnderground] = useState(false);
   const [postDefaultAnon, setPostDefaultAnon] = useState(false);
@@ -297,6 +306,8 @@ export default function PrayerWallScreen() {
       if (cancelled || !churchData) return;
       setPostChurchName(churchData.name ?? null);
       setPostIsUnderground(churchData.type === 'underground');
+      // Drives para-ministry copy swap on PrayerWallDetailSheet (BA-para #1).
+      setViewerChurchType(churchData.type ?? null);
       setPostDefaultAnon(userData.anonymous ?? false);
     })();
     return () => { cancelled = true; };
@@ -445,6 +456,7 @@ export default function PrayerWallScreen() {
           row={detailRow}
           onDismiss={() => setDetailRow(null)}
           viewerChurchId={viewerChurchId ?? undefined}
+          viewerChurchType={viewerChurchType}
           onPrayedChange={(id, iPrayed, prayedCount) => {
             setDetailRow((prev) =>
               prev?.id === id ? { ...prev, i_prayed: iPrayed, prayed_count: prayedCount } : prev,
@@ -527,6 +539,7 @@ export default function PrayerWallScreen() {
           row={detailRow}
           onDismiss={() => setDetailRow(null)}
           viewerChurchId={viewerChurchId ?? undefined}
+          viewerChurchType={viewerChurchType}
           onPrayedChange={(id, iPrayed, prayedCount) => {
             setRows((prev) =>
               prev.map((r) =>
@@ -624,6 +637,7 @@ export default function PrayerWallScreen() {
         row={detailRow}
         onDismiss={() => setDetailRow(null)}
         viewerChurchId={viewerChurchId ?? undefined}
+        viewerChurchType={viewerChurchType}
         onPrayedChange={(id, iPrayed, prayedCount) => {
           setRows((prev) =>
             prev.map((r) =>

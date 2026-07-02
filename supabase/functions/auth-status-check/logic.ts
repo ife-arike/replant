@@ -18,7 +18,39 @@ export interface AuthStatusResponse {
   // "active" and "pending" bodies — the FE only branches copy when the
   // user has landed on the deactivated surface.
   recovery_path?: RecoveryPath;
+  // Underground extension (Founder ratification 2026-06-20).
+  //
+  // True when ALL of:
+  //   - viewer's church.type = 'underground'
+  //   - viewer is the founding leader (oldest active leader by created_at)
+  //   - church.verification_status = 'verified'
+  //   - church.underground_join_code_revealed_at IS NULL
+  //
+  // The FE shows the "code ready to view" prompt when this flag is true.
+  // We do NOT auto-call reveal here — that's a separate edge function
+  // (reveal-join-code) that fires after a 2-step gate on the FE side.
+  // The flag is OMITTED from the response body when false (don't
+  // advertise to non-underground viewers that an underground branch
+  // exists at all).
+  underground_join_code_pending_reveal?: boolean;
+  // Underground Verification Queue extension (Founder ratification
+  // 2026-06-22 — Q1/Q2/Q3 mini-panel synthesis).
+  //
+  // Surfaces the leader's substate WITHIN the existing top-level
+  // `verification_status` so the mobile FE can branch into:
+  //   'request_info'  → admin sent a question; suppress verified-gate
+  //                     timeline phrase + fire RequestInfoModal on Home
+  //   'soft_deleted'  → admin two-eyes confirmed a reject; show
+  //                     VerificationOutcomeModal + persistent banner,
+  //                     gate Connect/PrayerWall to read-only
+  //
+  // OMITTED from the response when neither applies — same posture as
+  // underground_join_code_pending_reveal (don't advertise the state
+  // machine to viewers it doesn't apply to).
+  branch_substate?: BranchSubstate;
 }
+
+export type BranchSubstate = "request_info" | "soft_deleted";
 
 // KAN-65 tidy-up (2026-05-26) — added 'rejected'. The live
 // verification_status_enum has had this value since KAN-110; the local type
@@ -33,14 +65,46 @@ export interface UserStatusRow {
   deactivated_at: string | null;
   is_active: boolean;
   church_id: string | null;
-  church: { verification_deadline: string | null } | null;
+  // KAN-TBD 2026-06-18 (Founder ratification, overriding KAN-36 Option Y
+  // for the skip-flow null-church case). users.verification_deadline is
+  // load-bearing for the skip-leader pending branch; the church-side
+  // deadline doesn't exist for skip leaders by design.
+  user_verification_deadline: string | null;
+  // KAN-TBD 2026-06-18 root fix (Founder ruling: stop spot-fixing).
+  // We must read church.verification_status BEFORE church.verification_deadline,
+  // because stale deadlines persist on verified-church rows (the 30-day
+  // window elapses long before admin verification often happens). Reading
+  // the deadline without first checking status auto-deactivated every new
+  // leader joining a verified-with-stale-deadline church.
+  //
+  // Underground Verification Queue extension (2026-06-22): two additional
+  // columns on the church row drive `branch_substate` derivation —
+  //   - soft_deleted_at: timestamptz, set by fn_soft_delete_my_account or
+  //     by admin two-eyes confirm-reject. Non-NULL → branch_substate='soft_deleted'.
+  //   - last_outcome_modal_kind: text, set by fn_request_info_underground to
+  //     'request_info'. Drives branch_substate='request_info' when present.
+  church: {
+    verification_status: string | null;
+    verification_deadline: string | null;
+    soft_deleted_at: string | null;
+    last_outcome_modal_kind: string | null;
+  } | null;
 }
 
 export type ResolvedStatus =
   | { kind: "active" }
-  | { kind: "pending"; verification_deadline: string; days_remaining: number }
+  // KAN-TBD 2026-06-18 — verification_deadline + days_remaining nullable
+  // so the skip-flow leader can be legitimately pending without leaking a
+  // countdown into the API response. The FE banner uses days===null to
+  // fire the locked "register" copy variant; surfacing a number would
+  // route it to amber/urgent with wrong "your church" wording.
+  | { kind: "pending"; verification_deadline: string | null; days_remaining: number | null }
   | { kind: "deactivated"; recovery_path: RecoveryPath }
-  | { kind: "pending_past_deadline_needs_write"; verification_deadline: string };
+  // KAN-TBD 2026-06-18 — isSkipFlow distinguishes skip leader past
+  // 7-day deadline (route to support_contact — there's no church to
+  // renew) from attached leader past 30-day church deadline (route to
+  // verification_renewal).
+  | { kind: "pending_past_deadline_needs_write"; verification_deadline: string; isSkipFlow: boolean };
 
 export interface AuditLogRow {
   accessed_by: null;
@@ -118,52 +182,103 @@ export function resolveStatus(
     return { kind: "deactivated", recovery_path: "support_contact" };
   }
 
-  const deadline = row.church?.verification_deadline ?? null;
-  if (deadline === null) {
-    // KAN-36 (Founder Option Y, SEC c.14194, locked 2026-05-21) —
-    // NULL deadline is fail-closed. Two real ways this lands here:
-    //   (1) `users.church_id IS NULL` — skip-flow leader, no church
-    //       attached. The embedded `church:churches(...)` join returns
-    //       null, so `row.church?.verification_deadline` is null.
-    //   (2) `users.church_id` is set but the church row's
-    //       verification_deadline is NULL — data-integrity anomaly or
-    //       a legacy / test row that bypassed onboarding's deadline
-    //       computation.
-    // Both surfaces are fail-closed per Founder lock. Return the
-    // deactivated branch WITHOUT calling deactivateAtomically:
-    //   - For (1) the user has no church_id to write deactivation
-    //     against in a meaningful way for the audit-log forensic
-    //     surface (the audit row's church_id would be null, and the
-    //     meta would have no missed deadline to record).
-    //   - For (2) the anomaly is the missing deadline itself, not a
-    //     deadline that was missed. The atomic UPDATE + audit-log path
-    //     is reserved for the deadline-passed case where the audit row
-    //     tagged trigger: "login_check" has forensic value about
-    //     which deadline was crossed. NULL-deadline anomalies belong
-    //     to a different forensic surface (data-integrity audit).
-    // Net: branch flips to "deactivated"; RootNavigator routes the
-    // user to the deactivated screen; login flow stops. Persistence
-    // of the deactivated state for these users falls to (a) a
-    // subsequent write that backfills the deadline + flips status,
-    // or (b) admin operator action. SEC 11015 #3a preserved — no
-    // throw, no 5xx, session not retained false-positively.
-    //
-    // KAN-36 v2 (SEC c.14235 #6, locked 2026-05-24) — NULL-deadline
-    // fail-closed MUST map to recovery_path: "support_contact", not
-    // verification_renewal. Founder Option Y lock (2026-05-21) is
-    // about the fail-closed *routing*; SEC c.14235 #6 is the explicit
-    // ruling that the recovery_path on this branch is the support
-    // bucket. A leader with no deadline cannot meaningfully "renew"
-    // a window that was never set; the only forward path is a
-    // human conversation.
+  // ── KAN-TBD 2026-06-18 root fix — comprehensive pending-branch resolution ──
+  //
+  // Founder ruling "stop spot-fixing, find the root, fix the whole
+  // bug." The earlier override of KAN-36 Option Y closed the skip-flow
+  // null-church case but missed the verified-church + stale-deadline
+  // case. Comprehensive matrix:
+  //
+  //   user pending + church_id NULL (skip)           → user-side deadline path
+  //   user pending + church verified                 → pending, no countdown
+  //                                                    (admin owns leader
+  //                                                    confirmation)
+  //   user pending + church rejected | deactivated   → deactivated/support
+  //                                                    (church not in good
+  //                                                    standing)
+  //   user pending + church pending                  → church deadline path
+  //   user pending + church NULL deadline anomaly    → deactivated/support
+  //
+  // For verified-church + pending-leader specifically: the church's
+  // verification_deadline often stays set to the original 30-day
+  // creation timer that elapsed well before admin verification. Reading
+  // that stale timestamp instantly auto-deactivated every new leader
+  // joining a verified church. Root cause was reading
+  // verification_deadline without first branching on verification_status.
+
+  // Skip-flow leader (no church attached) — use user-side deadline.
+  if (row.church_id === null) {
+    const userDeadline = row.user_verification_deadline;
+    if (userDeadline === null) {
+      // Anomaly — create-account always sets this for skip leaders.
+      return { kind: "deactivated", recovery_path: "support_contact" };
+    }
+    const now = Date.parse(nowISO);
+    const dl = Date.parse(userDeadline);
+    if (Number.isNaN(now) || Number.isNaN(dl)) throw new Error("Invalid timestamp");
+    if (dl <= now) {
+      return {
+        kind: "pending_past_deadline_needs_write",
+        verification_deadline: userDeadline,
+        isSkipFlow: true,
+      };
+    }
+    // Mask deadline + days so the FE banner stays on the locked
+    // "register" variant copy via `days === null`.
+    return {
+      kind: "pending",
+      verification_deadline: null,
+      days_remaining: null,
+    };
+  }
+
+  // Attached to a church — branch on the CHURCH's verification_status
+  // BEFORE reading its deadline.
+  const churchStatus = row.church?.verification_status ?? null;
+
+  if (churchStatus === "verified") {
+    // Verified church + pending leader = admin confirming the leader's
+    // personal identity. There is no time-based countdown for the
+    // leader half of this pair — admin owns the transition. The FE's
+    // useChurchVerifiedStatus picks the "leader" banner variant
+    // ("Your church is verified. Your leader access opens once the
+    // Replant team confirms your account.") from this same signal.
+    return {
+      kind: "pending",
+      verification_deadline: null,
+      days_remaining: null,
+    };
+  }
+
+  if (churchStatus === "rejected" || churchStatus === "deactivated") {
+    // Leader is attached to a church that is no longer in good standing.
+    // They cannot proceed via this church. Route to support — admin
+    // will work out the leader's path (rejoin a different church,
+    // appeal, etc.).
     return { kind: "deactivated", recovery_path: "support_contact" };
   }
+
+  // churchStatus === "pending" (or null — anomaly on missing church row).
+  // Church-side 30-day deadline drives the outcome.
+  const deadline = row.church?.verification_deadline ?? null;
+  if (deadline === null) {
+    // Anomaly — pending church missing its deadline. Fail-closed per
+    // the original Option Y intent (this branch was always correct).
+    return { kind: "deactivated", recovery_path: "support_contact" };
+  }
+
   const now = Date.parse(nowISO);
   const dl = Date.parse(deadline);
   if (Number.isNaN(now) || Number.isNaN(dl)) throw new Error("Invalid timestamp");
+
   if (dl <= now) {
-    return { kind: "pending_past_deadline_needs_write", verification_deadline: deadline };
+    return {
+      kind: "pending_past_deadline_needs_write",
+      verification_deadline: deadline,
+      isSkipFlow: false,
+    };
   }
+
   return {
     kind: "pending",
     verification_deadline: deadline,
@@ -190,18 +305,69 @@ export function buildResponse(resolved: ResolvedStatus): AuthStatusResponse {
       };
     case "pending_past_deadline_needs_write":
       // KAN-36 v2 (SEC c.14235 #2) — login-check just-flipped a pending
-      // user past their deadline. Same trigger as cron, so the response
-      // collapses with the cron-deactivated past-deadline case to
-      // recovery_path: "verification_renewal". The two paths remain
-      // byte-identical inside the renewal bucket; only the renewal/
-      // support distinction is intentionally exposed.
+      // user past their deadline. Same trigger as cron.
+      //
+      // KAN-TBD 2026-06-18 — when isSkipFlow, route to support_contact
+      // instead of verification_renewal: the skip leader has no church
+      // to renew, so the "renewal" copy variant doesn't apply. They
+      // need a human conversation to be reinstated.
       return {
         verification_status: "deactivated",
         verification_deadline: null,
         days_remaining: null,
-        recovery_path: "verification_renewal",
+        recovery_path: resolved.isSkipFlow ? "support_contact" : "verification_renewal",
       };
   }
+}
+
+// Underground reveal eligibility — pure function over already-fetched
+// rows. The handler does the DB lookups; this function decides whether
+// the flag should be set TRUE on the outgoing response.
+//
+// Inputs:
+//   - callerUserId: viewer's public.users.id
+//   - church: { id, type, verification_status, underground_join_code_revealed_at }
+//   - foundingLeaderId: oldest active leader (created_at ASC LIMIT 1) on that church
+//
+// All four conditions must hold for true.
+export function isUndergroundJoinCodePendingReveal(args: {
+  callerUserId: string;
+  churchType: string | null;
+  churchVerificationStatus: string | null;
+  undergroundJoinCodeRevealedAt: string | null;
+  foundingLeaderId: string | null;
+}): boolean {
+  if (args.churchType !== "underground") return false;
+  if (args.churchVerificationStatus !== "verified") return false;
+  if (args.undergroundJoinCodeRevealedAt !== null) return false;
+  if (args.foundingLeaderId === null) return false;
+  if (args.foundingLeaderId !== args.callerUserId) return false;
+  return true;
+}
+
+// Underground Verification Queue substate resolver (2026-06-22).
+//
+// Pure function over the already-fetched church row. The handler decorates
+// the response when this returns non-undefined. Priority:
+//   1. soft_deleted_at IS NOT NULL → 'soft_deleted' (rejection trumps everything)
+//   2. last_outcome_modal_kind === 'request_info' → 'request_info'
+//   3. else undefined (no decoration)
+//
+// Skip-flow leaders (church_id === null) never receive a substate — the
+// queue acts on churches, not skip-flow user rows. They can still be
+// soft-deleted via the leader-initiated path, but that lifecycle uses the
+// existing verification_status='deactivated' surface (recovery_path), not
+// the new modal surfaces.
+//
+// Generic chrome invariant: this field is OMITTED entirely when not
+// applicable. Don't advertise the state machine to viewers it doesn't
+// apply to.
+export function resolveBranchSubstate(row: UserStatusRow): BranchSubstate | undefined {
+  if (row.church_id === null) return undefined;
+  if (row.church === null) return undefined;
+  if (row.church.soft_deleted_at !== null) return "soft_deleted";
+  if (row.church.last_outcome_modal_kind === "request_info") return "request_info";
+  return undefined;
 }
 
 export function buildAuditRow(

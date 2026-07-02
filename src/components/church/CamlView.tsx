@@ -80,6 +80,15 @@ interface CamlViewProps {
   ownChurchId: string | null;       // kept for parity though server flags is_own
   ownChurchCoords?: { lat: number; lng: number } | null;
   viewerVerified: boolean;
+  // Defense-in-depth (Founder lock 2026-06-21 #5). The parent does NOT
+  // mount CamlView at all for underground viewers; this prop is a
+  // belt-and-suspenders guard. If a future regression ever caused
+  // CamlView to mount for an underground caller, an early-return at the
+  // top of the component fires BEFORE locationManager.start(), BEFORE
+  // resolveCity()'s Mapbox geocode, BEFORE any get-nearby-churches
+  // call. The edge function ALSO returns 403 for underground callers
+  // independently — three layers, none load-bearing alone.
+  viewerIsUnderground?: boolean;
   onChurchSelect: (churchId: string) => void;
   // Fix 6 — once data lands, CAML reports the resolved area city so the
   // host header can render "The Church at <city>" dynamically. Prefer
@@ -173,9 +182,25 @@ async function resolveCity(lng: number, lat: number, token: string): Promise<str
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function CamlView({
-  isActive, ownChurchId, ownChurchCoords, viewerVerified, onChurchSelect, onCityResolved, onLeaderCountResolved,
+  isActive, ownChurchId, ownChurchCoords, viewerVerified,
+  viewerIsUnderground = false,
+  onChurchSelect, onCityResolved, onLeaderCountResolved,
   refreshTrigger = 0, panToChurchTrigger = 0, recenterToGPSTrigger = 0,
 }: CamlViewProps) {
+  // Defense-in-depth (Founder lock 2026-06-21 #5): if CamlView ever gets
+  // mounted for an underground caller despite the parent gate, fall out
+  // BEFORE any hook fires. No locationManager.start(), no Mapbox
+  // geocode, no get-nearby-churches call. The check happens at the very
+  // top of the component body so React hooks below this point are not
+  // even registered for an underground render path. (Note: in this
+  // repo's posture underground viewers re-render this component
+  // identically across the session, so the hook-order rule is
+  // preserved — the component is either always-skipped or always-run
+  // per session.)
+  if (viewerIsUnderground) {
+    return null;
+  }
+
   // ownChurchId is part of the dispatched contract for symmetry with the
   // CAL surface, but on CAML the server is authoritative — `is_own` is
   // already set per row inside get-nearby-churches. The prop stays

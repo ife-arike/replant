@@ -354,19 +354,24 @@ function resolveAnonLabel(role: string | null): string {
 
 // Shared leader-author resolver. Resolves full_name + role + church via
 // author_id (matched against public.users.id — author_id references the
-// public.users PK, NOT auth_id; verified live 2026-06-02). The role is
-// humanised into the rendered display name ("Minister Ruth") before any
-// card sees it. Masking is the safe default: a missing author_id, an
-// unresolved row, a church-less leader, or any error all leave the author
-// masked.
+// public.users PK, NOT auth_id; verified live 2026-06-02). Masking is the
+// safe default: a missing author_id, an unresolved row, a church-less
+// leader, or any error all leave the author masked.
 //
-// Anonymous leaders (users.anonymous=true): still fetch the church so the
-// church name is visible (masking contract — church is real, name is held).
-// Display name becomes "A fellow {role}"; initial is always "A".
+// Decoupled 2026-06-21 — two independent axes:
 //
-// Underground leaders: show church name if show_church_name=true on the
-// church row, otherwise empty string (TODO: fetch macro_region_label and
-// use it as the fallback when show_church_name=false).
+//   1. users.anonymous = true → mask the LEADER's name to "A fellow {role}"
+//      with initial "A". Church name STAYS REAL (per anon-identity rules:
+//      public anon hides the person, not the church).
+//
+//   2. churches.type='underground' + show_church_name=false → mask the
+//      CHURCH's identity. Church display drops to '' (no name, no city,
+//      no country). Brave underground (show_church_name=true) discloses
+//      the real church name. Leader name is NOT masked by underground
+//      church status — that's the anonymous flag's job.
+//
+// Both axes can be true (underground + anon), neither (public + named),
+// or either independently.
 function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
   const [author, setAuthor] = useState<ResolvedAuthor>(MASKED_AUTHOR);
 
@@ -404,18 +409,23 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
           .maybeSingle();
         if (cancelled || churchErr || !churchRow) return;
 
-        if (churchRow.type === 'underground') {
-          // Underground leader: "A fellow {role}", round lock avatar.
-          // show_church_name drives whether the church name is surfaced.
-          // TODO: when show_church_name=false, fetch macro_region_label
-          //       from the churches row and use it as the church fallback.
-          const churchDisplay =
-            churchRow.show_church_name !== false
-              ? ((churchRow.name as string | null) ?? '')
-              : '';
+        // Resolve church display first (church-side axis, independent of leader).
+        // Underground + safe → masked to ''. Underground + brave or non-underground
+        // → real name. TODO: macro_region_label fallback for safe underground.
+        const isUnderground = churchRow.type === 'underground';
+        const isBraveUnderground =
+          isUnderground && churchRow.show_church_name === true;
+        const churchDisplay =
+          !isUnderground || isBraveUnderground
+            ? ((churchRow.name as string | null) ?? '')
+            : '';
+
+        // Resolve leader display (leader-side axis, independent of church).
+        if (isAnon) {
+          // Anonymous: name held regardless of church type. Initial "A".
           if (!cancelled) {
             setAuthor({
-              initial: '·',
+              initial: 'A',
               name: resolveAnonLabel(role),
               church: churchDisplay,
             });
@@ -423,19 +433,8 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
           return;
         }
 
-        if (isAnon) {
-          // Anonymous (non-underground) leader: church name is real and shown,
-          // but the leader's own name is held. Initial is always "A".
-          if (!cancelled) {
-            setAuthor({
-              initial: 'A',
-              name: resolveAnonLabel(role),
-              church: (churchRow.name as string | null) ?? '',
-            });
-          }
-          return;
-        }
-
+        // Not anonymous — leader chose to be known by name, even if their
+        // church is underground. Show the real name + initial.
         if (!cancelled) {
           setAuthor({
             initial: firstName ? firstName.charAt(0).toUpperCase() : '·',
@@ -448,7 +447,7 @@ function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
               displayNamePreference: displayNamePref ?? null,
               lastNameFirst,
             }),
-            church: (churchRow.name as string | null) ?? '',
+            church: churchDisplay,
           });
         }
       } catch {

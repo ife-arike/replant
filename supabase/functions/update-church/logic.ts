@@ -15,9 +15,10 @@
 
 // ─── Canonical enums (mirror live `public.churches.type` + `rag_status_enum`) ───
 //
-// Same set as register-church. `para_ministry` remains out of scope at
-// the FE-picker level; mirroring that here so we don't let a leader
-// edit their type to `para_ministry` via this surface.
+// Same set as register-church. `para_ministry` added 2026-06-18 alongside the
+// branch-flow + para-ministry workstream so admin can edit type to/from para
+// post-verification. The earlier "out of scope at this surface" comment was
+// stale.
 export const CHURCH_TYPES = [
   "main_campus",
   "branch",
@@ -25,6 +26,7 @@ export const CHURCH_TYPES = [
   "ministry",
   "without_walls",
   "underground",
+  "para_ministry",
 ] as const;
 export type ChurchType = (typeof CHURCH_TYPES)[number];
 

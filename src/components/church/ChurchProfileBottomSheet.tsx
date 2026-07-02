@@ -428,8 +428,15 @@ export default function ChurchProfileBottomSheet({
                         <View style={styles.rolePill}>
                           <Text style={styles.rolePillText}>{getRoleLabel(l.role)}</Text>
                         </View>
+                        {/* Founder lock 2026-06-21 (#7): replace the
+                            "Name withheld" copy with the canonical
+                            anon-identity pattern "A fellow {role}".
+                            Aligns with CommentThread / NetworkFeed /
+                            EncouragementCard and reference_anon_identity_rules.
+                            Renders the SAME role token shown in the pill
+                            above; cold-reads as a person, not a redaction. */}
                         {l.anonymous || !l.name ? (
-                          <Text style={styles.nameWithheld}>Name withheld</Text>
+                          <Text style={styles.nameWithheld}>{`A fellow ${getRoleLabel(l.role)}`}</Text>
                         ) : (
                           <Text style={styles.leaderName}>{l.name}</Text>
                         )}

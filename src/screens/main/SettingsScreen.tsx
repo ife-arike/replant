@@ -45,7 +45,7 @@ import Constants from 'expo-constants';
 import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
-import { ROLES } from '../../utils/displayHelpers';
+import { ROLES, isParaMinistry, viewerOrgCopy } from '../../utils/displayHelpers';
 import RpMark from '../../components/icons/RpMark';
 import ComingSoonModal from '../../components/common/ComingSoonModal';
 import {
@@ -270,6 +270,9 @@ interface SettingsScreenProps {
   churchName?: string | null;
   churchId?: string | null;
   ragStatus?: RagStatus | null;
+  // Para-ministry copy swap (BA-para #1, Founder ruling 2026-06-18).
+  // Drives the epigraph and hides the RAG row for para_ministry viewers.
+  viewerChurchType?: string | null;
 }
 
 // ─── Custom narrow toggle (38×21) — replaces the wider native iOS Switch ─
@@ -416,7 +419,10 @@ export default function SettingsScreen({
   churchName = null,
   churchId = null,
   ragStatus = null,
+  viewerChurchType = null,
 }: SettingsScreenProps) {
+  const viewer = viewerOrgCopy(viewerChurchType);
+  const isPara = isParaMinistry(viewerChurchType);
   const navigation = useNavigation();
   const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
@@ -790,7 +796,8 @@ export default function SettingsScreen({
     'When on, others see your role and church only — never your name.';
   const NOTIF_BADGE_HELPER =
     'Shows a count on the Connect tab when you have unread messages.';
-  const EPIGRAPH = 'your account, your church.';
+  // Para-ministry directors see "your account, your organization." (BA-para #1).
+  const EPIGRAPH = `your account, ${viewer.yourChurchOrOrg}.`;
   const TEAM_EMAIL = 'connect@projectreplant.org';
   const version =
     Constants.expoConfig?.version ??
@@ -1033,7 +1040,10 @@ export default function SettingsScreen({
             "Church ID" but Network ID is the shipped term until SPEC
             re-confirms. */}
         <TouchableOpacity
-          style={styles.row}
+          // Para-ministry: RAG row below is hidden, so Network ID becomes
+          // the visual last row in section 03 — use rowLast to drop the
+          // bottom hairline so the section closes cleanly.
+          style={isPara ? styles.rowLast : styles.row}
           onPress={handleChurchIdCopy}
           activeOpacity={churchCode ? 0.6 : 1}
           disabled={!churchCode}
@@ -1059,7 +1069,14 @@ export default function SettingsScreen({
 
         {/* RAG status — simplified per v2.3: the WORD is no longer colored.
             Only the radio glyph (◉) carries the RAG color when selected.
-            Description text is body / muted, same family as the label. */}
+            Description text is body / muted, same family as the label.
+
+            Para-ministry: the entire RAG row is hidden — the question "Can
+            your church worship freely?" doesn't apply to a missions agency
+            / training school / Christian media org. Founder ruling
+            2026-06-18 (BA-para #1). BE-para F10 keeps writing rag_status
+            'green' at signup so the validator stays happy. */}
+        {!isPara && (
         <View
           style={[styles.rowLast, ragDisabled && styles.ragGroupDisabled]}
           accessibilityRole="radiogroup"
@@ -1103,6 +1120,7 @@ export default function SettingsScreen({
             })}
           </View>
         </View>
+        )}
 
         {savedSection === 'church' && (
           <Text style={styles.savedFlash}>Saved</Text>

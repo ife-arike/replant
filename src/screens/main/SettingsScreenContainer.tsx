@@ -50,6 +50,7 @@ interface UsersRowShape {
     name: string | null;
     church_code: string | null;
     rag_status: RagStatus | null;
+    type: string | null;
   } | null;
 }
 
@@ -78,6 +79,8 @@ export default function SettingsScreenContainer() {
   const [churchId, setChurchId] = useState<string | null>(null);
   const [churchCode, setChurchCode] = useState<string | null>(null);
   const [ragStatus, setRagStatus] = useState<RagStatus | null>(null);
+  // Para-ministry copy + RAG row hide (BA-para #1, Founder ruling 2026-06-18).
+  const [churchType, setChurchType] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authId) return;
@@ -103,7 +106,8 @@ export default function SettingsScreenContainer() {
             id,
             name,
             church_code,
-            rag_status
+            rag_status,
+            type
           )
         `)
         .eq("auth_id", authId)
@@ -143,6 +147,7 @@ export default function SettingsScreenContainer() {
       setChurchName(cTyped?.name ?? null);
       setChurchCode(cTyped?.church_code ?? null);
       setRagStatus(cTyped?.rag_status ?? null);
+      setChurchType(cTyped?.type ?? null);
     })();
     return () => {
       cancelled = true;
@@ -176,6 +181,7 @@ export default function SettingsScreenContainer() {
       churchName={churchName}
       churchId={churchId}
       ragStatus={ragStatus}
+      viewerChurchType={churchType}
     />
   );
 }

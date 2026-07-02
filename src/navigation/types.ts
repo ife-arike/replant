@@ -37,6 +37,16 @@ export type MainStackParamList = {
   OutreachMissions: undefined;
   InviteToReplant: undefined;
   FAQ: undefined;
+  // Underground one-shot reveal (2026-06-20). Founding leader of a verified
+  // underground church taps through a 2-step gate to see the join code
+  // exactly once. Presented full-screen, NON-DISMISSIBLE via gesture or
+  // hardware back. Auto-routes from VerifiedTakeover on the Home tab when
+  // auth-status-check returns underground_join_code_pending_reveal: true.
+  // Per Founder ratification (override of original CD design): the route
+  // is NOT forced — the FIRST screen in the JoinCodeReveal flow is a
+  // pre-reveal "I'm somewhere private" gate that allows the leader to
+  // cancel and come back later. Multi-session safe.
+  JoinCodeReveal: undefined;
 };
 
 // RootStackParamList = the conditional union across all auth branches.
