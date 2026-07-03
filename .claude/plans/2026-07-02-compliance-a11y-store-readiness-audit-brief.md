@@ -23,17 +23,32 @@ Panel briefing → checklist corpus built from the actual standards → parallel
 
 ## Lanes (suggested 7 — adapt at session start)
 
-1. **A11y code lane** (→ KAN-34): accessibilityLabel/Role coverage on touchables; palette contrast ratios vs WCAG 2.2 AA thresholds (check the locked brand tokens — muted-on-dark combos especially); 44pt touch targets; dynamic-type behavior; reduced-motion branches (known gap: FAQ accordion); the dropped `tabBarAccessibilityLabel` (KAN-78 residual). Map findings to WCAG success criteria.
-2. **A11y device-script lane** (→ KAN-34): produce per-screen VoiceOver (iOS) + TalkBack (Android, when relevant) walkthrough scripts FOR the Founder — she is a tester; manufacture the input states each script needs (pending account, UG account, escalated thread, etc.). Do NOT mark anything passed from code alone.
+1. **A11y code + sim lane** (→ KAN-34) — two halves, both agent-run:
+   - *Static:* accessibilityLabel/Role coverage on touchables; palette contrast ratios vs WCAG 2.2 AA computed mathematically from the token pairs AS USED per component (muted-on-dark combos especially); 44pt touch targets; `allowFontScaling={false}` sweep; reduced-motion branches (known gap: FAQ accordion); the dropped `tabBarAccessibilityLabel` (KAN-78 residual). Map findings to WCAG success criteria.
+   - *Sim (Founder-ruled 2026-07-02 — visual tests ARE in scope):* build + run on the iPhone sim via XcodeBuildMCP; per screen pull the **runtime accessibility tree** (`snapshot_ui` — the automated proxy for what VoiceOver sees: unlabeled buttons, missing image descriptions, wrong roles); **screenshot passes at standard AND enlarged accessibility text sizes** (`xcrun simctl ui booted content-size …`) to catch layout breakage / truncation / overlap under dynamic type; tap through flows to screenshot states code-reading can't reach (modals, sheets, gated views). Agents review the screenshots visually — judgment, not just grep.
+2. **A11y device-script lane** (→ KAN-34): produce per-screen VoiceOver walkthrough scripts FOR the Founder — she is a tester; manufacture the input states each script needs (pending account, UG account, escalated thread, etc.). The real spoken experience, focus order, and gestures are HERS — do NOT mark anything passed from sim/code alone. TalkBack (Android) scripts wait until an Android build exists — note it in the synthesis, don't fake it.
 3. **Data-inventory lane** (→ KAN-301): every PII field collected → where it flows (Supabase `jiyetphxxvyiicrnwlnx` · Resend · Upstash · Netlify · Mapbox) → retention vs shipped machinery (PII scrub crons, soft-delete → day-30 hard-delete, email_log) → DSR paths → cross-border posture (us-east-1 vs global users). Output feeds lanes 4–6. Live-DB spot-checks allowed (read-only; never probe audit_log with writes).
 4. **Privacy-policy refresh lane** (→ KAN-301): v0.2 → v0.3 gap map against the inventory. Known-missing-from-v0.2 (postdates it): UG join-code system, escalated cases + reach-out attribution, soft-delete lifecycle, phone field, structured names, P0-2 write-model, Upstash dependency. Deliverable: paste-ready brief for the cowork LEGAL session.
 5. **App Review lane (iOS)** (→ KAN-301): guideline-by-guideline sweep. Known early warnings to verify and ticket: **5.1.1(v) in-app account deletion** (KAN-205 stub; chain KAN-157 → 205 → store); **1.2 UGC requirements** — filter ✓ (taxonomy) / report ✗ (no leader-facing flag UI — KAN-261) / block users ✗ (nothing; mute is post-MVP) / published contact ✓; **placeholder/completeness risk** (KAN-254 Persecuted reader placeholders reachable; ComingSoon stubs KAN-74/205); privacy nutrition labels + `PrivacyInfo.xcprivacy` accuracy vs the lane-3 inventory; purpose strings (location — Church tab GPS); `ITSAppUsesNonExemptEncryption` export declaration (heartcry encryption, HTTPS, SecureStore — determine exemption category honestly); sign-in/session expectations; TestFlight → production metadata checklist.
 6. **Google Play lane** (→ KAN-301): Data Safety form worksheet from the same inventory; Play's account-deletion requirement (in-app AND a WEB deletion path — note Replant has no web account surface today: finding, not footnote); UGC policy equivalents; target API level + permissions declarations; families/content-rating questionnaire answers.
 7. **ToS lane** (→ KAN-301): collect the 3 open Founder decisions (naming — lean "Terms of Use"; acceptance-flow — checkbox-with-link alongside the Declaration of Faith vs separate first-launch consent screen; scripture anchors per section), then produce the drafting brief for cowork LEGAL against the scoping note's 16-section structure. Acceptance-flow decision also lands as a mobile onboarding ticket (FE work) once ruled.
 
+## International readiness callouts (cross-lane, Founder-requested 2026-07-02)
+
+The synthesis doc MUST end with an "International readiness" section — callouts, not a build mandate. Sweep at minimum:
+
+1. **RTL posture** — the app is LTR-only today; Arabic/Farsi/Urdu contexts are core to the persecuted-church audience. State what RTL support would touch (RN `I18nManager`, layout assumptions, chevrons/back affordances).
+2. **Non-Latin script rendering** — only CormorantGaramond + DM Sans are loaded; CJK/Arabic/Devanagari/Amharic names ride unverified system fallback (KAN-156 gap 3). Render a native-script name on the sim as the minimum test.
+3. **i18n absence** — no framework, ~490 hardcoded English strings (KAN-156/KAN-222; string freeze before any t() wrapping).
+4. **Formats** — phone (no E.164), dates/times, country standardization (full-name strings, ~88-entry dropdown).
+5. **Already-built foundations to credit** — structured names + `last_name_first`, honorific/suffix system, macro-region maps, role humanisation.
+6. **Store-listing localization** — App Store / Play metadata locales at launch vs later.
+
+Findings route to KAN-156 (tracker) / KAN-301; nothing here blocks the English-first MVP unless a store policy says otherwise.
+
 ## Deliverables
 
-1. Ranked synthesis doc `docs/audits/<date>-compliance-a11y-store-audit.md` — severity classes: STORE BLOCKER / compliance gap / a11y defect (by WCAG criterion) / worksheet item.
+1. Ranked synthesis doc `docs/audits/<date>-compliance-a11y-store-audit.md` — severity classes: STORE BLOCKER / compliance gap / a11y defect (by WCAG criterion) / worksheet item — **ending with the International readiness callouts section**.
 2. Ticket set under KAN-301 + KAN-34 (Jira is the paper trail; spot-check cites against live Jira before locking them in).
 3. Founder device scripts (VoiceOver pass, acceptance-flow smoke once built).
 4. Worksheets: nutrition labels + PrivacyInfo, Play Data Safety, App Store Connect submission checklist.
