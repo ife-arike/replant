@@ -405,3 +405,10 @@ The architecture is sound and the Replant-specific weaving is right. It has **on
 ---
 
 *Prepared under the standing rule that live Jira is the source of truth for ticket cites (KAN-157 spot-checked live 2026-07-03) and that working summaries drift — which this verification pass confirmed twice (E.2.1, E.2.2). May the Lord guard the leaders these Terms exist to protect.*
+
+---
+
+## Addendum — Founder rulings 2026-07-03 (binding for drafting)
+
+1. **Encryption representations.** Any language touching heartcry or message security describes the current model truthfully (server-side encryption at rest with audited, TOTP-gated admin access) — never "end-to-end" as present fact. A good-faith forward commitment MAY be included where posture is discussed: full end-to-end encryption for heartcry is Replant's highest post-MVP engineering priority. Counsel drafts wording; no overclaim of present state.
+2. **Audit/access-records retention: indefinite, all classes** (Founder-ruled 2026-07-03, superseding the earlier 30-day age-out element). Any retention language must reflect indefinite retention of audit/access records, disclosed plainly.

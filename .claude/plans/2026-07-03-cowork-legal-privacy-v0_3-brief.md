@@ -227,3 +227,11 @@ Additional access surfaces to acknowledge internally (not necessarily table rows
 3. In-app deletion (Section 6.7) is an Apple review requirement independent of the policy text.
 
 — End of brief. Every numbered decision in Section 6 is awaiting Founder/counsel input; everything else is drafting from verified fact.
+
+---
+
+## Addendum — Founder rulings 2026-07-03 (binding for v0.3 drafting)
+
+1. **Heartcry encryption language.** Describe the CURRENT model truthfully — TLS in transit; encrypted at rest server-side with a Vault-held key; admin access is deliberate, audited before any plaintext is released, and TOTP-gated — and never call it "end-to-end." ADD a good-faith forward commitment: Replant is actively working toward full end-to-end encryption for heartcry as its highest post-MVP engineering priority ("we're working hard to get full E2E encryption as soon as we can" — Founder's intent verbatim). Counsel drafts the exact public wording; it must not overclaim the present state.
+2. **Audit-log retention fork RESOLVED: indefinite retention for ALL audit classes.** The 30-day age-out for cleared non-safety reads will NOT be built (Founder superseded that element 2026-07-03: "it's best we protect the data and keep it indefinitely"). Disclose plainly that access/audit records are retained indefinitely for leader protection and accountability.
+3. **Mapbox telemetry: disable RATIFIED.** Draft the processor disclosure against the telemetry-OFF posture — Mapbox receives tile requests and a one-shot reverse geocode as a processor serving the app's own requests; no analytics event stream.
