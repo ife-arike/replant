@@ -59,3 +59,6 @@ flag_taxonomy_secret.json
 # AI-tooling scratch (never commit)
 .playwright-mcp/
 .claude/worktrees/
+
+# Audit sim screenshots — local-only (public repo; capture test-account states)
+docs/audits/2026-07-03-compliance-a11y-store-audit/sim-screens/
