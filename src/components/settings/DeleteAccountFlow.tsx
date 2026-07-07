@@ -472,7 +472,11 @@ export default function DeleteAccountFlow({
                     </Text>
                   )}
 
-                  <Text style={styles.inputLabel}>TYPE DELETE TO CONFIRM.</Text>
+                  {/* CONTENT §3 instruction — verbatim sentence case; the
+                      capital DELETE inside is the copy's own emphasis. */}
+                  <Text style={styles.confirmInstruction}>
+                    Type DELETE to confirm.
+                  </Text>
                   <TextInput
                     style={styles.input}
                     value={confirmText}
@@ -652,6 +656,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     color: Colors.textMuted,
     textTransform: 'uppercase',
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  // §3 instruction keeps the copy's own casing (no uppercase transform).
+  confirmInstruction: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.text,
     marginTop: 18,
     marginBottom: 8,
   },
