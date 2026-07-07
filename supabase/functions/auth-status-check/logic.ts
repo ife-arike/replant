@@ -43,6 +43,13 @@ export interface AuthStatusResponse {
   //   'soft_deleted'  → admin two-eyes confirmed a reject; show
   //                     VerificationOutcomeModal + persistent banner,
   //                     gate Connect/PrayerWall to read-only
+  //   'self_deleted'  → KAN-205 (SEC panel 2026-07-03, ratified): the
+  //                     LEADER's own account is in the 30-day
+  //                     leader-initiated soft-delete window. RootNavigator
+  //                     mounts the dedicated RestoreScreen ceremony —
+  //                     NOT the tabs, NOT the rejection read-only shell.
+  //                     Surfaces only post-auth (sign-in works all 30
+  //                     days; nothing pre-auth discloses the account).
   //
   // OMITTED from the response when neither applies — same posture as
   // underground_join_code_pending_reveal (don't advertise the state
@@ -50,7 +57,7 @@ export interface AuthStatusResponse {
   branch_substate?: BranchSubstate;
 }
 
-export type BranchSubstate = "request_info" | "soft_deleted";
+export type BranchSubstate = "request_info" | "soft_deleted" | "self_deleted";
 
 // KAN-65 tidy-up (2026-05-26) — added 'rejected'. The live
 // verification_status_enum has had this value since KAN-110; the local type
@@ -65,6 +72,15 @@ export interface UserStatusRow {
   deactivated_at: string | null;
   is_active: boolean;
   church_id: string | null;
+  // KAN-205 (2026-07-07) — USER-level soft-delete columns. Before this,
+  // the resolver derived 'soft_deleted' from the CHURCH's soft_deleted_at
+  // only, so a self-deleted leader who was not the last leader on their
+  // church signed into a normal-looking app where every write failed on
+  // RLS, with no restore surface (the ratified KAN-205 blocker). These
+  // three columns let resolveBranchSubstate check the USER first.
+  soft_deleted_at: string | null;
+  soft_delete_reason: string | null;
+  hard_delete_scheduled_at: string | null;
   // KAN-TBD 2026-06-18 (Founder ratification, overriding KAN-36 Option Y
   // for the skip-flow null-church case). users.verification_deadline is
   // load-bearing for the skip-leader pending branch; the church-side
@@ -345,24 +361,33 @@ export function isUndergroundJoinCodePendingReveal(args: {
   return true;
 }
 
-// Underground Verification Queue substate resolver (2026-06-22).
+// Underground Verification Queue substate resolver (2026-06-22),
+// extended for KAN-205 self-deletion (SEC panel 2026-07-03, ratified).
 //
-// Pure function over the already-fetched church row. The handler decorates
+// Pure function over the already-fetched row. The handler decorates
 // the response when this returns non-undefined. Priority:
-//   1. soft_deleted_at IS NOT NULL → 'soft_deleted' (rejection trumps everything)
-//   2. last_outcome_modal_kind === 'request_info' → 'request_info'
-//   3. else undefined (no decoration)
-//
-// Skip-flow leaders (church_id === null) never receive a substate — the
-// queue acts on churches, not skip-flow user rows. They can still be
-// soft-deleted via the leader-initiated path, but that lifecycle uses the
-// existing verification_status='deactivated' surface (recovery_path), not
-// the new modal surfaces.
+//   1. USER soft_deleted_at IS NOT NULL with reason 'leader_initiated'
+//      → 'self_deleted' (KAN-205 — the leader's own act trumps every
+//      church-derived state; checked FIRST per the SEC design §2.2).
+//      Applies to skip-flow leaders too (they can self-delete; before
+//      KAN-205 they were excluded from substates entirely).
+//   2. church soft_deleted_at IS NOT NULL → 'soft_deleted' (admin
+//      rejection ceremony — unchanged. A user soft-deleted with an
+//      ADMIN reason always has the church mirror set by the same
+//      two-eyes confirm, so it lands here, not in 'self_deleted').
+//   3. last_outcome_modal_kind === 'request_info' → 'request_info'
+//   4. else undefined (no decoration)
 //
 // Generic chrome invariant: this field is OMITTED entirely when not
 // applicable. Don't advertise the state machine to viewers it doesn't
 // apply to.
 export function resolveBranchSubstate(row: UserStatusRow): BranchSubstate | undefined {
+  // KAN-205 — USER-level check FIRST. Only the leader-initiated reason
+  // maps to the self-restore ceremony; admin-initiated soft-deletes keep
+  // routing through the church-derived 'soft_deleted' rejection surface.
+  if (row.soft_deleted_at !== null && row.soft_delete_reason === "leader_initiated") {
+    return "self_deleted";
+  }
   if (row.church_id === null) return undefined;
   if (row.church === null) return undefined;
   if (row.church.soft_deleted_at !== null) return "soft_deleted";
