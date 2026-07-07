@@ -50,6 +50,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
+import ReportSheet from '../common/ReportSheet';
 import { getRoleLabel } from '../../utils/displayHelpers';
 import {
   assignGroupLabels,
@@ -214,14 +215,18 @@ function GroupBubble({
   member,
   prevSameSender,
   onRetry,
+  onReport,
 }: {
   msg: BranchMessage;
   member: BranchMember | null;
   prevSameSender: boolean;
   onRetry: (id: string) => void;
+  // KAN-304 — long-press a received branch message to report it.
+  onReport?: (id: string) => void;
 }) {
   const mine = msg.mine;
   const tail = prevSameSender;
+  const canReport = !mine && msg.state !== 'pending' && msg.state !== 'failed' && !!onReport;
   const radii = mine
     ? { borderTopLeftRadius: 16, borderTopRightRadius: tail ? 14 : 16, borderBottomRightRadius: 14, borderBottomLeftRadius: 16 }
     : { borderTopLeftRadius: tail ? 14 : 16, borderTopRightRadius: 16, borderBottomRightRadius: 16, borderBottomLeftRadius: 14 };
@@ -238,7 +243,13 @@ function GroupBubble({
         styles.bubbleRow,
         mine ? styles.bubbleRowSent : styles.bubbleRowRecv,
       ]}>
-        <View style={[
+        <Pressable
+          onLongPress={canReport ? () => onReport!(msg.id) : undefined}
+          delayLongPress={350}
+          accessibilityRole={canReport ? 'button' : undefined}
+          accessibilityLabel={canReport ? 'Report this message' : undefined}
+          accessibilityHint={canReport ? 'Double tap and hold to report this to the Replant team' : undefined}
+          style={[
           styles.bubble,
           radii,
           mine ? styles.bubbleSent : styles.bubbleRecv,
@@ -246,7 +257,7 @@ function GroupBubble({
           msg.state === 'failed' && styles.bubbleFailed,
         ]}>
           <Text style={mine ? styles.bubbleTextSent : styles.bubbleText}>{msg.text}</Text>
-        </View>
+        </Pressable>
       </View>
       {msg.state === 'pending' && (
         <View style={[styles.statusRow, styles.statusRowSent]}>
@@ -578,6 +589,9 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   const [members, setMembers] = useState<BranchMember[]>([]);
   const [messages, setMessages] = useState<BranchMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  // KAN-304 — report sheet target + in-session already-reported set (never persisted).
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const reportedKeys = useRef<Set<string>>(new Set()).current;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [draft, setDraft] = useState('');
@@ -1101,6 +1115,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
                   member={member}
                   prevSameSender={prevSameSender}
                   onRetry={retry}
+                  onReport={setReportTargetId}
                 />
               </View>
             );
@@ -1187,6 +1202,18 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         onEditName={handleEditName}
         onDeleteBranch={handleDeleteBranch}
       />
+
+      {/* KAN-304 — report a received branch message (long-press). */}
+      {reportTargetId ? (
+        <ReportSheet
+          open={reportTargetId !== null}
+          surface="branch_message"
+          targetId={reportTargetId}
+          alreadyReportedKeys={reportedKeys}
+          onReported={(k) => reportedKeys.add(k)}
+          onDismiss={() => setReportTargetId(null)}
+        />
+      ) : null}
     </View>
   );
 }

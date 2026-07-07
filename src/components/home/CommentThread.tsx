@@ -22,7 +22,7 @@
 // (TextInput / Pressable capture their own touches).
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -36,6 +36,7 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { ROLE_DISPLAY } from './NetworkFeedLogic';
 import { Chevron, LockIcon } from './HomeIcons';
+import ReportSheet from '../common/ReportSheet';
 
 // Display shape for one comment row. Mirrors the get_comments RPC return
 // (id, body, created_at, is_masked, mask_reason, masked_region, full_name,
@@ -135,6 +136,11 @@ export function CommentThread({
   const [errored, setErrored] = useState(false);
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // KAN-304 — report a comment (long-press). In-session already-reported set
+  // (never persisted). Self-report is discarded server-side (uniform response),
+  // so every row can offer the affordance safely.
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const reportedKeys = useRef<Set<string>>(new Set()).current;
 
   const loadComments = async () => {
     setLoading(true);
@@ -256,7 +262,15 @@ export function CommentThread({
             const hasRealName = !!c.author_name;
             const showLetterA = c.mask_reason === 'anon';
             return (
-              <View key={c.id} style={s.row}>
+              <Pressable
+                key={c.id}
+                style={s.row}
+                onLongPress={() => setReportTargetId(c.id)}
+                delayLongPress={350}
+                accessibilityRole="button"
+                accessibilityLabel="Report this comment"
+                accessibilityHint="Double tap and hold to report this to the Replant team"
+              >
                 <View style={[s.av, isRound && s.avRound]}>
                   {hasRealName ? (
                     <Text style={s.avInitial}>{initialOf(c.author_name)}</Text>
@@ -274,7 +288,7 @@ export function CommentThread({
                   {!!church && <Text style={s.cchurch} numberOfLines={1}>{church}</Text>}
                   <Text style={s.ctext}>{c.body}</Text>
                 </View>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -304,6 +318,18 @@ export function CommentThread({
           </Pressable>
         </View>
       )}
+
+      {/* KAN-304 — report a comment (long-press). */}
+      {reportTargetId ? (
+        <ReportSheet
+          open={reportTargetId !== null}
+          surface="comment"
+          targetId={reportTargetId}
+          alreadyReportedKeys={reportedKeys}
+          onReported={(k) => reportedKeys.add(k)}
+          onDismiss={() => setReportTargetId(null)}
+        />
+      ) : null}
     </View>
   );
 }

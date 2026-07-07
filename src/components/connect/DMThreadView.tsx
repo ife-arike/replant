@@ -47,6 +47,7 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
 import { getRoleLabel } from '../../utils/displayHelpers';
+import ReportSheet from '../common/ReportSheet';
 import CovenantStrip from './CovenantStrip';
 import CovenantNotice from './CovenantNotice';
 import AttachmentPopover from './AttachmentPopover';
@@ -247,13 +248,19 @@ function Bubble({
   prevSameAuthor,
   secure,
   onRetry,
+  onReport,
 }: {
   msg: ThreadMessage;
   prevSameAuthor: boolean;
   secure: boolean;
   onRetry: (id: string) => void;
+  // KAN-304 — long-press a received message to report it. Undefined for own
+  // messages and Replant Team (secure) threads (never reportable).
+  onReport?: (id: string) => void;
 }) {
   const mine = msg.mine;
+  // Report only received, non-secure, already-delivered messages.
+  const canReport = !mine && !secure && msg.state !== 'pending' && msg.state !== 'failed' && !!onReport;
   const tightTail = prevSameAuthor;
   // KAN-296 Task #21 — Replant Team attribution eyebrow.
   // Gated on: inbound (!mine) + secure Replant Team thread + non-empty
@@ -301,7 +308,12 @@ function Bubble({
           mine ? styles.bubbleRowSent : styles.bubbleRowRecv,
         ]}
       >
-        <View
+        <Pressable
+          onLongPress={canReport ? () => onReport!(msg.id) : undefined}
+          delayLongPress={350}
+          accessibilityRole={canReport ? 'button' : undefined}
+          accessibilityLabel={canReport ? 'Report this message' : undefined}
+          accessibilityHint={canReport ? 'Double tap and hold to report this to the Replant team' : undefined}
           style={[
             styles.bubble,
             radii,
@@ -314,7 +326,7 @@ function Bubble({
           <Text style={mine ? styles.bubbleTextSent : styles.bubbleText}>
             {msg.text}
           </Text>
-        </View>
+        </Pressable>
       </View>
       {msg.state === 'pending' && (
         <View style={[styles.statusRow, styles.statusRowSent]}>
@@ -472,6 +484,11 @@ export default function DMThreadView({
   useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
 
   const isSecure = other?.isSecure ?? false;
+
+  // KAN-304 — report sheet target (message id) + in-session already-reported set
+  // (never persisted; seized-device test). Replant Team threads never report.
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const reportedKeys = useRef<Set<string>>(new Set()).current;
 
   // ── KAN-69 request-flow state ──────────────────────────────────────
   // isConnectionRequest=true → send path uses send_connection_request RPC.
@@ -1085,6 +1102,7 @@ export default function DMThreadView({
                     prevSameAuthor={prevSameAuthor}
                     secure={isSecure}
                     onRetry={retry}
+                    onReport={isSecure ? undefined : setReportTargetId}
                   />
                 </View>
               );
@@ -1186,6 +1204,18 @@ export default function DMThreadView({
         }}
         declining={requestActionBusy}
       />
+
+      {/* KAN-304 — report a received message (long-press). Never on secure threads. */}
+      {reportTargetId ? (
+        <ReportSheet
+          open={reportTargetId !== null}
+          surface="dm_message"
+          targetId={reportTargetId}
+          alreadyReportedKeys={reportedKeys}
+          onReported={(k) => reportedKeys.add(k)}
+          onDismiss={() => setReportTargetId(null)}
+        />
+      ) : null}
     </View>
   );
 }
