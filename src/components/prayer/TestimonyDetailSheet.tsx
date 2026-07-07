@@ -47,6 +47,7 @@ import {
 } from './PrayerWallLogic';
 import { XIcon } from './PrayerIcons';
 import { formatLeaderLine } from '../../utils/displayHelpers';
+import ReportSheet from '../common/ReportSheet';
 import { TESTIMONY_DETAIL_STYLE } from './TestimonyCard';
 
 const TESTIMONY_GREEN = '#6B9E7A';
@@ -87,6 +88,9 @@ export default function TestimonyDetailSheet({
   // Local optimistic state — write stub.
   const [iCelebrated, setICelebrated] = useState(row?.i_celebrated ?? false);
   const [celebratedCount, setCelebratedCount] = useState(row?.celebrated_count ?? 0);
+  // KAN-304 — report sheet + in-session already-reported set (never persisted).
+  const [reportOpen, setReportOpen] = useState(false);
+  const reportedKeys = useRef<Set<string>>(new Set()).current;
 
   // Sync local state when row changes (e.g., opening a different card
   // without an intervening unmount).
@@ -345,7 +349,29 @@ export default function TestimonyDetailSheet({
           </Pressable>
           {timestamp ? <Text style={styles.timestamp}>{timestamp}</Text> : null}
         </View>
+
+        {/* KAN-304 — quiet report affordance (muted, last; a door, not an alarm). */}
+        <Pressable
+          onPress={() => setReportOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Report this testimony"
+          accessibilityHint="Opens a form to report this to the Replant team"
+          style={styles.reportRow}
+        >
+          <Text style={styles.reportRowText}>Report this testimony</Text>
+        </Pressable>
       </Animated.View>
+
+      {row ? (
+        <ReportSheet
+          open={reportOpen}
+          surface="testimony"
+          targetId={row.id}
+          alreadyReportedKeys={reportedKeys}
+          onReported={(k) => reportedKeys.add(k)}
+          onDismiss={() => setReportOpen(false)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -477,5 +503,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
     marginLeft: 'auto',
+  },
+  // KAN-304 — quiet report affordance.
+  reportRow: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  reportRowText: {
+    color: Colors.textMuted,
+    fontFamily: Typography.body,
+    fontSize: 13,
   },
 });

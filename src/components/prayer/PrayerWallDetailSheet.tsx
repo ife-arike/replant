@@ -53,6 +53,7 @@ import {
 import { formatLeaderLine, viewerOrgCopy } from '../../utils/displayHelpers';
 import { HeartIcon, XIcon } from './PrayerIcons';
 import { PRAYER_DETAIL_STYLE } from './PrayerWallCard';
+import ReportSheet from '../common/ReportSheet';
 
 interface Props {
   row: PrayerRow | null;
@@ -100,6 +101,9 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
   // pending SEC checkpoint and will land in a follow-up ticket.
   const [iStanding, setIStanding] = useState(row?.i_prayed ?? false);
   const [standCount, setStandCount] = useState(row?.prayed_count ?? 0);
+  // KAN-304 — report sheet + in-session already-reported set (never persisted).
+  const [reportOpen, setReportOpen] = useState(false);
+  const reportedKeys = useRef<Set<string>>(new Set()).current;
 
   // Sync local optimistic state whenever the row changes (i.e., the
   // user opens a different card without an intervening unmount).
@@ -371,8 +375,30 @@ export default function PrayerWallDetailSheet({ row, onDismiss, onPrayedChange, 
               {connectLabel}
             </Text>
           </Pressable>
+
+          {/* KAN-304 — quiet report affordance (a door, not an alarm: muted, last). */}
+          <Pressable
+            onPress={() => setReportOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Report this prayer"
+            accessibilityHint="Opens a form to report this to the Replant team"
+            style={styles.reportRow}
+          >
+            <Text style={styles.reportRowText}>Report this prayer</Text>
+          </Pressable>
         </View>
       </Animated.View>
+
+      {row ? (
+        <ReportSheet
+          open={reportOpen}
+          surface="prayer_request"
+          targetId={row.id}
+          alreadyReportedKeys={reportedKeys}
+          onReported={(k) => reportedKeys.add(k)}
+          onDismiss={() => setReportOpen(false)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -552,5 +578,16 @@ const styles = StyleSheet.create({
   ctaSecondaryTextDisabled: {
     color: Colors.textMuted,
     fontFamily: Typography.body,
+  },
+  // KAN-304 — quiet report affordance (muted, centered, last in the column).
+  reportRow: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  reportRowText: {
+    color: Colors.textMuted,
+    fontFamily: Typography.body,
+    fontSize: 13,
   },
 });

@@ -53,6 +53,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import ReportSheet from '../common/ReportSheet';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
   getChurchTypeLabel,
@@ -185,6 +186,10 @@ export default function ChurchProfileBottomSheet({
   const [showContactConfirm, setShowContactConfirm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
+  // KAN-304 — report sheet. In-session already-reported set (never persisted;
+  // seized-device test). Lives on this sheet instance for the church surface.
+  const [reportOpen, setReportOpen] = useState(false);
+  const reportedKeys = useRef<Set<string>>(new Set()).current;
 
   // ── Verify-gate: unverified viewers never open the sheet ──
   useEffect(() => {
@@ -332,7 +337,10 @@ export default function ChurchProfileBottomSheet({
   };
 
   const handleReport = () => {
-    showToast('Report received'); // MVP stub. TODO: wire report-concern flow.
+    // KAN-304 — open the real report intake (the "Report received" toast stub is
+    // gone; a silent-success toast in a safety flow is a lie to a reporter).
+    if (!profile) return;
+    setReportOpen(true);
   };
 
   const handleToggleVisibility = () => {
@@ -361,6 +369,7 @@ export default function ChurchProfileBottomSheet({
     !!profile?.show_contact_on_profile && !!(profile?.contact_email || profile?.address);
 
   return (
+    <>
     <Modal visible transparent animationType="none" onRequestClose={onDismiss}>
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {/* Dim backdrop — tap dismisses (the visible map sits above). */}
@@ -577,7 +586,7 @@ export default function ChurchProfileBottomSheet({
                     <Pressable onPress={handleShare} style={[styles.btn, styles.btnIcon]} accessibilityRole="button" accessibilityLabel="Share">
                       <ShareIcon size={15} color={Colors.textMuted} />
                     </Pressable>
-                    <Pressable onPress={handleReport} style={[styles.btn, styles.btnIcon]} accessibilityRole="button" accessibilityLabel="Report a concern">
+                    <Pressable onPress={handleReport} style={[styles.btn, styles.btnIcon]} accessibilityRole="button" accessibilityLabel="Report this church profile" accessibilityHint="Opens a form to report this to the Replant team">
                       <FlagIcon size={15} color={Colors.textMuted} />
                     </Pressable>
                   </>
@@ -636,6 +645,17 @@ export default function ChurchProfileBottomSheet({
       </View>
 
     </Modal>
+    {profile ? (
+      <ReportSheet
+        open={reportOpen}
+        surface="church_profile"
+        targetId={profile.id}
+        alreadyReportedKeys={reportedKeys}
+        onReported={(k) => reportedKeys.add(k)}
+        onDismiss={() => setReportOpen(false)}
+      />
+    ) : null}
+    </>
   );
 }
 
