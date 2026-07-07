@@ -46,6 +46,7 @@ import OutreachMissionsScreen from "../screens/main/hamburger/OutreachMissionsSc
 import InviteScreen from "../screens/main/hamburger/InviteScreen";
 import FAQScreen from "../screens/main/hamburger/FAQScreen";
 import JoinCodeRevealScreen from "../screens/main/JoinCodeRevealScreen";
+import RestoreScreen from "../screens/main/RestoreScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
 import type { RootStackParamList } from "./types";
@@ -134,6 +135,19 @@ export default function RootNavigator() {
             }}
           />
         </>
+      )}
+      {/* KAN-205 (ratified 2026-07-03) — a leader inside their own 30-day
+          deletion window gets the RestoreScreen ceremony and NOTHING else:
+          not the tabs (they chose to leave; a working-looking app whose
+          writes all fail is the bug this branch fixes) and not the
+          rejection read-only shell. Two doors only: restore, or continue
+          the deletion and sign out. */}
+      {branch === "self_deleted" && (
+        <Stack.Screen
+          name="Restore"
+          component={RestoreScreen}
+          options={{ gestureEnabled: false }}
+        />
       )}
       {(branch === "unauthenticated" || branch === "loading") && (
         <Stack.Screen

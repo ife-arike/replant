@@ -48,6 +48,7 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { ROLES, isParaMinistry, viewerOrgCopy } from '../../utils/displayHelpers';
 import RpMark from '../../components/icons/RpMark';
 import ComingSoonModal from '../../components/common/ComingSoonModal';
+import DeleteAccountFlow from '../../components/settings/DeleteAccountFlow';
 import {
   setNotifBadgeEnabled,
   useNotifBadgeEnabled,
@@ -780,11 +781,16 @@ export default function SettingsScreen({
       body: 'You\'ll be able to read the full covenant from this screen shortly.',
     });
   };
-  const handleDeactivateTap = () => {
-    setComingSoon({
-      title: 'Account deactivation is on the way.',
-      body: 'A guided deactivation flow will be available before launch.',
-    });
+
+  // ─── KAN-205 — account deletion ceremony (Founder-ratified 2026-07-03).
+  // Replaces the superseded "Account deactivation is on the way"
+  // ComingSoon. The full flow (explain → password re-check → type-DELETE
+  // → delete-account edge fn → goodbye + sign-out with local wipe) lives
+  // in DeleteAccountFlow; "deleted" is the user-initiated word, "deactivated"
+  // stays reserved for admin/auto lifecycles (ratified B-2 vocabulary split).
+  const [deleteFlowVisible, setDeleteFlowVisible] = useState(false);
+  const handleDeleteAccountTap = () => {
+    setDeleteFlowVisible(true);
   };
 
   // ─── Static copy (preserved from KAN-138 dispatch) ───
@@ -1256,12 +1262,17 @@ export default function SettingsScreen({
             <Text style={styles.signOut}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleDeactivateTap}
+            onPress={handleDeleteAccountTap}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel="Deactivate account"
+            accessibilityLabel="Delete account"
+            accessibilityHint="Opens the account deletion steps"
           >
-            <Text style={styles.deactivate}>DEACTIVATE ACCOUNT</Text>
+            {/* KAN-205 CONTENT §1 — label + sub-line, verbatim. */}
+            <Text style={styles.deleteAccount}>DELETE ACCOUNT</Text>
+            <Text style={styles.deleteAccountSubLine}>
+              Starts a 30-day window before your account is permanently removed.
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -1510,6 +1521,15 @@ export default function SettingsScreen({
         onDismiss={() => setComingSoon(null)}
         title={comingSoon?.title ?? ''}
         body={comingSoon?.body ?? ''}
+      />
+
+      {/* ── KAN-205 — account deletion ceremony ── */}
+      <DeleteAccountFlow
+        visible={deleteFlowVisible}
+        onClose={() => setDeleteFlowVisible(false)}
+        email={email ?? null}
+        churchName={churchName}
+        viewerChurchType={viewerChurchType}
       />
     </View>
   );
@@ -1864,7 +1884,10 @@ const styles = StyleSheet.create({
     letterSpacing: 16 * 0.04,
     paddingVertical: 4,
   },
-  deactivate: {
+  // KAN-205 — DELETE ACCOUNT row (CONTENT §1). Same destructive mono
+  // treatment the DEACTIVATE row carried; sub-line is small, muted,
+  // sentence case beneath the label.
+  deleteAccount: {
     fontFamily: Typography.mono,
     fontSize: 12,
     letterSpacing: 2.2,
@@ -1872,6 +1895,15 @@ const styles = StyleSheet.create({
     opacity: 0.55,
     textTransform: 'uppercase',
     paddingVertical: 4,
+    textAlign: 'center',
+  },
+  deleteAccountSubLine: {
+    fontFamily: Typography.body,
+    fontSize: 11.5,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 2,
+    paddingHorizontal: 24,
   },
 
   // ─── Foundation — scripture + ref + version stamp (NO rp-mark) ───

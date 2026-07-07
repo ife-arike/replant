@@ -28,6 +28,7 @@ import { HamburgerProvider } from "./src/contexts/HamburgerContext";
 import { ConnectBadgeProvider } from "./src/contexts/ConnectBadgeContext";
 import HamburgerPanel from "./src/components/hamburger/HamburgerPanel";
 import DeactivationModal from "./src/components/auth/DeactivationModal";
+import GoodbyeModal from "./src/components/auth/GoodbyeModal";
 import RootNavigator from "./src/navigation/RootNavigator";
 import { navigationRef } from "./src/navigation/navigationRef";
 import { supabase } from "./src/lib/supabase";
@@ -122,6 +123,11 @@ export default function App() {
                 also signs out on detection, so by the time this is
                 visible the leader is on Login (unauthenticated branch). */}
             <DeactivationModal />
+            {/* KAN-205 — post-deletion goodbye overlay (CONTENT §4).
+                Shown by the deletion paths BEFORE their signOut, so it
+                floats over Login after the branch flips. Mechanism-free,
+                one copy for every account class — cold-viewable. */}
+            <GoodbyeModal />
           </ConnectBadgeProvider>
         </HamburgerProvider>
       </AuthProvider>

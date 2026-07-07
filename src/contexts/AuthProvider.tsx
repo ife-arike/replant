@@ -71,6 +71,17 @@ import { signOutAndClear, PENDING_SIGNOUT_KEY } from "../utils/signOutAndClear";
 //                   hides compose paths as defense-in-depth). The
 //                   leader is NEVER logged out — every notice is
 //                   revisitable from the Home outcome banner (§19).
+//
+// KAN-205 (ratified 2026-07-03) — third substate branch:
+//
+//   'self_deleted'  The leader's OWN account is inside its 30-day
+//                   leader-initiated deletion window. RootNavigator
+//                   mounts the dedicated RestoreScreen ceremony — NOT
+//                   the tabs and NOT the rejection read-only shell (a
+//                   leader who chose to leave should not wake up inside
+//                   a read-only app). Surfaces only after successful
+//                   sign-in; nothing pre-auth discloses that a
+//                   deletable account exists.
 export type AuthBranch =
   | "loading"
   | "unauthenticated"
@@ -78,7 +89,8 @@ export type AuthBranch =
   | "pending"
   | "password_recovery"
   | "request_info"
-  | "soft_deleted";
+  | "soft_deleted"
+  | "self_deleted";
 
 // Mirrored from supabase/functions/auth-status-check/logic.ts; must stay
 // in lockstep. KAN-36 v2 binary-only contract — no third value.
@@ -116,6 +128,17 @@ export interface AuthState {
   // (which manages the pending_signout_revocation deferred-retry flag)
   // then runs the same ordered clear-and-route SEC 11015 #4 uses for 401s.
   signOut: () => Promise<void>;
+  // KAN-205 — post-deletion goodbye overlay (CONTENT §4). Mounted at
+  // App.tsx top level like DeactivationModal, floating over Login once
+  // the branch flips to unauthenticated. Written mechanism-free — ONE
+  // copy for every account class, cold-viewable by design. Shown by the
+  // deletion paths (DeleteAccountFlow success / RestoreScreen "Continue
+  // with deletion") BEFORE their signOut, so it survives the branch flip.
+  // Cleared on dismiss, and on any successful auth-status-check (leader
+  // signed into a different — or restored — account behind it).
+  goodbyeVisible: boolean;
+  showGoodbye: () => void;
+  dismissGoodbye: () => void;
   // B35 (KAN-12) — direct branch flip used by tryAutoSignIn in
   // AccountSetupPage2 to navigate the leader to Home immediately after
   // signInWithPassword resolves. See header at src/utils/
@@ -144,12 +167,16 @@ interface AuthStatusResponse {
   underground_join_code_pending_reveal?: boolean;
   // Underground Verification Queue (manifest 2026-06-22) — BE lane
   // extends auth-status-check to return this field when the leader is in
-  // one of the two sub-states the queue produces. Omitted in normal
-  // active/pending responses. The FE maps it onto the AuthBranch:
+  // one of the sub-states. Omitted in normal active/pending responses.
+  // The FE maps it onto the AuthBranch:
   //   'request_info' → branch="request_info"
   //   'soft_deleted' → branch="soft_deleted"
+  //   'self_deleted' → branch="self_deleted"   (KAN-205 — RestoreScreen)
   // Default undefined → fall through to verification_status as today.
-  branch_substate?: "request_info" | "soft_deleted";
+  // KAN-205 wire note: the BE returns verification_status 'pending'
+  // alongside 'self_deleted' precisely so the deactivated-modal path
+  // below can never hijack the restore ceremony.
+  branch_substate?: "request_info" | "soft_deleted" | "self_deleted";
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -173,9 +200,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Underground flow (2026-06-20) — see header on AuthState.
   const [undergroundJoinCodePendingReveal, setUndergroundJoinCodePendingReveal] =
     useState(false);
+  // KAN-205 — post-deletion goodbye overlay (see header on AuthState).
+  const [goodbyeVisible, setGoodbyeVisible] = useState(false);
 
   const dismissDeactivationModal = useCallback(() => {
     setDeactivationModalPath(null);
+  }, []);
+
+  const showGoodbye = useCallback(() => {
+    setGoodbyeVisible(true);
+  }, []);
+
+  const dismissGoodbye = useCallback(() => {
+    setGoodbyeVisible(false);
   }, []);
 
   const inFlight = useRef(false);
@@ -326,7 +363,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? "request_info"
           : data.branch_substate === "soft_deleted"
             ? "soft_deleted"
-            : data.verification_status;
+            : data.branch_substate === "self_deleted"
+              ? "self_deleted"
+              : data.verification_status;
       setBranch(resolvedBranch);
       setVerificationDeadline(data.verification_deadline);
       setDaysRemaining(data.days_remaining);
@@ -334,6 +373,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // e.g., a leader who got deactivated on one account dismissed the
       // modal, signed in with a working account, and now is active.
       setDeactivationModalPath(null);
+      // KAN-205 — a successful check also clears a lingering goodbye
+      // overlay: the leader signed back in (RestoreScreen takes over on
+      // 'self_deleted') or into a different account entirely.
+      setGoodbyeVisible(false);
       // Underground flow (2026-06-20) — BE omits the field when false.
       // Default false on missing/non-boolean.
       setUndergroundJoinCodePendingReveal(
@@ -357,6 +400,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const initialize = useCallback(async () => {
     setLoading(true);
+    // KAN-205 — initialize() doubles as the exposed refresh(). Explicit
+    // refreshes are user-action-driven state transitions (RestoreScreen
+    // after fn_restore_my_account; HomeScreen after a request-info reply)
+    // and must not be swallowed by the 30s debounce — the leader just
+    // acted and the branch has to reflect it NOW. The debounce (SEC 11015
+    // #3b) continues to throttle the AUTOMATIC triggers (AppState
+    // foreground, onAuthStateChange), which never route through here.
+    // Cold-start behavior is unchanged (lastCheckedAt is already 0).
+    lastCheckedAt.current = 0;
     // KAN-42 — deferred revocation retry. If a previous sign-out failed
     // server-side (offline), the flag persists across launches. Retry
     // now; ONLY delete the flag on a confirmed success so a still-offline
@@ -542,6 +594,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearPasswordRecovery,
         signOut,
         setOptimisticPending,
+        goodbyeVisible,
+        showGoodbye,
+        dismissGoodbye,
       }}
     >
       {children}

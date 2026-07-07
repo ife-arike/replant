@@ -67,4 +67,8 @@ export type RootStackParamList = MainStackParamList & {
   // on Home replaces its functional purpose. Type entry removed too
   // since no other production code references it.
   PasswordRecovery: undefined;
+  // KAN-205 (ratified 2026-07-03) — the self_deleted branch mounts the
+  // RestoreScreen welcome-back ceremony as its ONLY screen (not the tabs,
+  // not the rejection read-only shell). See SEC design §2.4.
+  Restore: undefined;
 };
