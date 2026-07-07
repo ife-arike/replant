@@ -5,12 +5,13 @@
 -- Panel-ratified (2026-07-03): SEC + MOD + BE+ADMIN + CONTENT lanes; register §C.
 -- Author: BE (Replant). Build agent: KAN-304 worktree fix/kan-304-report-mechanism.
 --
--- ORDERING: timestamp 20260707120000 sorts AFTER the KAN-205 account-deletion
--- migration (20260707000001, which adds the account_soft_deleted/restored/
--- hard_deleted audit tokens) and the 20260702* client-write hardening. Those are
--- already applied to LIVE; this file's CHECK rebuilds are keyed to the live
--- constraint state (what the migration actually executes against). Apply order:
--- KAN-205 → this. (Deploy checklist item 1.)
+-- ORDERING: timestamp 20260707223000 sorts AFTER the KAN-205 account-deletion
+-- migration (live version 20260707221207, applied 2026-07-07, which adds the
+-- account_soft_deleted/restored/hard_deleted audit tokens) and the 20260702*
+-- client-write hardening — all already applied to LIVE (verified against
+-- supabase_migrations.schema_migrations 2026-07-07). This file's CHECK rebuilds
+-- are keyed to that live constraint state (what the migration actually executes
+-- against). Apply order: KAN-205 (already live) → this. (Deploy checklist item 1.)
 --
 -- NON-NEGOTIABLE INVARIANTS honoured by this migration (SEC lane §1):
 --   1. Report intake writes ZERO bytes to any content row — all report state

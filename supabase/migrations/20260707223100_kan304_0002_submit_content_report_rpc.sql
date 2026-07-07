@@ -2,7 +2,7 @@
 -- Migration 2/2: intake — fn_report_target_visible() helper + the
 --                submit_content_report(...) SECURITY DEFINER RPC.
 --
--- Depends on migration 1 (20260707120000): content_reports table, escalated_cases
+-- Depends on migration 1 (20260707223000): content_reports table, escalated_cases
 -- additive columns, source_axis/escalation_reason/audit_log CHECK extensions.
 --
 -- House pattern (mirrors create_testimony / add_intercession_hold):
