@@ -29,10 +29,12 @@ import React, {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   PanResponder,
   Platform,
   Pressable,
@@ -42,7 +44,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
-import { Colors, Typography } from '../../constants/theme';
+import { Colors, Radius, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase, SUPABASE_URL } from '../../lib/supabase';
@@ -60,6 +62,7 @@ import {
   respondToRequest,
   ConnectionRequestError,
 } from '../../hooks/useConnectionRequest';
+import { blockUser, BlockUserError } from '../../hooks/useBlockUser';
 
 interface Props {
   // Either threadId (existing conversation) or recipientUserId (lazy thread).
@@ -136,6 +139,10 @@ interface OtherParty {
   displayName: string;
   churchLabel: string;
   isSecure: boolean;
+  // KAN-305 — drives the block acquiredVia context: an anonymous
+  // counterparty is a masked-context block ('masked_dm'), which must NOT
+  // trigger directory suppression (SEC §3.3 de-masking-oracle prevention).
+  anonymous?: boolean;
 }
 
 const PAGE_SIZE = 30;
@@ -161,6 +168,16 @@ function BackIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Path d="M15 5l-7 7 7 7" stroke={Colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+// KAN-305 — thread options (kebab). Opens the block action menu.
+function KebabIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={5} r={1.6} fill={Colors.text} />
+      <Circle cx={12} cy={12} r={1.6} fill={Colors.text} />
+      <Circle cx={12} cy={19} r={1.6} fill={Colors.text} />
     </Svg>
   );
 }
@@ -421,6 +438,7 @@ export default function DMThreadView({
         ? 'Official · admin-monitored'
         : initialProfile.churchName,
       isSecure: initialProfile.isSecure,
+      anonymous: initialProfile.isAnon ?? false,
     };
   });
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
@@ -464,6 +482,13 @@ export default function DMThreadView({
   const [attachPopoverVisible, setAttachPopoverVisible] = useState(false);
   const [showCovenant, setShowCovenant] = useState(false);
   const pendingTextRef = useRef<string>('');
+  // KAN-305 — block flow. The kebab opens the action sheet; "Block" opens a
+  // confirm; confirm calls block_user then leaves the thread (it vanishes from
+  // the list by design — freeze-and-hide on the blocker side).
+  const [blockMenuVisible, setBlockMenuVisible] = useState(false);
+  const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [blockError, setBlockError] = useState<string | null>(null);
   // Refs for messages + conversationId so the Realtime callback always
   // closes over the current value, not the value at subscribe time.
   const messagesRef = useRef<ThreadMessage[]>(messages);
@@ -559,6 +584,7 @@ export default function DMThreadView({
           : (anon ? getRoleLabel(row.other_role) : fullName),
         churchLabel: churchName,
         isSecure: isSec,
+        anonymous: anon,
       });
     })();
     return () => { cancelled = true; };
@@ -814,6 +840,38 @@ export default function DMThreadView({
     }
   }, [recipientUserId]);
 
+  // ── Block (KAN-305) ───────────────────────────────────────────────
+  // Confirmed block. Resolves the target from `other.userId` (the real
+  // user id — get_leader_thread_list resolves it, and the lazy-thread path
+  // seeds it from recipientUserId). An anonymous counterparty is a
+  // masked-context block ('masked_dm') so directory suppression is skipped
+  // server-side (SEC §3.3). Never offered on secure Replant Team threads.
+  const confirmBlock = useCallback(async () => {
+    const targetId = other?.userId;
+    if (!targetId || isSecure || blockBusy) return;
+    setBlockBusy(true);
+    setBlockError(null);
+    try {
+      await blockUser(
+        targetId,
+        other?.anonymous ? 'masked_dm' : 'identity_known',
+      );
+      AccessibilityInfo.announceForAccessibility('Blocked. This conversation is now closed.');
+      setBlockConfirmVisible(false);
+      setBlockMenuVisible(false);
+      // Freeze-and-hide: leave the thread; it drops from the list.
+      onBack();
+    } catch (err) {
+      const msg = err instanceof BlockUserError
+        ? err.message
+        : 'Could not block this account. Please try again.';
+      setBlockError(msg);
+      AccessibilityInfo.announceForAccessibility(msg);
+    } finally {
+      setBlockBusy(false);
+    }
+  }, [other?.userId, other?.anonymous, isSecure, blockBusy, onBack]);
+
   const attemptSend = useCallback(() => {
     const text = draft.trim();
     if (!text) return;
@@ -1021,7 +1079,21 @@ export default function DMThreadView({
             </View>
           )}
         </View>
-        <View style={{ width: 20 }} />
+        {/* KAN-305 — thread options. Offered only on a resolved, non-secure
+            counterparty (never sever the Replant Team moderation channel). */}
+        {other && !isSecure ? (
+          <Pressable
+            onPress={() => { setBlockError(null); setBlockMenuVisible(true); }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Conversation options"
+            accessibilityHint="Opens actions for this conversation, including block"
+          >
+            <KebabIcon />
+          </Pressable>
+        ) : (
+          <View style={{ width: 20 }} />
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -1186,6 +1258,98 @@ export default function DMThreadView({
         }}
         declining={requestActionBusy}
       />
+
+      {/* KAN-305 — block action sheet */}
+      <Modal
+        visible={blockMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBlockMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.blockBackdrop}
+          accessibilityLabel="Close options"
+          accessibilityRole="button"
+          onPress={() => setBlockMenuVisible(false)}
+        />
+        <View style={styles.blockSheet} accessibilityViewIsModal>
+          <Pressable
+            style={styles.blockSheetRow}
+            accessibilityRole="button"
+            accessibilityLabel={`Block ${other?.displayName ?? 'this leader'}`}
+            accessibilityHint="Stops all messages and requests between you"
+            onPress={() => {
+              setBlockMenuVisible(false);
+              setBlockError(null);
+              setBlockConfirmVisible(true);
+            }}
+          >
+            <Text style={styles.blockSheetDestructive}>
+              Block {other?.displayName ?? 'this leader'}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={styles.blockSheetRow}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+            onPress={() => setBlockMenuVisible(false)}
+          >
+            <Text style={styles.blockSheetCancel}>Cancel</Text>
+          </Pressable>
+        </View>
+      </Modal>
+
+      {/* KAN-305 — block confirm */}
+      <Modal
+        visible={blockConfirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => (blockBusy ? undefined : setBlockConfirmVisible(false))}
+      >
+        <View style={styles.blockConfirmWrap} accessibilityViewIsModal>
+          <View style={styles.blockConfirmCard}>
+            <Text style={styles.blockConfirmTitle} accessibilityRole="header">
+              Block {other?.displayName ?? 'this leader'}?
+            </Text>
+            <Text style={styles.blockConfirmBody}>
+              They won't be able to message you or send you a request, and you
+              won't see messages or requests from them. You can undo this any
+              time from Settings.
+            </Text>
+            {blockError ? (
+              <Text
+                style={styles.blockConfirmError}
+                accessibilityLiveRegion="assertive"
+              >
+                {blockError}
+              </Text>
+            ) : null}
+            <View style={styles.blockConfirmActions}>
+              <Pressable
+                style={styles.blockConfirmKeep}
+                accessibilityRole="button"
+                accessibilityLabel="Keep conversation"
+                disabled={blockBusy}
+                onPress={() => setBlockConfirmVisible(false)}
+              >
+                <Text style={styles.blockConfirmKeepText}>Keep conversation</Text>
+              </Pressable>
+              <Pressable
+                style={styles.blockConfirmDo}
+                accessibilityRole="button"
+                accessibilityLabel={`Block ${other?.displayName ?? 'this leader'}`}
+                accessibilityState={{ disabled: blockBusy, busy: blockBusy }}
+                disabled={blockBusy}
+                onPress={() => void confirmBlock()}
+              >
+                {blockBusy
+                  ? <ActivityIndicator size="small" color={Colors.text} />
+                  : <Text style={styles.blockConfirmDoText}>Block</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1511,5 +1675,101 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 16,
+  },
+  // ── KAN-305 block flow ──────────────────────────────────────────────
+  blockBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Colors.overlay,
+  },
+  blockSheet: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 24,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  blockSheetRow: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  blockSheetDestructive: {
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.red,
+  },
+  blockSheetCancel: {
+    fontFamily: Typography.body,
+    fontSize: 15,
+    color: Colors.textMuted,
+  },
+  blockConfirmWrap: {
+    flex: 1,
+    backgroundColor: Colors.overlay,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  blockConfirmCard: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    padding: 22,
+  },
+  blockConfirmTitle: {
+    fontFamily: Typography.body,
+    fontSize: 17,
+    color: Colors.text,
+    marginBottom: 10,
+  },
+  blockConfirmBody: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Colors.textMuted,
+  },
+  blockConfirmError: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.red,
+    marginTop: 12,
+  },
+  blockConfirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  blockConfirmKeep: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginRight: 8,
+  },
+  blockConfirmKeepText: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  blockConfirmDo: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(224, 85, 85, 0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.red,
+    minWidth: 78,
+    alignItems: 'center',
+  },
+  blockConfirmDoText: {
+    fontFamily: Typography.body,
+    fontSize: 14,
+    color: Colors.red,
   },
 });

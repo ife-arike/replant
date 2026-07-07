@@ -20,9 +20,10 @@
 //   Foundation block (scripture + ref + version stamp, NO rp-mark)
 // ─────────────────────────────────────────────
 
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  ActivityIndicator,
   LayoutAnimation,
   Linking,
   Modal,
@@ -45,7 +46,12 @@ import Constants from 'expo-constants';
 import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
-import { ROLES, isParaMinistry, viewerOrgCopy } from '../../utils/displayHelpers';
+import { ROLES, isParaMinistry, viewerOrgCopy, getRoleLabel } from '../../utils/displayHelpers';
+import {
+  getBlockedUsers,
+  unblockUser,
+  type BlockedUserRow,
+} from '../../hooks/useBlockUser';
 import RpMark from '../../components/icons/RpMark';
 import ComingSoonModal from '../../components/common/ComingSoonModal';
 import {
@@ -491,6 +497,69 @@ export default function SettingsScreen({
     setSavedSection(section);
     savedTimer.current = setTimeout(() => setSavedSection(null), 1500);
   };
+
+  // ─── 06 Blocked (KAN-305) — masked list + unblock ceremony ───
+  // Self-contained: fetches on first expand (and after an unblock). The list
+  // is already masked server-side by get_blocked_users (anon → null name; UG →
+  // 'Underground Church'); we NEVER render a real name for an anonymous leader.
+  const [blockedList, setBlockedList] = useState<BlockedUserRow[]>([]);
+  const [blockedLoading, setBlockedLoading] = useState(false);
+  const [blockedLoaded, setBlockedLoaded] = useState(false);
+  const [blockedError, setBlockedError] = useState<string | null>(null);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
+
+  const loadBlocked = useCallback(async () => {
+    setBlockedLoading(true);
+    setBlockedError(null);
+    try {
+      const rows = await getBlockedUsers();
+      setBlockedList(rows);
+      setBlockedLoaded(true);
+    } catch {
+      setBlockedError("Couldn't load your blocked list. Pull to retry.");
+      AccessibilityInfo.announceForAccessibility(
+        "Couldn't load your blocked list.",
+      );
+    } finally {
+      setBlockedLoading(false);
+    }
+  }, []);
+
+  const handleToggleBlockedSection = useCallback(() => {
+    const willOpen = !openSections.has('06');
+    toggleSection('06');
+    if (willOpen && !blockedLoaded && !blockedLoading) {
+      void loadBlocked();
+    }
+  }, [openSections, blockedLoaded, blockedLoading, loadBlocked]);
+
+  const handleUnblock = useCallback(async (row: BlockedUserRow) => {
+    if (unblockingId) return;
+    setUnblockingId(row.blockedUserId);
+    setBlockedError(null);
+    try {
+      await unblockUser(row.blockedUserId);
+      setBlockedList((prev) =>
+        prev.filter((r) => r.blockedUserId !== row.blockedUserId),
+      );
+      AccessibilityInfo.announceForAccessibility('Unblocked.');
+    } catch {
+      setBlockedError("Couldn't unblock. Please try again.");
+      AccessibilityInfo.announceForAccessibility("Couldn't unblock.");
+    } finally {
+      setUnblockingId(null);
+    }
+  }, [unblockingId]);
+
+  // Compose the masked label for a blocked row (mirror the thread-list rule:
+  // anonymous → "A fellow [Role]"; otherwise the server-resolved display name).
+  const blockedRowLabel = useCallback((row: BlockedUserRow): string => {
+    if (row.anonymous || !row.displayName) {
+      const role = getRoleLabel(row.role);
+      return `A fellow ${role}`;
+    }
+    return row.displayName;
+  }, []);
 
   // ─── Derived specimens — KAN-229 live preview ───
   // ROLES is the canonical source of truth for role display labels
@@ -1165,8 +1234,87 @@ export default function SettingsScreen({
         </>
         )}
 
-        {/* ── 06 ABOUT — permanently expanded, no collapse option ── */}
-        <SectionHeader number="06" title="About" isOpen={true} onPress={() => {}} alwaysOpen />
+        {/* ── 06 BLOCKED (KAN-305) — masked list + unblock ceremony ── */}
+        <SectionHeader
+          number="06"
+          title="Blocked"
+          isOpen={openSections.has('06')}
+          onPress={handleToggleBlockedSection}
+        />
+        {openSections.has('06') && (
+        <>
+          {blockedLoading && !blockedLoaded ? (
+            <View style={styles.rowLast} accessibilityLabel="Loading blocked list">
+              <ActivityIndicator size="small" color={Colors.textSubtle} />
+            </View>
+          ) : blockedError ? (
+            <View style={styles.rowLast}>
+              <Text
+                style={styles.blockedEmpty}
+                accessibilityLiveRegion="polite"
+                accessibilityRole="alert"
+              >
+                {blockedError}
+              </Text>
+              <TouchableOpacity
+                onPress={() => void loadBlocked()}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading blocked list"
+                style={styles.blockedRetry}
+              >
+                <Text style={styles.blockedRetryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : blockedList.length === 0 ? (
+            <View style={styles.rowLast}>
+              <Text style={styles.blockedEmpty}>
+                You haven't blocked anyone. Blocking someone stops all messages
+                and requests between you.
+              </Text>
+            </View>
+          ) : (
+            blockedList.map((row, i) => {
+              const label = blockedRowLabel(row);
+              const isLast = i === blockedList.length - 1;
+              const busy = unblockingId === row.blockedUserId;
+              return (
+                <View
+                  key={row.blockedUserId}
+                  style={isLast ? styles.rowLast : styles.row}
+                  accessibilityLabel={`Blocked: ${label}${row.churchName ? `, ${row.churchName}` : ''}`}
+                >
+                  <View style={styles.blockedRow}>
+                    <View style={styles.blockedIdentity}>
+                      <Text style={styles.rowValue} numberOfLines={1}>{label}</Text>
+                      {row.churchName ? (
+                        <Text style={styles.blockedChurch} numberOfLines={1}>
+                          {row.churchName.toUpperCase()}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => void handleUnblock(row)}
+                      disabled={busy}
+                      activeOpacity={0.6}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Unblock ${label}`}
+                      accessibilityState={{ disabled: busy, busy }}
+                      style={styles.unblockBtn}
+                    >
+                      {busy
+                        ? <ActivityIndicator size="small" color={Colors.textSubtle} />
+                        : <Text style={styles.unblockBtnText}>UNBLOCK</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </>
+        )}
+
+        {/* ── 07 ABOUT — permanently expanded, no collapse option ── */}
+        <SectionHeader number="07" title="About" isOpen={true} onPress={() => {}} alwaysOpen />
         <TouchableOpacity
           style={styles.row}
           onPress={() => setFaithModalVisible(true)}
@@ -2085,6 +2233,55 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 11 * 1.5,
+  },
+
+  // ─── 06 Blocked (KAN-305) ───
+  blockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  blockedIdentity: {
+    flexShrink: 1,
+  },
+  blockedChurch: {
+    fontFamily: Typography.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.6,
+    color: Colors.textSubtle,
+    marginTop: 3,
+  },
+  blockedEmpty: {
+    fontFamily: Typography.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.textMuted,
+  },
+  blockedRetry: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  blockedRetryText: {
+    fontFamily: Typography.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: Colors.accent,
+  },
+  unblockBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.sm,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    minWidth: 84,
+    alignItems: 'center',
+  },
+  unblockBtnText: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    letterSpacing: 1.4,
+    color: Colors.textMuted,
   },
 });
 
