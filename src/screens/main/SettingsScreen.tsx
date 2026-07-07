@@ -735,10 +735,13 @@ export default function SettingsScreen({
   };
 
   // ─── Connect block — copy email + open mail composer ───
+  // KAN-205 B-2 sweep (ratified 2026-07-03) — the "Reach the team" block
+  // reconciles to the ruled accounts@ (display surface; actual send-from
+  // addresses are untouched).
 
   const handleConnectTap = async () => {
-    await Clipboard.setStringAsync('connect@projectreplant.org');
-    await Linking.openURL('mailto:connect@projectreplant.org');
+    await Clipboard.setStringAsync('accounts@projectreplant.org');
+    await Linking.openURL('mailto:accounts@projectreplant.org');
   };
 
   // ─── Sign out — KAN-42 confirmation dialog → AuthProvider.signOut ───
@@ -804,7 +807,8 @@ export default function SettingsScreen({
     'Shows a count on the Connect tab when you have unread messages.';
   // Para-ministry directors see "your account, your organization." (BA-para #1).
   const EPIGRAPH = `your account, ${viewer.yourChurchOrOrg}.`;
-  const TEAM_EMAIL = 'connect@projectreplant.org';
+  // KAN-205 B-2 — ruled contact address (was connect@).
+  const TEAM_EMAIL = 'accounts@projectreplant.org';
   const version =
     Constants.expoConfig?.version ??
     (Constants as unknown as { manifest?: { version?: string } }).manifest?.version ??

@@ -56,9 +56,15 @@ const CONTACT_EMAIL = 'accounts@projectreplant.org';
 // verification_renewal: design v3 lines 268-269 (two real <p>
 // paragraphs, 8px gap). Tone is solemn-but-actionable: the leader
 // missed their window, and the path forward is to write to us.
+// KAN-205 B-2 vocabulary sweep (ratified 2026-07-03): "deleted" is now the
+// user-initiated word with its own self-serve restore ceremony; this
+// surface is admin/auto DEACTIVATION and must never read as data deletion.
+// "restore access" → "have your access reinstated" so "restore" stays
+// reserved for the deletion flow's self-restore (the support variant below
+// already said "reinstate").
 const COPY_RENEWAL_PARAGRAPHS = [
   "Your church verification window expired and your account has been deactivated. We're sorry for the difficulty this may cause.",
-  "If you'd like to appeal or restore access, write to us.",
+  "If you'd like to appeal or have your access reinstated, write to us.",
 ];
 
 // support_contact: dispatch copy. Single paragraph by design — the

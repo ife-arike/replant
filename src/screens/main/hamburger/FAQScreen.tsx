@@ -37,7 +37,9 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const CONTACT_EMAIL = 'info@projectreplant.org';
+// KAN-205 B-2 sweep (ratified 2026-07-03) — user-facing contact surfaces
+// reconcile to the ruled accounts@ (was info@ here, connect@ in Settings).
+const CONTACT_EMAIL = 'accounts@projectreplant.org';
 
 const FAQ_DATA = [
   { q: 'What is Replant?',
@@ -66,6 +68,17 @@ const FAQ_DATA = [
     a: 'At this time, Replant does not facilitate direct financial transfers between ministries.' },
   { q: 'How can churches actually help one another right now?',
     a: 'Through prayer, resources, manpower, advice, and encouragement.' },
+  // KAN-205 — account-deletion entries (CONTENT §7, verbatim; ratified
+  // 2026-07-03). SEC-COORD on the second answer resolved: "open the app
+  // and sign in" holds for underground accounts too — self-deleted UG
+  // leaders restore via the same post-sign-in prompt as everyone else,
+  // so the full middle clause stays.
+  { q: 'What happens when I delete my account?',
+    a: 'Deletion starts a 30-day window. During that window your account is closed but can still be restored. After 30 days it is permanently deleted — your name, email address, and phone number are removed, and you can no longer sign in.' },
+  { q: 'Can I come back after deleting my account?',
+    a: 'Within 30 days, yes. Open the app and sign in, and you will be offered the choice to restore your account exactly as you left it. After 30 days the deletion is permanent, and returning means starting fresh with a new account.' },
+  { q: 'What happens to what I shared?',
+    a: 'Prayers, testimonies, comments, and messages you already sent remain with the people you shared them with. After permanent deletion they are no longer attached to your name.' },
 ];
 
 export default function FAQScreen() {
