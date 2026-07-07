@@ -1,0 +1,21 @@
+# KAN-304 — submit-report edge function config.
+#
+# verify_jwt = true is LOAD-BEARING per SEC. This is an AUTHENTICATED intake:
+# only a signed-in leader may file a report. A forged/expired JWT is rejected at
+# the gateway before this handler runs; the RPC is then called through the
+# caller's JWT so auth.uid() resolves the real reporter. Any change requires a
+# fresh SEC ruling.
+#
+# Deviation from the house fail-CLOSED-on-abuse posture is INTENTIONAL and ruled
+# (register §C C-3): the Upstash rate limiter FAILS OPEN + ALARMS on infra
+# outage. Rationale — blocking a report during an outage silences a raised hand;
+# intake is authenticated and post-hoc, and the primary bombing control is the
+# DB-side dedupe in submit_content_report (survives a Redis outage). See the
+# fail-open-alarmed limiter in index.ts.
+#
+# NOTE: Supabase CLI < 2.100.1 ignores per-function config.toml verify_jwt on
+# deploy — pass verify_jwt=true explicitly to deploy_edge_function. The platform
+# setting is the source of truth for what the gateway enforces (see feedback
+# memory feedback_supabase_cli_verify_jwt).
+
+verify_jwt = true
