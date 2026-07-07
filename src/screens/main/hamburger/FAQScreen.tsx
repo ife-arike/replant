@@ -66,6 +66,13 @@ const FAQ_DATA = [
     a: 'At this time, Replant does not facilitate direct financial transfers between ministries.' },
   { q: 'How can churches actually help one another right now?',
     a: 'Through prayer, resources, manpower, advice, and encouragement.' },
+  // KAN-304 — report mechanism FAQ (CONTENT lane §7, verbatim).
+  { q: 'What happens when I report something?',
+    a: 'It goes only to the Replant team. People — not filters — read it, weigh it against the covenant this community holds, and decide what care or action is needed. Nothing happens to anyone automatically, and the person is not told you raised it.' },
+  { q: 'Will they know it was me?',
+    a: "No. You won't be identified to anyone involved. Reporting stays between you and the Replant team." },
+  { q: 'What if I was reported unfairly?',
+    a: 'A report is not a verdict. Nothing changes on your account because a report was made — a person on the Replant team reviews what was raised, and if anything ever needed your attention, you would hear from the team directly. An unfair report leaves no mark on you.' },
 ];
 
 export default function FAQScreen() {
