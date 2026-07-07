@@ -53,6 +53,13 @@ export interface Deps {
   // bump. Realtime fires automatically on commit (messages is in
   // supabase_realtime). receiver_id = NULL, conversation_id = NULL by
   // the OQ-1 path (a) 3-way CHECK contract.
+  //
+  // KAN-305 — DECIDED, NOT MISSED: branch (group) messages are intentionally
+  // NOT block-gated at v1 (SEC 1.12 / DBA touchpoint #3, Founder D-3). A group
+  // channel is not a 1:1 contact plane; the *invite* vector is closed
+  // elsewhere so no new shared space can be forced. The messages block trigger
+  // short-circuits on receiver_id IS NOT NULL, so these NULL-receiver inserts
+  // pass through untouched by construction — no explicit check belongs here.
   insertBranchMessage(input: {
     senderId: string;
     branchId: string;
