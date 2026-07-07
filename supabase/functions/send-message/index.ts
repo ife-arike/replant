@@ -400,7 +400,7 @@ function makeDeps(): Deps {
     async fetchConversation(conversationId) {
       const { data, error } = await adminClient
         .from("conversations")
-        .select("id, participant_a, participant_b")
+        .select("id, participant_a, participant_b, is_secure_replant_thread")
         .eq("id", conversationId)
         .maybeSingle();
       if (error || !data) return null;
@@ -408,14 +408,43 @@ function makeDeps(): Deps {
         id: data.id as string,
         participant_a: data.participant_a as string,
         participant_b: data.participant_b as string,
+        is_secure_replant_thread: data.is_secure_replant_thread === true,
       };
+    },
+
+    // KAN-305 — block gate. Symmetric pair check via the fn_is_blocked
+    // SECURITY DEFINER helper (service_role EXECUTE only — this admin client
+    // holds it). Replant Team secure threads are exempt (moderation channel
+    // never severed); the caller passes that flag so we short-circuit without
+    // a DB round-trip. Fail-CLOSED on a lookup error: prefer refusing a send
+    // over risking delivery into a block (the trigger would reject it anyway,
+    // so returning "blocked" here just yields the clean 403 instead of a 500).
+    async isBlockedPair({ senderId, receiverId, isSecureReplantThread }) {
+      if (isSecureReplantThread) return false;
+      const { data, error } = await adminClient.rpc("fn_is_blocked", {
+        p_a: senderId,
+        p_b: receiverId,
+      });
+      if (error) {
+        console.warn(JSON.stringify({
+          level: "warn",
+          event: "send-message.is-blocked-check-failed",
+          error_class: error.message ?? "error",
+          ts: new Date().toISOString(),
+        }));
+        // Fail-closed: treat an errored check as blocked. The DB trigger is
+        // the guarantee regardless; this keeps the surface a clean 403.
+        return true;
+      }
+      return data === true;
     },
 
     async sendInTransaction(input) {
       // Single transaction: lazy-create-or-reuse conversation (if
       // applicable), INSERT message, UPDATE conversation.last_message_at.
       // Full rollback on any throw inside the begin() block.
-      return await sql.begin(async (tx) => {
+      try {
+        return await sql.begin(async (tx) => {
         let conversationId: string;
 
         if (input.conversationId) {
@@ -506,7 +535,23 @@ function makeDeps(): Deps {
           created_at: new Date(row.created_at as string).toISOString(),
           flagged: Boolean(row.flagged),
         };
-      });
+        });
+      } catch (e) {
+        // KAN-305 — the BEFORE INSERT block guard (trg_messages_block_guard)
+        // raises 'blocked_pair' if a block landed in the TOCTOU window between
+        // the handler's explicit isBlockedPair check and this INSERT. Map it
+        // to the same generic 403 the explicit check produces so the trigger
+        // path is byte-identical to the clean path — the blocked sender still
+        // learns nothing (silence guarantee). Any other error propagates
+        // unchanged.
+        const msg = (e as Error)?.message ?? "";
+        if (msg.includes("blocked_pair")) {
+          const mapped = new Error("blocked_pair");
+          (mapped as { httpStatus?: number }).httpStatus = 403;
+          throw mapped;
+        }
+        throw e;
+      }
     },
 
     getTaxonomy() {

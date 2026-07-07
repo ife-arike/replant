@@ -44,6 +44,10 @@ export interface ConversationParticipants {
   id: string;
   participant_a: string;
   participant_b: string;
+  // KAN-305 — carve the Replant Team moderation channel out of the block
+  // gate. Optional for backward compatibility with the /internal path;
+  // treated as false when absent (a brand-new lazy thread is never secure).
+  is_secure_replant_thread?: boolean;
 }
 
 export interface Deps {
@@ -55,6 +59,20 @@ export interface Deps {
   fetchConversation(conversationId: string): Promise<
     ConversationParticipants | null
   >;
+  // KAN-305 — block gate. Returns true when sender↔receiver are blocked in
+  // EITHER direction (symmetric), EXCEPT on Replant Team secure threads (the
+  // moderation channel is never severed). Runs before the transaction so a
+  // blocked send surfaces as a clean generic 403 rather than a trigger-shaped
+  // 500. The BEFORE INSERT trigger on public.messages remains the guarantee
+  // (unstrippable at the DB layer); this dep is only the courtesy-clean
+  // surface. SILENCE: the caller gets the byte-identical generic 403
+  // (FORBIDDEN) that a non-participant / deactivated counterparty already
+  // produces — the word "blocked" never reaches the blocked sender.
+  isBlockedPair(input: {
+    senderId: string;
+    receiverId: string;
+    isSecureReplantThread: boolean;
+  }): Promise<boolean>;
   // Single-transaction send. Returns inserted message + resolved
   // conversation. Implementation owns the lazy-create-or-reuse race on
   // the conversations UNIQUE (participant_a, participant_b) constraint.
@@ -143,6 +161,10 @@ export function createHandler(deps: Deps) {
       let participantA: string | null = null;
       let participantB: string | null = null;
       let receiverId: string;
+      // KAN-305 — carve the Replant Team moderation channel out of the block
+      // gate. Only an existing conversation can be secure; a lazy-created
+      // thread never is.
+      let isSecureReplantThread = false;
 
       if (body.conversation_id) {
         // Existing conversation path. 403 if conversation doesn't exist
@@ -158,6 +180,7 @@ export function createHandler(deps: Deps) {
         }
         conversationIdInput = conv.id;
         conversationIdForLog = conv.id;
+        isSecureReplantThread = conv.is_secure_replant_thread === true;
         receiverId = conv.participant_a === sender.id
           ? conv.participant_b
           : conv.participant_a;
@@ -180,6 +203,28 @@ export function createHandler(deps: Deps) {
         participantA = participant_a;
         participantB = participant_b;
         receiverId = recipientId;
+      }
+
+      // KAN-305 — block gate. Consent axis (upstream of DELIVER-ALWAYS's
+      // jurisdiction, exactly like the unverified-sender / non-participant
+      // 403s above). A blocked pair (either direction, non-secure thread)
+      // returns the generic FORBIDDEN — byte-identical to the deactivated-
+      // counterparty envelope, so the blocked sender learns nothing (silence
+      // guarantee, SEC §2). No row is written, so nothing exists for Realtime
+      // / the badge / pastoral effects to leak. The messages trigger is the
+      // unstrippable backstop; this is the clean-403 courtesy layer.
+      if (
+        await deps.isBlockedPair({
+          senderId: sender.id,
+          receiverId,
+          isSecureReplantThread,
+        })
+      ) {
+        deps.log("warn", "send-message.blocked-pair", {
+          sender_id: sender.id,
+          conversation_id: conversationIdForLog,
+        });
+        return error403();
       }
 
       // DELIVER-ALWAYS — D-45 clause 3 (locked decision, 2026-05-09).
