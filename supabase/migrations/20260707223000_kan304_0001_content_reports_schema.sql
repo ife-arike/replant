@@ -314,6 +314,11 @@ ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_action_check CHECK (
     'account_soft_deleted'::text,
     'account_restored'::text,
     'account_hard_deleted'::text,
+    -- KAN-305 block tokens (this CHECK rebuild runs AFTER 20260707000002 in
+    -- timestamp order; that migration added these two. Reproduced here so this
+    -- later DROP+ADD does not silently drop them — reconciliation, 2026-07-07.)
+    'user_blocked'::text,
+    'user_unblocked'::text,
     -- NEW (KAN-304 report lifecycle) — 6 tokens
     'content_report_submitted'::text,   -- accepted intake (meta: report_id, target_type, reason, dedup, ug_involved); NO reporter/target-author id in meta for UG-involved
     'content_report_rejected'::text,    -- invalid / not-visible target; validation fail (rejection class only)
