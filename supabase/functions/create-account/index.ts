@@ -206,18 +206,36 @@ function makeDeps(): Deps {
       };
     },
     async sendWelcomeEmail({ email, firstName, userId, kind, daysRemaining, churchType }) {
-      // Copy variants locked Founder 2026-06-18 (interim; the email
-      // story sprint will polish wording + HTML treatment). Plain text
-      // for now to mirror existing Resend send pattern.
+      // Copy RATIFIED Founder 2026-07-13 (G14 copy review). Written for
+      // the leader whose FIRST-EVER Replant touchpoint may be this email
+      // (came via social / word of mouth, never saw the website): each
+      // body says what Replant IS before saying what to do next.
+      // Sign-off is "— The Replant Team" per the no-liturgical-signoff
+      // ruling; John 17:21 closes as a scripture block (identity, not
+      // signature). Plain text mirrors the existing send pattern.
       //
       // CONTENT F6 (2026-06-18): conditional "church" → "organization" swap
       // for para_ministry. A missions agency director receiving "Your church
       // is verified" reads wrong day-one.
       const churchOrOrg = churchType === "para_ministry" ? "organization" : "church";
 
-      const tail =
-        `In the meantime, explore the Prayer Wall and keep up with the network through the Home tab.\n\n` +
-        `In Jesus' name,\nReplant`;
+      // Shared identity line — pending + skip audiences may know nothing
+      // about Replant yet; verified leaders join an established church
+      // and get the tour instead.
+      const identity =
+        `Replant is a space for leaders like you — those who carry a congregation, ` +
+        `a calling, or a work the Lord has placed in their hands — to stand together ` +
+        `with the Body of Christ across the globe.`;
+
+      const helpLine =
+        `If anything is unclear, write to us at accounts@projectreplant.org — we're glad to help.`;
+
+      const close =
+        `We're grateful you've come. See you in the network.\n\n` +
+        `— The Replant Team\n\n` +
+        `"That they all may be one, as thou, Father, art in me, and I in thee, ` +
+        `that they also may be one in us: that the world may believe that thou hast sent me."\n` +
+        `John 17:21 — KJV`;
 
       let body: string;
       let subject = "Welcome to Replant";
@@ -241,29 +259,55 @@ function makeDeps(): Deps {
           `— The Replant Team\n` +
           `projectreplant.org`;
       } else if (kind === "skip") {
+        // "7 days" hardcode is accurate — this email fires at second
+        // zero of account creation (Founder-confirmed 2026-07-13).
         body =
           `Welcome to Replant, ${firstName}.\n\n` +
-          `You have 7 days to register your church or organization, or join an existing one. ` +
-          tail;
+          `We're glad you're here. ${identity}\n\n` +
+          `Your account is set up. You have 7 days to register your church or ` +
+          `organization, or to join one already on Replant — the app will walk you through it.\n\n` +
+          `While you look around:\n\n` +
+          `Visit the Prayer Wall to see what leaders around the world have been ` +
+          `burdened with, and lift one of them up. Keep track of what's moving in ` +
+          `the body through the Home feed. This network runs on intercession before ` +
+          `anything else.\n\n` +
+          `${helpLine}\n\n` +
+          close;
       } else if (kind === "verified_church") {
         body =
           `Welcome to Replant, ${firstName}.\n\n` +
-          `Your ${churchOrOrg} is verified. The Replant team will reach out to confirm your account shortly.\n\n` +
-          tail;
+          `Your ${churchOrOrg} is verified, and the network is open to you. ` +
+          `The Replant team will reach out shortly to confirm your account.\n\n` +
+          `Now that you're in:\n\n` +
+          `Take a look around. Explore the Church at Large and see where the body ` +
+          `is standing. Reach out to a leader across the globe in the Connect tab. ` +
+          `Bring what your people are carrying to the Prayer Wall. This space is ` +
+          `just the beginning — the Body of Christ connecting at a scale many of ` +
+          `us were never able to reach before.\n\n` +
+          close;
       } else {
         // pending_church
         const dayWord = daysRemaining === 1 ? "day" : "days";
         const safeDays = daysRemaining ?? 30;
         body =
           `Welcome to Replant, ${firstName}.\n\n` +
-          `Your account is pending verification. The Replant team will reach out within ${safeDays} ${dayWord} as your ${churchOrOrg} is in the process of verification.\n\n` +
-          tail;
+          `We're excited you've joined. ${identity}\n\n` +
+          `Your ${churchOrOrg} is being reviewed by our team, and we'll reach out ` +
+          `within ${safeDays} ${dayWord}. Your account stays active the whole time.\n\n` +
+          `While you wait:\n\n` +
+          `Visit the Prayer Wall to see what leaders around the world have been ` +
+          `burdened with, and lift one of them up. Keep track of what's moving in ` +
+          `the body through the Home feed. The full network opens the moment your ` +
+          `${churchOrOrg} is verified.\n\n` +
+          `${helpLine}\n\n` +
+          close;
       }
 
       // KAN-80 G14 — routed through the shared sendEmail contract:
       // email_log-anchored (per-day dedup on user+tag), webhook
-      // delivery-tracked. Bodies/subjects byte-identical to the
-      // pre-migration inline sends; opaque tags per the ratified map.
+      // delivery-tracked; opaque tags per the ratified map. Bodies are
+      // the Founder-ratified 2026-07-13 copy (underground body verbatim
+      // per the 2026-06-19 lock — untouched).
       const WELCOME_TAGS: Record<string, string> = {
         skip: "welcome_t23",
         pending_church: "welcome_t14",
