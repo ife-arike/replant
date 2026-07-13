@@ -1,0 +1,17 @@
+-- Flow-gaps gap-4 (2026-07-13) — Settings → Notifications email toggle.
+--
+-- P0-2 (20260702021338_p0_2_breakglass_revoke_privilege_column_writes)
+-- converted public.users from table-level to column-level UPDATE grants.
+-- email_notifications_enabled (KAN-80 M6-lite, 2026-07-13) postdates that
+-- list, so the mobile client cannot write its own toggle. This is the
+-- column-scoped additive grant ONLY — column grants are independent, so
+-- this touches none of the existing curated list and must never be
+-- widened to a table-level GRANT (that would reopen the P0-2 surface).
+--
+-- Row scope stays governed by the users_update_own RLS policy
+-- (auth_id = auth.uid()). The shared send contract reads the flag
+-- fail-open and NEVER suppresses transactional/security sends (Founder
+-- ruling 2026-07-13), so the blast radius of this grant is a leader
+-- silencing their own notification-class email. SME Panel A (SEC + DBA)
+-- APPROVED 2026-07-13.
+GRANT UPDATE (email_notifications_enabled) ON public.users TO authenticated;

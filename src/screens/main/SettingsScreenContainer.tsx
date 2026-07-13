@@ -35,6 +35,10 @@ type RagStatus = "green" | "amber" | "red";
 interface UsersRowShape {
   display_name_preference: DisplayNamePreference | null;
   anonymous: boolean | null;
+  // Flow-gaps gap-4 (2026-07-13) — Settings → Notifications email toggle.
+  // NOT NULL DEFAULT true in live; the shared send contract suppresses
+  // notification-class emails when false (transactional never suppressed).
+  email_notifications_enabled?: boolean | null;
   full_name?: string | null;
   // KAN-229 — name-field modifiers + structured parts (used by live preview).
   last_name_first?: boolean | null;
@@ -65,6 +69,7 @@ export default function SettingsScreenContainer() {
     null,
   );
   const [anonymousMode, setAnonymousMode] = useState<boolean>(false);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState<boolean>(true);
   const [fullName, setFullName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   // KAN-229 — name-field modifiers + structured parts.
@@ -93,6 +98,7 @@ export default function SettingsScreenContainer() {
         .select(`
           display_name_preference,
           anonymous,
+          email_notifications_enabled,
           full_name,
           first_name,
           middle_name,
@@ -127,6 +133,7 @@ export default function SettingsScreenContainer() {
       const row = data as unknown as UsersRowShape;
       setInitialPref(row.display_name_preference ?? "first_name_only");
       setAnonymousMode(row.anonymous ?? false);
+      setEmailNotificationsEnabled(row.email_notifications_enabled ?? true);
       setFullName(row.full_name ?? null);
       setUserRole(row.role ?? null);
       setLastNameFirst(row.last_name_first ?? false);
@@ -172,6 +179,7 @@ export default function SettingsScreenContainer() {
       initialHonorific={honorific}
       initialSuffix={suffix}
       anonymousMode={anonymousMode}
+      emailNotificationsEnabled={emailNotificationsEnabled}
       fullName={fullName}
       firstName={firstName}
       middleName={middleName}
