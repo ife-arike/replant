@@ -75,7 +75,7 @@ const POST_TO_FEED_SUBTEXT =
 // the body Text.
 const MODAL_BODY_PRE =
   'Your heartcry has been received. We will be praying alongside you.\n\nPlease reach out to the Replant Team directly at ';
-const MODAL_EMAIL = 'Connect@projectreplant.org';
+const MODAL_EMAIL = 'connect@projectreplant.org';
 const MODAL_BODY_POST = ' if you have a request that cannot wait.';
 const MODAL_ACTION_LABEL = 'Done';
 
