@@ -1,0 +1,16 @@
+# KAN-80 Batch 2 — resend-webhook edge function config.
+#
+# verify_jwt = false is LOAD-BEARING and deliberate. Resend cannot mint
+# Supabase JWTs — the Svix signature (svix-id / svix-timestamp /
+# svix-signature, HMAC-SHA256 against the Vault-held
+# resend_webhook_signing_secret) IS the authentication, verified on
+# every request before any DB access. Replay protection is durable via
+# webhook_events_processed (PK provider+event_id). Per
+# project_replant_invariants: "Webhook from Resend; signature replaces
+# JWT."
+#
+# NOTE: Supabase CLI 2.95.4 quirk — per-function config.toml verify_jwt
+# is ignored on platform deploy; pass --no-verify-jwt explicitly. See
+# feedback memory `feedback_supabase_cli_verify_jwt`.
+
+verify_jwt = false
