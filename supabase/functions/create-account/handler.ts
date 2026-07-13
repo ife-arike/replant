@@ -72,6 +72,8 @@ export interface Deps {
   sendWelcomeEmail(o: {
     email: string;
     firstName: string;
+    // KAN-80 G14 — public.users.id anchoring the email_log row.
+    userId: string;
     // v8 — added "underground_pending" kind (Founder ruling #5,
     // CONTENT B2). Generic body, no church/role/region/country
     // reference. Used for underground founders AND underground join-by-code
@@ -89,7 +91,14 @@ export interface Deps {
     verification_status: string;
     verification_deadline: string | null;
   } | null>;
-  sendNewChurchEmail(o: { churchId: string; leaderEmail: string; leaderFullName: string }): Promise<void>;
+  sendNewChurchEmail(o: {
+    churchId: string;
+    leaderEmail: string;
+    leaderFullName: string;
+    // KAN-80 G14 — acting leader's public.users.id (triggered_by forensics;
+    // the admin-notify row itself anchors on idempotency_key notify_t36:<churchId>).
+    triggeredByUserId: string;
+  }): Promise<void>;
   rateLimit(ip: string, email: string): Promise<
     | { allowed: true; count: number }
     | { allowed: false; retryAfterSeconds: number }
@@ -491,6 +500,7 @@ export function createHandler(deps: Deps) {
       void deps.sendWelcomeEmail({
         email: welcomeEmailTarget,
         firstName: input.firstName,
+        userId: result.userId,
         kind: welcomeKind,
         daysRemaining: welcomeDays,
         churchType: welcomeChurchType,
@@ -516,6 +526,7 @@ export function createHandler(deps: Deps) {
           churchId: result.churchId,
           leaderEmail: input.email,
           leaderFullName: input.fullName,
+          triggeredByUserId: result.userId,
         }).catch(e => deps.log("warn", "new_church_email_failed", { message: (e as Error).message }));
       }
 

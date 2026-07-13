@@ -50,8 +50,8 @@ import {
   RATE_LIMIT_MAX_REQUESTS,
   RATE_LIMIT_WINDOW_SECONDS,
 } from "./logic.ts";
+import { send as sendEmailShared } from "../_shared/email/sendEmail.ts";
 
-const RESEND_URL = "https://api.resend.com/emails";
 const FROM = "Replant <noreply@projectreplant.org>";
 const TEAM = "connect@projectreplant.org";
 
@@ -117,17 +117,6 @@ function makeDeps(): Deps {
     }
     return cp;
   }
-  async function post(body: Record<string, unknown>): Promise<void> {
-    const c = await cache();
-    if (!c) return;
-    const r = await fetch(RESEND_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${c.resendApiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) throw new Error(`Resend ${r.status}`);
-  }
-
   return {
     async findAuthUserByEmail(e) {
       let p = 1;
@@ -216,7 +205,7 @@ function makeDeps(): Deps {
         verification_deadline: row.verification_deadline ?? null,
       };
     },
-    async sendWelcomeEmail({ email, firstName, kind, daysRemaining, churchType }) {
+    async sendWelcomeEmail({ email, firstName, userId, kind, daysRemaining, churchType }) {
       // Copy variants locked Founder 2026-06-18 (interim; the email
       // story sprint will polish wording + HTML treatment). Plain text
       // for now to mirror existing Resend send pattern.
@@ -271,20 +260,42 @@ function makeDeps(): Deps {
           tail;
       }
 
-      await post({
-        from: FROM,
+      // KAN-80 G14 — routed through the shared sendEmail contract:
+      // email_log-anchored (per-day dedup on user+tag), webhook
+      // delivery-tracked. Bodies/subjects byte-identical to the
+      // pre-migration inline sends; opaque tags per the ratified map.
+      const WELCOME_TAGS: Record<string, string> = {
+        skip: "welcome_t23",
+        pending_church: "welcome_t14",
+        verified_church: "welcome_t29",
+        underground_pending: "welcome_t08",
+      };
+      const c = await cache();
+      if (!c) return;
+      const result = await sendEmailShared(ac, c.resendApiKey, {
+        template: WELCOME_TAGS[kind] ?? "welcome_t14",
         to: email,
         subject,
         text: body,
-      });
-    },
-    async sendNewChurchEmail({ churchId, leaderEmail, leaderFullName }) {
-      await post({
         from: FROM,
+        logUserId: userId,
+      });
+      if (!result.success) throw new Error(`sendEmail: ${result.reason}`);
+    },
+    async sendNewChurchEmail({ churchId, leaderEmail, leaderFullName, triggeredByUserId }) {
+      const c = await cache();
+      if (!c) return;
+      const result = await sendEmailShared(ac, c.resendApiKey, {
+        template: "notify_t36",
         to: TEAM,
         subject: "New church registered — Replant",
         text: `New church registered in onboarding.\n\nChurch ID: ${churchId}\nLeader: ${leaderFullName} <${leaderEmail}>\n\n— create-account`,
+        from: FROM,
+        logUserId: null,
+        idempotencyKey: `notify_t36:${churchId}`,
+        triggeredBy: triggeredByUserId,
       });
+      if (!result.success) throw new Error(`sendEmail: ${result.reason}`);
     },
     async rateLimit(ip, email) {
       const k = rateLimitKey(ip, email);
