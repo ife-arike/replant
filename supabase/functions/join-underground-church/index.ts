@@ -30,8 +30,8 @@ import {
   PER_IP_RATE_LIMIT_WINDOW_SECONDS,
   perIpRateLimitKey,
 } from "./handler.ts";
+import { send as sendEmailShared } from "../_shared/email/sendEmail.ts";
 
-const RESEND_URL = "https://api.resend.com/emails";
 const FROM = "Replant <noreply@projectreplant.org>";
 
 interface ResendCache { resendApiKey: string; }
@@ -140,16 +140,6 @@ function makeDeps(): Deps {
     return resendCacheP;
   }
 
-  async function resendPost(body: Record<string, unknown>): Promise<void> {
-    const c = await resendCache();
-    if (!c) return;
-    const r = await fetch(RESEND_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${c.resendApiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) throw new Error(`Resend ${r.status}`);
-  }
 
   return {
     async createAuthUser({ email, password }) {
@@ -245,12 +235,18 @@ function makeDeps(): Deps {
       if (error) throw new Error(error.message);
     },
 
-    async sendUndergroundPendingEmail({ email }) {
+    async sendUndergroundPendingEmail({ email, userId }) {
       // VERBATIM body per Founder ruling #5 + CONTENT B2 (2026-06-19).
       // Identical to create-account v8's underground_pending kind —
       // intentional. The email channel must not differentiate
       // founder vs. second-leader (no signal an observer of an inbox
       // could use to infer underground church membership).
+      //
+      // KAN-80 Batch 2: routed through the shared sendEmail contract —
+      // email_log claim (idempotent per user/day), retry, webhook-tracked
+      // delivery. Template literal is the OPAQUE tag 'welcome_t08' per the
+      // Founder-ratified tag map (SEC: no 'underground' string at rest).
+      // Body/subject/from unchanged byte-for-byte; text-only preserved.
       const body =
         `Hello,\n\n` +
         `Thank you for completing your registration with Replant.\n\n` +
@@ -261,12 +257,17 @@ function makeDeps(): Deps {
         `We are praying for you.\n\n` +
         `— The Replant Team\n` +
         `projectreplant.org`;
-      await resendPost({
-        from: FROM,
+      const c = await resendCache();
+      if (!c) return;
+      const result = await sendEmailShared(adminClient, c.resendApiKey, {
+        template: "welcome_t08",
         to: email,
         subject: "Your Replant registration",
         text: body,
+        from: FROM,
+        logUserId: userId,
       });
+      if (!result.success) throw new Error(`sendEmail: ${result.reason}`);
     },
 
     async idempotencyCacheGet(k) {

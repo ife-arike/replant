@@ -82,7 +82,8 @@ export interface Deps {
 
   // Generic underground_pending email. NO church name, no role, no
   // region, no country, no "underground" word (#5 + CONTENT B2).
-  sendUndergroundPendingEmail(o: { email: string }): Promise<void>;
+  // userId = public.users.id — anchors the email_log row (KAN-80 Batch 2).
+  sendUndergroundPendingEmail(o: { email: string; userId: string }): Promise<void>;
 
   // Idempotency cache (Upstash). Failure-mode parity with create-account:
   // get returns null on miss/error; set swallows on error.
@@ -325,7 +326,7 @@ export function createHandler(deps: Deps) {
       }
 
       // ── Step 11: welcome email (fire-and-forget) ─────────────────
-      void deps.sendUndergroundPendingEmail({ email: input.email })
+      void deps.sendUndergroundPendingEmail({ email: input.email, userId: publicUserId })
         .catch(e => deps.log("warn", "welcome_email_failed", { message: (e as Error).message }));
 
       // ── Step 12: cache success ───────────────────────────────────
