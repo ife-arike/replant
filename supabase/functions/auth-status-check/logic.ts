@@ -10,6 +10,15 @@ export type VerificationStatus = "active" | "pending" | "deactivated";
 // design v3 modal.
 export type RecoveryPath = "verification_renewal" | "support_contact";
 
+// Flow-gaps F4/G10 (SME Panel A, 2026-07-13; Founder-ratified rejection
+// copy 2026-07-13) — closed enum ONLY. The admin's free-text rejection
+// reason lives in audit_log.meta and must NEVER cross to the client;
+// this token selects which ratified lockout copy variant the FE renders.
+// recovery_path stays binary (the c.14235 lock is untouched) — this is
+// the KAN-205 additive-optional-field precedent, omitted when absent so
+// old clients degrade to the generic deactivated copy.
+export type LockoutReason = "church_rejected" | "leader_rejected";
+
 export interface AuthStatusResponse {
   verification_status: VerificationStatus;
   verification_deadline: string | null;
@@ -43,14 +52,27 @@ export interface AuthStatusResponse {
   //   'soft_deleted'  → admin two-eyes confirmed a reject; show
   //                     VerificationOutcomeModal + persistent banner,
   //                     gate Connect/PrayerWall to read-only
+  //   'self_deleted'  → KAN-205 (SEC panel 2026-07-03, ratified): the
+  //                     LEADER's own account is in the 30-day
+  //                     leader-initiated soft-delete window. RootNavigator
+  //                     mounts the dedicated RestoreScreen ceremony —
+  //                     NOT the tabs, NOT the rejection read-only shell.
+  //                     Surfaces only post-auth (sign-in works all 30
+  //                     days; nothing pre-auth discloses the account).
   //
   // OMITTED from the response when neither applies — same posture as
   // underground_join_code_pending_reveal (don't advertise the state
   // machine to viewers it doesn't apply to).
   branch_substate?: BranchSubstate;
+  // Flow-gaps F4/G10 (2026-07-13) — present iff verification_status ===
+  // "deactivated" AND the cause is a rejection (church-level via
+  // reject-church, or leader-level via reject-leader). Selects the
+  // Founder-ratified "We were unable to verify your church/account"
+  // lockout copy. OMITTED for every non-rejection deactivation.
+  lockout_reason?: LockoutReason;
 }
 
-export type BranchSubstate = "request_info" | "soft_deleted";
+export type BranchSubstate = "request_info" | "soft_deleted" | "self_deleted";
 
 // KAN-65 tidy-up (2026-05-26) — added 'rejected'. The live
 // verification_status_enum has had this value since KAN-110; the local type
@@ -65,6 +87,15 @@ export interface UserStatusRow {
   deactivated_at: string | null;
   is_active: boolean;
   church_id: string | null;
+  // KAN-205 (2026-07-07) — USER-level soft-delete columns. Before this,
+  // the resolver derived 'soft_deleted' from the CHURCH's soft_deleted_at
+  // only, so a self-deleted leader who was not the last leader on their
+  // church signed into a normal-looking app where every write failed on
+  // RLS, with no restore surface (the ratified KAN-205 blocker). These
+  // three columns let resolveBranchSubstate check the USER first.
+  soft_deleted_at: string | null;
+  soft_delete_reason: string | null;
+  hard_delete_scheduled_at: string | null;
   // KAN-TBD 2026-06-18 (Founder ratification, overriding KAN-36 Option Y
   // for the skip-flow null-church case). users.verification_deadline is
   // load-bearing for the skip-leader pending branch; the church-side
@@ -99,7 +130,7 @@ export type ResolvedStatus =
   // fire the locked "register" copy variant; surfacing a number would
   // route it to amber/urgent with wrong "your church" wording.
   | { kind: "pending"; verification_deadline: string | null; days_remaining: number | null }
-  | { kind: "deactivated"; recovery_path: RecoveryPath }
+  | { kind: "deactivated"; recovery_path: RecoveryPath; lockout_reason?: LockoutReason }
   // KAN-TBD 2026-06-18 — isSkipFlow distinguishes skip leader past
   // 7-day deadline (route to support_contact — there's no church to
   // renew) from attached leader past 30-day church deadline (route to
@@ -157,7 +188,17 @@ export function resolveStatus(
   // to the "pending" path below and be evaluated against a deadline, which
   // is incorrect for rejected leaders.
   if (row.verification_status === "rejected") {
-    return { kind: "deactivated", recovery_path: "support_contact" };
+    // Flow-gaps F4 (2026-07-13): leader-level rejection (reject-leader.js
+    // sets exactly this row state) carries the personal-variant ratified
+    // copy. recovery_path stays support_contact — the recourse IS the
+    // human conversation at accounts@. Precedence note (SEC Panel A):
+    // a user both individually rejected AND on a rejected church lands
+    // here — the more specific state wins.
+    return {
+      kind: "deactivated",
+      recovery_path: "support_contact",
+      lockout_reason: "leader_rejected",
+    };
   }
 
   if (row.verification_status === "deactivated") {
@@ -173,7 +214,16 @@ export function resolveStatus(
     // below — the FE never sees verification_renewal on a NULL-deadline
     // row.
     const deactDeadline = row.church?.verification_deadline ?? null;
-    if (deactDeadline !== null) {
+    // Flow-gaps Panel B DBA stamp (2026-07-13): the renewal copy applies
+    // ONLY to deadline-driven deactivations — a church still PENDING
+    // verification whose 30-day window lapsed. A VERIFIED church routinely
+    // carries a stale past creation-timer deadline (the 2026-06-18 root
+    // fix documented this), so a user-deactivated row on a verified /
+    // rejected / deactivated church must resolve to support_contact —
+    // never "your church verification window expired." Mirrors the
+    // pending branch's own church-status switch below (one mental model).
+    const deactChurchStatus = row.church?.verification_status ?? null;
+    if (deactChurchStatus === "pending" && deactDeadline !== null) {
       const dl = Date.parse(deactDeadline);
       const now = Date.parse(nowISO);
       if (Number.isNaN(dl) || Number.isNaN(now)) throw new Error("Invalid timestamp");
@@ -250,11 +300,24 @@ export function resolveStatus(
     };
   }
 
-  if (churchStatus === "rejected" || churchStatus === "deactivated") {
+  if (churchStatus === "rejected") {
+    // Flow-gaps F4 (2026-07-13): the church was rejected (reject-church.js
+    // sets only the church row; this leader's own row stays pending) —
+    // carry the church-variant ratified lockout copy. Route stays
+    // support_contact.
+    return {
+      kind: "deactivated",
+      recovery_path: "support_contact",
+      lockout_reason: "church_rejected",
+    };
+  }
+
+  if (churchStatus === "deactivated") {
     // Leader is attached to a church that is no longer in good standing.
     // They cannot proceed via this church. Route to support — admin
     // will work out the leader's path (rejoin a different church,
-    // appeal, etc.).
+    // appeal, etc.). Deliberately NO lockout_reason — church deactivation
+    // keeps today's generic copy (SEC Panel A required change 4.3).
     return { kind: "deactivated", recovery_path: "support_contact" };
   }
 
@@ -296,13 +359,21 @@ export function buildResponse(resolved: ResolvedStatus): AuthStatusResponse {
         verification_deadline: resolved.verification_deadline,
         days_remaining: resolved.days_remaining,
       };
-    case "deactivated":
-      return {
+    case "deactivated": {
+      const body: AuthStatusResponse = {
         verification_status: "deactivated",
         verification_deadline: null,
         days_remaining: null,
         recovery_path: resolved.recovery_path,
       };
+      // Omit-when-absent (never null/default) — same posture as
+      // branch_substate. Old clients ignore the unknown key and render
+      // the generic deactivated copy.
+      if (resolved.lockout_reason !== undefined) {
+        body.lockout_reason = resolved.lockout_reason;
+      }
+      return body;
+    }
     case "pending_past_deadline_needs_write":
       // KAN-36 v2 (SEC c.14235 #2) — login-check just-flipped a pending
       // user past their deadline. Same trigger as cron.
@@ -345,24 +416,33 @@ export function isUndergroundJoinCodePendingReveal(args: {
   return true;
 }
 
-// Underground Verification Queue substate resolver (2026-06-22).
+// Underground Verification Queue substate resolver (2026-06-22),
+// extended for KAN-205 self-deletion (SEC panel 2026-07-03, ratified).
 //
-// Pure function over the already-fetched church row. The handler decorates
+// Pure function over the already-fetched row. The handler decorates
 // the response when this returns non-undefined. Priority:
-//   1. soft_deleted_at IS NOT NULL → 'soft_deleted' (rejection trumps everything)
-//   2. last_outcome_modal_kind === 'request_info' → 'request_info'
-//   3. else undefined (no decoration)
-//
-// Skip-flow leaders (church_id === null) never receive a substate — the
-// queue acts on churches, not skip-flow user rows. They can still be
-// soft-deleted via the leader-initiated path, but that lifecycle uses the
-// existing verification_status='deactivated' surface (recovery_path), not
-// the new modal surfaces.
+//   1. USER soft_deleted_at IS NOT NULL with reason 'leader_initiated'
+//      → 'self_deleted' (KAN-205 — the leader's own act trumps every
+//      church-derived state; checked FIRST per the SEC design §2.2).
+//      Applies to skip-flow leaders too (they can self-delete; before
+//      KAN-205 they were excluded from substates entirely).
+//   2. church soft_deleted_at IS NOT NULL → 'soft_deleted' (admin
+//      rejection ceremony — unchanged. A user soft-deleted with an
+//      ADMIN reason always has the church mirror set by the same
+//      two-eyes confirm, so it lands here, not in 'self_deleted').
+//   3. last_outcome_modal_kind === 'request_info' → 'request_info'
+//   4. else undefined (no decoration)
 //
 // Generic chrome invariant: this field is OMITTED entirely when not
 // applicable. Don't advertise the state machine to viewers it doesn't
 // apply to.
 export function resolveBranchSubstate(row: UserStatusRow): BranchSubstate | undefined {
+  // KAN-205 — USER-level check FIRST. Only the leader-initiated reason
+  // maps to the self-restore ceremony; admin-initiated soft-deletes keep
+  // routing through the church-derived 'soft_deleted' rejection surface.
+  if (row.soft_deleted_at !== null && row.soft_delete_reason === "leader_initiated") {
+    return "self_deleted";
+  }
   if (row.church_id === null) return undefined;
   if (row.church === null) return undefined;
   if (row.church.soft_deleted_at !== null) return "soft_deleted";

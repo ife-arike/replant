@@ -70,10 +70,14 @@ function makeDeps(): Deps {
       // Underground Verification Queue (2026-06-22): churches.soft_deleted_at
       // and churches.last_outcome_modal_kind added to drive branch_substate.
       // Both nullable; the resolver treats absent values as "no substate."
+      // KAN-205 (2026-07-07): the USER's own soft_deleted_at /
+      // soft_delete_reason / hard_delete_scheduled_at are now selected too
+      // — resolveBranchSubstate checks USER-level soft-delete FIRST to
+      // derive the 'self_deleted' substate (the ratified blocker fix).
       const { data, error } = await adminClient
         .from("users")
         .select(
-          "id, verification_status, deactivated_at, is_active, church_id, verification_deadline, church:churches!users_church_id_fkey(verification_status, verification_deadline, soft_deleted_at, last_outcome_modal_kind)",
+          "id, verification_status, deactivated_at, is_active, church_id, verification_deadline, soft_deleted_at, soft_delete_reason, hard_delete_scheduled_at, church:churches!users_church_id_fkey(verification_status, verification_deadline, soft_deleted_at, last_outcome_modal_kind)",
         )
         .eq("auth_id", authUid)
         .maybeSingle();
@@ -101,6 +105,12 @@ function makeDeps(): Deps {
         deactivated_at: (data.deactivated_at as string | null) ?? null,
         is_active: data.is_active as boolean,
         church_id: (data.church_id as string | null) ?? null,
+        // KAN-205 — normalize absent to null so the resolver's strict
+        // null checks never see undefined (the pre-2026-07 test-mock
+        // drift bug was exactly an undefined-vs-null mismatch).
+        soft_deleted_at: (data.soft_deleted_at as string | null) ?? null,
+        soft_delete_reason: (data.soft_delete_reason as string | null) ?? null,
+        hard_delete_scheduled_at: (data.hard_delete_scheduled_at as string | null) ?? null,
         user_verification_deadline: (data.verification_deadline as string | null) ?? null,
         church,
       };
@@ -110,7 +120,7 @@ function makeDeps(): Deps {
       // sql.begin runs the closure inside a transaction. ANY error thrown inside —
       // including the audit INSERT failing a constraint — rolls back the UPDATE.
       // postgres-js re-throws after rollback so the handler's catch-all returns 500.
-      return await sql.begin(async (tx) => {
+      return await sql.begin(async (tx: postgres.TransactionSql) => {
         // Idempotency guard: WHERE verification_status='pending' ensures a concurrent
         // caller that already wrote 'deactivated' affects 0 rows here, so the audit
         // INSERT below only fires for the request that performed the write.

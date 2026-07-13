@@ -46,7 +46,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth, type RecoveryPath } from '../../contexts/AuthProvider';
+import { useAuth, type LockoutReason, type RecoveryPath } from '../../contexts/AuthProvider';
 import { Colors, Typography } from '../../constants/theme';
 
 const CONTACT_EMAIL = 'accounts@projectreplant.org';
@@ -78,11 +78,42 @@ function paragraphsFor(path: RecoveryPath): string[] {
   }
 }
 
+// Flow-gaps F4/G10 — Founder-RATIFIED rejection lockout copy (2026-07-13,
+// verbatim; spaces and phrasing load-bearing — any change needs a fresh
+// Founder ruling). The ratified block's bolded first line renders in the
+// modal's title slot; the remaining paragraphs are the body. The personal
+// (leader-level) variant mirrors the LOCKED notify_t26 personal email body.
+const REJECTION_COPY: Record<LockoutReason, { title: string; paragraphs: string[] }> = {
+  church_rejected: {
+    title: 'We were unable to verify your church.',
+    paragraphs: [
+      'We have prayerfully considered your church’s registration on Replant and are not able to verify it at this time.',
+      'If there was an issue with your registration, or if you believe we reached this decision in error, please write to us at accounts@projectreplant.org.',
+      'May the grace of the Lord be with you.',
+    ],
+  },
+  leader_rejected: {
+    title: 'We were unable to verify your account.',
+    paragraphs: [
+      'We have prayerfully considered your account on Replant and are not able to verify it at this time.',
+      'If there was an issue with your registration, or if you believe we reached this decision in error, please write to us at accounts@projectreplant.org.',
+      'May the grace of the Lord be with you.',
+    ],
+  },
+};
+
 export default function DeactivationModal() {
-  const { deactivationModalPath, dismissDeactivationModal } = useAuth();
+  const { deactivationModalPath, deactivationLockoutReason, dismissDeactivationModal } = useAuth();
   const insets = useSafeAreaInsets();
 
   if (deactivationModalPath === null) return null;
+
+  // Flow-gaps F4 — rejection variants take precedence when the server sent
+  // lockout_reason; otherwise the KAN-36 v2 RecoveryPath variants render
+  // exactly as before (old-server / non-rejection degradation).
+  const rejection = deactivationLockoutReason !== null
+    ? REJECTION_COPY[deactivationLockoutReason]
+    : null;
 
   // Backdrop tap = dismiss. Card taps that aren't the contact pressable
   // bubble to the backdrop (the inner View has no onPress), so any tap
@@ -114,7 +145,8 @@ export default function DeactivationModal() {
     dismissDeactivationModal();
   };
 
-  const paragraphs = paragraphsFor(deactivationModalPath);
+  const paragraphs = rejection ? rejection.paragraphs : paragraphsFor(deactivationModalPath);
+  const title = rejection ? rejection.title : 'Account deactivated';
 
   // Bottom-anchored per design v3: align-items: flex-end with a 16/22 px
   // gutter, respecting the safe-area inset on devices with a home
@@ -135,7 +167,7 @@ export default function DeactivationModal() {
       >
         <View style={styles.card}>
           <Text style={styles.eyebrow}>A NOTE ON YOUR ACCOUNT</Text>
-          <Text style={styles.title}>Account deactivated</Text>
+          <Text style={styles.title}>{title}</Text>
           <View style={styles.bodyBlock}>
             {paragraphs.map((p, i) => (
               <Text key={i} style={[styles.body, i > 0 && styles.bodyGap]}>

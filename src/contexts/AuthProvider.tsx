@@ -84,6 +84,13 @@ export type AuthBranch =
 // in lockstep. KAN-36 v2 binary-only contract — no third value.
 export type RecoveryPath = "verification_renewal" | "support_contact";
 
+// Flow-gaps F4/G10 (2026-07-13) — mirrored from logic.ts. Closed enum
+// selecting the Founder-ratified rejection lockout copy variant on the
+// DeactivationModal. Present iff the deactivation cause is a rejection;
+// recovery_path stays binary (c.14235 untouched). Held in memory only —
+// never persisted to disk.
+export type LockoutReason = "church_rejected" | "leader_rejected";
+
 export interface AuthState {
   session: Session | null;
   branch: AuthBranch;
@@ -105,6 +112,11 @@ export interface AuthState {
   // copy variant; calls dismissDeactivationModal on tap-outside / tap-
   // contact / tap-elsewhere.
   deactivationModalPath: RecoveryPath | null;
+  // Flow-gaps F4 (2026-07-13) — non-null only when the deactivation is a
+  // rejection; DeactivationModal renders the ratified rejection copy for
+  // the matching variant and falls back to the RecoveryPath variants when
+  // null (old-server degradation is the generic copy, by design).
+  deactivationLockoutReason: LockoutReason | null;
   dismissDeactivationModal: () => void;
   refresh: () => Promise<void>;
   // KAN-38 — used by SetNewPasswordScreen (Screen 06B) after success /
@@ -150,6 +162,10 @@ interface AuthStatusResponse {
   //   'soft_deleted' → branch="soft_deleted"
   // Default undefined → fall through to verification_status as today.
   branch_substate?: "request_info" | "soft_deleted";
+  // Flow-gaps F4 (2026-07-13) — present iff verification_status ===
+  // "deactivated" AND the cause is a rejection. Omitted otherwise; the
+  // consumer defaults to null (generic deactivated copy).
+  lockout_reason?: LockoutReason;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -170,12 +186,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [deactivationModalPath, setDeactivationModalPath] = useState<RecoveryPath | null>(null);
+  // Flow-gaps F4 (2026-07-13) — rejection-copy selector; lives and dies
+  // with deactivationModalPath (set together, cleared together).
+  const [deactivationLockoutReason, setDeactivationLockoutReason] =
+    useState<LockoutReason | null>(null);
   // Underground flow (2026-06-20) — see header on AuthState.
   const [undergroundJoinCodePendingReveal, setUndergroundJoinCodePendingReveal] =
     useState(false);
 
   const dismissDeactivationModal = useCallback(() => {
     setDeactivationModalPath(null);
+    setDeactivationLockoutReason(null);
   }, []);
 
   const inFlight = useRef(false);
@@ -296,6 +317,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // values when v4+ is live, but defending the FE here costs
         // nothing and preserves the conservative-on-unknown invariant.
         setDeactivationModalPath(data.recovery_path ?? "support_contact");
+        // Flow-gaps F4 (2026-07-13) — rejection decoration. Missing field
+        // (old server, non-rejection deactivation) → null → generic copy.
+        setDeactivationLockoutReason(data.lockout_reason ?? null);
         setVerificationDeadline(null);
         setDaysRemaining(null);
         // KAN-36 bug fix — reset debounce so the leader's next sign-in
@@ -537,6 +561,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         undergroundJoinCodePendingReveal,
         loading,
         deactivationModalPath,
+        deactivationLockoutReason,
         dismissDeactivationModal,
         refresh: initialize,
         clearPasswordRecovery,
