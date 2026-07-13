@@ -282,8 +282,11 @@ function makeDeps(): Deps {
           "Content-Type":  "application/json",
         },
         body: JSON.stringify({
-          from:    "info@projectreplant.org",
-          to:      ["info@projectreplant.org"],
+          // Ops alerts route to accounts@ per the address-purpose map
+          // (Founder ruling 2026-07-12: connect@ = relationship,
+          // accounts@ = record/ops, info@ = community questions).
+          from:    "Replant Operations <accounts@projectreplant.org>",
+          to:      ["accounts@projectreplant.org"],
           subject: "Pastoral signal — Tier 1 (immediate review)",
           html: `<p>A Tier 1 pastoral signal is awaiting immediate review.</p><p><a href="${t1DeepLink}">Open the pastoral queue</a></p><p>— Replant Operations</p>`,
           text: `A Tier 1 pastoral signal is awaiting immediate review.\n\nOpen the pastoral queue: ${t1DeepLink}\n\n— Replant Operations`,
