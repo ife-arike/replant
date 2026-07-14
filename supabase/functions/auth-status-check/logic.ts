@@ -178,7 +178,40 @@ export function resolveStatus(
   row: UserStatusRow,
   nowISO: string,
 ): ResolvedStatus {
-  if (row.verification_status === "verified") return { kind: "active" };
+  if (row.verification_status === "verified") {
+    // P1 belt (flow-gaps mini-panel, SEC+DBA both REQUIRED, 2026-07-13):
+    // the verified short-circuit previously returned active WITHOUT ever
+    // consulting the church row — so a VERIFIED leader on a DEACTIVATED
+    // or REJECTED church kept a fully working session (deactivate-church
+    // never cascades user rows, and the write-plane RLS keys on
+    // user-level is_active). Fail-closed here for every path that can
+    // produce that state (admin endpoint, out-of-band SQL, future
+    // tooling). Zero query cost — church.verification_status is already
+    // in the fetched row. Live population in this state at ship time: 0
+    // (verified 2026-07-13), so this is purely protective.
+    //
+    // The Founder-ruled grace-window cascade (no-church + 7-day re-link
+    // window) is the humane REPLACEMENT for this lockout on the
+    // sanctioned deactivate-church path — designed, awaiting her
+    // ratification (see 2026-07-13 cascade panel). The belt stays as the
+    // net underneath it either way.
+    const beltChurchStatus = row.church?.verification_status ?? null;
+    if (beltChurchStatus === "rejected") {
+      // Same ratified copy contract as the pending-branch church_rejected
+      // case — the church was rejected; the leader's recourse is human.
+      return {
+        kind: "deactivated",
+        recovery_path: "support_contact",
+        lockout_reason: "church_rejected",
+      };
+    }
+    if (beltChurchStatus === "deactivated") {
+      // Generic deactivated copy (no lockout_reason) — mirrors the
+      // pending-branch church-deactivated posture exactly.
+      return { kind: "deactivated", recovery_path: "support_contact" };
+    }
+    return { kind: "active" };
+  }
 
   // KAN-65 tidy-up (2026-05-26) — explicit 'rejected' branch. A rejected
   // leader cannot meaningfully renew a verification window (admin-controlled

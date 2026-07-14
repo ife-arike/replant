@@ -1,6 +1,6 @@
 # Leader-only deactivation (G9/C8) — panel-synthesized design for Founder ratification
 
-**Date:** 2026-07-13 · **Status:** DESIGN ONLY — nothing built; Founder rules first (her instruction: "this deactivates real people; confirm-before-building applies with force")
+**Date:** 2026-07-13 · **STATUS UPDATE (same day):** Founder ruled "go ahead" → **Part 1 is BUILT** (deactivate-leader + reinstate-leader + LeaderSlots UI + target-bound step-up + CHECK migration, on the PR #80 branch; divergences resolved per the recommendations: verified-only scope → reinstate-to-verified; allow-with-warning; new audit tokens). **Part 2 (grace-window cascade, appended below) is DESIGN-ONLY awaiting her ratification** — its SEC+DBA mini-panel returned APPROVE-WITH-CHANGES with two hard blockers. The P1 resolver belt both lanes required is BUILT + DEPLOYED (auth-status-check v17).
 **Panel:** SEC + DBA + BA, all three lanes returned genuine **APPROVE-WITH-CHANGES** on the same skeleton (no lane rejected; no verdict forced). Full lane reports live in the session transcript; this doc is the synthesis.
 **Sibling scopes held:** KAN-234 (remove leader / free slot) ≠ this. KAN-148 (3rd-leader conflict) untouched. KAN-61 (deadline sweep) sequences AFTER this and adopts the same state model wholesale (DBA-verified fit). KAN-205 soft-delete is DISQUALIFIED as the mechanism (it schedules hard-purge; deactivation must be reversible) — all three lanes concur.
 
@@ -86,4 +86,47 @@ Same privileged stack as deactivate. No reason required (asymmetry matches reins
 11. **Open-case handling:** warn-and-proceed with open-case count in the strip (all lanes aligned) — ratify.
 12. **Admin placement mock:** per-leader row affordance in LeaderSlots + deactivated visual state — see a mock before build (two-Deactivate mis-click hazard).
 13. **Resolver copy on the rare admin-deactivation-on-pending-church edge:** accept the benign "renewal" lean (DBA rec for v1) vs invest in an explicit reason signal now.
-14. **Separate tickets to open (not this flow):** the §8.1 verified-leader-on-deactivated-church hole (P1-class); deactivate-church step-up backfill; optional users deactivated_has_timestamp CHECK hardening (DBA: not needed v1).
+14. **Separate tickets to open (not this flow):** the §8.1 verified-leader-on-deactivated-church hole (P1-class — belt SHIPPED v17; grace cascade = Part 2 below); deactivate-church step-up backfill; optional users deactivated_has_timestamp CHECK hardening (DBA: not needed v1).
+
+---
+
+# PART 2 — Church-deactivation grace-window cascade (Founder hypothesis; SEC+DBA mini-panel synthesis; AWAITING RATIFICATION)
+
+**Founder's hypothesis (2026-07-13, verbatim intent):** on church deactivation, verified leaders are "brought back to no church — you have 7 days to link to a church or you'll be deactivated."
+
+**Panel verdict: both lanes APPROVE-WITH-CHANGES.** The direction is right — more humane than instant lockout AND more privacy-preserving (routes to the generic register surface, which does not confirm to an adversary holding coerced credentials that Replant took adverse action). The mechanism is elegant: the target state is byte-identical to the existing skip-flow pending state, so resolver, 7-day enforcement, and banner machinery are essentially free. It is NOT shippable as scoped today.
+
+## What shipped NOW (both lanes required it): the resolver belt
+
+auth-status-check v17 (deployed 2026-07-13): the verified→active short-circuit now consults the already-fetched church row — verified leader on a REJECTED church → support_contact + church_rejected ratified copy; on a DEACTIVATED church → generic support_contact. Zero query cost; live population in the state at ship time = 0 (purely protective). The belt closes the P1 hole for EVERY path (endpoint, out-of-band SQL, tooling); the cascade later replaces the belt's lockout with the grace path on the sanctioned endpoint. The belt also closes the reject-church sister hole automatically.
+
+## The two hard blockers on the cascade
+
+1. **The 7-day window is a promise the app cannot keep today: NO in-app re-link surface exists for an authenticated churchless leader.** Register/join screens are pre-auth (onboarding navigator only); the churchless banner has no CTA (mailto only); no RPC attaches church_id to an existing session. Six churchless pending leaders already live in prod with no path. Without the surface, the cascade is a 7-day-delayed lockout with wrong copy. Both lanes: build the surface WITH the cascade or gate the cascade on it.
+2. **Reinstate reversibility must ship WITH the cascade:** once church_id is nulled without capture, every deactivation in the gap is permanently un-restorable. DBA-recommended spine: `users.previous_church_id uuid` set atomically by the cascade; guarded set-based relink on reinstate (tolerating the leader-cap trigger per-row); leaders who lapsed or re-linked elsewhere are excluded (honest cost: they are NOT auto-recoverable).
+
+## The one genuine lane fork (Founder decision)
+
+**Grace-state `is_active`:** SEC requires **false** (write-freeze — with is_active true the RLS write plane stays open: messages, connection requests, prayer posts, comments all keyed on is_active only, so a for-cause-deactivated church's leaders could harvest/contact for 7 days; the re-link then needs one purpose-built is_active-exempt SECURITY DEFINER RPC that re-activates ONLY on successful attach). DBA modeled **true** (exact skip-flow parity, simpler, no exempt RPC needed). SEC's threat case is strong for this platform; DBA's is simpler. **Recommendation: SEC's write-freeze.**
+
+## Panel-required changes (converged)
+
+1. Cascade = ONE atomic SECURITY DEFINER RPC (`fn_deactivate_church_cascade`): church flip + set-based leader UPDATE + per-leader audit rows in one transaction (the JS two-write pattern multiplies partial-failure shapes, and a partial cascade re-opens the exact P1 hole). Emails stay best-effort outside.
+2. Cascade predicate: `church_id=<church> AND is_active=true AND verification_status='verified' AND soft_deleted_at IS NULL AND deactivated_at IS NULL` — never touches gap-5-deactivated, self-deleted, or pending leaders (pending keep today's lockout; parity question flagged as decision 6 below).
+3. New state: `church_id=NULL, previous_church_id=<old>, verification_status='pending', verification_deadline=now()+7d` (+ is_active per the fork above).
+4. NEW audit tokens (`church_cascade_unlink` / `church_cascade_relink` or similar) — NOT deactivate_user (grace ≠ deactivation; forensically false) and NOT deactivate_leader (collides with gap-5's admin-manual lane). Rides the same CANONICAL_ACTIONS + CHECK serialization chain (live-derive; now at 88).
+5. UG excluded v1 + a `type <> 'underground'` guard ON deactivate-church itself (nulling church_id on a UG leader threatens anon-identity masking + join-code integrity; UG has its own deactivation ceremony; any UG grace design = own SEC panel).
+6. deactivate-church step-up hardening BEFORE the cascade lands (post-cascade, one call transitions N accounts — same region-kill class gap-5's target-binding addressed; import action-bound step-up + consider the fail-closed velocity tripwire).
+7. Comms flags (trigger/audience only — comms track owns copy): (a) t09 audience must SPLIT — the current fan-out would email grace leaders "your account has been deactivated," which is false (and DBA: after the unlink the current query returns zero leaders anyway — capture the cohort from the RPC RETURNING); (b) NEW grace-window email kind; (c) **the reminder cron is NOT inert here** — `emit_verification_reminder_emails` keys on users.verification_deadline with no church filter, so grace leaders would get "your church's review window" copy on day-0/day-6 — needs a copy fork or cohort exclusion; (d) grace banner copy — the skip-flow "7 days from account creation" line has the wrong anchor and masks the countdown.
+8. Render seams (DBA sweep — no structural breakage since church_id is denormalized on content tables and messages have no church FK): COALESCE-on-null-church needed at get_leader_thread_list + anon-identity "+ church" renders; grace leaders drop out of Browse Leaders (acceptable, mirrors pending); branch_members rows are an un-swept seam (low risk, flagged); prayer_requests insert dead-ends on NOT-NULL church_id (fail-closed, UX note).
+
+## Founder decisions for the cascade (consolidated, deduped)
+
+1. Ship the cascade + re-link surface TOGETHER (both lanes: hard gate) — confirm scope appetite; until then the v17 belt (lockout, support_contact) is the standing behavior.
+2. Grace-state access: write-frozen (SEC rec) vs skip-flow parity (DBA model).
+3. Reinstate spine: previous_church_id + guarded auto-relink (both lanes rec) vs one-way.
+4. reject-church sister: extend the grace cascade to rejected churches too, or belt-only (rejected is admin-terminal — grace may be the wrong shape there)? Belt already covers it fail-closed.
+5. Cascade audit token name (new, distinct — panel rec) — ratify.
+6. Pending leaders on a deactivated church: keep today's instant support-lockout (both lanes rec) — note the asymmetry vs verified leaders' grace.
+7. Step-up hardening on deactivate-church (action-bound token + velocity) before the cascade — ratify.
+8. Comms handoffs (7 above) — acknowledge for the comms track's queue.

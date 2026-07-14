@@ -138,6 +138,47 @@ Deno.test("resolveStatus — DB 'verified' maps to active", () => {
   assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), { kind: "active" });
 });
 
+// ─── P1 belt (flow-gaps mini-panel, 2026-07-13) ──────────────────────────
+// A verified leader must never resolve active on a not-in-good-standing
+// church — the hole that let deactivate-church leave verified leaders
+// fully live.
+
+Deno.test("P1 belt — verified leader on a DEACTIVATED church → deactivated/support_contact (never active)", () => {
+  const row = baseRow({
+    verification_status: "verified",
+    church: ch({ verification_status: "deactivated", verification_deadline: "2026-04-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+  });
+});
+
+Deno.test("P1 belt — verified leader on a REJECTED church → support_contact + church_rejected copy", () => {
+  const row = baseRow({
+    verification_status: "verified",
+    church: ch({ verification_status: "rejected" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+    lockout_reason: "church_rejected",
+  });
+});
+
+Deno.test("P1 belt — verified leader on verified / pending / NULL church stays active (belt fires only on bad standing)", () => {
+  for (const status of ["verified", "pending", null]) {
+    const row = baseRow({
+      verification_status: "verified",
+      church: ch({ verification_status: status }),
+    });
+    assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), { kind: "active" });
+  }
+  // Skip-flow verified leader (no church row at all) — unchanged.
+  const skipRow = baseRow({ verification_status: "verified", church_id: null, church: null });
+  assertEquals(resolveStatus(skipRow, "2026-05-05T12:00:00.000Z"), { kind: "active" });
+});
+
 Deno.test("resolveStatus — DB 'deactivated' with NULL deadline (baseRow default) → support_contact", () => {
   // baseRow defaults church.verification_deadline to null. Per c.14235 #6,
   // NULL deadline on a deactivated row resolves to support_contact (no
