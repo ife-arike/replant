@@ -42,7 +42,7 @@
 | # | Event | In-app | Email | Wired? | Notes |
 |---|---|---|---|---|---|
 | C1 | Pending countdown | Banner + gates 🟢 (LOCKED copy, accounts@) | none needed | 🟢 | — |
-| C2 | Request-info | Banner + modal exist | `verification_request_info` LOCKED ("Open Replant to see and respond…") | ⚪ email | **Still no surface send-path** (thread infra is UG-only) — flow-session gap; email ready |
+| C2 | Request-info | Banner + modal exist | `verification_request_info` → `notify_t44` — Founder pasted the Q10 locked body 2026-07-13; wired via the shared verification fan-out | 🟢 (flow session 2026-07-13) | Surface send-path LIVE: request-info-church endpoint + service-role RPCs + Queue panel (PR #80 merged `21d6db5`); notify-only per her ruling — in-app reply is the source of truth; subject reuses the ratified "a note from our team" class (flagged) |
 | C3 | Approved | Verified toast (endpoint-side) | `verification_approved` → `notify_t51`, approve-church fan-out + verify-leader, para noun swap | 🟢 | Per-day dedup covers endpoint overlap |
 | C4 | Rejected | **In-app still generic lockout (F4)** — rejection-specific copy RATIFIED 07-13, wiring = flow session | `verification_rejected` → `notify_t26`, church + personal variants, benediction close | 🟢 email | Email = LOCKED verbatim; in-app gap remains flow-side |
 | C5 | Reminders day-7 / day-1 | nothing (correct) | `notify_t17`/`notify_t31` — **ARMED cron** `verification-reminder-emails` (09:30 UTC daily), deadline-keyed idempotency, concrete subjects ("closes in 7 days"/"closes tomorrow") | 🟢 | KAN-62 satisfied for skip-flow deadline holders |
@@ -60,7 +60,7 @@
 | D3 | Tier-1 pastoral alert | inline html/text, `Replant Operations <accounts@>` | 🟢 fixed | Was 422-dead; awaits first real t1 event for live proof |
 | D4 | Tier-2 pastoral digest | `emit_pastoral_digest()` fixed + accounts@ | 🟢 fixed | Was silently 422-dead for its entire life (41 false 'sent') |
 | D5/D7 | Seen / feed-approval | in-app only | 🟢 | — |
-| D6 | Admin responds → leader email | `heartcry_acknowledged` (`notify_t19`) — subject LOCKED "Replant — your message reached us", body rev-3 w/ My Heartcries pointer | ⚪ HELD | **Blocked by F9** (thread_id never seeded; responded card inert) — do not wire while the CTA points at a dead surface. Flow session owns F9 |
+| D6 | Admin responds → leader email | `heartcry_acknowledged` (`notify_t19`) — subject LOCKED "Replant — your message reached us", body rev-3 w/ My Heartcries pointer | ⚪ UNBLOCKED (comms wires) | **F9 CLOSED 2026-07-13** (flow session): mark-heartcry-responded now seeds the secure thread + flips status + writes thread_id — the My Heartcries card + "Open Secure Message" CTA are LIVE surfaces (PR #80 merged). Wire notify_t19 onto this endpoint's first-transition (already the single admin-engagement chokepoint; response carries message_delivered) |
 
 ## E. Connect
 
@@ -126,13 +126,13 @@
 | G1 | Resend MCP key invalid | ✅ Founder reconnected 07-13; dashboard audited |
 | G2 | Pastoral layer dead (t1+t2) | ✅ FIXED + verified |
 | G3 | Welcome DM "unwired" | ✅ RETRACTED (audit error; SQL-flip artifact) |
-| G4 | Heartcry thread_id never seeded (F9) | 🔶 OPEN — flow session; heartcry-ack email held on it |
+| G4 | Heartcry thread_id never seeded (F9) | ✅ CLOSED (flow session 2026-07-13, PR #80) — notify_t19 unblocked, comms wires |
 | G5 | Verification lifecycle silent | ✅ ALL endpoint transitions email (PR #75) |
 | G6 | Sends unlogged | ✅ closed for everything EXCEPT create-account (see ⚠ B1) |
 | G7 | Waitlist broadcast | ✅ staged (KAN-321 + runbook); copy pending Founder |
 | G8 | Push zero infra | 🔶 OPEN — ticket awaits go-ahead |
-| G9 | Leader-only deactivation comms | 🔶 OPEN — flow session first |
-| G10 | Rejected in-app generic copy (F4) | 🔶 copy RATIFIED; in-app wiring = flow session |
+| G9 | Leader-only deactivation comms | 🔶 flow BUILT (deactivate/reinstate-leader live, PR #80) — comms now owns the two personal-variant bodies (deactivation twin of t09 "your account"; reinstate twin of t29); insertion points marked in both endpoints |
+| G10 | Rejected in-app generic copy (F4) | ✅ CLOSED (flow session 2026-07-13) — lockout_reason live on auth-status-check v16+; ratified copy renders on the next Expo rebuild |
 | G11 | Admin invite Supabase-branded | 🔶 OPEN decision |
 | G12 | Volunteer triple-fire | ✅ FIXED + prod-proven |
 | G13 | Zero webhooks / bounce-blind | ✅ webhook live + e2e verified |
