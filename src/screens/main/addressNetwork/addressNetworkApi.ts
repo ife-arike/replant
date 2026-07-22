@@ -31,11 +31,11 @@ import type {
 
 // RPC names — MUST match the parallel-lane migrations. Change here only.
 export const RPC = {
-  submit: 'submit_address_network',
-  list: 'get_my_address_network_submissions',
-  publish: 'publish_address_network_submission',
-  requestChanges: 'request_address_network_changes',
-  withdraw: 'withdraw_address_network_submission',
+  submit: 'content_submission_create',
+  list: 'content_submissions_list_mine',
+  publish: 'content_submission_publish',
+  requestChanges: 'content_submission_request_changes',
+  withdraw: 'content_submission_withdraw',
 } as const;
 
 // content_submissions.type ⇄ client ATNType.
