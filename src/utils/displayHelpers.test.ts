@@ -5,9 +5,10 @@
 import { getChurchTypeLabel, getCongregationSizeLabel } from './displayHelpers';
 
 describe('getChurchTypeLabel (KAN-20 QA)', () => {
-  it("renders branch as 'Church (Branch)' — never 'Church Branch'", () => {
-    expect(getChurchTypeLabel('branch')).toBe('Church (Branch)');
-    expect(getChurchTypeLabel('branch')).not.toBe('Church Branch');
+  it("renders branch as 'Church branch' — Founder lock 2026-06-18 (drop parens; lead with 'Church')", () => {
+    expect(getChurchTypeLabel('branch')).toBe('Church branch');
+    // Fence the pre-2026-06-18 parenthesized form this test used to assert.
+    expect(getChurchTypeLabel('branch')).not.toBe('Church (Branch)');
   });
 
   it('renders the other known church types as labels', () => {
