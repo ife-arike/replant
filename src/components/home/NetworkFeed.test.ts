@@ -18,6 +18,7 @@ import {
   getTagChipMeta,
   isPosted,
   resolveDisplayName,
+  resolveEyebrowTag,
   toHomeCardTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
@@ -81,24 +82,50 @@ describe('getTagChipMeta — AC #13', () => {
   });
 });
 
-describe('toHomeCardTag — Home redesign card-eyebrow mapping', () => {
-  it('maps notice → notice', () => {
-    expect(toHomeCardTag('notice')).toBe('notice');
-  });
+describe('toHomeCardTag — legacy tag_type fallback (post KAN-335 cutover)', () => {
   it('maps urgent → urgent', () => {
     expect(toHomeCardTag('urgent')).toBe('urgent');
+  });
+  it("maps 'new' → new (its own register post-cutover)", () => {
+    expect(toHomeCardTag('new')).toBe('new');
   });
   it('maps update → update', () => {
     expect(toHomeCardTag('update')).toBe('update');
   });
-  it("collapses 'new' to the neutral update register", () => {
-    expect(toHomeCardTag('new')).toBe('update');
+  it("collapses retired 'notice' to neutral update (never 'notice')", () => {
+    expect(toHomeCardTag('notice')).toBe('update');
   });
   it("collapses 'none', null, undefined, and unknown values to update", () => {
     expect(toHomeCardTag('none')).toBe('update');
     expect(toHomeCardTag(null)).toBe('update');
     expect(toHomeCardTag(undefined)).toBe('update');
     expect(toHomeCardTag('emergency')).toBe('update');
+  });
+});
+
+describe('resolveEyebrowTag — KAN-335 badge cutover (badge preferred, tag_type fallback)', () => {
+  it('badge=urgent → urgent', () => {
+    expect(resolveEyebrowTag('urgent', null)).toBe('urgent');
+  });
+  it('badge=new → new (renders "New", never the retired "Notice")', () => {
+    expect(resolveEyebrowTag('new', null)).toBe('new');
+  });
+  it('badge=none → neutral update register', () => {
+    expect(resolveEyebrowTag('none', null)).toBe('update');
+  });
+  it('badge wins over a conflicting legacy tag_type', () => {
+    expect(resolveEyebrowTag('none', 'urgent')).toBe('update');
+    expect(resolveEyebrowTag('urgent', 'none')).toBe('urgent');
+  });
+  it('falls back to tag_type when badge is absent (older cached rows)', () => {
+    expect(resolveEyebrowTag(null, 'urgent')).toBe('urgent');
+    expect(resolveEyebrowTag(undefined, 'new')).toBe('new');
+    expect(resolveEyebrowTag(null, 'notice')).toBe('update'); // retired notice → neutral
+    expect(resolveEyebrowTag(null, null)).toBe('update');
+  });
+  it('is defensive against unknown badge values (falls through to tag_type)', () => {
+    expect(resolveEyebrowTag('emergency', 'urgent')).toBe('urgent');
+    expect(resolveEyebrowTag('emergency', null)).toBe('update');
   });
 });
 
@@ -112,6 +139,8 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     is_active: true,
     source_label: null,
     tag_type: null,
+    // KAN-335 badge cutover — badge column added to AnnouncementRow.
+    badge: null,
     // KAN-201 home redesign — card-routing columns added to AnnouncementRow.
     link_url: null,
     author_type: 'admin',
