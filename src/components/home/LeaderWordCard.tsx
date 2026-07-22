@@ -23,7 +23,7 @@ import { CommentThread } from './CommentThread';
 interface Props {
   announcementId: string;
   kicker?: string; // "A word for today" | "Encouragement"
-  lead: string; // the reflective opening line (serif italic)
+  lead: string; // the reflective opening line (serif roman — Ruling 2)
   body?: string; // optional continuation
   verse?: string; // anchor reference, e.g. "Zechariah 4:10"
   author: { initial: string; name: string; church: string; time: string };
@@ -123,7 +123,10 @@ const s = StyleSheet.create({
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
-  lead: { fontFamily: Typography.scriptureItalic, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
+  // Ruling 2 (Address the Network, 2026-07-22): the leader-word lead is
+  // Cormorant ROMAN, not italic. scriptureItalic stays reserved for
+  // scripture + witness quotes; this is a leader's human voice.
+  lead: { fontFamily: Typography.displayRegular, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 12 },
 
   meta: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 14 },
