@@ -3,10 +3,13 @@
 // (KAN-201 card system 2026-06-02)
 //
 // For card_type = 'encouragement'. A leader voice, not an admin
-// announcement — so there is no letterhead tag; the warm card surface
-// (Colors.cardWarm) signals the type. One reflective line (the full
-// message — always shown), a verse anchor opposite the time, and an
-// author row below.
+// announcement — a green-dot letterhead eyebrow (like "A word for today")
+// over the warm card surface (Colors.cardWarm) signals the type. The lead
+// reads as a roman-serif long-read line (Founder round-2 2026-07-22: no
+// longer italic scripture) and rests at a 3-line clamp with a "read on" ⇄
+// "fold" page-turn — the cue only surfaces when the lead overflows the
+// clamp (app-wide overflow-gating ruling). A verse anchor and an author
+// row sit below.
 //
 // Pastoral decision: encouragement cards are READ, not replied to — no
 // comment thread renders. The commentCount / onCommentPosted props are
@@ -23,9 +26,26 @@
 // component (SEC Obs D).
 // ─────────────────────────────────────────────
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 import { Colors, Radius, Typography } from '../../constants/theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Lead resting clamp — matches AnnouncementCard so Home's collapsed rhythm
+// stays consistent. Cue + tap only surface when the lead overflows.
+const COLLAPSED_LINES = 3;
 
 type Props = {
   lead: string; // the full encouragement (short — 1-2 lines)
@@ -40,6 +60,32 @@ type Props = {
 };
 
 export default function EncouragementCard({ lead, verse, time, author }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Overflow detection — natural (uncapped) line count for the lead,
+  // measured via an offscreen mirror Text. The cue + tap stay hidden until
+  // measured, and only render when the lead truly exceeds the clamp.
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  const measuredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+    measuredForRef.current = null;
+  }, [lead]);
+
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    if (measuredForRef.current === lead) return;
+    measuredForRef.current = lead;
+    setNaturalLines(e.nativeEvent.lines.length);
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
+  const toggleExpand = () => {
+    if (!overflows) return;
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
+
   return (
     <View style={s.card}>
       <View style={s.eyebrow}>
@@ -52,7 +98,34 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
         <Text style={s.when}>{time}</Text>
       </View>
 
-      <Text style={s.lead}>{lead}</Text>
+      <Pressable
+        onPress={toggleExpand}
+        disabled={!overflows}
+        accessibilityRole={overflows ? 'button' : undefined}
+        accessibilityState={overflows ? { expanded } : undefined}
+        accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
+      >
+        <Text style={s.lead} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
+          {lead}
+        </Text>
+        {/* Offscreen mirror — measures the lead's natural line count so the
+            cue only renders on true overflow (offscreen-top, not height:0). */}
+        <Text
+          style={[s.lead, s.mirror]}
+          onTextLayout={handleMirrorLayout}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+        >
+          {lead}
+        </Text>
+        {overflows && (
+          <View style={s.readon}>
+            <View style={s.readonRule} />
+            <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+          </View>
+        )}
+      </Pressable>
 
       {!!verse && (
         <View style={s.meta}>
@@ -92,7 +165,16 @@ const s = StyleSheet.create({
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
-  lead: { fontFamily: Typography.scriptureItalic, fontSize: 21, lineHeight: 29, letterSpacing: 0.1, color: Colors.text },
+  // Roman serif, long-read-title register (Founder round-2 2026-07-22 —
+  // no longer scripture italic). Size tracks ArticleCard's title family.
+  lead: { fontFamily: Typography.displayRegular, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
+
+  // Offscreen mirror + page-turn cue — exact style values from
+  // AnnouncementCard so the read-on grammar reads identically app-wide.
+  mirror: { position: 'absolute', left: 20, right: 20, top: -10000, opacity: 0 },
+  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
+  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
 
   meta: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 14 },
   verse: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 0.5, color: Colors.accent },

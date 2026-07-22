@@ -13,6 +13,7 @@
 import {
   AUTHOR_ATTRIBUTION,
   PAGE_SIZE,
+  deriveArticleStandfirst,
   formatRelativeTime,
   getTagChipMeta,
   isPosted,
@@ -247,5 +248,92 @@ describe('resolveDisplayName — KAN-229 structured-name display', () => {
     expect(resolveDisplayName({ firstName: null, lastName: null, role: 'pastor' })).toBe('A leader in the network');
     expect(resolveDisplayName({ firstName: '',   lastName: '',   role: 'pastor' })).toBe('A leader in the network');
     expect(resolveDisplayName({ firstName: null, lastName: null, role: null })).toBe('A leader in the network');
+  });
+});
+
+describe('deriveArticleStandfirst — Founder round-2 (article/long_read)', () => {
+  it('splits the first sentence into the standfirst, remainder into the body', () => {
+    expect(deriveArticleStandfirst('The church gathered at dawn. They prayed for hours.')).toEqual({
+      standfirst: 'The church gathered at dawn.',
+      body: 'They prayed for hours.',
+    });
+  });
+
+  it('keeps the exclamation / question terminator on the standfirst', () => {
+    expect(deriveArticleStandfirst('Behold, He comes! The whole city stirred to meet Him.')).toEqual({
+      standfirst: 'Behold, He comes!',
+      body: 'The whole city stirred to meet Him.',
+    });
+    expect(deriveArticleStandfirst('Who is this King? Even the wind obeys His voice.')).toEqual({
+      standfirst: 'Who is this King?',
+      body: 'Even the wind obeys His voice.',
+    });
+  });
+
+  it('returns NO standfirst for a single sentence (guard — never an empty body)', () => {
+    expect(deriveArticleStandfirst('A single unbroken thought carried through to the end.')).toEqual({
+      body: 'A single unbroken thought carried through to the end.',
+    });
+    // Trailing terminator, nothing after it → still one sentence.
+    expect(deriveArticleStandfirst('He is risen indeed.')).toEqual({
+      body: 'He is risen indeed.',
+    });
+  });
+
+  it('does not split on an honorific abbreviation (Rev., Fr., St., Ps.)', () => {
+    expect(deriveArticleStandfirst('Rev. Daniel Okoro opened in prayer. Then the choir sang.')).toEqual({
+      standfirst: 'Rev. Daniel Okoro opened in prayer.',
+      body: 'Then the choir sang.',
+    });
+    expect(deriveArticleStandfirst('We turned to Ps. 23 that morning. Grief lifted as we read.')).toEqual({
+      standfirst: 'We turned to Ps. 23 that morning.',
+      body: 'Grief lifted as we read.',
+    });
+  });
+
+  it('does not split on single-letter initials ("C. S. Lewis")', () => {
+    expect(deriveArticleStandfirst('C. S. Lewis wrote of a deeper joy. We remembered him gladly.')).toEqual({
+      standfirst: 'C. S. Lewis wrote of a deeper joy.',
+      body: 'We remembered him gladly.',
+    });
+  });
+
+  it('does not split inside a decimal ("3.5")', () => {
+    expect(deriveArticleStandfirst('Giving rose 3.5 percent this year. We gave thanks to God.')).toEqual({
+      standfirst: 'Giving rose 3.5 percent this year.',
+      body: 'We gave thanks to God.',
+    });
+  });
+
+  it('treats an ellipsis run as continuation, not a boundary', () => {
+    expect(deriveArticleStandfirst('We waited... and waited for the dawn. Then light broke over the hills.')).toEqual({
+      standfirst: 'We waited... and waited for the dawn.',
+      body: 'Then light broke over the hills.',
+    });
+  });
+
+  it('carries closing quotes onto the standfirst', () => {
+    expect(deriveArticleStandfirst('He whispered, "It is finished." The room fell silent.')).toEqual({
+      standfirst: 'He whispered, "It is finished."',
+      body: 'The room fell silent.',
+    });
+  });
+
+  it('trims surrounding whitespace and handles empty input', () => {
+    expect(deriveArticleStandfirst('   Grace found us. Mercy kept us.   ')).toEqual({
+      standfirst: 'Grace found us.',
+      body: 'Mercy kept us.',
+    });
+    expect(deriveArticleStandfirst('')).toEqual({ body: '' });
+    expect(deriveArticleStandfirst('   ')).toEqual({ body: '' });
+    expect(deriveArticleStandfirst(null)).toEqual({ body: '' });
+    expect(deriveArticleStandfirst(undefined)).toEqual({ body: '' });
+  });
+
+  it('splits at the FIRST valid boundary only (multi-sentence remainder stays whole)', () => {
+    expect(deriveArticleStandfirst('One. Two. Three.')).toEqual({
+      standfirst: 'One.',
+      body: 'Two. Three.',
+    });
   });
 });

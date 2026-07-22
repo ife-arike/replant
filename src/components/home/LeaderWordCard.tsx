@@ -14,11 +14,28 @@
 // passed to this component.
 // ─────────────────────────────────────────────
 
-import React, { useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 import { Colors, Radius, Typography } from '../../constants/theme';
 import { Chevron, CommentIcon } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Body resting clamp — matches AnnouncementCard so Home's collapsed rhythm
+// stays consistent. Cue + tap only surface when the clamped text overflows.
+const COLLAPSED_LINES = 3;
 
 interface Props {
   announcementId: string;
@@ -48,6 +65,35 @@ export default function LeaderWordCard({
     setCOpen((v) => !v);
   };
 
+  // Page-turn: clamp the body when present; when only the lead exists,
+  // clamp the lead. The mirror measures whichever text is clamped so the
+  // "read on" cue only surfaces on true overflow (overflow-gating ruling).
+  const bodyText = body?.trim() ? body : undefined;
+  const hasBody = bodyText !== undefined;
+  const clampText = bodyText ?? lead;
+
+  const [expanded, setExpanded] = useState(false);
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  const measuredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+    measuredForRef.current = null;
+  }, [clampText]);
+
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    if (measuredForRef.current === clampText) return;
+    measuredForRef.current = clampText;
+    setNaturalLines(e.nativeEvent.lines.length);
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
+  const toggleExpand = () => {
+    if (!overflows) return;
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
+
   return (
     <View style={s.card}>
       <View style={s.eyebrow}>
@@ -60,8 +106,42 @@ export default function LeaderWordCard({
         <Text style={s.when}>{author.time}</Text>
       </View>
 
-      <Text style={s.lead}>{lead}</Text>
-      {!!body && <Text style={s.body}>{body}</Text>}
+      <Pressable
+        onPress={toggleExpand}
+        disabled={!overflows}
+        accessibilityRole={overflows ? 'button' : undefined}
+        accessibilityState={overflows ? { expanded } : undefined}
+        accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
+      >
+        <Text
+          style={s.lead}
+          numberOfLines={!hasBody && !expanded ? COLLAPSED_LINES : undefined}
+        >
+          {lead}
+        </Text>
+        {hasBody && (
+          <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
+            {bodyText}
+          </Text>
+        )}
+        {/* Offscreen mirror — measures whichever text is clamped (body when
+            present, else the lead) so the cue only renders on true overflow. */}
+        <Text
+          style={[hasBody ? s.body : s.lead, s.mirror]}
+          onTextLayout={handleMirrorLayout}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+        >
+          {clampText}
+        </Text>
+        {overflows && (
+          <View style={s.readon}>
+            <View style={s.readonRule} />
+            <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+          </View>
+        )}
+      </Pressable>
 
       {!!verse && (
         <View style={s.meta}>
@@ -126,6 +206,13 @@ const s = StyleSheet.create({
 
   lead: { fontFamily: Typography.scriptureItalic, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 12 },
+
+  // Offscreen mirror + page-turn cue — exact style values from
+  // AnnouncementCard so the read-on grammar reads identically app-wide.
+  mirror: { position: 'absolute', left: 20, right: 20, top: -10000, opacity: 0 },
+  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
+  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
 
   meta: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 14 },
   verse: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 0.5, color: Colors.accent },
