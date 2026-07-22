@@ -264,7 +264,10 @@ BEGIN
   ELSE
     -- role_region (leader-chosen) OR underground (forced): Team seal, frozen byline.
     v_author_type  := 'admin';
-    v_author_id    := NULL;                       -- NEVER leader resolution
+    -- announcements.author_id is NOT NULL on live (verified 2026-07-22).
+    -- System Replant Team user per the platform SYSTEM_USER_ID convention;
+    -- NEVER the leader (SEC F1).
+    v_author_id    := '028be745-8014-4314-a7cf-36b0a4d52b46'::uuid;
     v_source_label := public.content_role_region_label(v_sub.submitter_user_id);
     v_card_type    := 'standard';
   END IF;
