@@ -126,14 +126,20 @@ export const Radius = {
 } as const;
 
 // Tag → dot / label / colour for the Home-tab announcement letterhead
-// eyebrow. The DB `announcements.tag_type` CHECK also permits 'new' and
-// 'none'; the home cards collapse those to the neutral 'update' register
-// (see NetworkFeed card routing). Keep this in sync with the eyebrow dot
-// colours — it is the single source of truth for the new Home cards.
+// eyebrow. Post badge-cutover (KAN-335) the mobile feed resolves this
+// register from `announcements.badge` (none | new | urgent), falling back
+// to the legacy `tag_type` shadow only for rows cached before badge
+// entered the projection (see NetworkFeed `resolveEyebrowTag`):
+//   badge 'urgent' → urgent   badge 'new' → new   badge 'none' → update
+// The retired 'notice' register is no longer produced by the feed
+// resolver (kept below only for the legacy chip meta + its tests). Keep
+// this in sync with the eyebrow dot colours — it is the single source of
+// truth for the Home cards.
 export const Tags = {
   update: { label: 'Network update', color: Colors.accent },
-  notice: { label: 'Notice', color: Colors.amber },
+  notice: { label: 'Notice', color: Colors.amber }, // retired — never emitted by resolveEyebrowTag
   urgent: { label: 'Urgent', color: Colors.red },
+  new: { label: 'New', color: Colors.accent }, // KAN-335 badge=new register (sky, static dot)
   // KAN-201 card-system extension 2026-06-02 — new card types.
   together: { label: 'Together', color: Colors.green },
   call_to_action: { label: 'Call to action', color: Colors.accent },

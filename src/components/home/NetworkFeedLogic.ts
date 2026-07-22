@@ -110,6 +110,17 @@ export const PAGE_SIZE = 20;
 
 export type TagType = 'urgent' | 'update' | 'notice' | 'new' | 'none';
 
+// ─── badge model (KAN-335 cutover 2026-07-22) ─────────────────────────
+//
+// `announcements.badge` replaces `tag_type` as the letterhead-eyebrow
+// authority. CHECK (live): badge = ANY('none','new','urgent'); backfilled
+// from the legacy `tag_type`. `tag_type` stays in the projection as a
+// shadow until a later migration drops it — gated on the app floor
+// version, since older clients still read tag_type. The feed prefers
+// `badge` (resolveEyebrowTag) and falls back to `tag_type` for rows
+// cached before this app version shipped.
+export type Badge = 'none' | 'new' | 'urgent';
+
 export interface TagChipMeta {
   /** Human label that appears in the chip (title-cased per wireframe). */
   label: string;
@@ -156,6 +167,14 @@ export interface AnnouncementRow {
   is_active: boolean;
   source_label: string | null;
   tag_type: string | null;
+  // KAN-335 badge cutover 2026-07-22 — `badge` is the post-cutover
+  // authority for the letterhead eyebrow register; `tag_type` above is
+  // retained as the shadow (dropped in a later migration, gated on the
+  // app floor version). null when the row was cached before `badge`
+  // entered the projection — resolveEyebrowTag then falls back to
+  // tag_type. Typed to the CHECK union; the resolver still accepts any
+  // string defensively so a stale cache can never crash a card.
+  badge: Badge | null;
   // KAN-201 home redesign 2026-06-01 — new card-routing columns.
   link_url: string | null;
   author_type: 'admin' | 'leader';
@@ -178,21 +197,50 @@ export interface AnnouncementRow {
   author_id: string | null;
 }
 
-// ─── Home-card tag mapping (KAN-201 home redesign) ────────────────────
+// ─── Home-card eyebrow mapping (KAN-201 → KAN-335 badge cutover) ──────
 //
-// The new Home cards use the three-tag `Tags` export from theme
-// (update | notice | urgent). The DB `tag_type` CHECK additionally
-// permits 'new' and 'none'; both — plus null and any unknown value —
-// collapse to the neutral 'update' register for the letterhead eyebrow.
-// This is a render-only mapping; it does NOT replace getTagChipMeta
-// (kept for the legacy chip + its tests).
+// The Home cards read a `Tags` register key from theme for the letterhead
+// eyebrow. Post-cutover the register is driven by `announcements.badge`
+// via resolveEyebrowTag, with `tag_type` as the fallback for older cached
+// rows. Registers: 'urgent' (red), 'new' (sky), 'update' (neutral —
+// badge 'none' / everything else). The retired 'notice' register is never
+// produced here (KAN-335: "Notice" must not appear post-cutover). This is
+// a render-only mapping; it does NOT replace getTagChipMeta (kept for the
+// legacy chip + its tests).
 
-export type HomeCardTag = 'update' | 'notice' | 'urgent';
+export type HomeCardTag = 'update' | 'urgent' | 'new';
 
+// Legacy `tag_type` → eyebrow register. FALLBACK path only — reached when
+// `badge` is absent or unrecognised (rows cached before badge entered the
+// projection). 'urgent' and 'new' carry their own registers; the retired
+// 'notice', plus 'update' / 'none' / null / undefined / any unknown
+// value, collapse to the neutral 'update' register. Never throws.
 export function toHomeCardTag(raw: string | null | undefined): HomeCardTag {
-  if (raw === 'notice') return 'notice';
   if (raw === 'urgent') return 'urgent';
+  if (raw === 'new') return 'new';
   return 'update';
+}
+
+// Resolve the letterhead-eyebrow register for a feed row, PREFERRING the
+// `badge` column and falling back to the legacy `tag_type` shadow when
+// badge is absent or unrecognised (older cached rows). Defensive on both
+// shapes — never throws, and never yields the retired 'notice' register.
+//   badge 'urgent' → 'urgent'   badge 'new' → 'new'   badge 'none' → 'update'
+export function resolveEyebrowTag(
+  badge: string | null | undefined,
+  tagType: string | null | undefined,
+): HomeCardTag {
+  switch (badge) {
+    case 'urgent':
+      return 'urgent';
+    case 'new':
+      return 'new';
+    case 'none':
+      return 'update'; // neutral default eyebrow
+    default:
+      // badge absent / unrecognised → legacy tag_type fallback.
+      return toHomeCardTag(tagType);
+  }
 }
 
 export function isPosted(row: AnnouncementRow, now: Date = new Date()): boolean {

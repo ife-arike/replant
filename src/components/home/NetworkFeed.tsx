@@ -50,7 +50,7 @@ import {
   formatRelativeTime,
   isPosted,
   resolveDisplayName,
-  toHomeCardTag,
+  resolveEyebrowTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
 
@@ -58,8 +58,14 @@ import {
 // comment_count / author_id. author_id is selected ONLY to resolve
 // leader-card attribution via a secondary lookup — it is NEVER rendered
 // and NEVER reaches a display component (D-56 / SEC Observation D).
+//
+// KAN-335 badge cutover: `badge` (none | new | urgent) is the new
+// eyebrow-register authority; `tag_type` is retained as the shadow — it
+// stays projected here until a later migration drops it, once the app
+// floor version moves past clients that still read tag_type.
+// resolveEyebrowTag prefers badge and falls back to tag_type.
 const SELECT_COLS =
-  'id, title, body, published_at, is_active, source_label, tag_type, link_url, author_type, comment_count, author_id, card_type';
+  'id, title, body, published_at, is_active, source_label, tag_type, badge, link_url, author_type, comment_count, author_id, card_type';
 
 // KAN-17 amendment — feed shows only announcements published within the
 // last FEED_MAX_AGE_DAYS days.
@@ -241,7 +247,9 @@ function renderItem({ item }: { item: AnnouncementRow }) {
 // masked here, client-side, before the card ever renders (SEC Obs D).
 function FeedItem({ item }: { item: AnnouncementRow }) {
   const time = item.published_at ? formatRelativeTime(item.published_at) : '';
-  const tag = toHomeCardTag(item.tag_type);
+  // KAN-335 — prefer the `badge` column, fall back to legacy `tag_type`
+  // for rows cached before badge entered the projection.
+  const tag = resolveEyebrowTag(item.badge, item.tag_type);
 
   switch (item.card_type) {
     case 'article':
