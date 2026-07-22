@@ -5,8 +5,12 @@
 // title 21pt. ALTERNATE: variant="rule" (coloured left margin rule).
 // `warm` surface OFF by default.
 //
-// Interaction: page-turn truncation — tap the card body to expand /
-// collapse; the trailing cue reads "read on" ⇄ "fold" (no chevron).
+// Interaction: page-turn truncation — the body rests at a 3-line clamp;
+// tap the card body to expand / collapse; the trailing cue reads
+// "read on" ⇄ "fold" (no chevron). The cue + tap affordance only appear
+// when the body actually overflows the clamp, measured via an offscreen
+// mirror Text (same pattern as DailyScriptureStrip — Founder ruling
+// 2026-07-22: "read on" never shows when the text already fits).
 // Comments live in the FOOTER, right-aligned. The comment Pressable owns
 // its own hitSlop and stops propagation so a comment tap never toggles
 // the card body. The thread fetches its own data via announcementId.
@@ -17,6 +21,7 @@
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import {
   Animated,
   LayoutAnimation,
@@ -50,6 +55,11 @@ interface Props {
 
 const LINE: Record<number, number> = { 20: 25, 21: 26, 22: 27 };
 
+// Body resting clamp — matches DailyScriptureStrip's COLLAPSED_LINES so
+// Home's collapsed rhythm stays consistent. Cue + tap-to-expand only
+// surface when the body's natural line count exceeds this.
+const COLLAPSED_LINES = 3;
+
 export default function AnnouncementCard({
   announcementId,
   tag = 'update',
@@ -68,6 +78,24 @@ export default function AnnouncementCard({
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
   const tg = Tags[tag];
 
+  // Overflow detection — natural (uncapped) line count for the body,
+  // measured via an offscreen mirror Text. null = not yet measured; until
+  // measured the cue stays hidden (avoids a flash on short bodies).
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  const measuredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+    measuredForRef.current = null;
+  }, [body]);
+
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    if (measuredForRef.current === body) return;
+    measuredForRef.current = body;
+    setNaturalLines(e.nativeEvent.lines.length);
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
   // Urgent dot halo: a slow, gentle breathing pulse (~1.8s period). Only
   // the halo animates — the dot itself stays solid. Non-urgent tags hold
   // a static glow (opacity 1).
@@ -85,6 +113,7 @@ export default function AnnouncementCard({
   }, [tag, blinkAnim]);
 
   const toggleBody = () => {
+    if (!overflows) return;
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     setExpanded((v) => !v);
   };
@@ -94,7 +123,14 @@ export default function AnnouncementCard({
   };
 
   return (
-    <Pressable onPress={toggleBody} style={[s.card, warm && s.warm, variant === 'rule' && s.ruleCard]}>
+    <Pressable
+      onPress={toggleBody}
+      disabled={!overflows}
+      style={[s.card, warm && s.warm, variant === 'rule' && s.ruleCard]}
+      accessibilityRole={overflows ? 'button' : undefined}
+      accessibilityState={overflows ? { expanded } : undefined}
+      accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
+    >
       {variant === 'rule' && <View style={[s.rule, { backgroundColor: tg.color }]} />}
 
       {/* eyebrow / letterhead */}
@@ -116,12 +152,28 @@ export default function AnnouncementCard({
       </View>
 
       <Text style={[s.title, { fontSize: titleSize, lineHeight: LINE[titleSize] }]}>{title}</Text>
-      <Text style={s.body} numberOfLines={expanded ? undefined : 3}>{body}</Text>
+      <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>{body}</Text>
+      {/* Offscreen mirror — measures the natural (uncapped) line count so
+          the cue only renders when the body truly overflows the clamp.
+          Identical text styles to the visible body so wrapping matches;
+          kept offscreen rather than height:0 (RN skips onTextLayout for
+          zero-height text). */}
+      <Text
+        style={[s.body, s.mirror, variant === 'rule' && s.mirrorRule]}
+        onTextLayout={handleMirrorLayout}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        pointerEvents="none"
+      >
+        {body}
+      </Text>
 
-      <View style={s.readon}>
-        <View style={s.readonRule} />
-        <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
-      </View>
+      {overflows && (
+        <View style={s.readon}>
+          <View style={s.readonRule} />
+          <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+        </View>
+      )}
 
       {/* footer — seal · Replant Team · [comments right-aligned] */}
       <View style={s.foot}>
@@ -186,6 +238,13 @@ const s = StyleSheet.create({
 
   title: { fontFamily: Typography.displayRegular, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
+  // Offscreen mirror — pinned to the visible body's column width so its
+  // line wrapping matches (left/right mirror the card's padding; the rule
+  // variant's wider left padding gets its own override). Offscreen-top,
+  // NOT height:0 — RN skips text layout entirely for zero-height text,
+  // which would silently kill the overflow signal.
+  mirror: { position: 'absolute', left: 20, right: 20, top: -10000, opacity: 0 },
+  mirrorRule: { left: 22 },
 
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
