@@ -107,7 +107,9 @@ function getInitials(fullName: string | null): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-type IconKey = 'vision' | 'outreach' | 'language' | 'invite' | 'settings' | 'faq';
+// 'language' retired from the panel (KAN-337) — Language now lives in
+// Settings; its slot is taken by 'address' (Address the Network).
+type IconKey = 'vision' | 'outreach' | 'address' | 'invite' | 'settings' | 'faq';
 
 function MenuIcon({ icon }: { icon: IconKey }) {
   const stroke = Colors.accent;
@@ -133,15 +135,21 @@ function MenuIcon({ icon }: { icon: IconKey }) {
           />
         </Svg>
       );
-    case 'language':
+    case 'address':
+      // Speech bubble — same MenuIcon set (accent, 1.5 stroke) as Vision/FAQ.
       return (
         <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none">
           <Path
-            d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+            d="M20 4H4a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 4 16h3v4l5-4h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 20 4z"
+            stroke={stroke}
+            strokeWidth={ICON_STROKE}
+            strokeLinejoin="round"
+          />
+          <Path
+            d="M7 8.5h10M7 11.5h6"
             stroke={stroke}
             strokeWidth={ICON_STROKE}
             strokeLinecap="round"
-            strokeLinejoin="round"
           />
         </Svg>
       );
@@ -207,7 +215,7 @@ function MenuItem({ icon, label, onPress, last, labelColor }: MenuItemProps) {
 
 export default function HamburgerPanel() {
   const { isOpen, close } = useHamburger();
-  const { session, signOut } = useAuth();
+  const { session, signOut, branch } = useAuth();
   // KAN-76 v3 — status-bar safe-area inset for the panel's top padding.
   // Without this, iOS status bar overlaps the header wordmark on devices
   // with non-zero top insets. Combined with the design's 28 px below the
@@ -347,12 +355,12 @@ export default function HamburgerPanel() {
     }, CLOSE_DURATION_MS + 50);
   }, [close]);
 
-  const handleLanguage = useCallback(() => {
-    // Language section not yet built (KAN-27 deferred per risks/gaps).
-    // Route to Settings root per ticket's defensive-routing technical note.
+  // Address the Network (KAN-337) — takes the Language row's old slot.
+  // Same close-then-push (250ms) pattern as Settings.
+  const handleAddressNetwork = useCallback(() => {
     close();
     setTimeout(() => {
-      if (navigationRef.isReady()) navigationRef.navigate('Settings');
+      if (navigationRef.isReady()) navigationRef.navigate('AddressNetwork');
     }, CLOSE_DURATION_MS + 50);
   }, [close]);
 
@@ -444,7 +452,13 @@ export default function HamburgerPanel() {
         <View style={styles.menuList}>
           <MenuItem icon="vision" label="The Vision" onPress={handleVision} />
           <MenuItem icon="outreach" label="Outreach & Missions" onPress={handleOutreach} />
-          <MenuItem icon="language" label="Language" onPress={handleLanguage} />
+          {/* Address the Network (KAN-337) — in the slot Language held (now
+              in Settings). Verified leaders only: hidden until active, no
+              disabled entry (Ruling 5). A normal row, not set apart; label
+              in Colors.text (Invite keeps the single accent slot). */}
+          {branch === 'active' ? (
+            <MenuItem icon="address" label="Address the Network" onPress={handleAddressNetwork} />
+          ) : null}
           <MenuItem icon="invite" label="Invite to Replant" onPress={handleInvite} labelColor={Colors.accent} />
           <MenuItem icon="settings" label="Settings" onPress={handleSettings} />
           <MenuItem icon="faq" label="FAQ" onPress={handleFAQ} last />
