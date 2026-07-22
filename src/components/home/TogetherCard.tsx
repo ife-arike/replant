@@ -13,12 +13,29 @@
 // renders "Replant Team" — author_id never reaches this component.
 // ─────────────────────────────────────────────
 
-import React, { useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 import { Colors, Radius, Tags, Typography } from '../../constants/theme';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Body resting clamp — matches AnnouncementCard so Home's collapsed rhythm
+// stays consistent. Cue + tap only surface when the body overflows.
+const COLLAPSED_LINES = 3;
 
 type CoAuthor = { initial: string; name: string };
 
@@ -58,6 +75,29 @@ export default function TogetherCard({
   const seals = (coAuthors ?? []).slice(0, 3);
   const hasCoAuthors = seals.length > 0;
 
+  // Page-turn body — 3-line clamp with a gated "read on" ⇄ "fold" cue.
+  const [expanded, setExpanded] = useState(false);
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  const measuredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+    measuredForRef.current = null;
+  }, [body]);
+
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    if (measuredForRef.current === body) return;
+    measuredForRef.current = body;
+    setNaturalLines(e.nativeEvent.lines.length);
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
+  const toggleExpand = () => {
+    if (!overflows) return;
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
+
   const toggleComments = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     setCOpen((v) => !v);
@@ -77,7 +117,35 @@ export default function TogetherCard({
       </View>
 
       <Text style={s.title}>{title}</Text>
-      <Text style={s.body}>{body}</Text>
+
+      <Pressable
+        onPress={toggleExpand}
+        disabled={!overflows}
+        accessibilityRole={overflows ? 'button' : undefined}
+        accessibilityState={overflows ? { expanded } : undefined}
+        accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
+      >
+        <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
+          {body}
+        </Text>
+        {/* Offscreen mirror — measures the body's natural line count so the
+            cue only renders on true overflow (offscreen-top, not height:0). */}
+        <Text
+          style={[s.body, s.mirror]}
+          onTextLayout={handleMirrorLayout}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+        >
+          {body}
+        </Text>
+        {overflows && (
+          <View style={s.readon}>
+            <View style={s.readonRule} />
+            <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+          </View>
+        )}
+      </Pressable>
 
       {/* footer — overlapping seals + name list, or Rp-team fallback */}
       <View style={s.foot}>
@@ -151,6 +219,13 @@ const s = StyleSheet.create({
 
   title: { fontFamily: Typography.displayRegular, fontSize: 21, lineHeight: 26, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
+
+  // Offscreen mirror + page-turn cue — exact style values from
+  // AnnouncementCard so the read-on grammar reads identically app-wide.
+  mirror: { position: 'absolute', left: 20, right: 20, top: -10000, opacity: 0 },
+  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
+  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
 
   foot: {
     flexDirection: 'row',
