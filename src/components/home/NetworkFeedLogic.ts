@@ -191,10 +191,10 @@ export interface AnnouncementRow {
     | 'encouragement'
     | 'together'
     | 'call_to_action';
-  // author_id is selected ONLY to resolve leader-card attribution via a
-  // secondary users/churches lookup in NetworkFeed. It is NEVER rendered
-  // and NEVER passed to a display component (D-56 / SEC Observation D).
-  author_id: string | null;
+  // author_id is intentionally NOT part of the feed projection: leader
+  // attribution is frozen into source_label at publish (SME interim,
+  // 2026-07-22), so the FK never ships to feed clients at all
+  // (D-56 / SEC Observation D).
 }
 
 // ─── Home-card eyebrow mapping (KAN-201 → KAN-335 badge cutover) ──────

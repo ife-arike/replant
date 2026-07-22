@@ -146,7 +146,6 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     author_type: 'admin',
     comment_count: 0,
     card_type: 'standard',
-    author_id: null,
     ...overrides,
   });
 

@@ -11,9 +11,9 @@
 // cursor` for older pages.
 //
 // Card routing (redesign):
-//   author_type === 'leader' → LeaderWordCard (author resolved via a
-//                               secondary users/churches lookup; UNDERGROUND
-//                               churches are masked client-side — SEC Obs D)
+//   author_type === 'leader' → LeaderWordCard (attribution FROZEN at publish
+//                               into source_label; Replant seal avatar; no
+//                               per-viewer resolution — SME interim 2026-07-22)
 //   link_url present          → LinkCard (external resource, no comments)
 //   else                      → AnnouncementCard (letterhead)
 //
@@ -46,18 +46,17 @@ import CallToActionCard from './CallToActionCard';
 import HomeSectionLabel from './HomeSectionLabel';
 import {
   PAGE_SIZE,
-  ROLE_DISPLAY,
   deriveArticleStandfirst,
   formatRelativeTime,
   isPosted,
-  resolveDisplayName,
   resolveEyebrowTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
 
 // Column projection. The redesign adds link_url / author_type /
-// comment_count / author_id. author_id is selected ONLY to resolve
-// leader-card attribution via a secondary lookup — it is NEVER rendered
+// comment_count. author_id is deliberately ABSENT: leader attribution is
+// frozen into source_label at publish (SME panel interim, 2026-07-22), so
+// the feed needs no author FK and no leader row ever ships to clients
 // and NEVER reaches a display component (D-56 / SEC Observation D).
 //
 // KAN-335 badge cutover: `badge` (none | new | urgent) is the new
@@ -66,7 +65,7 @@ import {
 // floor version moves past clients that still read tag_type.
 // resolveEyebrowTag prefers badge and falls back to tag_type.
 const SELECT_COLS =
-  'id, title, body, published_at, is_active, source_label, tag_type, badge, link_url, author_type, comment_count, author_id, card_type';
+  'id, title, body, published_at, is_active, source_label, tag_type, badge, link_url, author_type, comment_count, card_type';
 
 // KAN-17 amendment — feed shows only announcements published within the
 // last FEED_MAX_AGE_DAYS days.
@@ -352,160 +351,36 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
   );
 }
 
-type ResolvedAuthor = {
-  initial: string;
-  name: string;
-  church: string;
-};
 
-// Masked author — the safe default for unresolved / error / loading state.
-const MASKED_AUTHOR: ResolvedAuthor = { initial: '·', name: MASKED_NAME, church: '' };
-
-// Resolve the "A fellow {role}" label used for anon and underground authors.
-// Role display values are title-case ("Minister") — lowercase for this phrase.
-function resolveAnonLabel(role: string | null): string {
-  const display = role ? (ROLE_DISPLAY[role] ?? 'leader') : 'leader';
-  return 'A fellow ' + display.toLowerCase();
-}
-
-// Shared leader-author resolver. Resolves full_name + role + church via
-// author_id (matched against public.users.id — author_id references the
-// public.users PK, NOT auth_id; verified live 2026-06-02). Masking is the
-// safe default: a missing author_id, an unresolved row, a church-less
-// leader, or any error all leave the author masked.
-//
-// Decoupled 2026-06-21 — two independent axes:
-//
-//   1. users.anonymous = true → mask the LEADER's name to "A fellow {role}"
-//      with initial "A". Church name STAYS REAL (per anon-identity rules:
-//      public anon hides the person, not the church).
-//
-//   2. churches.type='underground' + show_church_name=false → mask the
-//      CHURCH's identity. Church display drops to '' (no name, no city,
-//      no country). Brave underground (show_church_name=true) discloses
-//      the real church name. Leader name is NOT masked by underground
-//      church status — that's the anonymous flag's job.
-//
-// Both axes can be true (underground + anon), neither (public + named),
-// or either independently.
-function useResolvedLeaderAuthor(authorId: string | null): ResolvedAuthor {
-  const [author, setAuthor] = useState<ResolvedAuthor>(MASKED_AUTHOR);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!authorId) return; // stays masked
-      try {
-        const { data: userRow, error: userErr } = await supabase
-          .from('users')
-          .select('first_name, middle_name, last_name, honorific, last_name_first, church_id, role, anonymous, display_name_preference')
-          .eq('id', authorId)
-          .maybeSingle();
-        if (cancelled || userErr || !userRow) return;
-
-        const firstName = ((userRow as any).first_name as string | null) ?? '';
-        const middleName = ((userRow as any).middle_name as string | null) ?? '';
-        const lastName = ((userRow as any).last_name as string | null) ?? '';
-        const honorific = ((userRow as any).honorific as string | null) ?? null;
-        const lastNameFirst = !!(userRow as any).last_name_first;
-        const role = (userRow.role as string | null) ?? null;
-        const churchId = userRow.church_id as string | null;
-        const isAnon = !!userRow.anonymous;
-        const displayNamePref = (userRow as any).display_name_preference as
-          | 'first_name_only'
-          | 'full_name'
-          | null;
-
-        if (!churchId) return; // no church → stay masked
-
-        const { data: churchRow, error: churchErr } = await supabase
-          .from('churches')
-          .select('name, type, show_church_name')
-          .eq('id', churchId)
-          .maybeSingle();
-        if (cancelled || churchErr || !churchRow) return;
-
-        // Resolve church display first (church-side axis, independent of leader).
-        // Underground + safe → masked to ''. Underground + brave or non-underground
-        // → real name. TODO: macro_region_label fallback for safe underground.
-        const isUnderground = churchRow.type === 'underground';
-        const isBraveUnderground =
-          isUnderground && churchRow.show_church_name === true;
-        const churchDisplay =
-          !isUnderground || isBraveUnderground
-            ? ((churchRow.name as string | null) ?? '')
-            : '';
-
-        // Resolve leader display (leader-side axis, independent of church).
-        if (isAnon) {
-          // Anonymous: name held regardless of church type. Initial "A".
-          if (!cancelled) {
-            setAuthor({
-              initial: 'A',
-              name: resolveAnonLabel(role),
-              church: churchDisplay,
-            });
-          }
-          return;
-        }
-
-        // Not anonymous — leader chose to be known by name, even if their
-        // church is underground. Show the real name + initial.
-        if (!cancelled) {
-          setAuthor({
-            initial: firstName ? firstName.charAt(0).toUpperCase() : '·',
-            name: resolveDisplayName({
-              firstName: firstName || null,
-              middleName,
-              lastName: lastName || null,
-              honorific,
-              role,
-              displayNamePreference: displayNamePref ?? null,
-              lastNameFirst,
-            }),
-            church: churchDisplay,
-          });
-        }
-      } catch {
-        // Stay masked on any failure.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [authorId]);
-
-  return author;
-}
-
+// Leader-voice attribution is FROZEN at publish (SME panel interim, locked
+// 2026-07-22): the byline travels in source_label, composed server-side by
+// content_submission_publish (real name for show_name, else the role+region
+// mask), and the avatar is the Replant seal. The feed never resolves an
+// author — no users/churches lookup, so every viewer reads the identical
+// byline and no leader row ships to clients. CommentThread's resolver copy
+// remains in the NetworkFeed-masking SEC panel's scope.
 function LeaderFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
-  const author = useResolvedLeaderAuthor(item.author_id);
-
   return (
     <LeaderWordCard
       announcementId={item.id}
       lead={item.title}
       body={item.body}
-      author={{ ...author, time }}
+      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: '', time }}
       commentCount={item.comment_count}
     />
   );
 }
 
-// Encouragement card wrapper — same author-resolution pattern as
-// LeaderFeedItem (underground masking, role humanisation). The card body
-// is the announcement title (the short reflective line); source_label
-// carries the verse anchor when set.
+// Encouragement wrapper — same frozen attribution. source_label is the
+// BYLINE, not a verse anchor: the verse slot was a source_label overload
+// (unmapped 2026-07-22); it returns when a dedicated verse column exists.
 function EncouragementFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
-  const author = useResolvedLeaderAuthor(item.author_id);
-
   return (
     <EncouragementCard
       announcementId={item.id}
       lead={item.title}
-      verse={item.source_label ?? undefined}
       time={time}
-      author={author}
+      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: '' }}
       commentCount={item.comment_count}
     />
   );

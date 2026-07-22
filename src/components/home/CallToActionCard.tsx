@@ -169,15 +169,16 @@ export default function CallToActionCard({
         )}
       </Pressable>
 
-      {/* filled sky-accent CTA — dark text on sky fill */}
+      {/* CTA link — accent words + arrow, no fill (CD register) */}
       <Pressable
         style={s.cta}
         onPress={() => safeOpen(url)}
-        accessibilityRole="button"
+        accessibilityRole="link"
         accessibilityLabel={ctaLabel}
+        hitSlop={8}
       >
         <Text style={s.ctaLabel}>{ctaLabel}</Text>
-        <Arrow color={Colors.background} />
+        <Arrow color={Colors.accent} />
       </Pressable>
 
       {/* footer — seal · Replant Team · [comments right-aligned] */}
@@ -245,18 +246,16 @@ const s = StyleSheet.create({
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
   readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
 
-  // Filled sky-accent action row — dark text on sky fill, arrow at right.
+  // CTA = words as a hyperlink + arrow (CD register; the filled sky pill
+  // was rejected by the Founder 2026-07-22). Left-aligned, accent text.
   cta: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.md,
-    paddingVertical: 13,
+    gap: 8,
     marginTop: 16,
+    alignSelf: 'flex-start',
   },
-  ctaLabel: { fontFamily: Typography.bodyMedium, fontSize: 14, color: Colors.background },
+  ctaLabel: { fontFamily: Typography.bodyMedium, fontSize: 14, color: Colors.accent },
 
   foot: {
     flexDirection: 'row',

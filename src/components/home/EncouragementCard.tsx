@@ -38,6 +38,7 @@ import {
   View,
 } from 'react-native';
 import { Colors, Radius, Typography } from '../../constants/theme';
+import { RpMark } from './HomeIcons';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -51,7 +52,9 @@ type Props = {
   lead: string; // the full encouragement (short — 1-2 lines)
   verse?: string; // anchor reference e.g. "Matthew 11:28"
   time: string;
-  author: { initial: string; name: string; church: string };
+  // seal → Replant seal in the avatar circle (frozen attribution; the feed
+  // passes source_label as name). initial drives the lettered circle otherwise.
+  author: { initial?: string; seal?: boolean; name: string; church: string };
   announcementId: string;
   // Accepted for routing-shape parity; encouragement cards do not open a
   // comment thread (pastoral decision — read, not replied to).
@@ -135,7 +138,9 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
 
       <View style={s.author}>
         <View style={s.av}>
-          <Text style={s.avInitial}>{author.initial}</Text>
+          {author.seal
+            ? <RpMark width={16} height={16} opacity={0.8} />
+            : <Text style={s.avInitial}>{author.initial ?? '·'}</Text>}
         </View>
         <View>
           <Text style={s.name}>{author.name}</Text>

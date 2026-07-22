@@ -279,13 +279,15 @@ const s = StyleSheet.create({
   teaser: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 12 },
   // Serif initial — Cormorant 600, ~2 lines tall. Sized conservatively for
   // mobile density (easily enlarged toward a full 3-line cap).
+  // lineHeight must be >= fontSize or RN clips Cormorant's top serifs
+  // (the Founder-reported cut-off "I"). Sized a notch down from 52.
   dropCap: {
     fontFamily: Typography.display,
-    fontSize: 52,
-    lineHeight: 46,
+    fontSize: 46,
+    lineHeight: 48,
     color: Colors.text,
     marginRight: 10,
-    marginTop: 3,
+    marginTop: 1,
   },
   bodyCol: { flex: 1, position: 'relative' },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted },

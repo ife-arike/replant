@@ -26,7 +26,7 @@ import {
   View,
 } from 'react-native';
 import { Colors, Radius, Typography } from '../../constants/theme';
-import { Chevron, CommentIcon } from './HomeIcons';
+import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -43,7 +43,9 @@ interface Props {
   lead: string; // the reflective opening line (serif roman — Ruling 2)
   body?: string; // optional continuation
   verse?: string; // anchor reference, e.g. "Zechariah 4:10"
-  author: { initial: string; name: string; church: string; time: string };
+  // seal → Replant seal in the avatar circle (frozen attribution; the feed
+  // passes source_label as name). initial drives the lettered circle otherwise.
+  author: { initial?: string; seal?: boolean; name: string; church: string; time: string };
   commentCount?: number;
 }
 
@@ -152,7 +154,9 @@ export default function LeaderWordCard({
       {/* author row carries the right-aligned comments */}
       <View style={s.author}>
         <View style={s.av}>
-          <Text style={s.avInitial}>{author.initial}</Text>
+          {author.seal
+            ? <RpMark width={16} height={16} opacity={0.8} />
+            : <Text style={s.avInitial}>{author.initial ?? '·'}</Text>}
         </View>
         <View>
           <Text style={s.name}>{author.name}</Text>
