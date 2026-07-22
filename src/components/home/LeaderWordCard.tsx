@@ -57,16 +57,17 @@ export default function LeaderWordCard({
         </View>
         <Text style={s.eyebrowLabel}>{kicker}</Text>
         <View style={s.eyebrowRule} />
+        <Text style={s.when}>{author.time}</Text>
       </View>
 
       <Text style={s.lead}>{lead}</Text>
       {!!body && <Text style={s.body}>{body}</Text>}
 
-      {/* time opposite the verse anchor */}
-      <View style={s.meta}>
-        {verse ? <Text style={s.verse}>{verse}</Text> : <View />}
-        <Text style={s.when}>{author.time}</Text>
-      </View>
+      {!!verse && (
+        <View style={s.meta}>
+          <Text style={s.verse}>{verse}</Text>
+        </View>
+      )}
 
       {/* author row carries the right-aligned comments */}
       <View style={s.author}>

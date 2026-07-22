@@ -42,14 +42,23 @@ type Props = {
 export default function EncouragementCard({ lead, verse, time, author }: Props) {
   return (
     <View style={s.card}>
-      <Text style={s.label}>Encouragement</Text>
+      <View style={s.eyebrow}>
+        <View style={s.dotWrap}>
+          <View style={s.dotHalo} />
+          <View style={s.dot} />
+        </View>
+        <Text style={s.eyebrowLabel}>Encouragement</Text>
+        <View style={s.eyebrowRule} />
+        <Text style={s.when}>{time}</Text>
+      </View>
 
       <Text style={s.lead}>{lead}</Text>
 
-      <View style={s.meta}>
-        {verse ? <Text style={s.verse}>{verse}</Text> : <View />}
-        <Text style={s.when}>{time}</Text>
-      </View>
+      {!!verse && (
+        <View style={s.meta}>
+          <Text style={s.verse}>{verse}</Text>
+        </View>
+      )}
 
       <View style={s.author}>
         <View style={s.av}>
@@ -74,8 +83,14 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Quieter than the letterhead eyebrow — a single mono label, no dot.
-  label: { fontFamily: Typography.mono, fontSize: 10, letterSpacing: 1.4, color: Colors.green, marginBottom: 14 },
+  // Letterhead eyebrow — dot + label + rule + time, matching LeaderWordCard
+  // (Founder 2026-07-22: green dot like word-for-today, label muted, time top-right).
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
+  dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
+  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.green + '30' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.green },
+  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
+  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
   lead: { fontFamily: Typography.scriptureItalic, fontSize: 21, lineHeight: 29, letterSpacing: 0.1, color: Colors.text },
 
