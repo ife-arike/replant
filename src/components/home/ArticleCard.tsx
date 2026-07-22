@@ -4,9 +4,9 @@
 //
 // For card_type = 'article' or 'long_read'. A weightier card than the
 // standard announcement: kicker eyebrow, larger serif headline, an italic
-// standfirst, full body (NO page-turn truncation — leaders read the whole
-// piece), and a slim "Read · N min →" link row above the footer when an
-// external url is present.
+// standfirst, a page-turn body (3-line clamp, read on / fold — the CD
+// letterhead grammar; Founder 2026-07-22), and a slim "Read · N min →"
+// link row above the footer when an external url is present.
 //
 // SEC Observation B (defence-in-depth): only http(s) URLs reach the OS
 // link handler. safeOpen rejects javascript:, data:, file:, intent: and
@@ -50,7 +50,7 @@ type Props = {
   kicker?: string; // eyebrow label override (e.g. "Long read")
   title: string;
   standfirst?: string; // italic intro sentence
-  body: string; // body text (always full — no truncation on article cards)
+  body: string; // body text — 3-line clamp with read on / fold
   readTimeMin?: number; // "Read · 5 min →" — omit only the minutes if null
   url?: string; // link_url
   time: string;
@@ -73,6 +73,11 @@ export default function ArticleCard({
   onCommentPosted,
 }: Props) {
   const [cOpen, setCOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
   const tg = Tags[tag];
   const label = kicker ?? tg.label;
@@ -117,7 +122,17 @@ export default function ArticleCard({
 
       <Text style={s.title}>{title}</Text>
       {!!standfirst && <Text style={s.standfirst}>{standfirst}</Text>}
-      <Text style={s.body}>{body}</Text>
+      <Pressable
+        onPress={toggleExpand}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? 'Fold the article' : 'Read on'}
+      >
+        <Text style={s.body} numberOfLines={expanded ? undefined : 3}>{body}</Text>
+        <View style={s.readon}>
+          <View style={s.readonRule} />
+          <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+        </View>
+      </Pressable>
 
       {!!url && (
         <Pressable
@@ -196,6 +211,10 @@ const s = StyleSheet.create({
   // Slim read row — quieter than LinkCard's framed resource block.
   read: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   readText: { fontFamily: Typography.mono, fontSize: 11.5, letterSpacing: 0.4, color: Colors.accent },
+
+  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
+  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
 
   foot: {
     flexDirection: 'row',
