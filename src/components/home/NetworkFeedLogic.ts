@@ -233,3 +233,69 @@ export function formatRelativeTime(
   if (diff < YEAR_MS)   return `${Math.floor(diff / MONTH_MS)}mo ago`;
   return `${Math.floor(diff / YEAR_MS)}y ago`;
 }
+
+// ─── Article standfirst derivation (Founder round-2, 2026-07-22) ──────
+//
+// `announcements` carries no standfirst column, but the CD article frame
+// wants an italic standfirst above the body. We derive it: the first
+// sentence becomes the standfirst, the remainder becomes the body.
+//
+// Guards (in priority order):
+//   • Empty / whitespace body → no standfirst; body returned as-is.
+//   • Single sentence (no second sentence after the boundary) → NO
+//     standfirst; the whole text stays the body. Never split into an
+//     empty body (Founder ruling: guard one-sentence bodies).
+//   • The terminator must be real: an honorific abbreviation (Rev., Fr.,
+//     Dr., St., Ps. …), a single-letter initial ("C. S. Lewis"), a
+//     decimal ("3.5"), or an ellipsis run ("waited…") is NOT a sentence
+//     boundary — a standfirst is never cut to "Rev.".
+//
+// Intended for card_type 'article' | 'long_read' only; the caller gates.
+// Pure + string-only so it unit-tests under jest-expo's node env.
+
+// Common leader-domain + prose abbreviations whose trailing period is NOT
+// a sentence end. Lower-cased, punctuation-stripped for the lookup.
+const STANDFIRST_ABBREVIATIONS: ReadonlySet<string> = new Set([
+  'mr', 'mrs', 'ms', 'dr', 'prof', 'rev', 'fr', 'st', 'pr', 'ps', 'bp',
+  'sr', 'jr', 'min', 'apostle', 'pastor', 'bishop', 'elder', 'mt', 'ch',
+  'vs', 'no', 'etc', 'al', 'cf', 'e.g', 'i.e',
+]);
+
+export function deriveArticleStandfirst(
+  raw: string | null | undefined,
+): { standfirst?: string; body: string } {
+  const text = (raw ?? '').trim();
+  if (!text) return { body: text };
+
+  // A boundary is a terminator (. ! ?), any closing quotes/brackets, then
+  // whitespace, then more text. The closing group deliberately excludes
+  // '.' so an ellipsis run is not swallowed as closing punctuation.
+  const boundary = /([.!?])([”’"')\]]*)\s+/g;
+  let m: RegExpExecArray | null;
+  while ((m = boundary.exec(text)) !== null) {
+    const terminatorIdx = m.index;
+    const remainderStart = m.index + m[0].length;
+    const remainder = text.slice(remainderStart).trim();
+    if (!remainder) break; // terminator sat at the end → single sentence.
+
+    // Ellipsis / terminator run: the char before the matched terminator is
+    // itself a terminator → this is the tail of "…" or "?!", not a boundary.
+    const prevChar = text.charAt(terminatorIdx - 1);
+    if (prevChar === '.' || prevChar === '!' || prevChar === '?') continue;
+
+    // Honorific abbreviation or single-letter initial immediately before
+    // the period → not a real sentence end.
+    const before = text.slice(0, terminatorIdx);
+    const lastToken = (before.match(/(\S+)$/)?.[1] ?? '')
+      .toLowerCase()
+      .replace(/[^a-z]/g, '');
+    if (STANDFIRST_ABBREVIATIONS.has(lastToken)) continue;
+    if (/^[a-z]$/.test(lastToken)) continue; // single initial e.g. "C."
+
+    const standfirst = text.slice(0, terminatorIdx + 1 + m[2].length).trim();
+    return { standfirst, body: remainder };
+  }
+
+  // No valid boundary anywhere → treat the whole text as one sentence.
+  return { body: text };
+}

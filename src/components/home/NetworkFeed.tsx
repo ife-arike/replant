@@ -47,6 +47,7 @@ import HomeSectionLabel from './HomeSectionLabel';
 import {
   PAGE_SIZE,
   ROLE_DISPLAY,
+  deriveArticleStandfirst,
   formatRelativeTime,
   isPosted,
   resolveDisplayName,
@@ -245,21 +246,28 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
 
   switch (item.card_type) {
     case 'article':
-    case 'long_read':
+    case 'long_read': {
+      // announcements has no standfirst column — derive it: the first
+      // sentence becomes the italic standfirst, the remainder the body
+      // (guarded so a one-sentence body is never split into an empty
+      // body). Article/long_read only — the caller (this case) gates it.
+      const { standfirst, body } = deriveArticleStandfirst(item.body);
       return (
         <ArticleCard
           announcementId={item.id}
           tag={tag}
           kicker={item.card_type === 'long_read' ? 'Long read' : undefined}
           title={item.title}
-          body={item.body}
-          // standfirst + readTimeMin are not yet columns on announcements;
+          standfirst={standfirst}
+          body={body}
+          // readTimeMin is not yet a column on announcements;
           // url is sourced from link_url when present.
           url={item.link_url ?? undefined}
           time={time}
           commentCount={item.comment_count}
         />
       );
+    }
 
     case 'encouragement':
       return <EncouragementFeedItem item={item} time={time} />;
