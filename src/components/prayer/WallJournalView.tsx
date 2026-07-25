@@ -41,7 +41,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { Chevron } from '../home/HomeIcons';
 import { getLocationLine } from './PrayerWallLogic';
-import { sentencePreview } from './wallNewLogic';
+import { sentencePreview, windowStanding } from './wallNewLogic';
 import { GapMark } from './WallPrimitives';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -133,7 +133,9 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
       setEntries((entriesRes.data ?? []) as EntryRow[]);
     }
     if (!holdsRes.error) setHolds((holdsRes.data ?? []) as HoldRow[]);
-    if (!standingRes.error) setStanding((standingRes.data ?? []) as StandingRow[]);
+    // 30-day window · 25 visible (Founder-approved 2026-07-25). A view
+    // over the record, never the record — counts are untouched.
+    if (!standingRes.error) setStanding(windowStanding((standingRes.data ?? []) as StandingRow[]));
     setLoaded(true);
   }, []);
 

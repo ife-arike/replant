@@ -8,6 +8,7 @@ import {
   effectiveView,
   sentencePreview,
   sortRows,
+  windowStanding,
   staggerDelay,
   COMPOSE_AMBER_AT,
   COMPOSE_RED_AT,
@@ -198,5 +199,28 @@ describe('byNewest — enforces created_at DESC regardless of wire order', () =>
     const wire = [t('a', '2026-06-01T00:00:00Z'), t('b', '2026-07-01T00:00:00Z')];
     byNewest(wire);
     expect(wire[0].id).toBe('a');
+  });
+});
+
+// ─── windowStanding (30-day window · 25 visible, Founder 2026-07-25) ─────
+describe('windowStanding — journal gap list is a windowed view', () => {
+  const NOW = new Date('2026-07-25T00:00:00Z');
+  const r = (id: number, daysAgo: number) => ({
+    prayer_request_id: String(id),
+    prayed_at: new Date(NOW.getTime() - daysAgo * 86_400_000).toISOString(),
+  });
+  it('drops entries older than 30 days', () => {
+    const rows = [r(1, 2), r(2, 31), r(3, 29)];
+    expect(windowStanding(rows, NOW).map((x) => x.prayer_request_id)).toEqual(['1', '3']);
+  });
+  it('caps at 25 most recent, newest first', () => {
+    const rows = Array.from({ length: 40 }, (_, i) => r(i, i * 0.5));
+    const out = windowStanding(rows, NOW);
+    expect(out).toHaveLength(25);
+    expect(out[0].prayer_request_id).toBe('0');
+    expect(out[24].prayer_request_id).toBe('24');
+  });
+  it('ignores unparseable timestamps rather than crashing', () => {
+    expect(windowStanding([{ prayer_request_id: 'x', prayed_at: 'not-a-date' }], NOW)).toHaveLength(0);
   });
 });

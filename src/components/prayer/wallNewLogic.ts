@@ -99,6 +99,32 @@ export function byNewest<T extends { created_at: string }>(rows: readonly T[]): 
   return [...rows].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 }
 
+// ─── Standing-in-the-gap window (Founder-approved 2026-07-25) ─────────
+//
+// The journal list is a VIEW of the intercession record, never its own
+// table — so this window can't touch the intercede counts by
+// construction (README's invariant). 30 days = a season of carrying;
+// 25 visible = the most recent within it. At the cap the oldest simply
+// leaves the visible list; the Intercede tap never fails and there is
+// no cleanup homework.
+
+export const GAP_WINDOW_DAYS = 30;
+export const GAP_VISIBLE_MAX = 25;
+
+export function windowStanding<T extends { prayed_at: string }>(
+  rows: readonly T[],
+  now: Date = new Date(),
+): T[] {
+  const cutoff = now.getTime() - GAP_WINDOW_DAYS * 86_400_000;
+  return [...rows]
+    .filter((r) => {
+      const ts = Date.parse(r.prayed_at);
+      return !Number.isNaN(ts) && ts >= cutoff;
+    })
+    .sort((a, b) => Date.parse(b.prayed_at) - Date.parse(a.prayed_at))
+    .slice(0, GAP_VISIBLE_MAX);
+}
+
 export function sortRows(rows: readonly PrayerRow[], sort: WallSort): PrayerRow[] {
   const copy = [...rows];
   switch (sort) {
