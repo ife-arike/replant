@@ -138,6 +138,7 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     published_at: '2026-05-21T00:00:00.000Z',
     is_active: true,
     source_label: null,
+    source_sublabel: null,
     tag_type: null,
     // KAN-335 badge cutover — badge column added to AnnouncementRow.
     badge: null,
