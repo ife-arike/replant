@@ -346,7 +346,18 @@ function RequestRow({
 
       {expanded ? (
         <View style={s.actionRow}>
-          {isVerified ? (
+          {row.is_own ? (
+            <>
+              {/* Founder ruling 2026-07-25: self-intercede stays blocked
+                  (the count must mean OTHERS) — own requests state it
+                  quietly instead of offering a tap the server declines.
+                  Count keeps its uniform bottom-right seat. */}
+              <Text style={s.gateNotice}>YOUR CHURCH'S REQUEST</Text>
+              <Text style={s.actionCount} numberOfLines={1}>
+                {row.prayed_count} interceding
+              </Text>
+            </>
+          ) : isVerified ? (
             <>
               <Pressable
                 onPress={onIntercede}
