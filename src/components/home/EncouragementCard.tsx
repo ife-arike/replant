@@ -15,7 +15,8 @@
 // comment thread renders. The commentCount / onCommentPosted props are
 // accepted for routing-shape parity but intentionally unused.
 //
-// Author masking: resolved upstream in NetworkFeed's useResolvedLeaderAuthor.
+// Author attribution: frozen upstream in NetworkFeed (source_label byline +
+// seal; the feed never resolves authors client-side — SME interim 2026-07-22).
 // Two independent axes (decoupled 2026-06-21):
 //   • users.anonymous = true → name becomes "A fellow {role}", initial "A".
 //   • underground church + safe (show_church_name=false) → church display
