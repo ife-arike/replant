@@ -53,7 +53,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
 import { PAGE_SIZE, TESTIMONY_PAGE_SIZE, type PrayerRow, type TestimonyRow } from '../../components/prayer/PrayerWallLogic';
-import { byNewest, effectiveView, sortRows, type WallShow, type WallSort, type WallView } from '../../components/prayer/wallNewLogic';
+import { byNewest, effectiveView, rpcAppError, sortRows, type WallShow, type WallSort, type WallView } from '../../components/prayer/wallNewLogic';
 import { WallTabs } from '../../components/prayer/WallPrimitives';
 import WallFeedView, { type FeedLoadState } from '../../components/prayer/WallFeedView';
 import WallTestimoniesView, { type TestimonyLoadState } from '../../components/prayer/WallTestimoniesView';
