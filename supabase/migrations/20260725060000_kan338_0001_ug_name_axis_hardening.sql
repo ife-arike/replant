@@ -30,8 +30,9 @@
 -- at authorship AND now; tightening is automatic and retroactive; loosening
 -- never un-redacts outside the audited ceremonies.
 --
--- UNAPPLIED — files-only. Apply gates: VERIFY-LIVE batch (KAN-338 synthesis
--- §rollout 1) including the UG un-anonymised blast-radius count.
+-- APPLIED LIVE 2026-07-25 via execute_sql after the VERIFY-LIVE batch cleared
+-- (blast radius was 8 of 34 UG members; 0 after backfill; both triggers
+-- verified live). Not in supabase_migrations by this wave's batch convention.
 
 BEGIN;
 
