@@ -108,9 +108,10 @@ export default function WallFeedView(props: Props) {
     <View>
       <View style={s.hub}>
         {/* Welcome line — hidden when the feed is empty so it can never
-            contradict a zero count (README). Copy: Founder 2026-07-25. */}
+            contradict a zero count (README). Copy: Founder 2026-07-25 —
+            only the first sentence changed; "Add your voice." stays. */}
         {!empty ? (
-          <Text style={s.welcome}>Welcome to the wall.</Text>
+          <Text style={s.welcome}>Welcome to the wall. Add your voice.</Text>
         ) : null}
 
         <View style={s.countRow}>

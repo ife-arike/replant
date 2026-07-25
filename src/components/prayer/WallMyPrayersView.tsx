@@ -171,13 +171,16 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
   };
 
   // ─── Gate panel ─────────────────────────────────────────────────────
+  // Entry hub (Founder 2026-07-25): the heading block is fixed in every
+  // branch of this view; content scrolls beneath the hairline boundary.
   if (!isVerified) {
     return (
-      <ScrollView contentContainerStyle={s.gateScroll}>
-        <View style={s.headBlock}>
+      <View style={s.root}>
+        <View style={s.hub}>
           <Text style={s.heading}>Your church's open prayers</Text>
           <Text style={s.subLine}>NOT YET VERIFIED</Text>
         </View>
+        <ScrollView contentContainerStyle={s.gateScroll}>
         <View style={s.gatePanel}>
           <Text style={s.gateHeading}>Verification pending</Text>
           <Text style={s.gateBody}>
@@ -197,25 +200,38 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
           </Pressable>
           <View style={s.gateRule} />
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
   if (loadState === 'error') {
     return (
-      <View style={s.stateWrap}>
-        <Text style={s.errorCopy}>Couldn't load your prayers right now.</Text>
-        <Pressable onPress={() => { setLoadState('initial'); void load(); }} hitSlop={8} accessibilityRole="button">
-          <Text style={s.retry}>TAP TO RETRY</Text>
-        </Pressable>
+      <View style={s.root}>
+        <View style={s.hub}>
+          <Text style={s.heading}>Your church's open prayers</Text>
+          <Text style={s.subLine}>—</Text>
+        </View>
+        <View style={s.stateWrap}>
+          <Text style={s.errorCopy}>Couldn't load your prayers right now.</Text>
+          <Pressable onPress={() => { setLoadState('initial'); void load(); }} hitSlop={8} accessibilityRole="button">
+            <Text style={s.retry}>TAP TO RETRY</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (loadState === 'initial') {
     return (
-      <View style={s.stateWrap}>
-        <ActivityIndicator color={Colors.accent} />
+      <View style={s.root}>
+        <View style={s.hub}>
+          <Text style={s.heading}>Your church's open prayers</Text>
+          <Text style={s.subLine}>—</Text>
+        </View>
+        <View style={s.stateWrap}>
+          <ActivityIndicator color={Colors.accent} />
+        </View>
       </View>
     );
   }
@@ -223,14 +239,15 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
   const totalInterceding = rows.reduce((sum, r) => sum + r.prayed_count, 0);
 
   return (
-    <ScrollView contentContainerStyle={s.scroll}>
-      <View style={s.headBlock}>
+    <View style={s.root}>
+      <View style={s.hub}>
         <Text style={s.heading}>Your church's open prayers</Text>
         {/* Counts must read 0, not hide (README empty-state rule). */}
         <Text style={s.subLine}>
           {rows.length} OPEN · {totalInterceding} INTERCEDING
         </Text>
       </View>
+    <ScrollView contentContainerStyle={s.scroll}>
 
       {rows.length === 0 ? (
         <>
@@ -341,6 +358,7 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
 
       <WallScriptureFooter text={PSALM_55_22} reference={PSALM_55_22_REF} />
     </ScrollView>
+    </View>
   );
 }
 
@@ -362,7 +380,15 @@ function PostButton({ onPost, topMargin }: { onPost: () => void; topMargin: numb
 const s = StyleSheet.create({
   scroll: { paddingBottom: 8 },
   gateScroll: { paddingBottom: 40 },
-  headBlock: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 16 },
+  root: { flex: 1 },
+  // Entry hub — fixed heading zone; bottom hairline is the scroll boundary.
+  hub: {
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderAccentSubtle,
+  },
   heading: { fontFamily: Typography.displayRegular, fontSize: 22, color: Colors.text },
   subLine: {
     marginTop: 7,

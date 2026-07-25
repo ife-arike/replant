@@ -27,8 +27,8 @@ Three structural moves define it:
 - **"Interceding now" live presence replaced** by the trailing-7-day intercession count (`get_wall_weekly_intercessions`) — live presence cannot be computed truthfully without realtime infra. Label: `INTERCESSIONS THIS WEEK`.
 - **Journal list sections collapse by default** (settings behaviour) and the carry sub-copy is: *"Added from the Church Tab. Add up to ten ministries at a time."*
 - Token decision **(A)** taken: mono allowance extended (Item 08 note updated in `theme.ts`); `borderAccentStrong` / `borderAccentSubtle` added.
-- **(2026-07-25) Feed welcome line** is now **"Welcome to the wall."** (was *"The body is already praying. Add your voice."*). Still hidden when the feed is empty.
-- **(2026-07-25) Entry hub:** the fixed zone extends past the tab rule DOWN THROUGH the intro block — welcome, count row, meta line, and filter panel no longer scroll; the boundary is the hairline under the meta line, and only rows scroll beneath it. Shipped on Feed first; Testimonies + My Prayers get the same treatment after device approval.
+- **(2026-07-25) Feed welcome line** is now **"Welcome to the wall. Add your voice."** (first sentence replaced only — "Add your voice." stays; Founder correction after a build briefly dropped it). Still hidden when the feed is empty.
+- **(2026-07-25) Entry hub:** the fixed zone extends past the tab rule DOWN THROUGH the intro block — welcome, count row, meta line, and filter panel no longer scroll; the boundary is the hairline under the meta line, and only rows scroll beneath it. Approved on device and now applied to ALL THREE tabs — Testimonies (byline + count + meta fixed) and My Prayers (heading + counts fixed, in the gate branch too).
 
 ## ⚠️ Two token decisions to make before you start
 

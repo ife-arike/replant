@@ -70,9 +70,15 @@ export default function WallTestimoniesView(props: Props) {
 
   const monthCount = answeredThisMonth(rows);
 
-  const header = (
-    <View style={s.intro}>
-      <Text style={s.welcome}>See what God has been doing — and share your own.</Text>
+  // Entry hub (Founder 2026-07-25, extended from Feed on device
+  // approval): byline, count, and meta line sit fixed above the list;
+  // only testimony rows scroll. Boundary = the hairline under the meta
+  // line. Byline hides when the list is empty (welcome-line parity).
+  const hub = (
+    <View style={s.hub}>
+      {rows.length > 0 ? (
+        <Text style={s.welcome}>See what God has been doing — and share your own.</Text>
+      ) : null}
       <View style={s.countRow}>
         <View style={s.countDot} />
         <Text style={s.countLabel}>ANSWERED THIS MONTH</Text>
@@ -82,26 +88,35 @@ export default function WallTestimoniesView(props: Props) {
     </View>
   );
 
+  // The hub renders in every load state — it is the header now.
   if (loadState === 'error') {
     return (
-      <View style={s.stateWrap}>
-        <Text style={s.errorCopy}>Couldn't load testimonies right now.</Text>
-        <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
-          <Text style={s.retry}>TAP TO RETRY</Text>
-        </Pressable>
+      <View style={s.root}>
+        {hub}
+        <View style={s.stateWrap}>
+          <Text style={s.errorCopy}>Couldn't load testimonies right now.</Text>
+          <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
+            <Text style={s.retry}>TAP TO RETRY</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (loadState === 'initial') {
     return (
-      <View style={s.stateWrap}>
-        <ActivityIndicator color={Colors.accent} />
+      <View style={s.root}>
+        {hub}
+        <View style={s.stateWrap}>
+          <ActivityIndicator color={Colors.accent} />
+        </View>
       </View>
     );
   }
 
   return (
+    <View style={s.root}>
+    {hub}
     <FlatList
       data={rows}
       keyExtractor={(r) => `${r.id}-${animTick}`}
@@ -109,6 +124,7 @@ export default function WallTestimoniesView(props: Props) {
         <StaggerRow index={index}>
           <TestimonyRowView
             row={item}
+            first={index === 0}
             expanded={expandedId === item.id}
             isVerified={isVerified}
             onToggle={() => {
@@ -121,7 +137,6 @@ export default function WallTestimoniesView(props: Props) {
           />
         </StaggerRow>
       )}
-      ListHeaderComponent={header}
       ListEmptyComponent={
         <WallEmpty
           heading="No testimonies yet."
@@ -144,15 +159,19 @@ export default function WallTestimoniesView(props: Props) {
       }
       contentContainerStyle={s.listContent}
     />
+    </View>
   );
 }
 
 // ─── Testimony row ────────────────────────────────────────────────────
 
 function TestimonyRowView({
-  row, expanded, isVerified, onToggle, onRejoice,
+  row, first, expanded, isVerified, onToggle, onRejoice,
 }: {
   row: TestimonyRow;
+  // First row under the fixed hub — top separator suppressed so the
+  // hub's bottom hairline isn't doubled at rest.
+  first?: boolean;
   expanded: boolean;
   isVerified: boolean;
   onToggle: () => void;
@@ -163,7 +182,7 @@ function TestimonyRowView({
   const fromRequest = row.original_request_id !== null;
 
   return (
-    <View style={s.row}>
+    <View style={[s.row, first && s.rowFirst]}>
       <Pressable
         onPress={onToggle}
         accessibilityRole="button"
@@ -257,7 +276,16 @@ function TestimonyRowView({
 // ─── Styles ───────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  intro: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 14 },
+  root: { flex: 1 },
+  // Entry hub — fixed zone; bottom hairline is the scroll boundary.
+  hub: {
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderAccentSubtle,
+  },
+  rowFirst: { borderTopWidth: 0 },
   welcome: {
     fontFamily: Typography.scriptureLight,
     fontSize: 19,
