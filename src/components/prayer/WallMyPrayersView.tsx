@@ -42,7 +42,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { EMAIL } from '../home/VerificationBanner';
 import { formatRelativeTime } from './PrayerWallLogic';
-import { DEFAULT_TESTIMONY_TEXT } from './wallNewLogic';
+import { DEFAULT_TESTIMONY_TEXT, rpcAppError } from './wallNewLogic';
 import { WallEmpty, WallScriptureFooter } from './WallPrimitives';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -69,7 +69,9 @@ interface OpenPrayerRow {
 }
 
 // create_testimony error codes → inline copy (aligned with
-// MyOpenPrayersView's map; RPC RAISEs the code as message text).
+// MyOpenPrayersView's map). Audited live 2026-07-25: the RPC returns
+// jsonb { error: code } over HTTP 200 — codes arrive in the PAYLOAD,
+// not as error.message. Both paths feed this map.
 function testifyErrorCopy(code: string | null | undefined): string {
   switch (code) {
     case 'content_too_long':   return 'Your testimony is too long (300 character limit).';
@@ -139,13 +141,14 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
     setSubmitting(true);
     setInlineError(null);
     const text = testimonyDraft.trim() || DEFAULT_TESTIMONY_TEXT;
-    const { error } = await supabase.rpc('create_testimony', {
+    const { data, error } = await supabase.rpc('create_testimony', {
       p_request_id: row.id,
       p_testimony_text: text,
     });
     setSubmitting(false);
-    if (error) {
-      setInlineError(testifyErrorCopy(error.message));
+    const appErr = error ? null : rpcAppError(data);
+    if (error || appErr) {
+      setInlineError(testifyErrorCopy(appErr ?? error?.message));
       return;
     }
     animate();
@@ -156,8 +159,8 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
   };
 
   const remove = async (row: OpenPrayerRow) => {
-    const { error } = await supabase.rpc('soft_delete_prayer_request', { p_request_id: row.id });
-    if (error) {
+    const { data, error } = await supabase.rpc('soft_delete_prayer_request', { p_request_id: row.id });
+    if (error || rpcAppError(data)) {
       onToast('Not removed yet — try again in a moment.');
       return;
     }

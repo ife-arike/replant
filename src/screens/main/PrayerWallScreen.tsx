@@ -286,18 +286,35 @@ export default function PrayerWallScreen() {
         r.id === row.id ? { ...r, i_prayed: next, prayed_count: r.prayed_count + delta } : r,
       ),
     );
-    const { error } = await supabase.rpc('stand_in_the_gap', { p_prayer_request_id: row.id });
-    if (error) {
-      // Roll back (not_verified, self_interaction_blocked, network).
+    const { data, error } = await supabase.rpc('stand_in_the_gap', { p_prayer_request_id: row.id });
+    // House contract (PrayerWallPullUp.onAgree): app-level refusals ride
+    // the 200 payload as { error: code } — transport-only checks left the
+    // optimistic fill stranded until refresh (device pass r3 bug).
+    const appErr = error ? null : rpcAppError(data);
+    if (error || appErr) {
       setRows((prev) =>
         prev.map((r) =>
           r.id === row.id ? { ...r, i_prayed: row.i_prayed, prayed_count: row.prayed_count } : r,
         ),
       );
-    } else {
-      void loadWeekly(); // the weekly count just moved
+      if (appErr === 'self_interaction_blocked') {
+        showToast("This is your church's own request — the body carries it for you.");
+      } else if (appErr === 'not_verified') {
+        showToast('Interceding unlocks once your church is verified.');
+      }
+      return;
     }
-  }, [loadWeekly]);
+    // Success — reconcile to the server's prayed truth (toggle races).
+    const serverPrayed = (data as { prayed?: boolean } | null)?.prayed ?? next;
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === row.id
+          ? { ...r, i_prayed: serverPrayed, prayed_count: row.prayed_count + (serverPrayed ? 1 : -1) }
+          : r,
+      ),
+    );
+    void loadWeekly(); // the weekly count just moved
+  }, [loadWeekly, showToast]);
 
   // ─── Optimistic Rejoice ─────────────────────────────────────────────
   const handleRejoice = useCallback(async (row: TestimonyRow) => {
@@ -310,8 +327,9 @@ export default function PrayerWallScreen() {
           : r,
       ),
     );
-    const { error } = await supabase.rpc('celebrate', { p_testimony_id: row.id });
-    if (error) {
+    const { data, error } = await supabase.rpc('celebrate', { p_testimony_id: row.id });
+    const appErr = error ? null : rpcAppError(data);
+    if (error || appErr) {
       setTRows((prev) =>
         prev.map((r) =>
           r.id === row.id
@@ -319,8 +337,28 @@ export default function PrayerWallScreen() {
             : r,
         ),
       );
+      if (appErr === 'self_interaction_blocked') {
+        showToast("This is your church's own testimony — the body rejoices with you.");
+      } else if (appErr === 'not_verified') {
+        showToast('Rejoicing unlocks once your church is verified.');
+      }
+      return;
     }
-  }, []);
+    // Reconcile to the server's celebrated truth (live shape:
+    // { action, celebrated } — audited 2026-07-25).
+    const serverCelebrated = (data as { celebrated?: boolean } | null)?.celebrated ?? next;
+    setTRows((prev) =>
+      prev.map((r) =>
+        r.id === row.id
+          ? {
+              ...r,
+              i_celebrated: serverCelebrated,
+              celebrated_count: row.celebrated_count + (serverCelebrated ? 1 : -1),
+            }
+          : r,
+      ),
+    );
+  }, [showToast]);
 
   // Journal Release → un-intercede: keep any loaded feed row honest.
   const handleReleasedRequest = useCallback((requestId: string) => {

@@ -171,6 +171,7 @@ export default function WallFeedView(props: Props) {
 
   return (
     <View style={s.root}>
+    {hub}
     <FlatList
       ref={listRef}
       data={rows}

@@ -99,6 +99,24 @@ export function byNewest<T extends { created_at: string }>(rows: readonly T[]): 
   return [...rows].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 }
 
+// ─── RPC payload contract (device pass r3, 2026-07-25) ────────────────
+//
+// The wall's action RPCs (stand_in_the_gap, celebrate, create_testimony,
+// soft_delete_prayer_request, remove_intercession_hold) return jsonb
+// over HTTP 200 — app-level refusals arrive as { error: '<code>' } in
+// the PAYLOAD, never as a transport error (house contract; see
+// PrayerWallPullUp.onAgree). Checking only the transport error left
+// optimistic state stranded: the tap looked kept until the next refresh
+// wiped it. Every call site must consult this helper.
+
+export function rpcAppError(data: unknown): string | null {
+  if (data && typeof data === 'object' && 'error' in data) {
+    const code = (data as { error?: unknown }).error;
+    return typeof code === 'string' && code.length > 0 ? code : null;
+  }
+  return null;
+}
+
 // ─── Standing-in-the-gap window (Founder-approved 2026-07-25) ─────────
 //
 // The journal list is a VIEW of the intercession record, never its own

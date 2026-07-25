@@ -6,6 +6,7 @@ import {
   byNewest,
   counterStage,
   effectiveView,
+  rpcAppError,
   sentencePreview,
   sortRows,
   windowStanding,
@@ -222,5 +223,21 @@ describe('windowStanding — journal gap list is a windowed view', () => {
   });
   it('ignores unparseable timestamps rather than crashing', () => {
     expect(windowStanding([{ prayer_request_id: 'x', prayed_at: 'not-a-date' }], NOW)).toHaveLength(0);
+  });
+});
+
+// ─── rpcAppError (payload contract, device pass r3) ──────────────────────
+describe('rpcAppError — app-level refusals ride the 200 payload', () => {
+  it('extracts a non-empty error code', () => {
+    expect(rpcAppError({ error: 'self_interaction_blocked' })).toBe('self_interaction_blocked');
+    expect(rpcAppError({ error: 'not_verified' })).toBe('not_verified');
+  });
+  it('returns null for success payloads and non-objects', () => {
+    expect(rpcAppError({ action: 'added', prayed: true })).toBeNull();
+    expect(rpcAppError(null)).toBeNull();
+    expect(rpcAppError(undefined)).toBeNull();
+    expect(rpcAppError('ok')).toBeNull();
+    expect(rpcAppError({ error: '' })).toBeNull();
+    expect(rpcAppError({ error: 42 })).toBeNull();
   });
 });

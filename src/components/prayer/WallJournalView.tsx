@@ -41,7 +41,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { Chevron } from '../home/HomeIcons';
 import { getLocationLine } from './PrayerWallLogic';
-import { sentencePreview, windowStanding } from './wallNewLogic';
+import { rpcAppError, sentencePreview, windowStanding } from './wallNewLogic';
 import { GapMark } from './WallPrimitives';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -172,10 +172,10 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
   const releaseStanding = async (row: StandingRow) => {
     // stand_in_the_gap is a toggle — calling it again removes the
     // intercession (and the prayed_by row behind the count).
-    const { error } = await supabase.rpc('stand_in_the_gap', {
+    const { data, error } = await supabase.rpc('stand_in_the_gap', {
       p_prayer_request_id: row.prayer_request_id,
     });
-    if (error) {
+    if (error || rpcAppError(data)) {
       onToast('Not released yet — try again in a moment.');
       return;
     }
@@ -185,8 +185,8 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
   };
 
   const releaseHold = async (hold: HoldRow) => {
-    const { error } = await supabase.rpc('remove_intercession_hold', { p_hold_id: hold.id });
-    if (error) {
+    const { data, error } = await supabase.rpc('remove_intercession_hold', { p_hold_id: hold.id });
+    if (error || rpcAppError(data)) {
       onToast('Not released yet — try again in a moment.');
       return;
     }
