@@ -99,13 +99,18 @@ export default function WallFeedView(props: Props) {
   const listRef = useRef<FlatList<PrayerRow>>(null);
   const empty = rows.length === 0 && loadState !== 'initial' && loadState !== 'error';
 
-  const header = (
+  // Entry hub (Founder 2026-07-25): the intro block no longer scrolls
+  // with the rows — title, tabs, welcome, count, and filters sit as one
+  // fixed header zone whose bottom edge is the hairline under the meta
+  // line. Only the request rows scroll. Feed first; Testimonies +
+  // My Prayers follow on device approval (README decisions section).
+  const hub = (
     <View>
-      <View style={s.intro}>
+      <View style={s.hub}>
         {/* Welcome line — hidden when the feed is empty so it can never
-            contradict a zero count (README). */}
+            contradict a zero count (README). Copy: Founder 2026-07-25. */}
         {!empty ? (
-          <Text style={s.welcome}>The body is already praying. Add your voice.</Text>
+          <Text style={s.welcome}>Welcome to the wall.</Text>
         ) : null}
 
         <View style={s.countRow}>
@@ -138,26 +143,34 @@ export default function WallFeedView(props: Props) {
     </View>
   );
 
+  // The hub renders in every load state — it is the header now.
   if (loadState === 'error') {
     return (
-      <View style={s.stateWrap}>
-        <Text style={s.errorCopy}>Couldn't load the wall right now.</Text>
-        <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
-          <Text style={s.retry}>TAP TO RETRY</Text>
-        </Pressable>
+      <View style={s.root}>
+        {hub}
+        <View style={s.stateWrap}>
+          <Text style={s.errorCopy}>Couldn't load the wall right now.</Text>
+          <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button">
+            <Text style={s.retry}>TAP TO RETRY</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (loadState === 'initial') {
     return (
-      <View style={s.stateWrap}>
-        <ActivityIndicator color={Colors.accent} />
+      <View style={s.root}>
+        {hub}
+        <View style={s.stateWrap}>
+          <ActivityIndicator color={Colors.accent} />
+        </View>
       </View>
     );
   }
 
   return (
+    <View style={s.root}>
     <FlatList
       ref={listRef}
       data={rows}
@@ -168,6 +181,7 @@ export default function WallFeedView(props: Props) {
         <StaggerRow index={index}>
           <RequestRow
             row={item}
+            first={index === 0}
             expanded={expandedId === item.id}
             isVerified={isVerified}
             onToggle={() => {
@@ -180,7 +194,6 @@ export default function WallFeedView(props: Props) {
           />
         </StaggerRow>
       )}
-      ListHeaderComponent={header}
       ListEmptyComponent={
         show === 'urgent' ? (
           <WallEmpty
@@ -213,6 +226,7 @@ export default function WallFeedView(props: Props) {
       }
       contentContainerStyle={s.listContent}
     />
+    </View>
   );
 }
 
@@ -264,9 +278,12 @@ function FilterPanel({
 // ─── Request row ──────────────────────────────────────────────────────
 
 function RequestRow({
-  row, expanded, isVerified, onToggle, onIntercede,
+  row, first, expanded, isVerified, onToggle, onIntercede,
 }: {
   row: PrayerRow;
+  // First row under the fixed hub — its top separator is suppressed so
+  // the hub's bottom hairline isn't doubled at rest.
+  first?: boolean;
   expanded: boolean;
   isVerified: boolean;
   onToggle: () => void;
@@ -277,7 +294,7 @@ function RequestRow({
   const posted = `Posted ${formatRelativeTime(row.created_at)}`;
 
   return (
-    <View style={s.row}>
+    <View style={[s.row, first && s.rowFirst]}>
       <Pressable
         onPress={onToggle}
         accessibilityRole="button"
@@ -362,7 +379,17 @@ function RequestRow({
 // ─── Styles ───────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  intro: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 14 },
+  root: { flex: 1 },
+  // Entry hub — fixed zone; its bottom hairline is the scroll boundary
+  // ("the line under newest first", Founder 2026-07-25).
+  hub: {
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderAccentSubtle,
+  },
+  rowFirst: { borderTopWidth: 0 },
   welcome: {
     fontFamily: Typography.scriptureLight,
     fontSize: 19,
