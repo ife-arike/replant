@@ -243,7 +243,7 @@ const s = StyleSheet.create({
   // variant's wider left padding gets its own override). Offscreen-top,
   // NOT height:0 — RN skips text layout entirely for zero-height text,
   // which would silently kill the overflow signal.
-  mirror: { position: 'absolute', left: 20, right: 20, top: -10000, opacity: 0 },
+  mirror: { position: 'absolute', left: 20, right: 20, top: 0, opacity: 0 },
   mirrorRule: { left: 22 },
 
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },

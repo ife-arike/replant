@@ -32,7 +32,10 @@ import { useViewerChurch } from '../../hooks/useViewerChurch';
 import { viewerOrgCopy } from '../../utils/displayHelpers';
 import { InfoIcon, ClockIcon, AlertIcon, LeaderIcon } from './banner-icons';
 
-const EMAIL = 'accounts@projectreplant.org';
+// Exported for the Prayer Wall rebuild's My Prayers gate panel
+// (design_handoff_prayer_wall_NEW — "reuse the EMAIL constant and Mail
+// link pattern"). Single source of truth for the support address.
+export const EMAIL = 'accounts@projectreplant.org';
 
 function computeDays(deadline: string | null): number | null {
   if (!deadline) return null;

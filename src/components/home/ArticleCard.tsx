@@ -294,7 +294,7 @@ const s = StyleSheet.create({
   // Offscreen mirror — pinned to the body column's width (left/right 0) so
   // its wrapping matches the visible body, incl. the drop-cap narrowing.
   // Offscreen-top, NOT height:0 (RN skips text layout for zero-height text).
-  mirror: { position: 'absolute', left: 0, right: 0, top: -10000, opacity: 0 },
+  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
 
   // Slim read row — quieter than LinkCard's framed resource block.
   read: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },

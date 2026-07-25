@@ -177,7 +177,7 @@ const s = StyleSheet.create({
 
   // Offscreen mirror + page-turn cue — exact style values from
   // AnnouncementCard so the read-on grammar reads identically app-wide.
-  mirror: { position: 'absolute', left: 20, right: 20, top: -10000, opacity: 0 },
+  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
   readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },

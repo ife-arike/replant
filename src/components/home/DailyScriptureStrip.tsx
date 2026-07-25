@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 24,
     right: 4,
-    top: -10000,
+    top: 0,
     opacity: 0,
   },
   // Reference line — mono; book in sky, " · translation" muted.

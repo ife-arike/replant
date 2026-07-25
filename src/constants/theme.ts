@@ -29,6 +29,12 @@ export const Colors = {
   surfaceElevated: '#181818',
   border: 'rgba(240, 237, 230, 0.08)',
   borderAccent: 'rgba(107, 181, 232, 0.25)',
+  // Prayer Wall rebuild (design_handoff_prayer_wall_NEW, Founder-approved
+  // 2026-07-24) — sky-tinted hairlines for the wall's header rule and row
+  // separators. The tint is subtle but intentional: it is the only thing
+  // keeping the long request list from reading as grey.
+  borderAccentStrong: 'rgba(107, 181, 232, 0.22)',
+  borderAccentSubtle: 'rgba(107, 181, 232, 0.10)',
 
   // RAG
   green: '#5BAD7A',
@@ -38,7 +44,10 @@ export const Colors = {
   // Home-tab card surfaces (KAN-201 home redesign 2026-06-01) — derived
   // from existing tokens; do not introduce additional brand values.
   cardSurface: '#111113',   // card chassis — a hair above surface
-  cardWarm: '#131110',      // warm card surface (leader word cards)
+  // Founder 2026-07-24: feed cards unified to ONE surface for now — the
+  // subtle warm/cool split didn't help. Token retained so a future
+  // re-split is a one-line change.
+  cardWarm: '#111113',      // = cardSurface (unified; was #131110)
   linkWell: 'rgba(107,181,232,0.04)', // link block background
 
   // Utility
@@ -101,9 +110,16 @@ export const Typography = {
   sansLight: 'DMSans_300Light',
   // DM Mono — identifier register (RPL-XXXXX codes, numbered eyebrows,
   // version stamps). Added for KAN-138 Settings on-brand pass.
-  // KAN-23 v7 Item 08 — kept ONLY for filter chips, feed card category/
-  // urgent tags, testimony chip. All other mono usages on the Prayer
-  // Wall swept to DM Sans.
+  // KAN-23 v7 Item 08 — was: kept ONLY for filter chips, feed card
+  // category/urgent tags, testimony chip; all other Prayer Wall mono
+  // swept to DM Sans.
+  // AMENDED by the Prayer Wall rebuild (design_handoff_prayer_wall_NEW,
+  // token decision A, Founder-approved 2026-07-24): the rebuilt tab
+  // deliberately uses the tiny-caps mono register for its eyebrow/label
+  // layer — location eyebrows, tab labels, section labels, meta labels —
+  // because the mono caps are what make the wall read as a quiet ledger
+  // rather than a social feed. Item 08 remains in force on surfaces
+  // outside the rebuilt Prayer Wall tab.
   mono: 'DMMono_400Regular',
 } as const;
 
