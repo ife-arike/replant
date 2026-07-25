@@ -98,6 +98,21 @@ Deno.test("parsePayload — email canonicalised to lowercase + trimmed for Layer
   assertEquals(r.input.email, "office@maranatha.test");
 });
 
+Deno.test("parsePayload — underground newChurch FORCES anonymous true, even when explicitly false (KAN-338 P0-B, Founder GO 2026-07-25)", () => {
+  const ug = {
+    name: "Hidden Fellowship", country: "Testland", contact_name: "A Servant",
+    contact_email: "servant@hidden.test", state_declaration: "We declare our state before the Lord.",
+    type: "underground", rag_status: "red",
+  };
+  for (const anon of [false, undefined]) {
+    const p = basePayload({ newChurch: ug, churchId: undefined });
+    if (anon === undefined) delete p.anonymous; else p.anonymous = anon;
+    const r = parsePayload(p);
+    if (!r.ok) throw new Error(r.error);
+    assertEquals(r.input.anonymous, true);
+  }
+});
+
 Deno.test("parsePayload — anonymous DEFAULTS to false when absent (DBA c.13321 forward-compat)", () => {
   const p = basePayload();
   delete p.anonymous;

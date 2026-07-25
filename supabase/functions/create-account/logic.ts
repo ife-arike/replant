@@ -466,7 +466,12 @@ export function parsePayload(
       phone,
       includeMiddleName,
       role: p.role as Role,
-      anonymous,
+      // KAN-338 P0-B (Founder GO 2026-07-25): underground intake is anonymous
+      // by default-of-safety — a UG founder must never arrive named by
+      // omission. The DB trigger (kan338_0001) enforces the same at INSERT
+      // for every path (join-by-code included); this is the belt to its
+      // braces. Release is a two-admin ceremony only, never a direct write.
+      anonymous: newChurch?.type === "underground" ? true : anonymous,
       churchId,
       newChurch,
       branchOfChurchId,
