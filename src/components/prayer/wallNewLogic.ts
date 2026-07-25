@@ -91,6 +91,14 @@ function newestFirst(a: PrayerRow, b: PrayerRow): number {
   return Date.parse(b.created_at) - Date.parse(a.created_at);
 }
 
+// Generic newest-first guard for any created_at-bearing rows. The
+// testimonies RPC predates the repo's migrations dir, so its ORDER BY
+// cannot be audited from source — the FE enforces chronology itself
+// rather than trusting the wire (Founder device pass r2, 2026-07-24).
+export function byNewest<T extends { created_at: string }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+}
+
 export function sortRows(rows: readonly PrayerRow[], sort: WallSort): PrayerRow[] {
   const copy = [...rows];
   switch (sort) {

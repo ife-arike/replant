@@ -53,7 +53,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
 import { PAGE_SIZE, TESTIMONY_PAGE_SIZE, type PrayerRow, type TestimonyRow } from '../../components/prayer/PrayerWallLogic';
-import { effectiveView, sortRows, type WallShow, type WallSort, type WallView } from '../../components/prayer/wallNewLogic';
+import { byNewest, effectiveView, sortRows, type WallShow, type WallSort, type WallView } from '../../components/prayer/wallNewLogic';
 import { WallTabs } from '../../components/prayer/WallPrimitives';
 import WallFeedView, { type FeedLoadState } from '../../components/prayer/WallFeedView';
 import WallTestimoniesView, { type TestimonyLoadState } from '../../components/prayer/WallTestimoniesView';
@@ -230,7 +230,7 @@ export default function PrayerWallScreen() {
       setTLoad('error');
       return;
     }
-    const page = (data ?? []) as TestimonyRow[];
+    const page = byNewest((data ?? []) as TestimonyRow[]);
     setTRows(page);
     setTHasMore(page.length === TESTIMONY_PAGE_SIZE);
     setTLoad('idle');
@@ -246,7 +246,7 @@ export default function PrayerWallScreen() {
         setTLoad('error');
         return;
       }
-      const page = (data ?? []) as TestimonyRow[];
+      const page = byNewest((data ?? []) as TestimonyRow[]);
       setTRows(page);
       setTHasMore(page.length === TESTIMONY_PAGE_SIZE);
       setTLoad('idle');
@@ -267,7 +267,7 @@ export default function PrayerWallScreen() {
     const page = (data ?? []) as TestimonyRow[];
     if (page.length === 0) setTHasMore(false);
     else {
-      setTRows((prev) => [...prev, ...page]);
+      setTRows((prev) => byNewest([...prev, ...page]));
       setTHasMore(page.length === TESTIMONY_PAGE_SIZE);
     }
     setTLoad('idle');
@@ -388,9 +388,13 @@ export default function PrayerWallScreen() {
     setAnimTick((t) => t + 1);
   };
 
-  // Compose success → Feed with the new request expanded (README §View 5).
+  // Compose success → Feed, new request arriving FOLDED at the top.
+  // README §View 5 specified expanded; Founder override 2026-07-24 —
+  // it lands collapsed like every other row (recorded in the README
+  // decisions section). The unused id keeps the WallComposeView
+  // contract stable should the ruling flip back.
   const handlePosted = useCallback(
-    async (newRequestId: string | null) => {
+    async (_newRequestId: string | null) => {
       setRawView('feed');
       showToast('Lifted up. The body will pray it through.');
       setFeedLoad('refreshing');
@@ -401,7 +405,6 @@ export default function PrayerWallScreen() {
         setAnimTick((t) => t + 1);
       }
       setFeedLoad(error ? 'error' : 'idle');
-      if (newRequestId) setExpandedRequestId(newRequestId);
     },
     [sort, show, showToast],
   );

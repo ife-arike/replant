@@ -3,6 +3,7 @@
 
 import {
   answeredThisMonth,
+  byNewest,
   counterStage,
   effectiveView,
   sentencePreview,
@@ -183,5 +184,19 @@ describe('staggerDelay', () => {
     expect(staggerDelay(0)).toBe(0);
     expect(staggerDelay(3)).toBe(3 * STAGGER_STEP_MS);
     expect(staggerDelay(200)).toBe(STAGGER_CAP_ROWS * STAGGER_STEP_MS);
+  });
+});
+
+// ─── byNewest (testimony chronology guard, device pass r2) ───────────────
+describe('byNewest — enforces created_at DESC regardless of wire order', () => {
+  const t = (id: string, created_at: string) => ({ id, created_at });
+  it('re-orders an urgent-biased page to strict chronology', () => {
+    const wire = [t('old-urgent', '2026-06-01T00:00:00Z'), t('new', '2026-07-24T00:00:00Z'), t('mid', '2026-07-01T00:00:00Z')];
+    expect(byNewest(wire).map((r) => r.id)).toEqual(['new', 'mid', 'old-urgent']);
+  });
+  it('does not mutate the input array', () => {
+    const wire = [t('a', '2026-06-01T00:00:00Z'), t('b', '2026-07-01T00:00:00Z')];
+    byNewest(wire);
+    expect(wire[0].id).toBe('a');
   });
 });

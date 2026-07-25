@@ -20,14 +20,18 @@
 
 -- ─── 1. Table ─────────────────────────────────────────────────────────
 
-CREATE TABLE public.journal_entries (
+-- IF NOT EXISTS guards (2026-07-25): this file was first applied via
+-- `supabase db query` outside the migration-history table (remote
+-- history has drifted ~145 versions from this repo — see push notes in
+-- the PR). If a later history re-baseline replays it, it must no-op.
+CREATE TABLE IF NOT EXISTS public.journal_entries (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   leader_id  uuid        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   entry_text text        NOT NULL CHECK (char_length(entry_text) BETWEEN 1 AND 500),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX journal_entries_leader_created_idx
+CREATE INDEX IF NOT EXISTS journal_entries_leader_created_idx
   ON public.journal_entries (leader_id, created_at DESC);
 
 -- Deny-all: RLS on, no policies. SECURITY DEFINER RPCs are the only door.
