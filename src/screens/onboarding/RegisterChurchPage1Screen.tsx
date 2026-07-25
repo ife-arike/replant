@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // Screen 05 — Register Church, Page 1
 // Church details. Underground type hides location fields immediately on selection.
-// "Church (Branch)" displays in UI — stored as `branch` per SPEC.
+// "Church branch" displays in UI (Founder lock 2026-06-18) — stored as `branch` per SPEC.
 // RAG defaults to Red for Underground, any value permitted.
 // Screen 10 (map pin) is next for non-Underground types — gated on MAP wiring.
 // ─────────────────────────────────────────────
