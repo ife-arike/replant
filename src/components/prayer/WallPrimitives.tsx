@@ -102,36 +102,44 @@ export function WallTabs({ active, hidden, onChange }: WallTabsProps) {
   };
 
   return (
-    <View style={tabStyles.row}>
-      {WALL_TABS.map((t) => {
-        const isActive = active === t.id && !hidden;
-        return (
-          <Pressable
-            key={t.id}
-            onLayout={handleLayout(t.id)}
-            onPress={() => onChange(t.id)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            accessibilityLabel={t.label}
-            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-            style={tabStyles.tab}
-          >
-            <Text style={[tabStyles.label, isActive && tabStyles.labelActive]}>
-              {t.label.toUpperCase()}
-            </Text>
-          </Pressable>
-        );
-      })}
-      <Animated.View style={[tabStyles.indicator, { left, width }]} />
+    // Outer view carries the 22px page gutter; the INNER row is
+    // unpadded so each pressable's onLayout x and the indicator's
+    // absolute `left` share one coordinate space. (Device pass
+    // 2026-07-24: measuring inside a padded row while also offsetting
+    // the indicator by the padding double-counted it — the glide sat
+    // right of the label.)
+    <View style={tabStyles.gutter}>
+      <View style={tabStyles.row}>
+        {WALL_TABS.map((t) => {
+          const isActive = active === t.id && !hidden;
+          return (
+            <Pressable
+              key={t.id}
+              onLayout={handleLayout(t.id)}
+              onPress={() => onChange(t.id)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={t.label}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              style={tabStyles.tab}
+            >
+              <Text style={[tabStyles.label, isActive && tabStyles.labelActive]}>
+                {t.label.toUpperCase()}
+              </Text>
+            </Pressable>
+          );
+        })}
+        <Animated.View style={[tabStyles.indicator, { left, width }]} />
+      </View>
     </View>
   );
 }
 
 const tabStyles = StyleSheet.create({
+  gutter: { paddingHorizontal: 22 },
   row: {
     flexDirection: 'row',
     gap: 26,
-    paddingHorizontal: 22,
     position: 'relative',
   },
   // No horizontal padding — the pressable frame doubles as the label
@@ -149,7 +157,6 @@ const tabStyles = StyleSheet.create({
     bottom: 0,
     height: 1.5,
     backgroundColor: Colors.accent,
-    marginLeft: 22, // row padding offset — frames measure inside the padded row
   },
 });
 

@@ -598,25 +598,31 @@ const styles = StyleSheet.create({
   },
   headerActionGated: { color: 'rgba(240,237,230,0.28)' },
 
-  headerRule: { height: 1, backgroundColor: Colors.borderAccentStrong },
+  // Inset to the 22px content gutter — the mock's rule does not bleed
+  // to the screen edges (Founder device pass 2026-07-24).
+  headerRule: { height: 1, backgroundColor: Colors.borderAccentStrong, marginHorizontal: 22 },
 
-  // KAN-24 toast host, retimed to the README motion table.
+  // Toast, restyled to the wall's own register (Founder device pass
+  // 2026-07-24: the inherited KAN-24 grey pill read as system chrome).
+  // Serif italic line, centred, near-black pill, sky hairline — the
+  // same voice as the scripture strip, quiet enough to be devotional.
   toast: {
     position: 'absolute',
-    bottom: 28,
-    left: 20,
-    right: 20,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    bottom: 30,
+    left: 26,
+    right: 26,
+    backgroundColor: 'rgba(10,10,11,0.97)',
+    borderRadius: 9,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
     borderWidth: 0.5,
-    borderColor: 'rgba(240,237,230,0.08)',
+    borderColor: Colors.borderAccentStrong,
   },
   toastText: {
-    fontFamily: Typography.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#F0EDE6',
+    fontFamily: Typography.scriptureItalic,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#E6E1D5',
+    textAlign: 'center',
   },
 });

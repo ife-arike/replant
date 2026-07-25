@@ -39,6 +39,7 @@ import {
 } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { Chevron } from '../home/HomeIcons';
 import { getLocationLine } from './PrayerWallLogic';
 import { sentencePreview } from './wallNewLogic';
 import { GapMark } from './WallPrimitives';
@@ -107,6 +108,16 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
   const [keeping, setKeeping] = useState(false);
+  // Founder device pass 2026-07-24: both list sections collapse by
+  // default (settings behaviour) — counts stay visible in the header.
+  const [gapOpen, setGapOpen] = useState(false);
+  const [carryOpen, setCarryOpen] = useState(false);
+
+  // Arriving from The Church tab with a pending church must never land
+  // on a collapsed section — the full-notice would be invisible.
+  useEffect(() => {
+    if (pendingChurch) setCarryOpen(true);
+  }, [pendingChurch]);
 
   const load = useCallback(async () => {
     const [entriesRes, holdsRes, standingRes] = await Promise.all([
@@ -142,7 +153,9 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
     const { data, error } = await supabase.rpc('create_journal_entry', { p_entry_text: text });
     setKeeping(false);
     if (error) {
-      onToast('Couldn’t keep this right now.');
+      // Failure grammar (Founder device pass 2026-07-24): say the state,
+      // not an apology — the draft stays in the composer, nothing lost.
+      onToast('Not kept yet — your words are still here. Try again in a moment.');
       return;
     }
     animate();
@@ -161,7 +174,7 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
       p_prayer_request_id: row.prayer_request_id,
     });
     if (error) {
-      onToast('Couldn’t release this right now.');
+      onToast('Not released yet — try again in a moment.');
       return;
     }
     animate();
@@ -172,7 +185,7 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
   const releaseHold = async (hold: HoldRow) => {
     const { error } = await supabase.rpc('remove_intercession_hold', { p_hold_id: hold.id });
     if (error) {
-      onToast('Couldn’t release this right now.');
+      onToast('Not released yet — try again in a moment.');
       return;
     }
     animate();
@@ -244,13 +257,22 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
         <Text style={s.entriesEmpty}>Entries are resting for a moment — check back soon.</Text>
       ) : null}
 
-      {/* ── Standing in the gap ── */}
-      <View style={s.sectionHead}>
+      {/* ── Standing in the gap (collapsible — settings behaviour) ── */}
+      <Pressable
+        onPress={() => { animate(); setGapOpen((v) => !v); }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: gapOpen }}
+        accessibilityLabel={`Standing in the gap — ${standing.length} held`}
+        style={s.sectionHead}
+      >
         <Text style={s.sectionHeading}>Standing in the gap</Text>
         <View style={s.sectionRule} />
         <Text style={s.sectionCount}>{standing.length} held</Text>
-      </View>
-      {standing.length === 0 ? (
+        <View style={{ transform: [{ rotate: gapOpen ? '180deg' : '0deg' }] }}>
+          <Chevron />
+        </View>
+      </Pressable>
+      {!gapOpen ? null : standing.length === 0 ? (
         <Text style={s.sectionEmpty}>Requests you intercede for on the wall gather here.</Text>
       ) : (
         standing.map((row) => (
@@ -276,15 +298,27 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
         ))
       )}
 
-      {/* ── Churches you carry ── */}
-      <View style={s.sectionHead}>
+      {/* ── Churches you carry (collapsible — settings behaviour) ── */}
+      <Pressable
+        onPress={() => { animate(); setCarryOpen((v) => !v); }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: carryOpen }}
+        accessibilityLabel={`Churches you carry — ${holds.length} of ${CARRY_LIMIT}`}
+        style={s.sectionHead}
+      >
         <Text style={s.sectionHeading}>Churches you carry</Text>
         <View style={s.sectionRule} />
         <Text style={s.sectionCount}>
           {holds.length} of {CARRY_LIMIT}
         </Text>
-      </View>
-      <Text style={s.carrySub}>Added from The Church. Ten at a time.</Text>
+        <View style={{ transform: [{ rotate: carryOpen ? '180deg' : '0deg' }] }}>
+          <Chevron />
+        </View>
+      </Pressable>
+      {!carryOpen ? null : (
+      <>
+      {/* Copy verbatim — Founder device pass 2026-07-24. */}
+      <Text style={s.carrySub}>Added from the Church Tab. Add up to ten ministries at a time.</Text>
       {pendingChurch && holdsFull ? (
         <Text style={s.fullNotice}>
           You carry ten already. Release one to take up {pendingChurch}.
@@ -319,6 +353,8 @@ export default function WallJournalView({ onBack, pendingChurch, onReleasedReque
             </Pressable>
           </View>
         ))
+      )}
+      </>
       )}
     </ScrollView>
   );

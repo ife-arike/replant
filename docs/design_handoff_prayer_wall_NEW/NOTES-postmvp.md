@@ -19,4 +19,5 @@ Captured from design review, keep for CC handoff.
 - Tapping **Intercede** adds the request to the leader's intercession journal — a living reminder, so the tap isn't insincere.
 - Praying for a church from the **Church tab** adds it to the intercession journal. Limit: **10 churches** held at one time.
 - Open question: should journal intercessions expire after some time? If they vanish, the **intercede count stays the same**.
+  - **CC proposal (2026-07-24, awaiting Founder sign-off):** make the journal list a *view* of `prayer_request_prayed_by`, never its own table — then expiry can't touch the intercede count by construction. Window: show intercessions from the **last 30 days** (a season of carrying). Cap: the **25 most recent** within the window — at cap the oldest simply leaves the visible list, so the Intercede tap never fails and there is nothing to clean up. Natural exits: request answered → leaves toward a future "answered while you held them" note; request removed → leaves. Release stays for intentional letting-go.
 - Feed stays sorted by time submitted (newest first). No "this hour" cap until the network is larger — endless scroll for now.

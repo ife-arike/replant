@@ -158,7 +158,7 @@ export default function WallMyPrayersView({ isVerified, onPost, onTestimonyCreat
   const remove = async (row: OpenPrayerRow) => {
     const { error } = await supabase.rpc('soft_delete_prayer_request', { p_request_id: row.id });
     if (error) {
-      onToast('Couldn’t remove this right now.');
+      onToast('Not removed yet — try again in a moment.');
       return;
     }
     animate();
