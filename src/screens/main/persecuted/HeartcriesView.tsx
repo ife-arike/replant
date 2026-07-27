@@ -507,13 +507,17 @@ const s = StyleSheet.create({
   filterMark: { alignItems: 'flex-end', gap: 2.5 },
   fBar: { height: 1, backgroundColor: 'rgba(240,237,230,0.42)' },
   fBarOn: { backgroundColor: Colors.accent },
+  // Founder device pass 2026-07-26: the label → meta → first-row stack
+  // read as choked at the README's 9px — breathing room extended above
+  // and below the meta line.
   metaLine: {
     fontFamily: Typography.mono,
     fontSize: 8.5,
     letterSpacing: 1.5,
     color: 'rgba(240,237,230,0.30)',
     textTransform: 'uppercase',
-    marginTop: 9,
+    marginTop: 14,
+    marginBottom: 18,
     paddingHorizontal: 22,
   },
 
