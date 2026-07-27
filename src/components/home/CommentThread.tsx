@@ -199,6 +199,10 @@ export function CommentThread({
   // Keep the NEWEST COMMENT_PAGE; the fold hides older ones above them.
   const hidden = showAll ? 0 : Math.max(0, comments.length - COMMENT_PAGE);
   const visible = hidden > 0 ? comments.slice(hidden) : comments;
+  // The page-turn is a PAIR (locked read-on/fold grammar): once a thread is
+  // long enough to fold, the control stays put and flips label, so an opened
+  // thread can always be closed again.
+  const foldable = comments.length > COMMENT_PAGE;
 
   return (
     <View>
@@ -221,17 +225,24 @@ export function CommentThread({
         </Pressable>
       ) : (
         <View style={s.list}>
-          {hidden > 0 && !showAll && (
+          {foldable && (
             <Pressable
-              onPress={() => setShowAll(true)}
+              onPress={() => setShowAll((v) => !v)}
               accessibilityRole="button"
-              accessibilityLabel={`Show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`}
+              accessibilityState={{ expanded: showAll }}
+              accessibilityLabel={
+                showAll
+                  ? 'Fold earlier comments'
+                  : `Show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`
+              }
               style={s.moreRow}
               hitSlop={6}
             >
               <View style={s.moreRule} />
               <Text style={s.moreText}>
-                {`show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`}
+                {showAll
+                  ? 'fold'
+                  : `show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`}
               </Text>
             </Pressable>
           )}
