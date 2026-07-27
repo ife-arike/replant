@@ -33,7 +33,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Arrow, Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
@@ -101,16 +101,20 @@ export default function ArticleCard({
   // overflow-gating ruling: cue + tap + button semantics only when the body
   // truly exceeds the clamp.
   const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  const measuredForRef = useRef<string | null>(null);
   useEffect(() => {
     setNaturalLines(null);
-    measuredForRef.current = null;
   }, [bodyText]);
 
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
   const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    if (measuredForRef.current === bodyText) return;
-    measuredForRef.current = bodyText;
-    setNaturalLines(e.nativeEvent.lines.length);
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
   };
 
   const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
@@ -270,7 +274,7 @@ const s = StyleSheet.create({
 
   // Editorial headline — larger + weightier than the standard card title,
   // toward the CD frame's 26–28 (600 SemiBold, 26pt).
-  title: { fontFamily: Typography.display, fontSize: 26, lineHeight: 31, color: Colors.text, letterSpacing: 0.1 },
+  title: { fontFamily: Typography.display, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   standfirst: { fontFamily: Typography.scriptureItalic, fontSize: 16, lineHeight: 24, color: Colors.textMuted, marginTop: 10 },
 
   // Teaser row — drop-cap gutter + body column. Top-aligned so the initial

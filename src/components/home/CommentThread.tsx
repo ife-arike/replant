@@ -64,6 +64,7 @@ export type Comment = {
   church_label: string;
   church_held: boolean;
   is_underground: boolean;
+  avatar_initial: string | null;
 };
 
 type RpcCommentRow = Comment;

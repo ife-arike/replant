@@ -26,7 +26,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Typography } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Typography } from '../../constants/theme';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
 
@@ -77,16 +77,20 @@ export default function LeaderWordCard({
 
   const [expanded, setExpanded] = useState(false);
   const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  const measuredForRef = useRef<string | null>(null);
   useEffect(() => {
     setNaturalLines(null);
-    measuredForRef.current = null;
   }, [clampText]);
 
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
   const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    if (measuredForRef.current === clampText) return;
-    measuredForRef.current = clampText;
-    setNaturalLines(e.nativeEvent.lines.length);
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
   };
 
   const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
@@ -212,7 +216,7 @@ const s = StyleSheet.create({
   // Ruling 2 (Address the Network, 2026-07-22): the leader-word lead is
   // Cormorant ROMAN, not italic. scriptureItalic stays reserved for
   // scripture + witness quotes; this is a leader's human voice.
-  lead: { fontFamily: Typography.displayRegular, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
+  lead: { fontFamily: Typography.displayRegular, ...FeedTitle, letterSpacing: 0.1, color: Colors.text },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 12 },
 
   // Offscreen mirror + page-turn cue — exact style values from

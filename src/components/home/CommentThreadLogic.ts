@@ -27,6 +27,10 @@ export type CommentIdentityRow = {
   church_label?: string | null;
   church_held?: boolean | null;
   is_underground?: boolean | null;
+  // Server-composed avatar initial — the first letter of the NAME as the
+  // leader chose to display it, never the honorific/role prefix the byline
+  // leads with ("Bishop Ifeoluwa Arike" → I). NULL when the name is held.
+  avatar_initial?: string | null;
   // legacy passthrough (fallback only — the server remains the composer)
   author_name?: string | null;
   church_name?: string | null;
@@ -83,6 +87,12 @@ export function commentIdentity(c: CommentIdentityRow): CommentIdentity {
     churchLine,
     round,
     glyph,
-    initial: displayName.trim().charAt(0).toUpperCase() || '·',
+    // Server-composed. The fallback parses the display name only for a
+    // legacy row that predates avatar_initial; it is knowingly imprecise
+    // for prefixed bylines and exists so an old cached row still renders.
+    initial:
+      (c.avatar_initial ?? '').trim().toUpperCase() ||
+      displayName.trim().charAt(0).toUpperCase() ||
+      '·',
   };
 }

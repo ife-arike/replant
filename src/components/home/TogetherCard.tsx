@@ -24,7 +24,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Tags, Typography } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Tags, Typography } from '../../constants/theme';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
@@ -78,16 +78,20 @@ export default function TogetherCard({
   // Page-turn body — 3-line clamp with a gated "read on" ⇄ "fold" cue.
   const [expanded, setExpanded] = useState(false);
   const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  const measuredForRef = useRef<string | null>(null);
   useEffect(() => {
     setNaturalLines(null);
-    measuredForRef.current = null;
   }, [body]);
 
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
   const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    if (measuredForRef.current === body) return;
-    measuredForRef.current = body;
-    setNaturalLines(e.nativeEvent.lines.length);
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
   };
 
   const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
@@ -217,7 +221,7 @@ const s = StyleSheet.create({
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
-  title: { fontFamily: Typography.displayRegular, fontSize: 21, lineHeight: 26, color: Colors.text, letterSpacing: 0.1 },
+  title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
 
   // Offscreen mirror + page-turn cue — exact style values from

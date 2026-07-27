@@ -1,0 +1,99 @@
+-- 2026-07-12 Sim UAT logged-in visual pass — state-change register
+-- Plan: .claude/plans/2026-07-12-sim-uat-logged-in-visual-pass.md §7
+-- Every block: WHAT changed → CLEANUP statement (run at pass end unless Founder rules keep).
+
+-- ============================================================
+-- R2: 4 seeded announcements (inserted 2026-07-12 19:37 UTC, author mirrored from latest admin row)
+--   9a755f84-39dd-4538-bd11-fdc859648224  Three churches joined the network this week           (notice/standard)
+--   7f2712a7-8438-4d55-9270-bdd7568e39d9  Shepherding through economic hardship: field notes …  (update/article, link)
+--   efc69247-f2a5-46f1-a9f8-8eba3293fb76  Overnight prayer chain this weekend                   (urgent/call_to_action)
+--   c226b133-64f0-4001-97ea-d54bd27d5654  You are not the only one carrying this                (new/together)
+-- CLEANUP (default, Founder-approved deactivate-at-end):
+-- update announcements set is_active = false where id in (
+--   '9a755f84-39dd-4538-bd11-fdc859648224','7f2712a7-8438-4d55-9270-bdd7568e39d9',
+--   'efc69247-f2a5-46f1-a9f8-8eba3293fb76','c226b133-64f0-4001-97ea-d54bd27d5654');
+
+-- ============================================================
+-- R1: password rotation — N/A (Founder 2026-07-12: +t# passwords are shared dummy fixtures)
+
+-- R3/R4 BEFORE-SNAPSHOT (captured 2026-07-12, exact restore target):
+--   USER t5 (48207f0b-...):  verification_status=verified, verification_deadline='2026-07-08 17:44:20.538+00',
+--                            rejected_at=NULL, deactivated_at=NULL, outcome_modal_acknowledged_at=NULL
+--   CHURCH Regent Kingdom (church of t5): verification_status=verified, verified=true, verified_at=NULL,
+--                            verification_deadline='2026-07-08 17:44:10.342049+00', rejected_at=NULL,
+--                            deactivated_at=NULL, church_code='RPL-02102', rag_status=red
+--   NOTE: Regent Kingdom is ALSO +t7's church (t7 pending). Flip affects t7's view too (brief, logged, restored).
+--   RESTORE SQL (run at pass end):
+--     update users set verification_status='verified', verification_deadline='2026-07-08 17:44:20.538+00',
+--       rejected_at=NULL, deactivated_at=NULL, outcome_modal_acknowledged_at=NULL
+--       where email='ruthjames08+t5@gmail.com';
+--     update churches set verification_status='verified', verified=true, verified_at=NULL,
+--       verification_deadline='2026-07-08 17:44:10.342049+00', rejected_at=NULL, deactivated_at=NULL
+--       where id=(select church_id from users where email='ruthjames08+t5@gmail.com');
+-- R5: heartcry live-fire (t5) — DONE 2026-07-12
+--   id a71a8c42-5f0e-4afd-a04e-2a6dc4dd572a · severity ongoing · post_to_feed false
+--   submitted via app; SQL-dispositioned status='responded', seen_at+responded_at=now()
+--   NOTE: thread_id NULL after submission (map said submission seeds Team thread — drift candidate)
+--   No cleanup needed (dispositioned, kept as data)
+-- R6: +t6 org signup (para ministry) — DONE 2026-07-12, LEFT IN PLACE
+--   user 25f142c9-4774-478e-8f61-2fc0afc6ee97 (Deborah Okafor, ministry_leader, first_name_only)
+--   org  a4674ed4-2911-4bca-9c48-2822f18fc8da (Lighthouse Relief And Development Initiative, para_ministry, green, Atlanta US)
+--   Created via full app signup (atomic create-account verified: pending user+org, 0 orphans after dev-menu reload mid-flow)
+--   SQL-verified BOTH to 'verified' + verified_at=now() (admin-path bypass for QA).
+--   CORRECTION: church_code WAS assigned on verification → RPL-02108 (trigger/cron picked it up;
+--     earlier "assign fn not deployed" grep was for the wrong fn name — code assignment works).
+--   FINDING captured: welcome DM NOT seeded at account creation (convs=0 immediately post-signup)
+-- R7: KAN-207 church-type edit — SKIPPED (fix-deployed status not confirmed; would risk reproducing
+--      the duplicate-orphan bug on prod. Not run.)
+--
+-- ============================================================
+-- CLEANUP COMPLETE 2026-07-12:
+--   R2 announcements → is_active=false (all 4). Reversible: set is_active=true to restore for Founder's own pass.
+--   R3/R4 t5 user+church → RESTORED to exact verified before-snapshot (verified/verified, deadlines + RPL-02102 intact).
+--   R5 heartcry → dispositioned responded, kept.
+--   R6 +t6 org account → left in place (verified), listed in report.
+--   Sim: content_size reset to medium, appearance reset to dark.
+
+-- ============================================================
+-- FINDINGS captured during pass (no DB change — observation log):
+-- F-CONNECT-ANON-LEAK: connection-request send-confirmation modal shows recipient's
+--   REAL name ("Your message request to Ruth James has been sent") when recipient is
+--   anonymous=true. Sender t4 (Ruthie Jamie) → recipient t3 (Ruth James, anon evangelist).
+--   Every other surface (search row, DM header, thread-list row) correctly masked to
+--   "Evangelist · Blessings Abound Church". Confirmed in DB: recipient_anon=true.
+--   Violates anon invariant (never show a name for anon leaders). Leader→leader scope.
+-- F-DM-FREEZE (needs prod-build confirm): first entry into a fresh connection-request
+--   letter-composer froze the RN UI (all taps dead, a11y tree collapsed to count:1);
+--   runtime log showed UIManager::~UIManager() + Scheduler::~Scheduler() teardown +
+--   repeated "react_native_expect failure: isMap". Recovered on relaunch; send worked
+--   2nd time. Likely dev/Metro bridge teardown — confirm on a release build before filing.
+-- F-A11Y-DM-TREE: the DM/letter thread view intermittently exposes an EMPTY a11y tree
+--   (VoiceOver would find it unusable) — overlaps F-DM-FREEZE; re-check on stable build.
+-- F-PARA-COMPLETIONFLOW-LABEL: org (para_ministry) profile-completion Step 1 labels the
+--   locked name field "CHURCH NAME" (should swap to "ORGANIZATION NAME" per para copy rule).
+-- F-HEARTCRY-NO-THREAD: submitted heartcry had thread_id NULL (map says submission seeds a
+--   Replant Team thread with a system first message) — verify intended.
+-- F-WELCOME-DM-MISSING: +t6 fresh account had 0 conversations post-signup (no welcome DM
+--   seeded at account creation; KAN-217 welcome DM expected).
+
+-- ============================================================
+-- R7 (2026-07-14, KAN-61 fixture walk — run ONLY during Founder smoke):
+--   +t11's church is the Extend/Confirm fixture (pending, deadline 2026-07-15).
+--   BEFORE-SNAPSHOT: capture live values first:
+--     select id, verification_status, verification_deadline, deactivated_at, is_active
+--       from churches where id = (select church_id from users where email='ruthjames08+t11@gmail.com');
+--   STEP 1 (make it overdue for the chip):
+--     update churches set verification_deadline = now() - interval '2 days'
+--       where id = (select church_id from users where email='ruthjames08+t11@gmail.com');
+--   STEP 2: walk chip → Extend (verify: new deadline = now+30d, chip clears,
+--     audit action verification_window_extended, reminders re-keyed).
+--   STEP 3 (re-expire for the Confirm walk): re-run STEP 1.
+--   STEP 4: Confirm deactivation → verify notify_t09 email_log row for +t11
+--     (delivered via webhook), church deactivated, audit meta carries
+--     reason=verification_deadline_expired + deadline_at_deactivation.
+--   CLEANUP: reinstate via admin Reinstate (sends notify_t29 — expected,
+--     fixture inbox) THEN restore the snapshot deadline:
+--     update churches set verification_deadline = '<SNAPSHOT VALUE>'
+--       where id = (select church_id from users where email='ruthjames08+t11@gmail.com');
+--   NOTE: chip VISIBILITY needs no fixture — 14 real overdue pending
+--   churches already render it. Do NOT Extend/Confirm real churches as tests.

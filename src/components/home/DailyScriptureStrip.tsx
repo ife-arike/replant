@@ -89,16 +89,20 @@ export default function DailyScriptureStrip() {
   // until measured, we don't show the cue (avoids a flash). Resets on
   // every verse change (day-rollover or DB row arrival).
   const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  const measuredForRef = useRef<string | null>(null);
   useEffect(() => {
     setNaturalLines(null);
-    measuredForRef.current = null;
   }, [display.content]);
 
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
   const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    if (measuredForRef.current === display.content) return;
-    measuredForRef.current = display.content;
-    setNaturalLines(e.nativeEvent.lines.length);
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
   };
 
   const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;

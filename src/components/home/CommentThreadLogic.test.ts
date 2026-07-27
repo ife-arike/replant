@@ -79,3 +79,29 @@ describe('commentIdentity — defensive fallbacks (server owns masking)', () => 
     expect(r.initial).toBe('A');
   });
 });
+
+describe('commentIdentity — avatar initial comes from the NAME, not the role prefix', () => {
+  it('uses the server initial: "Bishop Ifeoluwa Arike" renders I, never B', () => {
+    const r = commentIdentity({
+      display_name: 'Bishop Ifeoluwa Arike', name_held: false,
+      church_label: 'Blessings Abound Church', church_held: false,
+      is_underground: false, avatar_initial: 'I',
+    });
+    expect(r.initial).toBe('I');
+    expect(r.glyph).toBe('initial');
+  });
+
+  it('honours last-name-first preference via the server value', () => {
+    const r = commentIdentity({
+      display_name: 'Pastor Arike Ifeoluwa', name_held: false,
+      church_label: 'Grace Chapel', church_held: false,
+      is_underground: false, avatar_initial: 'A',
+    });
+    expect(r.initial).toBe('A');
+  });
+
+  it('legacy row without avatar_initial still renders (imprecise fallback)', () => {
+    const r = commentIdentity({ author_name: 'Ifeoluwa Arike', church_name: 'Grace Chapel' });
+    expect(r.initial).toBe('I');
+  });
+});

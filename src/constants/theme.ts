@@ -129,6 +129,13 @@ export const Typography = {
   mono: 'DMMono_400Regular',
 } as const;
 
+// Feed card title register — ONE size across every Home feed card.
+// Founder 2026-07-27: standardize on the regular announcement card's
+// title (21/26). Cards previously ranged 21–26, which read as accidental
+// rather than hierarchical. Spread this into a card's title/lead style;
+// never re-hardcode a feed title size.
+export const FeedTitle = { fontSize: 21, lineHeight: 26 } as const;
+
 export const Spacing = {
   xs: 4,
   sm: 8,

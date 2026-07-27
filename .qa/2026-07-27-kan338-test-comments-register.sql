@@ -24,3 +24,23 @@
 --   'a459d900-b31e-4e59-a587-9ab12bf13b89',
 --   '8dfd43e2-ab47-44dd-8f58-e1cd99b8ce12',
 --   'ed8bec5a-0728-4d16-ab41-573f25713d27');
+
+-- ── ROUND 2 (same day): comments spread across the rest of the wall ──
+-- Adds long-name / long-church stress cases + more masking states.
+--   Together  (a44137ca): Pastor Tyler Robertson · "Houston Bible Believers
+--                         Pentecostal Church — Austin South Congress Branch"
+--                         (73 chars, longest on the platform) + a 33-char
+--                         multi-part name (Pastor Aleksandr Petrovich Volkov)
+--                         + 1 underground (round lock, region only)
+--   Long read (3f495d11): Elder Tatiana Sergeyevna Mikhailova + 1 underground
+--   CTA       (e5f6834e): Pastor Christopher Bennett + 1 underground-brave
+--   Word      (d2968783): no-church (lock) + underground
+-- All authors are seed personas. No real leader is quoted anywhere.
+--
+-- CLEANUP round 2 (the after-delete trigger fixes comment_count):
+-- DELETE FROM public.comments
+--  WHERE announcement_id IN ('a44137ca-1e22-4df1-a87a-eb7100b50a97',
+--                            '3f495d11-2a13-4086-95e4-c6699a7042f5',
+--                            'e5f6834e-3cc3-4dac-a78c-704e4ce144e3',
+--                            'd2968783-29d1-4a1b-bb47-856cac115d3f')
+--    AND created_at > now() - interval '1 day';

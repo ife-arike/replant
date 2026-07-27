@@ -38,7 +38,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Typography } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Typography } from '../../constants/theme';
 import { RpMark } from './HomeIcons';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -70,16 +70,20 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
   // measured via an offscreen mirror Text. The cue + tap stay hidden until
   // measured, and only render when the lead truly exceeds the clamp.
   const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  const measuredForRef = useRef<string | null>(null);
   useEffect(() => {
     setNaturalLines(null);
-    measuredForRef.current = null;
   }, [lead]);
 
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
   const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    if (measuredForRef.current === lead) return;
-    measuredForRef.current = lead;
-    setNaturalLines(e.nativeEvent.lines.length);
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
   };
 
   const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
@@ -173,7 +177,7 @@ const s = StyleSheet.create({
 
   // Roman serif, long-read-title register (Founder round-2 2026-07-22 —
   // no longer scripture italic). Size tracks ArticleCard's title family.
-  lead: { fontFamily: Typography.displayRegular, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
+  lead: { fontFamily: Typography.displayRegular, ...FeedTitle, letterSpacing: 0.1, color: Colors.text },
 
   // Offscreen mirror + page-turn cue — exact style values from
   // AnnouncementCard so the read-on grammar reads identically app-wide.
