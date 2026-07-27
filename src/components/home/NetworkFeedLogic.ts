@@ -21,74 +21,16 @@
 
 export const AUTHOR_ATTRIBUTION = 'Replant Team';
 
-// ─── Leader display-name resolution (KAN-201 card system 2026-06-02) ──
+// ─── Leader display-name resolution — DELETED (KAN-338 FE cutover) ────
 //
-// get_comments now returns the raw role enum value for non-masked rows,
-// and the LeaderFeedItem secondary lookup fetches `role` from
-// public.users. Both surfaces humanise the role into a title prefix via
-// this single locked table (Founder confirmed 2026-06-02).
-//
-// 'other' → 'Minister' (Founder ruling 2026-06-02: same display as ministry_leader).
-// An unknown / null role → no prefix (defensive — never crash a card).
-// Masking is handled by the caller; this map is purely cosmetic.
-export const ROLE_DISPLAY: Record<string, string> = {
-  pastor:          'Pastor',
-  apostle:         'Apostle',
-  prophet:         'Prophet',
-  evangelist:      'Evangelist',
-  teacher:         'Teacher',
-  elder:           'Elder',
-  bishop:          'Bishop',
-  reverend:        'Reverend',
-  intercessor:     'Intercessor',
-  psalmist:        'Psalmist',
-  ministry_leader: 'Minister', // Founder ruling 2026-06-02
-  other:           'Minister', // Founder ruling 2026-06-02
-};
-
-// Masked / unresolved leaders surface this constant — never a real name.
-export const MASKED_LEADER_NAME = 'A leader in the network';
-
-// Resolve a display name from a leader's structured name fields.
-// Mirrors the server-side public.resolve_display_name() helper exactly
-// (KAN-229). Format: "{honorific OR role-label} {given names per pref}
-// {family name}", with the family/given order flipped when
-// lastNameFirst=true.
-//
-// A non-empty first OR last name is required: without one we fall back
-// to the masked constant rather than surface a bare title ("Pastor" with
-// no name is not a valid attribution — and an absent name is treated as
-// held). Masking is the safe default on every leader-resolution path.
-export function resolveDisplayName(
-  parts: {
-    firstName: string | null;
-    middleName?: string | null;
-    lastName: string | null;
-    honorific?: string | null;
-    role: string | null;
-    displayNamePreference?: 'first_name_only' | 'full_name' | null;
-    lastNameFirst?: boolean | null;
-  },
-): string {
-  const first = (parts.firstName ?? '').trim();
-  const middle = (parts.middleName ?? '').trim();
-  const last = (parts.lastName ?? '').trim();
-  if (!first && !last) return MASKED_LEADER_NAME;
-
-  const honorific = (parts.honorific ?? '').trim();
-  const prefix = honorific
-    ? honorific
-    : (parts.role ? (ROLE_DISPLAY[parts.role] ?? '') : '');
-
-  const useFull = parts.displayNamePreference === 'full_name';
-  const given = useFull && middle ? `${first} ${middle}`.trim() : first;
-
-  const body = parts.lastNameFirst
-    ? `${last} ${given}`.trim()
-    : `${given} ${last}`.trim();
-
-  return prefix ? `${prefix} ${body}`.trim() : body;
-}
+// The client-side name composer (resolveDisplayName + ROLE_DISPLAY +
+// MASKED_LEADER_NAME) is gone on purpose. ALL identity display is
+// composed server-side: the feed renders the frozen source_label byline,
+// and get_comments v3 ships render-ready display_name / church_label
+// (kan338_0006). A client-side composer is an open invitation to
+// re-introduce per-viewer resolution — the KAN-338 panel ordered its
+// deletion. Do not add one back; extend the server composers instead
+// (public.resolve_display_name / role_display_label).
 
 // ─── Pagination (AC: cursor-based, 20 per page, cursor on published_at) ─
 
