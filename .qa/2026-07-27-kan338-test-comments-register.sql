@@ -44,3 +44,11 @@
 --                            'e5f6834e-3cc3-4dac-a78c-704e4ce144e3',
 --                            'd2968783-29d1-4a1b-bb47-856cac115d3f')
 --    AND created_at > now() - interval '1 day';
+
+-- ── ROUND 3: push "A word for today" past the show-more threshold ───────
+-- COMMENT_PAGE = 5, so the affordance needs >5 on ONE card. That thread now
+-- has 9 comments and should read "show 4 earlier comments".
+-- CLEANUP round 3:
+-- DELETE FROM public.comments
+--  WHERE announcement_id = 'abbd7b5b-9bf8-4e6e-b820-cae817fb9b19'
+--    AND created_at > now() - interval '20 minutes';
