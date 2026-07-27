@@ -85,6 +85,19 @@ export function pulsesTier(severity: string): boolean {
 // Type guard used by the form state.
 export type { HeartcrySeverity };
 
+// Wire shape of get_heartcry_feed rows (mirrors FeedScene's local
+// interface — hoisted here so the host and view share one type).
+export interface HeartcryRow {
+  id: string;
+  feed_content: string | null;
+  continent: string | null;
+  region: string | null;
+  severity: string;
+  created_at: string;
+  hold_count: number;
+  viewer_held: boolean;
+}
+
 // ─── Continent filter (Founder ruling: continent, not country) ────────
 //
 // Options are derived from the continents PRESENT in the loaded feed —

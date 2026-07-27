@@ -49,6 +49,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/types';
 import Svg, { Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
@@ -62,8 +64,10 @@ import {
 const PASTORAL_INTRO =
   'Speak freely. What you share here goes directly to the Replant team — no other leader will see it, unless you choose to let the Body stand with you in prayer. We receive every word with prayer, and we will respond.';
 
+// The 🔒 emoji is gone — a drawn lock (share-card grammar) renders
+// beside the text instead. No emoji anywhere in Replant.
 const ENCRYPTED_DISCLOSURE =
-  '🔒 Your words are encrypted the moment you send them. They go to the Replant team, and no one else.';
+  'Your words are encrypted the moment you send them. They go to the Replant team, and no one else.';
 
 // Item 4 — fixed from "your region only" → "your continent only" to
 // match the 6-continent UN M.49 anonymization the BE actually applies.
@@ -82,7 +86,7 @@ const MODAL_ACTION_LABEL = 'Done';
 type SubmitState = 'idle' | 'submitting' | 'error';
 
 export default function HeartcrySubmissionScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // SECURITY: these are FE-local state only. Never log, never persist.
   const [content, setContent] = useState('');
@@ -157,8 +161,10 @@ export default function HeartcrySubmissionScreen() {
   // re-runs the tracker query, which now reads status='received' for
   // the new row.
   const onConfirmationDone = () => {
+    // Land in My Voice (design_handoff_persecuted_NEW §15B) — the
+    // Persecuted host consumes initialView on focus.
     setConfirmationVisible(false);
-    navigation.goBack();
+    navigation.navigate('Tabs', { screen: 'Persecuted', params: { initialView: 'voice' } });
   };
 
   const onMailto = () => {
@@ -288,7 +294,7 @@ export default function HeartcrySubmissionScreen() {
               <Switch
                 value={postToFeed}
                 onValueChange={setPostToFeed}
-                trackColor={{ false: 'rgba(240, 237, 230, 0.16)', true: Colors.red }}
+                trackColor={{ false: 'rgba(240, 237, 230, 0.16)', true: 'rgba(107, 181, 232, 0.35)' }}
                 thumbColor={Colors.text}
                 ios_backgroundColor="rgba(240, 237, 230, 0.16)"
                 accessibilityLabel="Let the Body stand with you in prayer"
@@ -323,6 +329,10 @@ export default function HeartcrySubmissionScreen() {
 
           {/* Encrypted disclosure (AC 8) */}
           <View style={styles.encryptedDisclosure}>
+            <View style={styles.lockGlyph}>
+              <View style={styles.lockShackle} />
+              <View style={styles.lockBody} />
+            </View>
             <Text style={styles.encryptedDisclosureText}>{ENCRYPTED_DISCLOSURE}</Text>
           </View>
         </ScrollView>
@@ -434,11 +444,8 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingLeft: 22,
     paddingRight: 18,
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.red,
-    backgroundColor: 'rgba(224, 85, 85, 0.04)',
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    borderLeftWidth: 1.5,
+    borderLeftColor: 'rgba(240, 237, 230, 0.16)',
   },
   pastoralIntroText: {
     fontFamily: Typography.displayRegular,
@@ -470,16 +477,15 @@ const styles = StyleSheet.create({
 
   textarea: {
     width: '100%',
-    minHeight: 180,
-    backgroundColor: Colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(240, 237, 230, 0.16)',
-    borderRadius: 12,
-    padding: 14,
-    paddingHorizontal: 16,
-    fontFamily: Typography.scriptureItalic,
-    fontSize: 17,
-    lineHeight: 26,
+    minHeight: 150,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(240, 237, 230, 0.14)',
+    paddingBottom: 12,
+    paddingHorizontal: 0,
+    fontFamily: Typography.displayRegular,
+    fontSize: 19,
+    lineHeight: 29.5,
     color: Colors.text,
   },
 
@@ -507,14 +513,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   chipSelected: {
-    backgroundColor: 'rgba(224, 85, 85, 0.10)',
-    borderColor: 'rgba(224, 85, 85, 0.28)',
+    backgroundColor: 'rgba(107, 181, 232, 0.07)',
+    borderColor: 'rgba(107, 181, 232, 0.50)',
   },
   chipDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.red,
+    backgroundColor: Colors.accent,
   },
   chipText: {
     fontFamily: Typography.body,
@@ -523,7 +529,7 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     fontFamily: Typography.bodyMedium,
-    color: Colors.red,
+    color: Colors.accent,
   },
 
   radioGroup: {
@@ -551,13 +557,13 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   radioMarkSelected: {
-    borderColor: Colors.red,
+    borderColor: Colors.accent,
   },
   radioDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.red,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: Colors.accent,
   },
   radioText: {
     flex: 1,
@@ -606,9 +612,11 @@ const styles = StyleSheet.create({
 
   submitButton: {
     width: '100%',
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: Colors.red,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 0.5,
+    borderColor: 'rgba(224, 85, 85, 0.30)',
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -620,9 +628,10 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontFamily: Typography.bodyMedium,
-    fontSize: 15,
-    color: '#0A0A0A',
-    letterSpacing: 0.6,
+    fontSize: 12.5,
+    color: Colors.red,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
   },
   submitError: {
     fontFamily: Typography.body,
@@ -633,6 +642,27 @@ const styles = StyleSheet.create({
 
   encryptedDisclosure: {
     paddingHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  lockGlyph: { width: 8, height: 10, alignItems: 'center', marginTop: 3 },
+  lockShackle: {
+    width: 6,
+    height: 5,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: 'rgba(240, 237, 230, 0.38)',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+  },
+  lockBody: {
+    width: 8,
+    height: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(240, 237, 230, 0.38)',
+    borderRadius: 1.5,
+    marginTop: -1,
   },
   encryptedDisclosureText: {
     fontFamily: Typography.body,
