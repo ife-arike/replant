@@ -7,17 +7,21 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../../../constants/theme';
 
 const SEVERITY_CONFIG: Record<string, { color: string; bg: string; border: string; label: string }> = {
+  // Handoff §2 (2026-07-26): the tier is the SENDER'S chosen severity
+  // reported back — 'critical' renders "Critical", never the state-word
+  // "Active". active_persecution alias retained defensively for cached
+  // rows; same label.
   active_persecution: {
     color: '#B83A30',
     bg: 'rgba(184,58,48,0.06)',
     border: '#B83A30',
-    label: 'Active',
+    label: 'Critical',
   },
   critical: {
     color: '#B83A30',
     bg: 'rgba(184,58,48,0.06)',
     border: '#B83A30',
-    label: 'Active',
+    label: 'Critical',
   },
   urgent: {
     color: Colors.red,
