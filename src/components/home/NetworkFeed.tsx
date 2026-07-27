@@ -65,7 +65,7 @@ import {
 // floor version moves past clients that still read tag_type.
 // resolveEyebrowTag prefers badge and falls back to tag_type.
 const SELECT_COLS =
-  'id, title, body, published_at, is_active, source_label, tag_type, badge, link_url, author_type, comment_count, card_type';
+  'id, title, body, published_at, is_active, source_label, source_sublabel, tag_type, badge, link_url, author_type, comment_count, card_type';
 
 // KAN-17 amendment — feed shows only announcements published within the
 // last FEED_MAX_AGE_DAYS days.
@@ -365,7 +365,7 @@ function LeaderFeedItem({ item, time }: { item: AnnouncementRow; time: string })
       announcementId={item.id}
       lead={item.title}
       body={item.body}
-      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: '', time }}
+      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: item.source_sublabel ?? '', time }}
       commentCount={item.comment_count}
     />
   );
@@ -380,7 +380,7 @@ function EncouragementFeedItem({ item, time }: { item: AnnouncementRow; time: st
       announcementId={item.id}
       lead={item.title}
       time={time}
-      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: '' }}
+      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: item.source_sublabel ?? '' }}
       commentCount={item.comment_count}
     />
   );

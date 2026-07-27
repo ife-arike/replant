@@ -166,6 +166,9 @@ export interface AnnouncementRow {
   published_at: string | null;
   is_active: boolean;
   source_label: string | null;
+  // Frozen secondary byline (church/ministry for named publications; '' or
+  // null when sealed). Composed server-side at publish (kan338_0003).
+  source_sublabel: string | null;
   tag_type: string | null;
   // KAN-335 badge cutover 2026-07-22 — `badge` is the post-cutover
   // authority for the letterhead eyebrow register; `tag_type` above is
