@@ -17,7 +17,6 @@ import {
   formatRelativeTime,
   getTagChipMeta,
   isPosted,
-  resolveDisplayName,
   resolveEyebrowTag,
   toHomeCardTag,
   type AnnouncementRow,
@@ -138,6 +137,7 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     published_at: '2026-05-21T00:00:00.000Z',
     is_active: true,
     source_label: null,
+    source_sublabel: null,
     tag_type: null,
     // KAN-335 badge cutover — badge column added to AnnouncementRow.
     badge: null,
@@ -233,51 +233,6 @@ describe('formatRelativeTime — AC #2', () => {
   });
 });
 
-describe('resolveDisplayName — KAN-229 structured-name display', () => {
-  it('formats as "{role-label} {first} {last}" by default (first_name_only)', () => {
-    expect(resolveDisplayName({ firstName: 'Ruth',   lastName: 'James',  role: 'ministry_leader' })).toBe('Minister Ruth James');
-    expect(resolveDisplayName({ firstName: 'Ife',    lastName: 'Arike',  role: 'evangelist' })).toBe('Evangelist Ife Arike');
-    expect(resolveDisplayName({ firstName: 'Daniel', lastName: 'Okoro',  role: 'pastor' })).toBe('Pastor Daniel Okoro');
-  });
-
-  it('includes middle name when displayNamePreference="full_name"', () => {
-    expect(resolveDisplayName({
-      firstName: 'Grace', middleName: 'Mary', lastName: 'Mbeki', role: 'bishop',
-      displayNamePreference: 'full_name',
-    })).toBe('Bishop Grace Mary Mbeki');
-  });
-
-  it('honours last_name_first toggle', () => {
-    expect(resolveDisplayName({
-      firstName: 'Dirk', middleName: 'Daniel', lastName: 'Van Wyk',
-      role: 'reverend', displayNamePreference: 'full_name', lastNameFirst: true,
-    })).toBe('Reverend Van Wyk Dirk Daniel');
-  });
-
-  it('honorific overrides role prefix', () => {
-    expect(resolveDisplayName({
-      firstName: 'Boutros', lastName: 'Mikhail', honorific: 'Anba', role: 'pastor',
-    })).toBe('Anba Boutros Mikhail');
-  });
-
-  it("maps 'other' role per the Founder ruling (Minister prefix)", () => {
-    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: 'other' })).toBe('Minister Sam Lee');
-  });
-
-  it('renders without prefix when role is null', () => {
-    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: null })).toBe('Sam Lee');
-  });
-
-  it('renders without prefix for unknown role (defensive — no crash)', () => {
-    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: 'archdeacon' })).toBe('Sam Lee');
-  });
-
-  it('falls back to the masked constant when no name remains', () => {
-    expect(resolveDisplayName({ firstName: null, lastName: null, role: 'pastor' })).toBe('A leader in the network');
-    expect(resolveDisplayName({ firstName: '',   lastName: '',   role: 'pastor' })).toBe('A leader in the network');
-    expect(resolveDisplayName({ firstName: null, lastName: null, role: null })).toBe('A leader in the network');
-  });
-});
 
 describe('deriveArticleStandfirst — Founder round-2 (article/long_read)', () => {
   it('splits the first sentence into the standfirst, remainder into the body', () => {

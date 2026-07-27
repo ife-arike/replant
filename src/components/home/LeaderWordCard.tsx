@@ -7,11 +7,12 @@
 // opposite the time; comments are right-aligned in the author row,
 // matching the announcement cards, and open the thread in place.
 //
-// The author name + church are resolved upstream in NetworkFeed from the
-// leader's users/churches rows. Underground churches NEVER surface here —
-// NetworkFeed masks them to "A leader in the network" before this card
-// renders (client-side guard, SEC Observation D). author_id is never
-// passed to this component.
+// Attribution is FROZEN server-side at publish (KAN-338): NetworkFeed
+// passes the source_label byline + source_sublabel church slot verbatim
+// with the Replant seal. No client-side resolution exists anywhere on
+// this path — no users/churches lookup, no author_id. Underground words
+// publish under the Team seal with a role+region byline composed by the
+// server (SEC F1).
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';

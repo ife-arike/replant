@@ -52,13 +52,29 @@ interface TabFrame {
   width: number;
 }
 
-interface WallTabsProps {
-  active: WallView;
-  hidden: boolean; // journal / compose open — indicator collapses to width 0
-  onChange: (tab: 'feed' | 'testimonies' | 'mine') => void;
+export interface WallTabDef {
+  id: string;
+  label: string;
 }
 
-export function WallTabs({ active, hidden, onChange }: WallTabsProps) {
+interface WallTabsProps {
+  active: string;
+  hidden: boolean; // journal / compose open — indicator collapses to width 0
+  onChange: (tab: string) => void;
+  // Persecuted refinement (2026-07-26): the tab row is shared chrome.
+  // Defaults preserve Prayer Wall exactly — three wall tabs, sky
+  // indicator. Persecuted passes its own tabs and Colors.red (labels
+  // stay off-white in both accent modes; red is the indicator and the
+  // rule, never the letters).
+  tabs?: readonly WallTabDef[];
+  indicatorColor?: string;
+  // Gated: labels dim further and taps are delegated (host toasts).
+  gated?: boolean;
+}
+
+export function WallTabs({
+  active, hidden, onChange, tabs = WALL_TABS, indicatorColor = Colors.accent, gated = false,
+}: WallTabsProps) {
   const frames = useRef<Record<string, TabFrame>>({});
   const left = useRef(new Animated.Value(0)).current;
   const width = useRef(new Animated.Value(0)).current;
@@ -94,7 +110,7 @@ export function WallTabs({ active, hidden, onChange }: WallTabsProps) {
     frames.current[tab] = { x, width: w };
     // Once all three tabs are measured, place the indicator. Re-measure
     // (font load, orientation change) re-places without animation.
-    if (Object.keys(frames.current).length === WALL_TABS.length) {
+    if (Object.keys(frames.current).length === tabs.length) {
       const first = !measured.current;
       measured.current = true;
       if (!hidden) glide(active, !first);
@@ -110,7 +126,7 @@ export function WallTabs({ active, hidden, onChange }: WallTabsProps) {
     // right of the label.)
     <View style={tabStyles.gutter}>
       <View style={tabStyles.row}>
-        {WALL_TABS.map((t) => {
+        {tabs.map((t) => {
           const isActive = active === t.id && !hidden;
           return (
             <Pressable
@@ -123,13 +139,19 @@ export function WallTabs({ active, hidden, onChange }: WallTabsProps) {
               hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
               style={tabStyles.tab}
             >
-              <Text style={[tabStyles.label, isActive && tabStyles.labelActive]}>
+              <Text
+                style={[
+                  tabStyles.label,
+                  isActive && tabStyles.labelActive,
+                  gated && tabStyles.labelGated,
+                ]}
+              >
                 {t.label.toUpperCase()}
               </Text>
             </Pressable>
           );
         })}
-        <Animated.View style={[tabStyles.indicator, { left, width }]} />
+        <Animated.View style={[tabStyles.indicator, { left, width, backgroundColor: indicatorColor }]} />
       </View>
     </View>
   );
@@ -156,8 +178,8 @@ const tabStyles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     height: 1.5,
-    backgroundColor: Colors.accent,
   },
+  labelGated: { color: 'rgba(240,237,230,0.22)' },
 });
 
 // ─── GapMark ──────────────────────────────────────────────────────────
@@ -366,10 +388,16 @@ export function StaggerRow({ index, children }: { index: number; children: React
 
 // ─── WallScriptureFooter ──────────────────────────────────────────────
 
-export function WallScriptureFooter({ text, reference }: { text: string; reference: string }) {
+export function WallScriptureFooter({
+  text, reference, eyebrow,
+}: { text: string; reference: string; eyebrow?: string }) {
+  // eyebrow (Persecuted refinement 2026-07-26): each of that tab's four
+  // footers carries a mono-caps line above the verse (PRAY WITH US, A
+  // CLOUD OF WITNESSES, …) — muted, never sky (sky is interactive only).
   return (
     <View style={footStyles.wrap}>
       <View style={footStyles.rule} />
+      {eyebrow ? <Text style={footStyles.eyebrow}>{eyebrow}</Text> : null}
       <Text style={footStyles.verse}>{text}</Text>
       <Text style={footStyles.ref}>{reference}</Text>
     </View>
@@ -379,6 +407,14 @@ export function WallScriptureFooter({ text, reference }: { text: string; referen
 const footStyles = StyleSheet.create({
   wrap: { alignItems: 'center', paddingTop: 24, paddingBottom: 30, paddingHorizontal: 22 },
   rule: { height: 1, alignSelf: 'stretch', backgroundColor: Colors.borderAccentSubtle, marginBottom: 22 },
+  eyebrow: {
+    fontFamily: Typography.mono,
+    fontSize: 9,
+    letterSpacing: 2.1,
+    color: 'rgba(240,237,230,0.45)',
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
   verse: {
     fontFamily: Typography.scriptureItalic,
     fontSize: 17,

@@ -13,7 +13,9 @@ import type { Submission } from "../screens/main/addressNetwork/types";
 export type TabsParamList = {
   Home: undefined;
   "The Church": undefined;
-  Persecuted: undefined;
+  // initialView 'voice' — HeartcrySubmission's confirmation Done lands
+  // the leader in My Voice (design_handoff_persecuted_NEW, 2026-07-26).
+  Persecuted: { initialView?: 'voice' } | undefined;
   "Prayer Wall": { initialView?: 'journal'; pendingChurch?: string } | undefined;
   Connect: { initialSubTab?: 'ministries' | 'leaders'; conversationId?: string } | undefined;
 };

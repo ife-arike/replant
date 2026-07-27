@@ -419,9 +419,12 @@ export default function PrayerWallScreen() {
     setRawView('compose');
   };
 
-  const handleTabChange = (tab: 'feed' | 'testimonies' | 'mine') => {
-    if (tab === rawView) return;
-    setRawView(tab);
+  // WallTabs generalized for the Persecuted tab (2026-07-26) — its
+  // onChange is now (tab: string); narrow back to the wall's own set.
+  const handleTabChange = (tab: string) => {
+    const next = tab as 'feed' | 'testimonies' | 'mine';
+    if (next === rawView) return;
+    setRawView(next);
     setFilterOpen(false);
     setAnimTick((t) => t + 1);
   };

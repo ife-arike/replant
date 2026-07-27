@@ -101,7 +101,11 @@ export default function ComposeView({
 
   const titleTrim = title.trim();
   const bodyTrim = body.trim();
-  const titleRequired = type === 'testimony';
+  // Founder 2026-07-25: title required for ALL leader posts (a titleless
+  // word published as the "A word for today" default, duplicating the
+  // kicker). Server enforces the same (content_submission_create
+  // title_required).
+  const titleRequired = true;
   const titleOk = !titleRequired || titleTrim.length > 0;
   const bodyOk = bodyTrim.length > 0;
   const canSubmit = !!type && titleOk && bodyOk && !sending;
@@ -251,16 +255,16 @@ export default function ComposeView({
               <Text style={styles.guardText}>{GUARDRAIL}</Text>
             </View>
 
-            {/* Title — optional (word) / required (testimony) */}
+            {/* Title — required for every leader post (Founder 2026-07-25) */}
             <Field
               label="Title"
-              suffix={titleRequired ? '· required' : '· optional'}
+              suffix="· required"
             >
               <TextInput
                 value={title}
                 onChangeText={setTitle}
                 placeholder={
-                  titleRequired ? TITLE_PLACEHOLDER_TESTIMONY : TITLE_PLACEHOLDER_WORD
+                  type === 'testimony' ? TITLE_PLACEHOLDER_TESTIMONY : TITLE_PLACEHOLDER_WORD
                 }
                 placeholderTextColor={Colors.textSubtle}
                 style={styles.titleInput}

@@ -35,6 +35,12 @@ export const Colors = {
   // keeping the long request list from reading as grey.
   borderAccentStrong: 'rgba(107, 181, 232, 0.22)',
   borderAccentSubtle: 'rgba(107, 181, 232, 0.10)',
+  // Persecuted refinement (design_handoff_persecuted_NEW §3, 2026-07-26).
+  // borderRowSubtle intentionally equals borderAccentSubtle today — named
+  // separately so the two tabs can diverge without a sweep.
+  borderRowSubtle: 'rgba(107, 181, 232, 0.10)',
+  borderAccentRed: 'rgba(224, 85, 85, 0.26)',
+  redRing: 'rgba(224, 85, 85, 0.55)',
 
   // RAG
   green: '#5BAD7A',

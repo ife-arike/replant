@@ -34,7 +34,7 @@ import {
 import { Colors, Radius, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
-import { ROLE_DISPLAY } from './NetworkFeedLogic';
+import { commentIdentity } from './CommentThreadLogic';
 import { Chevron, LockIcon } from './HomeIcons';
 
 // Display shape for one comment row. Mirrors the get_comments RPC return
@@ -55,43 +55,24 @@ export type Comment = {
   author_name: string | null;  // matches get_comments RPC column name
   church_name: string | null;
   role: string | null;
+  // get_comments v3 composed contract (kan338_0006, KAN-338 FE cutover):
+  // the server composes ALL identity display; the FE renders verbatim and
+  // derives only the avatar affordance from the three LIVE-state booleans
+  // (never from the write-time mask_reason — the F1/F3 defect class).
+  display_name: string;
+  name_held: boolean;
+  church_label: string;
+  church_held: boolean;
+  is_underground: boolean;
 };
 
-type RpcCommentRow = {
-  id: string;
-  body: string;
-  created_at: string;
-  is_masked: boolean;
-  mask_reason: 'none' | 'anon' | 'underground' | 'no_church';
-  masked_region: string | null;
-  author_name: string | null;  // RPC returns author_name, not full_name
-  church_name: string | null;
-  role: string | null;
-};
+type RpcCommentRow = Comment;
 
-const MASKED_NAME = 'A leader in the network';
-
-// Resolve the rendered author name for a comment row.
-//
-// Decoupled 2026-06-21: the LEADER's anonymity (users.anonymous) is the
-// only axis that masks the name. Church-side underground masking does not
-// erase a leader who chose to be known by name. The RPC encodes this:
-//   author_name !== null → leader is NOT anonymous → show real name
-//                          (server-composed via resolve_display_name —
-//                          honorific/role prefix + first/middle/last per
-//                          the leader's display preference; FE adds no
-//                          prefix).
-//   author_name === null + role → leader is anonymous OR has no church
-//                                  on record → "A fellow {role}".
-//   author_name === null + no role → MASKED_NAME constant fallback.
-function displayName(c: Comment): string {
-  const name = c.author_name?.trim() ?? '';
-  if (name) return name;
-  if (c.role) {
-    return 'A fellow ' + (ROLE_DISPLAY[c.role] ?? 'leader').toLowerCase();
-  }
-  return MASKED_NAME;
-}
+// Identity display is fully server-composed since get_comments v3
+// (kan338_0006): `display_name` renders verbatim, `church_label` carries
+// the church name or macro-region label, and the avatar affordance comes
+// from commentIdentity() off the LIVE-state booleans. No name composition
+// and no mask_reason branching happens on the client anymore.
 
 // Local relative-time — light-touch, mirrors the feed's register. Kept
 // inline so the thread has no cross-module coupling beyond the RPC.
@@ -106,11 +87,6 @@ function relTime(iso: string): string {
   if (diff < h) return `${Math.floor(diff / m)}m`;
   if (diff < d) return `${Math.floor(diff / h)}h`;
   return `${Math.floor(diff / d)}d`;
-}
-
-function initialOf(name: string | null): string {
-  const c = (name ?? '').trim().charAt(0);
-  return c ? c.toUpperCase() : '·';
 }
 
 export function CommentThread({
@@ -233,34 +209,17 @@ export function CommentThread({
       ) : (
         <View style={s.list}>
           {comments.map((c) => {
-            const name = displayName(c);
-            // church_name is non-null for anon rows (RPC masking contract);
-            // masked_region carries the region label for underground rows.
-            // This single expression covers all four mask_reason values.
-            const church = c.church_name ?? c.masked_region ?? '';
-            // Avatar logic — decoupled 2026-06-21.
-            // Underground church status (round lock) is the stronger
-            // protection signal; if both axes are masked, underground wins.
-            //
-            //   none                            → square, real-name initial
-            //   anon (non-underground)          → square, letter "A"
-            //   underground + non-anon (name)   → round, real-name initial
-            //                                     (round shape still signals
-            //                                     underground church context)
-            //   underground + anon              → round, LockIcon
-            //   underground without resolvable
-            //     name (legacy/edge)            → round, LockIcon
-            //   no_church                       → round, LockIcon
-            const isRound =
-              c.mask_reason === 'underground' || c.mask_reason === 'no_church';
-            const hasRealName = !!c.author_name;
-            const showLetterA = c.mask_reason === 'anon';
+            // Server-composed identity + live-state avatar affordance
+            // (KAN-338 FE cutover — the seven states are pinned in
+            // CommentThreadLogic.test.ts; the round lock now correctly
+            // covers anonymous underground leaders).
+            const id = commentIdentity(c);
             return (
               <View key={c.id} style={s.row}>
-                <View style={[s.av, isRound && s.avRound]}>
-                  {hasRealName ? (
-                    <Text style={s.avInitial}>{initialOf(c.author_name)}</Text>
-                  ) : showLetterA ? (
+                <View style={[s.av, id.round && s.avRound]}>
+                  {id.glyph === 'initial' ? (
+                    <Text style={s.avInitial}>{id.initial}</Text>
+                  ) : id.glyph === 'letterA' ? (
                     <Text style={s.avInitial}>A</Text>
                   ) : (
                     <LockIcon />
@@ -268,10 +227,10 @@ export function CommentThread({
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={s.nameRow}>
-                    <Text style={s.cname} numberOfLines={1}>{name}</Text>
+                    <Text style={s.cname} numberOfLines={1}>{id.displayName}</Text>
                     <Text style={s.ctime}>{relTime(c.created_at)}</Text>
                   </View>
-                  {!!church && <Text style={s.cchurch} numberOfLines={1}>{church}</Text>}
+                  {!!id.churchLine && <Text style={s.cchurch} numberOfLines={1}>{id.churchLine}</Text>}
                   <Text style={s.ctext}>{c.body}</Text>
                 </View>
               </View>
