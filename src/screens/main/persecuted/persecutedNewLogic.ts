@@ -13,9 +13,14 @@
 // what is persecuted-specific: the tier system and the tab set.
 // ─────────────────────────────────────────────
 
-import { Colors } from '../../../constants/theme';
 import type { HeartcrySeverity } from '../persecutedLogic';
 import type { WallTabDef } from '../../../components/prayer/WallPrimitives';
+
+// Colors.red literal — pure logic modules must not import theme.ts
+// (its @expo-google-fonts chain cannot load under jest's node env;
+// same rule as wallNewLogic / PrayerWallLogic). Keep in lockstep with
+// Colors.red in src/constants/theme.ts.
+export const TIER_RED = '#E05555';
 
 // Three tabs, not four pills (README move #1). My Voice is a header
 // text action, not a tab.
@@ -43,7 +48,7 @@ export function tierTint(severity: string): string {
     case 'critical':
     case 'active_persecution': // legacy alias — renders as Critical
     case 'urgent':
-      return Colors.red;
+      return TIER_RED;
     case 'serious':
       return 'rgba(240,237,230,0.72)';
     case 'ongoing':

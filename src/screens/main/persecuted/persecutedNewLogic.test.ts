@@ -1,9 +1,9 @@
 // persecutedNewLogic tests — tier system + continent filter
 // (design_handoff_persecuted_NEW; Founder rulings 2026-07-26).
 
-import { Colors } from '../../../constants/theme';
 import {
   ALL_CONTINENTS,
+  TIER_RED,
   PERSECUTED_TABS,
   continentOptions,
   feedSectionLabel,
@@ -31,8 +31,8 @@ describe('tier system — two intensities, one pulse', () => {
   });
 
   it('red for the top two, brightness below', () => {
-    expect(tierTint('critical')).toBe(Colors.red);
-    expect(tierTint('urgent')).toBe(Colors.red);
+    expect(tierTint('critical')).toBe(TIER_RED);
+    expect(tierTint('urgent')).toBe(TIER_RED);
     expect(tierTint('serious')).toBe('rgba(240,237,230,0.72)');
     expect(tierTint('ongoing')).toBe('rgba(240,237,230,0.55)');
     expect(tierTint('informational')).toBe('rgba(240,237,230,0.42)');
