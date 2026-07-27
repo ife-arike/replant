@@ -56,3 +56,18 @@
 --   get_prayer_wall · get_testimonies · search_leaders
 -- Verified live: "Psalmist Ruth Ifee Test" (full + toggle on) vs
 -- "Pastor Hrang Cung" (full, toggle off, middle "Lal" suppressed).
+
+-- ── ADDENDUM 2 — overload collapsed to ONE canonical function ───────────
+-- Adding p_include_middle created a SECOND overload rather than replacing
+-- the 7-arg version (Postgres treats a new parameter as a new signature,
+-- even with a DEFAULT). Both carried the F11 fix, but only the 8-arg one
+-- honoured the middle toggle — so any future 7-arg call site would have
+-- silently lost middle-name support. The 7-arg overload is DROPPED: there
+-- is now exactly one resolve_display_name, and a 7-arg call resolves to it
+-- with p_include_middle defaulting false (safe).
+--
+-- Verified live after the drop, all three axes independently honoured:
+--   full + given-first + middle ON  -> "Pastor Mei Ling Chen"
+--   full + FAMILY-first + middle ON -> "Pastor Chen Mei Ling"
+--   full + family-first + middle OFF-> "Pastor Chen Mei"
+--   first_name_only (ignores both)  -> "Pastor Mei"
