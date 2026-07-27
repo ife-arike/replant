@@ -43,6 +43,10 @@ yarn-error.*
 # Supabase CLI cache
 supabase/.temp/
 supabase/.branches/
+# Supabase CLI scratch when the CLI is run from inside a function dir
+# (creates a nested supabase/.temp there rather than at the repo root).
+**/.temp/
+supabase/functions/*/supabase/
 
 # QA harness run artifacts (preserve placeholder .gitkeep + README only)
 qa/*/artifacts/*

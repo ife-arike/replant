@@ -99,3 +99,23 @@ transition FROM THE ADMIN DASHBOARD (SQL flips send nothing — by design):
 - Remaining batches: 4 (welcome family redesign w/ CD), 5 (admin promotion
   emails + deferred migrations), 6 (waitlist broadcast KAN-321 + reminder
   crons + stale-invite cron + dead-letter reconciler), push workstream.
+
+## KAN-61 walk (added 2026-07-14 — after PR #82 merges)
+
+1. **Digest email** — check accounts@ for "Replant ops — 14 church(es) past
+   verification deadline" (fired 2026-07-14; daily 09:20 UTC thereafter,
+   silent when zero).
+2. **Queue chips** — Pending queue: 14 real overdue rows show red
+   "Deadline passed · Nd" chip + Extend/Confirm buttons. LOOK ONLY on real
+   rows — do not action them as tests.
+3. **Extend walk (+t11 fixture)** — register R7 steps: expire → Extend
+   (TOTP step-up challenge appears) → toast → chip clears → audit row
+   `verification_window_extended` with prev/new deadline.
+4. **Confirm walk (+t11 fixture)** — re-expire → Confirm deactivation →
+   +t11 inbox gets the ratified deactivation email; email_log notify_t09 →
+   delivered; audit meta reason=verification_deadline_expired. Reinstate +
+   restore snapshot after (register R7 CLEANUP).
+5. **Reminder church-clock fix (passive)** — +t11 also receives the day-1
+   reminder from the 09:30 UTC cron on 2026-07-14 (church clock, subject
+   "Your Replant review window closes tomorrow") — live proof of the DBA
+   bug fix; no action needed, just confirm it arrived to the fixture inbox.

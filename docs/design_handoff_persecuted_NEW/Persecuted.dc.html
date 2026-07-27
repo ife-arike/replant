@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Mono:wght@400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+a{color:#6BB5E8;text-decoration:none}
+a:hover{color:#8FC9EF}
+.rp-scroll{scrollbar-width:none;-ms-overflow-style:none}
+.rp-scroll::-webkit-scrollbar{display:none}
+@keyframes rp-fade{from{opacity:0}to{opacity:1}}
+@keyframes rp-rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes rp-expand{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes rp-spin{to{transform:rotate(360deg)}}
+@keyframes rp-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;padding:44px 24px 60px">
+
+<div style="max-width:720px;margin:0 auto 34px">
+  <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:5px;color:#F0EDE6">REPLANT</div>
+  <div style="font-family:'Cormorant Garamond',serif;font-weight:300;font-size:27px;color:#F0EDE6;margin-top:16px;letter-spacing:.3px;line-height:1.25">The Persecuted Church — refined on the Prayer Wall skeleton.</div>
+  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.5);margin-top:10px">Three tabs and a gliding indicator. My Voice sits in the header where Journal sits. Tap any heartcry to open it in place. Every card carries the tier its sender chose. Only Critical moves.</div>
+</div>
+
+<section style="max-width:1180px;margin:0 auto">
+  <div id="1a" style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+
+    <div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;color:#0B0B0C;background:#6BB5E8;padding:4px 8px;border-radius:4px">1a</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.45)">Persecuted · concept</span>
+      </div>
+
+      <div style="width:414px;padding:12px;background:#131314;border:1px solid rgba(240,237,230,.10);border-radius:46px">
+        <div style="width:390px;height:812px;background:#080808;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;position:relative">
+
+          <div style="padding:15px 22px 0;flex:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;color:rgba(240,237,230,.5)">9:41</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px;gap:14px">
+              <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:25px;color:#F0EDE6;letter-spacing:.4px;line-height:1">The Persecuted Church</div>
+              <button onClick="{{ toggleMyVoice }}" style="background:transparent;border:0;cursor:pointer;padding:0 0 3px;display:flex;align-items:center;gap:6px;flex:none">
+                <sc-if value="{{ voiceUnread }}"><span style="width:4px;height:4px;border-radius:50%;background:#6BB5E8;flex:none"></span></sc-if>
+                <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;white-space:nowrap;color:{{ voiceTint }}">My Voice</span>
+              </button>
+            </div>
+            <div style="display:flex;gap:26px;margin-top:18px;position:relative">
+              <sc-for list="{{ nav }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.onSelect }}" ref="{{ t.setRef }}" style="background:transparent;border:0;padding:0 0 12px;cursor:pointer" key="{{ t.k }}">
+                  <sc-if value="{{ t.active }}"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;white-space:nowrap;color:#F0EDE6">{{ t.label }}</span></sc-if>
+                  <sc-if value="{{ t.activeRed }}"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;white-space:nowrap;color:#E05555">{{ t.label }}</span></sc-if>
+                  <sc-if value="{{ t.idle }}"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;white-space:nowrap;color:rgba(240,237,230,.38)">{{ t.label }}</span></sc-if>
+                  <sc-if value="{{ t.locked }}"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;white-space:nowrap;color:rgba(240,237,230,.22)">{{ t.label }}</span></sc-if>
+                </button>
+              </sc-for>
+              <sc-if value="{{ skyTabs }}"><span style="position:absolute;bottom:-1px;height:1.5px;background:#6BB5E8;left:{{ navL }}px;width:{{ navW }}px;transition:left .42s cubic-bezier(.22,.61,.36,1),width .42s cubic-bezier(.22,.61,.36,1)"></span></sc-if>
+              <sc-if value="{{ redTabs }}"><span style="position:absolute;bottom:-1px;height:1.5px;background:#E05555;left:{{ navL }}px;width:{{ navW }}px;transition:left .42s cubic-bezier(.22,.61,.36,1),width .42s cubic-bezier(.22,.61,.36,1)"></span></sc-if>
+            </div>
+            <sc-if value="{{ skyTabs }}"><div style="height:1px;background:rgba(107,181,232,.22)"></div></sc-if>
+            <sc-if value="{{ redTabs }}"><div style="height:1px;background:rgba(224,85,85,.26)"></div></sc-if>
+          </div>
+
+          <div class="rp-scroll" onWheel="{{ onWheel }}" style="flex:1;min-height:0;overflow-y:auto;padding:0 22px 30px">
+
+            <sc-if value="{{ gated }}">
+              <div style="padding:44px 0 0;animation:rp-fade .4s ease both">
+                <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.35)">Not yet verified</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:22px;line-height:1.35;color:#F0EDE6;margin-top:16px">This section is for verified leaders in the Replant network.</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:14px">Heartcries carry real risk for the people who write them, so the room stays closed until the Replant team confirms your church. Once verified, it opens in full.</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:16px;line-height:1.5;color:rgba(240,237,230,.45);margin-top:18px">In the meantime the Prayer Wall is open to you, and the body there is praying for these same churches.</div>
+                <div style="height:1px;background:rgba(240,237,230,.08);margin-top:28px"></div>
+                <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.32);margin-top:16px">Questions? Email the Replant team.</div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ pullShown }}">
+              <div style="display:flex;align-items:center;justify-content:center;gap:9px;height:{{ pullH }}px;overflow:hidden">
+                <sc-if value="{{ refreshing }}"><span style="width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(107,181,232,.3);border-top-color:#6BB5E8;animation:rp-spin .8s linear infinite"></span></sc-if>
+                <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.45)">{{ pullLabel }}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ showVoice }}">
+              <div style="animation:rp-fade .35s ease both">
+                <div style="padding:22px 0 20px">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.45)">Set aside for you</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.55;color:#E6E1D5;margin-top:12px">Our team reads each one, prays through it, and reaches you directly if you ask us to.</div>
+                </div>
+
+                <sc-if value="{{ voiceEmpty }}">
+                  <div style="padding:34px 0 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">Nothing written yet.</div>
+                    <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px;max-width:300px">If a day comes when you need to be heard, this space will hold it. Until then, the body is praying around you.</div>
+                    <button onClick="{{ share }}" style="margin-top:22px;background:transparent;border:.5px solid rgba(224,85,85,.30);border-radius:6px;padding:11px 20px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;color:#E05555">Share my heartcry</button>
+                  </div>
+                </sc-if>
+
+                <sc-for list="{{ mine }}" as="m" hint-placeholder-count="3">
+                  <div style="border-top:1px solid rgba(107,181,232,.10);padding:19px 0;animation:rp-rise .5s ease both;animation-delay:{{ m.delay }}ms" key="{{ m.key }}">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <sc-if value="{{ m.filled }}"><span style="width:5px;height:5px;border-radius:50%;background:#E05555;flex:none"></span></sc-if>
+                      <sc-if value="{{ m.hollow }}"><span style="width:5px;height:5px;border-radius:50%;border:1px solid rgba(224,85,85,.55);flex:none"></span></sc-if>
+                      <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:{{ m.tint }}">{{ m.severity }}</span>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38);margin-left:auto">{{ m.when }}</span>
+                    </div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.5;color:#F0EDE6;margin-top:10px">{{ m.preview }}</div>
+                    <div style="display:flex;align-items:center;margin-top:16px">
+                      <sc-for list="{{ m.steps }}" as="s" hint-placeholder-count="3">
+                        <span style="display:flex;align-items:center;gap:6px;flex:{{ s.flex }};min-width:0" key="{{ s.k }}">
+                          <sc-if value="{{ s.rule }}"><span style="height:.5px;flex:1;background:{{ s.ruleTint }}"></span></sc-if>
+                          <span style="width:8px;height:8px;border-radius:50%;border:.5px solid {{ s.border }};background:{{ s.fill }};flex:none"></span>
+                          <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;color:{{ s.tint }}">{{ s.label }}</span>
+                        </span>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{ m.responded }}">
+                      <button onClick="{{ m.onOpen }}" style="margin-top:16px;background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:#6BB5E8">Open secure message ›</button>
+                    </sc-if>
+                  </div>
+                </sc-for>
+
+                <div style="margin-top:38px;padding-top:22px;border-top:1px solid rgba(107,181,232,.10);text-align:center">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.1px;text-transform:uppercase;color:rgba(240,237,230,.45)">The Lord hears</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.53;color:#E6E1D5;margin:14px auto 0;max-width:300px">I sought the Lord, and he heard me, and delivered me from all my fears.</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.45);margin-top:12px">Psalm 34:4 · KJV</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ showFeed }}">
+              <div style="animation:rp-fade .35s ease both">
+                <div style="padding:22px 0 20px;border-bottom:1px solid rgba(240,237,230,.08)">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.45)">A held space</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.55;color:#E6E1D5;margin-top:12px">For churches under threat, imprisonment, prohibition of fellowship, violence, and active hunting for the faith.</div>
+                </div>
+
+                <div style="margin:22px 0 4px;background:#111113;border:.5px solid rgba(240,237,230,.08);border-radius:10px;padding:22px 20px 20px;text-align:center">
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:20px;line-height:1.35;letter-spacing:.2px;color:#F0EDE6">Are you suffering persecution for the name of Jesus?</div>
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.45);margin-top:8px">Heartcries shared to Replant are encrypted and your identity is held. This is a safe space for your voice.</div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:14px">
+                    <span style="width:8px;height:10px;border:1px solid rgba(240,237,230,.38);border-radius:1.5px;border-top-left-radius:4px;border-top-right-radius:4px;flex:none"></span>
+                    <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.38)">Encrypted · Anonymous · Country only</span>
+                  </div>
+                  <button onClick="{{ share }}" style="width:100%;margin-top:18px;background:transparent;border:.5px solid rgba(224,85,85,.30);border-radius:6px;padding:12px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;font-size:11.5px;letter-spacing:1.6px;text-transform:uppercase;white-space:nowrap;color:#E05555">Share my heartcry</button>
+                </div>
+
+                <div style="padding:24px 0 0">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.5)">{{ countryLabel }}</span>
+                    <button onClick="{{ toggleFilter }}" style="background:transparent;border:0;cursor:pointer;padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:2.5px;align-items:flex-end;flex:none;margin-left:auto">
+                      <span style="display:block;width:13px;height:1px;background:{{ filterTint }}"></span>
+                      <span style="display:block;width:9px;height:1px;background:{{ filterTint }}"></span>
+                      <span style="display:block;width:5px;height:1px;background:{{ filterTint }}"></span>
+                    </button>
+                  </div>
+                  <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.3);margin-top:9px">Newest first · Pull to refresh</div>
+                </div>
+
+                <sc-if value="{{ filterOpen }}">
+                  <div style="border:1px solid rgba(107,181,232,.18);border-radius:8px;padding:14px;margin-top:16px;animation:rp-expand .25s ease both">
+                    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.35)">Country</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:9px">
+                      <sc-for list="{{ countries }}" as="c" hint-placeholder-count="6">
+                        <button onClick="{{ c.onSelect }}" style="background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12.5px;color:{{ c.tint }}" key="{{ c.k }}">{{ c.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <div style="height:18px"></div>
+
+                <sc-if value="{{ feedEmptyFiltered }}">
+                  <div style="padding:34px 0 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">Nothing from {{ country }}.</div>
+                    <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px;max-width:300px">No one there has written to us. The body is praying for that church regardless.</div>
+                    <button onClick="{{ showAllCountries }}" style="margin-top:20px;background:transparent;border:.5px solid rgba(107,181,232,.30);border-radius:7px;padding:11px 18px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;white-space:nowrap;color:#6BB5E8">All countries</button>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ feedEmptyAll }}">
+                  <div style="padding:34px 0 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">Quiet here, for now.</div>
+                    <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px;max-width:300px">This space is held in prayer until someone speaks. If you are experiencing any form of persecution, you can share here.</div>
+                  </div>
+                </sc-if>
+
+                <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+                  <div onClick="{{ r.onToggle }}" style="border-top:1px solid rgba(107,181,232,.10);padding:19px 0 0;cursor:pointer;animation:rp-rise .5s ease both;animation-delay:{{ r.delay }}ms" key="{{ r.key }}">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <sc-if value="{{ r.filled }}"><span style="width:5px;height:5px;border-radius:50%;background:#E05555;flex:none"></span></sc-if>
+                      <sc-if value="{{ r.hollow }}"><span style="width:5px;height:5px;border-radius:50%;border:1px solid rgba(224,85,85,.55);flex:none"></span></sc-if>
+                      <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.5)">A voice · {{ r.country }}</span>
+                      <span style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.4px;text-transform:uppercase;margin-left:auto;flex:none;color:{{ r.sevTint }};animation:{{ r.sevAnim }}">{{ r.sevLabel }}</span>
+                    </div>
+
+                    <sc-if value="{{ r.collapsed }}">
+                      <div style="display:flex;gap:11px;margin-top:9px">
+                        <sc-if value="{{ r.filled }}"><span style="width:1.5px;background:rgba(224,85,85,.5);flex:none;border-radius:1px"></span></sc-if>
+                        <span style="flex:1;min-width:0;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.5;font-style:{{ bodyStyle }};color:#F0EDE6">{{ r.preview }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:11px 0 19px">
+                        <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">Shared {{ r.when }}</span>
+                        <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.45)">{{ r.countLabel }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ r.expanded }}">
+                      <div style="animation:rp-expand .3s ease both;padding:10px 0 22px">
+                        <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;line-height:1.55;font-style:{{ bodyStyle }};color:#F0EDE6">{{ r.full }}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:14px">
+                          <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">Shared {{ r.when }}</span>
+                          <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(240,237,230,.4)">Fold</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:14px;margin-top:18px">
+                          <button onClick="{{ r.onHold }}" style="background:{{ r.holdBg }};border:.5px solid {{ r.holdBorder }};border-radius:7px;padding:10px 18px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;white-space:nowrap;color:#F0EDE6">{{ r.holdLabel }}</button>
+                          <span style="font-family:'DM Sans',sans-serif;font-size:11.5px;white-space:nowrap;color:rgba(240,237,230,.45);margin-left:auto">{{ r.countLabel }}</span>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+
+                <div style="margin-top:34px;padding-top:22px;border-top:1px solid rgba(107,181,232,.10);text-align:center">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.1px;text-transform:uppercase;color:rgba(240,237,230,.45)">Pray with us</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.53;color:#E6E1D5;margin:14px auto 0;max-width:300px">Remember them that are in bonds, as bound with them; and them which suffer adversity, as being yourselves also in the body.</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.45);margin-top:12px">Hebrews 13:3 · KJV</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ showWitnesses }}">
+              <div style="animation:rp-fade .35s ease both">
+                <div style="padding:22px 0 4px">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.1px;text-transform:uppercase;color:rgba(240,237,230,.45)">Standing this week</div>
+                  <div style="display:flex;flex-direction:column;gap:16px;margin-top:18px">
+                    <sc-for list="{{ stats }}" as="x" hint-placeholder-count="4">
+                      <div style="display:flex;align-items:flex-start;gap:14px" key="{{ x.k }}">
+                        <span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:34px;line-height:1;letter-spacing:.3px;color:#F0EDE6;min-width:70px;flex:none">{{ x.n }}</span>
+                        <span style="flex:1;min-width:0;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:17px;line-height:1.53;color:#E6E1D5;padding-top:5px">{{ x.d }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:11.5px;line-height:1.6;color:rgba(240,237,230,.35);margin-top:18px">Counted from heartcries shared in the last seven days. No names, no places.</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:14px;margin-top:34px">
+                  <span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;color:#F0EDE6;flex:none">Witness of the day</span>
+                  <span style="flex:1;height:1px;background:rgba(240,237,230,.08)"></span>
+                </div>
+
+                <div style="padding:20px 0 0">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="width:7px;height:7px;border:1px solid #E05555;flex:none"></span>
+                    <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:#E05555">Martyr</span>
+                    <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.3)">·</span>
+                    <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.45)">Pre-Constantinian</span>
+                  </div>
+                  <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.45);margin-top:8px">North Africa · c. 182–203</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:27px;line-height:1.2;color:#F0EDE6;margin-top:16px;letter-spacing:.3px">Perpetua of Carthage</div>
+
+                  <div style="border-left:1.5px solid rgba(240,237,230,.16);padding-left:14px;margin-top:20px">
+                    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:19px;line-height:1.53;color:#E6E1D5">Stand fast in the faith, and love one another, all of you, and be not offended at my sufferings.</div>
+                  </div>
+
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.58;color:#F0EDE6;margin-top:22px">A young mother of twenty-two, newly baptised, imprisoned with her infant son at her breast. Her father begged her to renounce; she pointed to a water jug and asked whether it could be called by any other name than what it was. “Neither can I call myself anything other than what I am, a Christian.” She recorded her own prison visions in her own hand, the earliest surviving writing we have from a Christian woman, and walked into the arena singing.</div>
+
+                  <div style="margin-top:24px;padding-top:18px;border-top:1px solid rgba(240,237,230,.08)">
+                    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.7px;text-transform:uppercase;color:rgba(240,237,230,.38)">Revelation 2:10 · KJV</div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.53;color:#E6E1D5;margin-top:10px">Be thou faithful unto death, and I will give thee a crown of life.</div>
+                  </div>
+
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:10.5px;line-height:1.6;color:rgba(240,237,230,.35);margin-top:20px">The Passion of Perpetua and Felicity, eyewitness account, c. 203 AD</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:14px;margin-top:36px">
+                  <span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;color:#F0EDE6;flex:none">Around the world</span>
+                  <span style="flex:1;height:1px;background:rgba(240,237,230,.08)"></span>
+                  <button onClick="{{ openBlog }}" style="background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.4px;text-transform:uppercase;white-space:nowrap;color:#6BB5E8;flex:none">Blog ›</button>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:20px;margin-top:18px">
+                  <sc-for list="{{ stories }}" as="st" hint-placeholder-count="3">
+                    <button onClick="{{ st.onOpen }}" style="display:block;width:100%;text-align:left;background:transparent;border:0;border-left:1.5px solid rgba(240,237,230,.14);padding:2px 0 2px 14px;cursor:pointer" key="{{ st.k }}">
+                      <span style="display:block;font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.4)">{{ st.meta }}</span>
+                      <span style="display:block;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;line-height:1.3;color:#F0EDE6;margin-top:7px">{{ st.title }}</span>
+                      <span style="display:block;font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:16px;line-height:1.5;color:rgba(240,237,230,.6);margin-top:6px">{{ st.excerpt }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+
+                <button onClick="{{ openBlog }}" style="margin-top:22px;background:transparent;border:.5px solid rgba(107,181,232,.30);border-radius:7px;padding:11px 18px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;white-space:nowrap;color:#6BB5E8">Read more on the blog</button>
+
+                <div style="margin-top:34px;padding-top:22px;border-top:1px solid rgba(107,181,232,.10);text-align:center">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.1px;text-transform:uppercase;color:rgba(240,237,230,.45)">A cloud of witnesses</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.53;color:#E6E1D5;margin:14px auto 0;max-width:300px">Wherefore seeing we also are compassed about with so great a cloud of witnesses, let us lay aside every weight, and let us run with patience the race that is set before us.</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.45);margin-top:12px">Hebrews 12:1 · KJV</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ showHeart }}">
+              <div style="animation:rp-fade .35s ease both">
+                <div style="padding:30px 8px 28px;text-align:center;border-bottom:1px solid rgba(240,237,230,.08)">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.1px;text-transform:uppercase;color:rgba(240,237,230,.45)">A word from your family</div>
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.6;color:rgba(240,237,230,.5);margin:16px auto 0;max-width:300px">Words from the body will appear here as leaders share encouragement with those enduring persecution.</div>
+                  <button onClick="{{ findOutHow }}" style="margin-top:16px;background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:#6BB5E8">Find out how ›</button>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:14px;margin-top:28px">
+                  <span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;color:#F0EDE6;flex:none">Practical guidance</span>
+                  <span style="flex:1;height:1px;background:rgba(240,237,230,.08)"></span>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+                  <sc-for list="{{ guidance }}" as="g" hint-placeholder-count="4">
+                    <button onClick="{{ g.onOpen }}" style="display:flex;align-items:center;gap:14px;text-align:left;background:transparent;border:.5px solid rgba(240,237,230,.10);border-radius:8px;padding:14px;cursor:pointer;width:100%" key="{{ g.k }}">
+                      <span style="width:32px;height:32px;border-radius:16px;background:rgba(107,181,232,.08);display:flex;align-items:center;justify-content:center;flex:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.5px;color:rgba(107,181,232,.8)">{{ g.n }}</span>
+                      <span style="flex:1;min-width:0">
+                        <span style="display:block;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:17px;line-height:1.3;color:#F0EDE6">{{ g.title }}</span>
+                        <span style="display:block;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:14.5px;line-height:1.5;color:rgba(240,237,230,.45);margin-top:4px">{{ g.sub }}</span>
+                      </span>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(240,237,230,.4);flex:none">›</span>
+                    </button>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:14px;margin-top:34px">
+                  <span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;color:#F0EDE6;flex:none">The body with you</span>
+                  <span style="flex:1;height:1px;background:rgba(240,237,230,.08)"></span>
+                </div>
+
+                <div style="margin-top:16px;border:.5px solid rgba(240,237,230,.10);border-radius:8px;padding:18px">
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.5;color:#E6E1D5">Do you have an Emergency Action Plan with the churches around you?</div>
+                  <button onClick="{{ startEap }}" style="margin-top:16px;background:transparent;border:.5px solid rgba(107,181,232,.30);border-radius:7px;padding:11px 18px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;white-space:nowrap;color:#6BB5E8">Start an EAP branch</button>
+                </div>
+
+                <div style="margin-top:34px;padding-top:22px;border-top:1px solid rgba(107,181,232,.10);text-align:center">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.1px;text-transform:uppercase;color:rgba(240,237,230,.45)">Take heart</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.53;color:#E6E1D5;margin:14px auto 0;max-width:300px">These things I have spoken unto you, that in me ye might have peace. In the world ye shall have tribulation: but be of good cheer; I have overcome the world.</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.45);margin-top:12px">John 16:33 · KJV</div>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+
+          <sc-if value="{{ formOpen }}">
+            <div style="position:absolute;inset:0;background:#080808;display:flex;flex-direction:column;animation:rp-fade .28s ease both">
+              <div style="padding:15px 20px 0;flex:none">
+                <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;color:rgba(240,237,230,.5)">9:41</span>
+              </div>
+              <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid rgba(240,237,230,.08)">
+                <button onClick="{{ closeForm }}" style="background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:22px;line-height:1;color:#F0EDE6;width:22px;text-align:left">←</button>
+                <span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:20px;letter-spacing:.4px;color:#F0EDE6">Heartcry</span>
+                <span style="width:22px;flex:none"></span>
+              </div>
+
+              <div class="rp-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:20px 20px 32px">
+                <div style="border-left:1.5px solid rgba(240,237,230,.16);padding:2px 0 2px 18px">
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.55;color:#F0EDE6">Speak freely. What you share here goes directly to the Replant team — no other leader will see it, unless you choose to let the Body stand with you in prayer. We receive every word with prayer, and we will respond.</div>
+                </div>
+
+                <div style="margin-top:28px">
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:500;font-size:14px;letter-spacing:.28px;color:#F0EDE6">Your Heartcry</div>
+                  <textarea value="{{ content }}" onChange="{{ onContent }}" placeholder="Write what you are carrying. There is no limit here." style="width:100%;min-height:150px;margin-top:12px;background:transparent;border:0;border-bottom:1px solid rgba(240,237,230,.14);padding:0 0 12px;resize:none;outline:none;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;line-height:1.55;color:#F0EDE6"></textarea>
+                  <sc-if value="{{ errContent }}"><div style="font-family:'DM Sans',sans-serif;font-size:12px;color:#E05555;margin-top:8px">Please write your heartcry before sending.</div></sc-if>
+                </div>
+
+                <div style="margin-top:28px">
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:500;font-size:14px;letter-spacing:.28px;color:#F0EDE6">What do you need?</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+                    <sc-for list="{{ needs }}" as="o" hint-placeholder-count="4">
+                      <button onClick="{{ o.onSelect }}" style="height:44px;display:flex;align-items:center;justify-content:center;gap:7px;background:{{ o.bg }};border:.5px solid {{ o.border }};border-radius:22px;cursor:pointer;padding:0 12px" key="{{ o.k }}">
+                        <sc-if value="{{ o.on }}"><span style="width:6px;height:6px;border-radius:50%;background:#6BB5E8;flex:none"></span></sc-if>
+                        <span style="font-family:'DM Sans',sans-serif;font-size:13.5px;white-space:nowrap;color:{{ o.tint }}">{{ o.label }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:11.5px;color:rgba(240,237,230,.5);margin-top:10px">Select all that apply.</div>
+                  <sc-if value="{{ errNeeds }}"><div style="font-family:'DM Sans',sans-serif;font-size:12px;color:#E05555;margin-top:6px">Pick at least one.</div></sc-if>
+                </div>
+
+                <div style="margin-top:28px">
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:500;font-size:14px;letter-spacing:.28px;color:#F0EDE6">How urgent is your situation?</div>
+                  <div style="margin-top:6px">
+                    <sc-for list="{{ severities }}" as="o" hint-placeholder-count="5">
+                      <button onClick="{{ o.onSelect }}" style="display:flex;align-items:flex-start;gap:14px;width:100%;text-align:left;background:transparent;border:0;padding:14px 2px;cursor:pointer;border-bottom:{{ o.ruleCss }}" key="{{ o.k }}">
+                        <span style="width:22px;height:22px;border-radius:11px;border:1.5px solid {{ o.markBorder }};display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px">
+                          <sc-if value="{{ o.on }}"><span style="width:11px;height:11px;border-radius:50%;background:#6BB5E8"></span></sc-if>
+                        </span>
+                        <span style="flex:1;min-width:0">
+                          <span style="display:block;font-family:'DM Sans',sans-serif;font-weight:500;font-size:15px;color:#F0EDE6">{{ o.label }}</span>
+                          <span style="display:block;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.45;color:rgba(240,237,230,.55);margin-top:3px">{{ o.d }}</span>
+                        </span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ errSeverity }}"><div style="font-family:'DM Sans',sans-serif;font-size:12px;color:#E05555;margin-top:6px">Choose how urgent this is.</div></sc-if>
+                </div>
+
+                <div style="margin-top:28px;border:.5px solid rgba(240,237,230,.12);border-radius:12px;padding:18px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                    <span style="flex:1;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;letter-spacing:.18px;color:#F0EDE6">Let the Body stand with you</span>
+                    <button onClick="{{ toggleFeed }}" style="width:42px;height:24px;border-radius:12px;background:{{ feedTrack }};border:1px solid {{ feedTrackBorder }};cursor:pointer;padding:0;position:relative;flex:none">
+                      <span style="position:absolute;top:2.5px;left:{{ feedKnobX }}px;width:17px;height:17px;border-radius:50%;background:#F0EDE6;transition:left .25s cubic-bezier(.22,.61,.36,1)"></span>
+                    </button>
+                  </div>
+                  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.5;color:rgba(240,237,230,.55);margin-top:14px">After Replant team review, your heartcry may appear in the feed — your country only, never your name or church.</div>
+                </div>
+
+                <button onClick="{{ submit }}" style="width:100%;margin-top:26px;background:transparent;border:.5px solid rgba(224,85,85,.30);border-radius:8px;padding:15px;cursor:pointer;opacity:{{ submitDim }};font-family:'DM Sans',sans-serif;font-weight:500;font-size:12.5px;letter-spacing:1.6px;text-transform:uppercase;white-space:nowrap;color:#E05555">Send my heartcry</button>
+
+                <div style="display:flex;align-items:flex-start;gap:8px;margin-top:18px">
+                  <span style="width:8px;height:10px;border:1px solid rgba(240,237,230,.4);border-radius:1.5px;border-top-left-radius:4px;border-top-right-radius:4px;flex:none;margin-top:3px"></span>
+                  <span style="flex:1;font-family:'DM Sans',sans-serif;font-weight:300;font-size:11.5px;line-height:1.55;color:rgba(240,237,230,.55)">Your words are encrypted the moment you send them. They go to the Replant team, and no one else.</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ confirmOpen }}">
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:0 28px;animation:rp-fade .3s ease both">
+              <div style="width:100%;background:#1A1A1C;border:1px solid rgba(240,237,230,.16);border-radius:18px;padding:28px 24px 22px;display:flex;flex-direction:column;align-items:center;gap:16px">
+                <span style="width:44px;height:44px;border-radius:22px;border:1px solid rgba(107,181,232,.35);background:rgba(107,181,232,.10);display:flex;align-items:center;justify-content:center;flex:none">
+                  <span style="width:14px;height:8px;border-left:2px solid #6BB5E8;border-bottom:2px solid #6BB5E8;transform:rotate(-45deg);margin-top:-3px"></span>
+                </span>
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:17px;line-height:1.5;color:#F0EDE6;text-align:center">Your heartcry has been received. We will be praying alongside you.</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:17px;line-height:1.5;color:#F0EDE6;text-align:center">Please reach out to the Replant Team directly at <span style="font-family:'Cormorant Garamond',serif;font-style:italic;color:#6BB5E8">connect@projectreplant.org</span> if you have a request that cannot wait.</div>
+                <span style="width:100%;height:1px;background:rgba(240,237,230,.08);margin-top:4px"></span>
+                <button onClick="{{ done }}" style="width:100%;height:48px;border-radius:10px;background:#1F1F1F;border:1px solid rgba(240,237,230,.16);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;font-size:14px;letter-spacing:.56px;color:#F0EDE6">Done</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ toastShown }}">
+            <div style="position:absolute;left:22px;right:22px;bottom:26px;background:#141416;border:1px solid rgba(240,237,230,.12);border-radius:8px;padding:13px 15px;animation:rp-fade .3s ease both">
+              <span style="font-family:'DM Sans',sans-serif;font-size:12.5px;color:#E6E1D5">{{ toast }}</span>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+
+    <div style="width:320px;padding-top:44px">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.45)">Red on this screen</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:300;font-size:21px;line-height:1.35;color:#F0EDE6;margin-top:12px">Red means someone is in danger.</div>
+      <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.7;color:rgba(240,237,230,.5);margin-top:12px">Urgent on Prayer Wall, persecuted here — one sentence true on both tabs, so a leader never re-learns it. Five marks carry it. Red never touches chrome again: no title, no card borders, no section rules, no spinners, no eyebrows.</div>
+
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="width:5px;height:5px;border-radius:50%;background:#E05555;flex:none;margin-top:7px"></span>
+          <span style="flex:1;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.6)"><b style="font-weight:500;color:#F0EDE6">The filled dot.</b> Critical or Urgent — the top two tiers. On Prayer Wall this same mark is the urgent request.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="width:5px;height:5px;border-radius:50%;border:1px solid rgba(224,85,85,.55);flex:none;margin-top:7px"></span>
+          <span style="flex:1;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.6)"><b style="font-weight:500;color:#F0EDE6">The hollow ring.</b> Serious, Ongoing, Informational. Still red, because every heartcry is an escalated request already — sky read as routine, and nothing here is routine. Hollow is weight without immediacy.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.4px;text-transform:uppercase;color:#E05555;flex:none;margin-top:3px;width:5px">A</span>
+          <span style="flex:1;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.6)"><b style="font-weight:500;color:#F0EDE6">The tier.</b> The sender's own word — Critical · Urgent · Serious · Ongoing · Informational — red for the top two, brightness below. Only Critical pulses, 2600ms, the one thing worth animating. Five pulsing labels would be the old flood.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="width:1.5px;height:26px;background:rgba(224,85,85,.5);border-radius:1px;flex:none;margin-top:4px;margin-left:2px"></span>
+          <span style="flex:1;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.6)"><b style="font-weight:500;color:#F0EDE6">The margin rule.</b> 1.5px beside the preview of an active row — inherited verbatim from Prayer Wall so an urgent row and an active row have identical anatomy. It is what makes the row findable mid-scroll without hue doing the work alone.</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="width:7px;height:7px;border:1px solid #E05555;flex:none;margin-top:6px"></span>
+          <span style="flex:1;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.6)"><b style="font-weight:500;color:#F0EDE6">The seal.</b> One place only — a martyr, on Witness of the day. Red as past tense.</span>
+        </div>
+      </div>
+
+      <div style="height:1px;background:rgba(240,237,230,.08);margin:26px 0"></div>
+
+      <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.45)">What changed</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12px;line-height:1.6;color:rgba(240,237,230,.55)">
+        <div>4 pills + 8 region chips → 3 tabs, gliding indicator, country behind the filter mark.</div>
+        <div>My Heartcries → <b style="font-weight:500;color:#F0EDE6">My Voice</b> in the header, where Journal sits. Everyone in the feed is “a voice”; yours is your own.</div>
+        <div>The unread notice replaces the whole NotifBar — one sky dot beside My Voice.</div>
+        <div>Feed cards → hairline rows. No fill, no borders, no red left rules.</div>
+        <div>The “Are you suffering” card is back as it was — surface fill, centred, full-width button, red label. The one interactive red in the app, on the one action taken from inside danger.</div>
+        <div>The security promise moved off the header and into that card, where it is load-bearing.</div>
+        <div>Witnesses runs living → Witness of the day → Around the world. Stories lead to the blog, not to per-article links.</div>
+        <div>The filter readout carries the section name: “Heartcries from the body”, or from one country.</div>
+        <div>Green is gone. Received · Seen · Responded reads by brightness; “Open secure message” is a sky text action.</div>
+        <div><b style="font-weight:500;color:#F0EDE6">“Active” is gone.</b> It was never a tier — <code style="font-family:'DM Mono',monospace;font-size:11px">SeverityTag</code> renders the DB's <code style="font-family:'DM Mono',monospace;font-size:11px">critical</code> as the label “Active”, so the feed showed a state where the sender had chosen a tier. The card now shows the tier, identical on the feed and in My Voice.</div>
+        <div>“Tap to open” came off the eyebrow row — the tier occupies that slot on every card now.</div>
+        <div>Guidance icons became a quiet 01–04 index rather than four drawn glyphs.</div>
+      </div>
+
+      <div style="height:1px;background:rgba(240,237,230,.08);margin:26px 0"></div>
+
+      <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.45)">Try</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px;font-family:'DM Sans',sans-serif;font-weight:300;font-size:12px;line-height:1.6;color:rgba(240,237,230,.55)">
+        <div>Tap a heartcry — it opens in place, tabs stay put, Hold in prayer lives inside.</div>
+        <div><b style="font-weight:500;color:#F0EDE6">Share my heartcry</b> → the KAN-64 form, then Send → the confirmation. Done lands you in My Voice.</div>
+        <div>Tap the three bars for the country filter.</div>
+        <div>Scroll up past the top to refresh.</div>
+        <div>Witnesses → living stats first, then the seal.</div>
+        <div>Nigeria is Critical and pulses; Iran is Informational. One of each tier across five rows.</div>
+        <div>Tweaks: <b style="font-weight:500;color:#F0EDE6">Tab accent — sky or red</b>, plus the gate, empty states, and roman/italic body.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:1000},&quot;tabAccent&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sky&quot;,&quot;red&quot;],&quot;default&quot;:&quot;sky&quot;,&quot;tsType&quot;:&quot;'sky' | 'red'&quot;,&quot;section&quot;:&quot;Review states&quot;},&quot;verified&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review states&quot;},&quot;showEmpty&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review states&quot;},&quot;bodyItalic&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review states&quot;},&quot;reducedMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Review states&quot;}}">
+const RED = '#E05555', SKY = '#6BB5E8', CREAM = '#E6E1D5', TEXT = '#F0EDE6';
+
+const HEARTCRIES = [
+  { id: 'h1', country: 'Nigeria', severity: 'critical', when: '2 hours ago', count: 214,
+    preview: 'They came to the village on Sunday while we were still singing.',
+    rest: 'We got the children out through the back of the compound and into the bush. Two of our elders stayed behind to lock the doors and we have not heard from them since Tuesday. Those who remain are meeting in threes now, in different houses, and we do not announce where. Pray that we would not become bitter, and that the two would be found alive.' },
+  { id: 'h2', country: 'India', severity: 'urgent', when: '6 hours ago', count: 168,
+    preview: 'Our pastor has been held for nineteen days and we are not permitted to see him.',
+    rest: 'The charge is written as disturbing public order. His wife takes food to the gate each morning and each morning it is refused. The fellowship has not stopped meeting. We read the letters he wrote before, because he wrote often, and it is as though he is still teaching us. Pray for the officers who guard him.' },
+  { id: 'h3', country: 'Iran', severity: 'informational', when: 'yesterday', count: 341,
+    preview: 'We baptised eleven people last month in a bathtub, at two in the morning.',
+    rest: 'We cannot use the river. Eleven, and nine of them from families who would report them if they knew. I have never seen such joy in a room so quiet — we could not sing, so we wept instead. Pray that these eleven would stand, and that their households would come after them rather than against them.' },
+  { id: 'h4', country: 'Eritrea', severity: 'ongoing', when: '2 days ago', count: 96,
+    preview: 'My husband has been held in a shipping container for four years this month.',
+    rest: 'They moved him in April and did not tell us where. Our daughter has learned to pray for a father she does not remember. I am not writing to complain — I am writing because you said you would carry it. Pray that he knows we did not stop.' },
+  { id: 'h5', country: 'Afghanistan', severity: 'serious', when: '4 days ago', count: 452,
+    preview: 'There are four of us left who meet, and we have no book between us.',
+    rest: 'We had one and it was burned in the spring. What we have is what we remember, so we say it to each other on the phone in pieces, and one of us writes it down again. Pray for a book. Pray more that we would not be found before we are ready to be found.' },
+];
+
+const COUNTRIES = ['All countries', 'Nigeria', 'India', 'Iran', 'Eritrea', 'Afghanistan', 'China'];
+
+// The five tiers the sender chooses in the form. Every heartcry is already an
+// escalated request, so the tier is never "is this serious" — it is "how fast".
+// Filled dot = the top two. Only critical moves.
+const SEVERITY = {
+  critical:      { label: 'Critical',      tint: RED,                     filled: true,  pulse: true },
+  urgent:        { label: 'Urgent',        tint: RED,                     filled: true,  pulse: false },
+  serious:       { label: 'Serious',       tint: 'rgba(240,237,230,.72)', filled: false, pulse: false },
+  ongoing:       { label: 'Ongoing',       tint: 'rgba(240,237,230,.55)', filled: false, pulse: false },
+  informational: { label: 'Informational', tint: 'rgba(240,237,230,.42)', filled: false, pulse: false },
+};
+
+const MINE = [
+  { id: 'm1', severity: 'critical', status: 2, when: '3 days ago', preview: 'The men who came in March have come back twice since, and now they are asking the children where we meet.' },
+  { id: 'm2', severity: 'serious', status: 1, when: 'Apr 14',     preview: 'Our lease was cancelled without notice and the landlord will not say who asked him to cancel it.' },
+  { id: 'm3', severity: 'ongoing', status: 0, when: 'Feb 2',      preview: 'We are still not permitted to register, so we still gather as a family reading together.' },
+];
+
+const STATUS_LABELS = ['Received', 'Seen', 'Responded'];
+const STATUS_TINTS = ['rgba(240,237,230,.45)', 'rgba(240,237,230,.72)', TEXT];
+
+const WITNESSES = [
+  { id: 'w1', name: 'Polycarp of Smyrna', martyr: true, meta: 'Asia Minor · c. 69–155',
+    quote: 'Eighty and six years have I served him, and he has done me no wrong. How then can I blaspheme my King, who saved me?',
+    description: 'A disciple of John, bishop of Smyrna, arrested as an old man and offered his life for a word of denial. He asked for an hour to pray and prayed for two, then went to the fire without being nailed to the stake, saying the one who gave him strength to come would give him strength to stand.' },
+  { id: 'w2', name: 'Blandina of Lyon', martyr: true, meta: 'Gaul · d. 177',
+    quote: 'I am a Christian, and there is nothing vile done by us.',
+    description: 'A slave woman, thought too frail to survive questioning, who outlasted every torturer set against her and answered each demand with the same sentence until they had nothing left to ask. Those imprisoned with her said her endurance was what held the rest of them together.' },
+  { id: 'w3', name: 'Origen of Alexandria', martyr: false, meta: 'Egypt · c. 184–253',
+    quote: 'We are not to suppose that a thing is impossible because it is difficult.',
+    description: 'Imprisoned and tortured under Decius and released alive, dying of the injuries some time after. His father was killed for the faith when he was a boy; he spent the rest of his life writing so that the church would be able to answer for what it believed.' },
+];
+
+const NEEDS = [
+  { v: 'prayer', label: 'Prayer' },
+  { v: 'practical_support', label: 'Practical support' },
+  { v: 'guidance', label: 'Guidance' },
+  { v: 'just_to_be_heard', label: 'Just to be heard' },
+];
+
+const SEVERITIES = [
+  { v: 'critical',      label: 'Critical',      d: 'Immediate threat to life or freedom.' },
+  { v: 'urgent',        label: 'Urgent',        d: 'The situation is worsening and needs prayer now.' },
+  { v: 'serious',       label: 'Serious',       d: 'Significant pressure — not yet at immediate risk.' },
+  { v: 'ongoing',       label: 'Ongoing',       d: 'Persistent persecution, not currently escalating.' },
+  { v: 'informational', label: 'Informational', d: 'I want the Replant team to know what is happening here.' },
+];
+
+const STATS = [
+  { n: '31',    d: 'leaders wrote to us this week, from fourteen countries.' },
+  { n: '9',     d: 'are in prison as you read this.' },
+  { n: '4',     d: 'fellowships are meeting under prohibition.' },
+  { n: '2,417', d: 'leaders are holding them in prayer.' },
+];
+
+const STORIES = [
+  { meta: 'Replant field note · Central Asia',   title: 'The house that moved every week.',
+    excerpt: 'For two years they never met twice in the same building, and the children learned to call it a picnic.' },
+  { meta: 'Replant field note · West Africa',    title: 'What the elders carried out of the fire.',
+    excerpt: 'The building was gone by morning. They saved the register of names, because names were what the men had come for.' },
+  { meta: 'Replant field note · Southeast Asia', title: 'Twelve years of Sundays, unregistered.',
+    excerpt: 'Every application refused, every Sunday kept. The pastor keeps the refusals in a folder he calls his ordination papers.' },
+];
+
+const GUIDANCE = [
+  { n: '01', title: 'Digital security, brief.',        sub: 'Six habits that protect you and the body. Read once, return when needed.' },
+  { n: '02', title: 'If your fellowship is raided.',    sub: 'Steps to protect the gathered, the records, and those who came new.' },
+  { n: '03', title: 'If you are arrested.',             sub: 'What to say, what not to say, and how the body will continue without you.' },
+  { n: '04', title: 'Continuing under prohibition.',    sub: 'How the early church gathered when forbidden, and what they wrote to each other.' },
+];
+
+class Component extends DCLogic {
+  state = {
+    tab: 'feed', voiceOpen: false, voiceUnread: true,
+    expanded: null, expandedW: null,
+    filterOpen: false, country: 'All countries',
+    held: { h3: true }, counts: {},
+    navL: 0, navW: 0, tick: 0,
+    pull: 0, refreshing: false, toast: null,
+    formOpen: false, content: '', needs: {}, severity: null,
+    postToFeed: false, touched: false, confirmOpen: false,
+  };
+  tabEls = {};
+
+  componentDidMount() { this.measure(); window.addEventListener('resize', this.measure); }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.measure);
+    clearTimeout(this.pullT); clearTimeout(this.refreshT); clearTimeout(this.toastT);
+  }
+  componentDidUpdate() { this.measure(); }
+
+  measure = () => {
+    const el = this.tabEls[this.state.tab];
+    if (!el || this.state.voiceOpen) {
+      if (this.state.voiceOpen && this.state.navW !== 0) this.setState({ navW: 0 });
+      return;
+    }
+    const L = el.offsetLeft, W = Math.max(0, el.offsetWidth - 1.6);
+    if (Math.abs(L - this.state.navL) > .5 || Math.abs(W - this.state.navW) > .5) this.setState({ navL: L, navW: W });
+  };
+
+  say = (msg) => {
+    clearTimeout(this.toastT);
+    this.setState({ toast: msg });
+    this.toastT = setTimeout(() => this.setState({ toast: null }), 2600);
+  };
+
+  go = (tab) => () => this.setState((s) => ({
+    tab, voiceOpen: false, expanded: null, expandedW: null, filterOpen: false, tick: s.tick + 1,
+  }));
+
+  onWheel = (e) => {
+    const verified = this.props.verified ?? true;
+    if (this.state.refreshing || this.state.voiceOpen || !verified) return;
+    const box = e.currentTarget;
+    if (box.scrollTop > 0) return;
+    if (e.deltaY < 0) {
+      const pull = Math.min(64, this.state.pull - e.deltaY * .55);
+      this.setState({ pull });
+      clearTimeout(this.pullT);
+      this.pullT = setTimeout(() => {
+        if (this.state.pull > 42) {
+          this.setState({ refreshing: true, pull: 46 });
+          this.refreshT = setTimeout(() => {
+            this.setState((p) => ({ refreshing: false, pull: 0, tick: p.tick + 1 }));
+            this.say('The feed is current.');
+          }, 1100);
+        } else this.setState({ pull: 0 });
+      }, 240);
+    }
+  };
+
+  rowsFor(list) {
+    const c = this.state.country;
+    return c === 'All countries' ? list : list.filter((r) => r.country === c);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const verified = this.props.verified ?? true;
+    const empty = this.props.showEmpty ?? false;
+    const motion = !(this.props.reducedMotion ?? false);
+    const italic = this.props.bodyItalic ?? false;
+    const redTabs = (this.props.tabAccent ?? 'sky') === 'red';
+
+    const visible = empty ? [] : this.rowsFor(HEARTCRIES);
+    const onFeed = verified && !s.voiceOpen && s.tab === 'feed';
+    const delay = (i) => (motion ? Math.min(i, 9) * 55 : 0);
+
+    const nav = [
+      { k: 'feed', label: 'Heartcries' },
+      { k: 'witnesses', label: 'Witnesses' },
+      { k: 'heart', label: 'Take heart' },
+    ].map((t) => ({
+      ...t,
+      active: verified && !s.voiceOpen && s.tab === t.k,
+      activeRed: false,
+      idle: verified && (s.voiceOpen || s.tab !== t.k),
+      locked: !verified,
+      onSelect: verified ? this.go(t.k) : () => this.say('The Persecuted Church unlocks once your church is verified.'),
+      setRef: (el) => { if (el) this.tabEls[t.k] = el; },
+    }));
+
+    return {
+      nav, navL: s.navL, navW: (s.voiceOpen || !verified) ? 0 : s.navW,
+      skyTabs: !redTabs, redTabs,
+      bodyStyle: italic ? 'italic' : 'normal',
+
+      gated: !verified,
+      showFeed: onFeed,
+      showWitnesses: verified && !s.voiceOpen && s.tab === 'witnesses',
+      showHeart: verified && !s.voiceOpen && s.tab === 'heart',
+      showVoice: verified && s.voiceOpen,
+
+      voiceTint: !verified ? 'rgba(240,237,230,.28)' : s.voiceOpen ? SKY : 'rgba(240,237,230,.42)',
+      voiceUnread: verified && s.voiceUnread && !s.voiceOpen,
+      toggleMyVoice: () => {
+        if (!verified) return this.say('The Persecuted Church unlocks once your church is verified.');
+        this.setState((p) => ({ voiceOpen: !p.voiceOpen, voiceUnread: false, expanded: null, tick: p.tick + 1 }));
+      },
+
+      onWheel: this.onWheel,
+      pullShown: s.pull > 0 || s.refreshing,
+      pullH: Math.round(s.pull),
+      refreshing: s.refreshing,
+      pullLabel: s.refreshing ? 'Refreshing' : s.pull > 42 ? 'Release' : 'Pull to refresh',
+
+      countryLabel: s.country === 'All countries' ? 'Heartcries from the body' : `Heartcries from ${s.country}`,
+      stats: STATS.map((x) => ({ ...x, k: x.n })),
+      stories: STORIES.map((x) => ({ ...x, k: x.title, onOpen: () => this.say('The Replant blog opens shortly.') })),
+      openBlog: () => this.say('The Replant blog opens shortly.'),
+      country: s.country,
+      filterOpen: s.filterOpen,
+      filterTint: s.filterOpen ? SKY : 'rgba(240,237,230,.42)',
+      toggleFilter: () => this.setState((p) => ({ filterOpen: !p.filterOpen })),
+      showAllCountries: () => this.setState((p) => ({ country: 'All countries', tick: p.tick + 1 })),
+      countries: COUNTRIES.map((c) => ({
+        k: c, label: c, tint: c === s.country ? SKY : 'rgba(240,237,230,.42)',
+        onSelect: () => this.setState((p) => ({ country: c, tick: p.tick + 1, expanded: null })),
+      })),
+
+      feedEmptyAll: onFeed && visible.length === 0 && (empty || s.country === 'All countries'),
+      feedEmptyFiltered: onFeed && visible.length === 0 && !empty && s.country !== 'All countries',
+
+      rows: visible.map((r, i) => {
+        const sev = SEVERITY[r.severity];
+        const open = s.expanded === r.id;
+        const held = !!s.held[r.id];
+        const count = s.counts[r.id] ?? r.count;
+        return {
+          key: `${r.id}-${s.tick}`, delay: delay(i),
+          country: r.country, filled: sev.filled, hollow: !sev.filled,
+          sevLabel: sev.label, sevTint: sev.tint,
+          sevAnim: (sev.pulse && motion) ? 'rp-pulse 2600ms ease-in-out infinite' : 'none',
+          preview: r.preview, full: `${r.preview} ${r.rest}`,
+          when: r.when, countLabel: `${count.toLocaleString()} praying`,
+          collapsed: !open, expanded: open,
+          onToggle: () => this.setState((p) => ({ expanded: p.expanded === r.id ? null : r.id })),
+          holdLabel: held ? 'Keep holding' : '+ Hold in prayer',
+          holdBg: held ? 'rgba(107,181,232,.07)' : 'transparent',
+          holdBorder: held ? 'rgba(107,181,232,.50)' : 'rgba(107,181,232,.30)',
+          onHold: (e) => {
+            e.stopPropagation();
+            this.setState((p) => {
+              const nowHeld = !p.held[r.id];
+              const base = p.counts[r.id] ?? r.count;
+              return {
+                held: { ...p.held, [r.id]: nowHeld },
+                counts: { ...p.counts, [r.id]: base + (nowHeld ? 1 : -1) },
+              };
+            });
+          },
+        };
+      }),
+
+      voiceEmpty: empty,
+      mine: (empty ? [] : MINE).map((m, i) => {
+        const cfg = SEVERITY[m.severity];
+        return {
+          key: `${m.id}-${s.tick}`, delay: delay(i),
+          severity: cfg.label, tint: cfg.tint,
+          filled: cfg.filled, hollow: !cfg.filled,
+          when: m.when, preview: m.preview,
+          responded: m.status >= 2,
+          onOpen: () => this.say('Opening your secure message.'),
+          steps: STATUS_LABELS.map((label, j) => {
+            const done = j <= m.status;
+            return {
+              k: label, label, rule: j > 0, flex: j === 0 ? '0 0 auto' : '1 1 auto',
+              ruleTint: done ? STATUS_TINTS[j] : 'rgba(240,237,230,.10)',
+              border: done ? STATUS_TINTS[j] : 'rgba(240,237,230,.14)',
+              fill: done ? STATUS_TINTS[j] : 'transparent',
+              tint: done ? STATUS_TINTS[j] : 'rgba(240,237,230,.28)',
+            };
+          }),
+        };
+      }),
+
+      witnesses: WITNESSES.map((w, i) => {
+        const open = s.expandedW === w.id;
+        return {
+          key: `${w.id}-${s.tick}`, delay: delay(i),
+          name: w.name, meta: w.meta, martyr: w.martyr, confessor: !w.martyr,
+          quote: w.quote, description: w.description,
+          quotePreview: `“${(w.quote.match(/^[^.?!]*[.?!]/) || [w.quote])[0]}”`,
+          collapsed: !open, expanded: open,
+          onToggle: () => this.setState((p) => ({ expandedW: p.expandedW === w.id ? null : w.id })),
+        };
+      }),
+
+      guidance: GUIDANCE.map((g) => ({ ...g, k: g.n, onOpen: () => this.say(`Opening “${g.title}”`) })),
+
+      formOpen: s.formOpen,
+      content: s.content,
+      onContent: (e) => this.setState({ content: e.target.value }),
+      closeForm: () => this.setState({ formOpen: false }),
+      needs: NEEDS.map((o) => {
+        const on = !!s.needs[o.v];
+        return {
+          k: o.v, label: o.label, on, off: !on,
+          border: on ? 'rgba(107,181,232,.50)' : 'rgba(240,237,230,.16)',
+          bg: on ? 'rgba(107,181,232,.07)' : 'transparent',
+          tint: on ? SKY : TEXT,
+          onSelect: () => this.setState((p) => ({ needs: { ...p.needs, [o.v]: !p.needs[o.v] } })),
+        };
+      }),
+      severities: SEVERITIES.map((o, i) => {
+        const on = s.severity === o.v;
+        return {
+          k: o.v, label: o.label, d: o.d, on,
+          ruleCss: i < SEVERITIES.length - 1 ? '1px solid rgba(240,237,230,.08)' : '0',
+          markBorder: on ? SKY : 'rgba(240,237,230,.16)',
+          onSelect: () => this.setState({ severity: o.v }),
+        };
+      }),
+      postToFeed: s.postToFeed,
+      feedTrack: s.postToFeed ? 'rgba(107,181,232,.35)' : 'rgba(240,237,230,.07)',
+      feedTrackBorder: s.postToFeed ? 'rgba(107,181,232,.50)' : 'rgba(240,237,230,.14)',
+      feedKnobX: s.postToFeed ? 20 : 3,
+      toggleFeed: () => this.setState((p) => ({ postToFeed: !p.postToFeed })),
+      errContent: s.touched && !s.content.trim(),
+      errNeeds: s.touched && Object.values(s.needs).every((x) => !x),
+      errSeverity: s.touched && !s.severity,
+      submitDim: !(s.content.trim() && Object.values(s.needs).some((x) => x) && s.severity) ? .45 : 1,
+      submit: () => {
+        const ok = s.content.trim() && Object.values(s.needs).some((x) => x) && s.severity;
+        this.setState({ touched: true });
+        if (ok) this.setState({ confirmOpen: true });
+      },
+      confirmOpen: s.confirmOpen,
+      done: () => this.setState((p) => ({
+        confirmOpen: false, formOpen: false, content: '', needs: {}, severity: null,
+        postToFeed: false, touched: false, voiceOpen: true, tick: p.tick + 1,
+      })),
+      share: () => this.setState({ formOpen: true, touched: false }),
+      findOutHow: () => this.say('Soon, leaders will be able to send a word to those enduring persecution.'),
+      startEap: () => this.say('Opening Connect — Ministries.'),
+
+      toast: s.toast, toastShown: !!s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>
