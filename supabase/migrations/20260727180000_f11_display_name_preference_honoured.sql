@@ -37,3 +37,22 @@
 --
 -- Function bodies are the live definitions; this file is the record. Not in
 -- supabase_migrations by this wave's batch convention.
+
+-- ── ADDENDUM (same day, Founder): include_middle_name honoured ──────────
+-- Settings has a dedicated "show middle name" toggle (users.include_middle_name)
+-- that resolve_display_name ignored entirely — it keyed middle-name display
+-- off display_name_preference instead. 13 leaders had the toggle on; 2 of
+-- them in full_name mode were silently NOT getting their middle name.
+--
+-- resolve_display_name gains an 8th arg, p_include_middle (DEFAULT false so
+-- every legacy 7-arg call site keeps compiling). Middle name renders only
+-- when the leader is in full_name mode AND has the toggle on; first_name_only
+-- ignores it entirely. last_name_first ordering still applies.
+--
+-- All 12 calling functions re-issued to thread u.include_middle_name through:
+--   content_named_leader_label · get_blocked_users · get_branch_members
+--   get_church_profile · get_comments · get_invite_candidates
+--   get_landing_testimonies · get_leader_thread_list · get_open_prayers
+--   get_prayer_wall · get_testimonies · search_leaders
+-- Verified live: "Psalmist Ruth Ifee Test" (full + toggle on) vs
+-- "Pastor Hrang Cung" (full, toggle off, middle "Lal" suppressed).

@@ -75,6 +75,11 @@ type RpcCommentRow = Comment;
 // from commentIdentity() off the LIVE-state booleans. No name composition
 // and no mask_reason branching happens on the client anymore.
 
+// Threads rest at this many comments; the rest open on demand (Founder
+// 2026-07-27). Newest stay visible — a thread reads bottom-up, so the
+// fold hides the OLDEST, matching how the card body folds.
+const COMMENT_PAGE = 5;
+
 // Local relative-time — light-touch, mirrors the feed's register. Kept
 // inline so the thread has no cross-module coupling beyond the RPC.
 function relTime(iso: string): string {
@@ -112,6 +117,10 @@ export function CommentThread({
   const [errored, setErrored] = useState(false);
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Long threads rest at COMMENT_PAGE and open on demand (Founder
+  // 2026-07-27) so a busy card never buries the rest of the feed. Same
+  // page-turn grammar as the cards: quiet rule + mono label, no button.
+  const [showAll, setShowAll] = useState(false);
 
   const loadComments = async () => {
     setLoading(true);
@@ -187,6 +196,9 @@ export function CommentThread({
   };
 
   const total = loading || errored ? count : comments.length;
+  // Keep the NEWEST COMMENT_PAGE; the fold hides older ones above them.
+  const hidden = showAll ? 0 : Math.max(0, comments.length - COMMENT_PAGE);
+  const visible = hidden > 0 ? comments.slice(hidden) : comments;
 
   return (
     <View>
@@ -209,7 +221,21 @@ export function CommentThread({
         </Pressable>
       ) : (
         <View style={s.list}>
-          {comments.map((c) => {
+          {hidden > 0 && !showAll && (
+            <Pressable
+              onPress={() => setShowAll(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`}
+              style={s.moreRow}
+              hitSlop={6}
+            >
+              <View style={s.moreRule} />
+              <Text style={s.moreText}>
+                {`show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`}
+              </Text>
+            </Pressable>
+          )}
+          {visible.map((c) => {
             // Server-composed identity + live-state avatar affordance
             // (KAN-338 FE cutover — the seven states are pinned in
             // CommentThreadLogic.test.ts; the round lock now correctly
@@ -286,6 +312,11 @@ const s = StyleSheet.create({
   retry: { fontFamily: Typography.mono, fontSize: 11, color: Colors.textSubtle, letterSpacing: 0.4 },
 
   list: { marginTop: 16, gap: 18 },
+  // Page-turn affordance — mirrors the cards' read-on cue: hairline rule
+  // + lowercase mono, never a filled button.
+  moreRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  moreRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  moreText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
   row: { flexDirection: 'row', gap: 11 },
   av: {
     width: 30,
