@@ -1,0 +1,39 @@
+-- F11 — display_name_preference was INERT platform-wide (Founder device pass 2026-07-27)
+--
+-- Founder changed her setting to "role + full name", then back to "role +
+-- first name", and her comment still rendered "Minister Ruth James".
+--
+-- ROOT CAUSE: public.resolve_display_name gated only the MIDDLE name on the
+-- preference; the family name was appended unconditionally. Since most
+-- leaders have no middle name, the setting did nothing at all. 184 of 221
+-- leaders had chosen 'first_name_only' and were having a surname they opted
+-- out of showing rendered on every leader-facing surface. This is the F11
+-- defect first observed in the 2026-07-12 sim UAT, now root-caused.
+--
+-- FIXED HERE (all APPLIED LIVE 2026-07-27):
+--   1. resolve_display_name — 'first_name_only' now means role + first name,
+--      no surname. 'full_name' keeps given (+middle) + family with the
+--      last_name_first ordering. Falls back to the family name when no first
+--      name exists, so a bare title is never a whole attribution.
+--      This single change corrects every resolver-backed surface at once:
+--      comments, prayer wall, testimonies, Connect threads, branch members,
+--      blocked users, church profile, content bylines.
+--   2. search_leaders — returned RAW full_name (Connect search). Now returns
+--      the resolved name, plus a new avatar_initial column taken from the
+--      NAME rather than the role prefix the byline leads with.
+--   3. get_invite_candidates — returned RAW full_name in its leaders jsonb.
+--      Now resolved.
+--   4. find_nearby_churches — emitted a derived surname to the church-map
+--      edge function. last_name is now NULL unless the leader chose
+--      'full_name'.
+--
+-- Matching still spans the stored full_name so a leader stays findable by
+-- surname; only the DISPLAYED value honours the preference. Flagged for the
+-- pen-test window: that asymmetry is a mild confirmation oracle.
+--
+-- ADMIN surfaces intentionally untouched — get_prayer_wall / get_testimonies
+-- / get_open_prayers expose raw full_name ONLY inside their super_admin
+-- branch, which is legitimate oversight.
+--
+-- Function bodies are the live definitions; this file is the record. Not in
+-- supabase_migrations by this wave's batch convention.
