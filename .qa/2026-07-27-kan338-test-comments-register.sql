@@ -1,0 +1,26 @@
+-- 2026-07-27 — KAN-338 device-test comment fixtures (masking-state spread)
+-- Seeded so the Founder can run test-plan §A2 (comment masking states) on the
+-- device build. All four attributed to SEED/TEST personas only — never a real
+-- leader. Thread lives on announcement "A word for today" (abbd7b5b), top of
+-- the live wall.
+--
+-- What each renders in get_comments v3 + commentIdentity (verified live):
+--   71f6d51e (+t1, bishop, main_campus)   → "Bishop Ifeoluwa Arike" · Blessings Abound Church · square+initial
+--   48207f0b (+t3, evangelist, anon)      → "A fellow evangelist"   · Blessings Abound Church · square+A
+--   f47a46d7 (ahmad.karimi, underground)  → "A fellow pastor"       · South Asia            · ROUND+lock   (the F1 fix)
+--   469c9212 (+t12, reverend, no church)  → "A leader in the network" · (no church)         · ROUND+lock
+--
+-- Seeded comment ids:
+--   8100b4b8-bd18-4dad-8941-19781932c49d  (named surface)
+--   a459d900-b31e-4e59-a587-9ab12bf13b89  (anon surface)
+--   8dfd43e2-ab47-44dd-8f58-e1cd99b8ce12  (underground)
+--   ed8bec5a-0728-4d16-ab41-573f25713d27  (no church)
+--
+-- CLEANUP (run at QA-pass end unless Founder rules keep). The after-delete
+-- trigger decrements announcements.comment_count automatically.
+--
+-- DELETE FROM public.comments WHERE id IN (
+--   '8100b4b8-bd18-4dad-8941-19781932c49d',
+--   'a459d900-b31e-4e59-a587-9ab12bf13b89',
+--   '8dfd43e2-ab47-44dd-8f58-e1cd99b8ce12',
+--   'ed8bec5a-0728-4d16-ab41-573f25713d27');
