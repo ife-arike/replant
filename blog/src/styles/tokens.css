@@ -1,0 +1,36 @@
+/*
+ * Brand tokens — lifted from /Users/ife/replant/website/index.html :root block.
+ * Keep byte-identical with the marketing site so the two surfaces match exactly.
+ */
+
+:root {
+  --sky: #6BB5E8;
+  --sky-dim: rgba(107, 181, 232, 0.15);
+  --sky-mid: rgba(107, 181, 232, 0.5);
+  --bg: #080808;
+  --bg2: #0f0f0f;
+  --bg3: #141414;
+  --ink: #F0EDE6;
+  --ink-mid: rgba(240, 237, 230, 0.45);
+  --ink-faint: rgba(240, 237, 230, 0.1);
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: inherit; }
+img, svg { display: block; max-width: 100%; }

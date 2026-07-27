@@ -39,8 +39,9 @@ function makeDeps(): Deps {
   // ─── Upstash REST helpers (per-IP hourly rate limit) ───
   //
   // Same pattern as search-churches. INCR + EX on first hit, deny once
-  // count > MAX. Fail-open if Upstash unreachable; the cap is a brake
-  // on enumeration probes, not a hard correctness boundary.
+  // count > MAX. Backend posture (pre-UAT audit 2026-07-01): Upstash NOT
+  // configured -> fail-OPEN (count===null branch); Upstash configured but
+  // ERRORING -> fail-CLOSED 503 (catch below). Strict fail-closed on outage.
   const upstashUrl = Deno.env.get("UPSTASH_REDIS_REST_URL");
   const upstashToken = Deno.env.get("UPSTASH_REDIS_REST_TOKEN");
 
@@ -187,7 +188,8 @@ function makeDeps(): Deps {
             ts: new Date().toISOString(),
           }),
         );
-        return { allowed: true, count: 0 };
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open — reject on Upstash outage.
+        return { allowed: false, backendError: true };
       }
     },
 

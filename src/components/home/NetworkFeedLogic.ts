@@ -21,74 +21,16 @@
 
 export const AUTHOR_ATTRIBUTION = 'Replant Team';
 
-// ─── Leader display-name resolution (KAN-201 card system 2026-06-02) ──
+// ─── Leader display-name resolution — DELETED (KAN-338 FE cutover) ────
 //
-// get_comments now returns the raw role enum value for non-masked rows,
-// and the LeaderFeedItem secondary lookup fetches `role` from
-// public.users. Both surfaces humanise the role into a title prefix via
-// this single locked table (Founder confirmed 2026-06-02).
-//
-// 'other' → 'Minister' (Founder ruling 2026-06-02: same display as ministry_leader).
-// An unknown / null role → no prefix (defensive — never crash a card).
-// Masking is handled by the caller; this map is purely cosmetic.
-export const ROLE_DISPLAY: Record<string, string> = {
-  pastor:          'Pastor',
-  apostle:         'Apostle',
-  prophet:         'Prophet',
-  evangelist:      'Evangelist',
-  teacher:         'Teacher',
-  elder:           'Elder',
-  bishop:          'Bishop',
-  reverend:        'Reverend',
-  intercessor:     'Intercessor',
-  psalmist:        'Psalmist',
-  ministry_leader: 'Minister', // Founder ruling 2026-06-02
-  other:           'Minister', // Founder ruling 2026-06-02
-};
-
-// Masked / unresolved leaders surface this constant — never a real name.
-export const MASKED_LEADER_NAME = 'A leader in the network';
-
-// Resolve a display name from a leader's structured name fields.
-// Mirrors the server-side public.resolve_display_name() helper exactly
-// (KAN-229). Format: "{honorific OR role-label} {given names per pref}
-// {family name}", with the family/given order flipped when
-// lastNameFirst=true.
-//
-// A non-empty first OR last name is required: without one we fall back
-// to the masked constant rather than surface a bare title ("Pastor" with
-// no name is not a valid attribution — and an absent name is treated as
-// held). Masking is the safe default on every leader-resolution path.
-export function resolveDisplayName(
-  parts: {
-    firstName: string | null;
-    middleName?: string | null;
-    lastName: string | null;
-    honorific?: string | null;
-    role: string | null;
-    displayNamePreference?: 'first_name_only' | 'full_name' | null;
-    lastNameFirst?: boolean | null;
-  },
-): string {
-  const first = (parts.firstName ?? '').trim();
-  const middle = (parts.middleName ?? '').trim();
-  const last = (parts.lastName ?? '').trim();
-  if (!first && !last) return MASKED_LEADER_NAME;
-
-  const honorific = (parts.honorific ?? '').trim();
-  const prefix = honorific
-    ? honorific
-    : (parts.role ? (ROLE_DISPLAY[parts.role] ?? '') : '');
-
-  const useFull = parts.displayNamePreference === 'full_name';
-  const given = useFull && middle ? `${first} ${middle}`.trim() : first;
-
-  const body = parts.lastNameFirst
-    ? `${last} ${given}`.trim()
-    : `${given} ${last}`.trim();
-
-  return prefix ? `${prefix} ${body}`.trim() : body;
-}
+// The client-side name composer (resolveDisplayName + ROLE_DISPLAY +
+// MASKED_LEADER_NAME) is gone on purpose. ALL identity display is
+// composed server-side: the feed renders the frozen source_label byline,
+// and get_comments v3 ships render-ready display_name / church_label
+// (kan338_0006). A client-side composer is an open invitation to
+// re-introduce per-viewer resolution — the KAN-338 panel ordered its
+// deletion. Do not add one back; extend the server composers instead
+// (public.resolve_display_name / role_display_label).
 
 // ─── Pagination (AC: cursor-based, 20 per page, cursor on published_at) ─
 
@@ -109,6 +51,17 @@ export const PAGE_SIZE = 20;
 // from SPEC, NOT a sort order — sort is `published_at DESC` regardless.
 
 export type TagType = 'urgent' | 'update' | 'notice' | 'new' | 'none';
+
+// ─── badge model (KAN-335 cutover 2026-07-22) ─────────────────────────
+//
+// `announcements.badge` replaces `tag_type` as the letterhead-eyebrow
+// authority. CHECK (live): badge = ANY('none','new','urgent'); backfilled
+// from the legacy `tag_type`. `tag_type` stays in the projection as a
+// shadow until a later migration drops it — gated on the app floor
+// version, since older clients still read tag_type. The feed prefers
+// `badge` (resolveEyebrowTag) and falls back to `tag_type` for rows
+// cached before this app version shipped.
+export type Badge = 'none' | 'new' | 'urgent';
 
 export interface TagChipMeta {
   /** Human label that appears in the chip (title-cased per wireframe). */
@@ -155,7 +108,18 @@ export interface AnnouncementRow {
   published_at: string | null;
   is_active: boolean;
   source_label: string | null;
+  // Frozen secondary byline (church/ministry for named publications; '' or
+  // null when sealed). Composed server-side at publish (kan338_0003).
+  source_sublabel: string | null;
   tag_type: string | null;
+  // KAN-335 badge cutover 2026-07-22 — `badge` is the post-cutover
+  // authority for the letterhead eyebrow register; `tag_type` above is
+  // retained as the shadow (dropped in a later migration, gated on the
+  // app floor version). null when the row was cached before `badge`
+  // entered the projection — resolveEyebrowTag then falls back to
+  // tag_type. Typed to the CHECK union; the resolver still accepts any
+  // string defensively so a stale cache can never crash a card.
+  badge: Badge | null;
   // KAN-201 home redesign 2026-06-01 — new card-routing columns.
   link_url: string | null;
   author_type: 'admin' | 'leader';
@@ -172,27 +136,56 @@ export interface AnnouncementRow {
     | 'encouragement'
     | 'together'
     | 'call_to_action';
-  // author_id is selected ONLY to resolve leader-card attribution via a
-  // secondary users/churches lookup in NetworkFeed. It is NEVER rendered
-  // and NEVER passed to a display component (D-56 / SEC Observation D).
-  author_id: string | null;
+  // author_id is intentionally NOT part of the feed projection: leader
+  // attribution is frozen into source_label at publish (SME interim,
+  // 2026-07-22), so the FK never ships to feed clients at all
+  // (D-56 / SEC Observation D).
 }
 
-// ─── Home-card tag mapping (KAN-201 home redesign) ────────────────────
+// ─── Home-card eyebrow mapping (KAN-201 → KAN-335 badge cutover) ──────
 //
-// The new Home cards use the three-tag `Tags` export from theme
-// (update | notice | urgent). The DB `tag_type` CHECK additionally
-// permits 'new' and 'none'; both — plus null and any unknown value —
-// collapse to the neutral 'update' register for the letterhead eyebrow.
-// This is a render-only mapping; it does NOT replace getTagChipMeta
-// (kept for the legacy chip + its tests).
+// The Home cards read a `Tags` register key from theme for the letterhead
+// eyebrow. Post-cutover the register is driven by `announcements.badge`
+// via resolveEyebrowTag, with `tag_type` as the fallback for older cached
+// rows. Registers: 'urgent' (red), 'new' (sky), 'update' (neutral —
+// badge 'none' / everything else). The retired 'notice' register is never
+// produced here (KAN-335: "Notice" must not appear post-cutover). This is
+// a render-only mapping; it does NOT replace getTagChipMeta (kept for the
+// legacy chip + its tests).
 
-export type HomeCardTag = 'update' | 'notice' | 'urgent';
+export type HomeCardTag = 'update' | 'urgent' | 'new';
 
+// Legacy `tag_type` → eyebrow register. FALLBACK path only — reached when
+// `badge` is absent or unrecognised (rows cached before badge entered the
+// projection). 'urgent' and 'new' carry their own registers; the retired
+// 'notice', plus 'update' / 'none' / null / undefined / any unknown
+// value, collapse to the neutral 'update' register. Never throws.
 export function toHomeCardTag(raw: string | null | undefined): HomeCardTag {
-  if (raw === 'notice') return 'notice';
   if (raw === 'urgent') return 'urgent';
+  if (raw === 'new') return 'new';
   return 'update';
+}
+
+// Resolve the letterhead-eyebrow register for a feed row, PREFERRING the
+// `badge` column and falling back to the legacy `tag_type` shadow when
+// badge is absent or unrecognised (older cached rows). Defensive on both
+// shapes — never throws, and never yields the retired 'notice' register.
+//   badge 'urgent' → 'urgent'   badge 'new' → 'new'   badge 'none' → 'update'
+export function resolveEyebrowTag(
+  badge: string | null | undefined,
+  tagType: string | null | undefined,
+): HomeCardTag {
+  switch (badge) {
+    case 'urgent':
+      return 'urgent';
+    case 'new':
+      return 'new';
+    case 'none':
+      return 'update'; // neutral default eyebrow
+    default:
+      // badge absent / unrecognised → legacy tag_type fallback.
+      return toHomeCardTag(tagType);
+  }
 }
 
 export function isPosted(row: AnnouncementRow, now: Date = new Date()): boolean {
@@ -232,4 +225,70 @@ export function formatRelativeTime(
   if (diff < MONTH_MS)  return `${Math.floor(diff / WEEK_MS)}w ago`;
   if (diff < YEAR_MS)   return `${Math.floor(diff / MONTH_MS)}mo ago`;
   return `${Math.floor(diff / YEAR_MS)}y ago`;
+}
+
+// ─── Article standfirst derivation (Founder round-2, 2026-07-22) ──────
+//
+// `announcements` carries no standfirst column, but the CD article frame
+// wants an italic standfirst above the body. We derive it: the first
+// sentence becomes the standfirst, the remainder becomes the body.
+//
+// Guards (in priority order):
+//   • Empty / whitespace body → no standfirst; body returned as-is.
+//   • Single sentence (no second sentence after the boundary) → NO
+//     standfirst; the whole text stays the body. Never split into an
+//     empty body (Founder ruling: guard one-sentence bodies).
+//   • The terminator must be real: an honorific abbreviation (Rev., Fr.,
+//     Dr., St., Ps. …), a single-letter initial ("C. S. Lewis"), a
+//     decimal ("3.5"), or an ellipsis run ("waited…") is NOT a sentence
+//     boundary — a standfirst is never cut to "Rev.".
+//
+// Intended for card_type 'article' | 'long_read' only; the caller gates.
+// Pure + string-only so it unit-tests under jest-expo's node env.
+
+// Common leader-domain + prose abbreviations whose trailing period is NOT
+// a sentence end. Lower-cased, punctuation-stripped for the lookup.
+const STANDFIRST_ABBREVIATIONS: ReadonlySet<string> = new Set([
+  'mr', 'mrs', 'ms', 'dr', 'prof', 'rev', 'fr', 'st', 'pr', 'ps', 'bp',
+  'sr', 'jr', 'min', 'apostle', 'pastor', 'bishop', 'elder', 'mt', 'ch',
+  'vs', 'no', 'etc', 'al', 'cf', 'e.g', 'i.e',
+]);
+
+export function deriveArticleStandfirst(
+  raw: string | null | undefined,
+): { standfirst?: string; body: string } {
+  const text = (raw ?? '').trim();
+  if (!text) return { body: text };
+
+  // A boundary is a terminator (. ! ?), any closing quotes/brackets, then
+  // whitespace, then more text. The closing group deliberately excludes
+  // '.' so an ellipsis run is not swallowed as closing punctuation.
+  const boundary = /([.!?])([”’"')\]]*)\s+/g;
+  let m: RegExpExecArray | null;
+  while ((m = boundary.exec(text)) !== null) {
+    const terminatorIdx = m.index;
+    const remainderStart = m.index + m[0].length;
+    const remainder = text.slice(remainderStart).trim();
+    if (!remainder) break; // terminator sat at the end → single sentence.
+
+    // Ellipsis / terminator run: the char before the matched terminator is
+    // itself a terminator → this is the tail of "…" or "?!", not a boundary.
+    const prevChar = text.charAt(terminatorIdx - 1);
+    if (prevChar === '.' || prevChar === '!' || prevChar === '?') continue;
+
+    // Honorific abbreviation or single-letter initial immediately before
+    // the period → not a real sentence end.
+    const before = text.slice(0, terminatorIdx);
+    const lastToken = (before.match(/(\S+)$/)?.[1] ?? '')
+      .toLowerCase()
+      .replace(/[^a-z]/g, '');
+    if (STANDFIRST_ABBREVIATIONS.has(lastToken)) continue;
+    if (/^[a-z]$/.test(lastToken)) continue; // single initial e.g. "C."
+
+    const standfirst = text.slice(0, terminatorIdx + 1 + m[2].length).trim();
+    return { standfirst, body: remainder };
+  }
+
+  // No valid boundary anywhere → treat the whole text as one sentence.
+  return { body: text };
 }

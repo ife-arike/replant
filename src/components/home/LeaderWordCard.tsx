@@ -7,26 +7,46 @@
 // opposite the time; comments are right-aligned in the author row,
 // matching the announcement cards, and open the thread in place.
 //
-// The author name + church are resolved upstream in NetworkFeed from the
-// leader's users/churches rows. Underground churches NEVER surface here —
-// NetworkFeed masks them to "A leader in the network" before this card
-// renders (client-side guard, SEC Observation D). author_id is never
-// passed to this component.
+// Attribution is FROZEN server-side at publish (KAN-338): NetworkFeed
+// passes the source_label byline + source_sublabel church slot verbatim
+// with the Replant seal. No client-side resolution exists anywhere on
+// this path — no users/churches lookup, no author_id. Underground words
+// publish under the Team seal with a role+region byline composed by the
+// server (SEC F1).
 // ─────────────────────────────────────────────
 
-import React, { useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Radius, Typography } from '../../constants/theme';
-import { Chevron, CommentIcon } from './HomeIcons';
+import React, { useEffect, useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
+import { Colors, FeedTitle, Radius, Typography } from '../../constants/theme';
+import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Body resting clamp — matches AnnouncementCard so Home's collapsed rhythm
+// stays consistent. Cue + tap only surface when the clamped text overflows.
+const COLLAPSED_LINES = 3;
 
 interface Props {
   announcementId: string;
   kicker?: string; // "A word for today" | "Encouragement"
-  lead: string; // the reflective opening line (serif italic)
+  lead: string; // the reflective opening line (serif roman — Ruling 2)
   body?: string; // optional continuation
   verse?: string; // anchor reference, e.g. "Zechariah 4:10"
-  author: { initial: string; name: string; church: string; time: string };
+  // seal → Replant seal in the avatar circle (frozen attribution; the feed
+  // passes source_label as name). initial drives the lettered circle otherwise.
+  author: { initial?: string; seal?: boolean; name: string; church: string; time: string };
   commentCount?: number;
 }
 
@@ -48,6 +68,39 @@ export default function LeaderWordCard({
     setCOpen((v) => !v);
   };
 
+  // Page-turn: clamp the body when present; when only the lead exists,
+  // clamp the lead. The mirror measures whichever text is clamped so the
+  // "read on" cue only surfaces on true overflow (overflow-gating ruling).
+  const bodyText = body?.trim() ? body : undefined;
+  const hasBody = bodyText !== undefined;
+  const clampText = bodyText ?? lead;
+
+  const [expanded, setExpanded] = useState(false);
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+  }, [clampText]);
+
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
+  const toggleExpand = () => {
+    if (!overflows) return;
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
+
   return (
     <View style={s.card}>
       <View style={s.eyebrow}>
@@ -57,21 +110,58 @@ export default function LeaderWordCard({
         </View>
         <Text style={s.eyebrowLabel}>{kicker}</Text>
         <View style={s.eyebrowRule} />
-      </View>
-
-      <Text style={s.lead}>{lead}</Text>
-      {!!body && <Text style={s.body}>{body}</Text>}
-
-      {/* time opposite the verse anchor */}
-      <View style={s.meta}>
-        {verse ? <Text style={s.verse}>{verse}</Text> : <View />}
         <Text style={s.when}>{author.time}</Text>
       </View>
+
+      <Pressable
+        onPress={toggleExpand}
+        disabled={!overflows}
+        accessibilityRole={overflows ? 'button' : undefined}
+        accessibilityState={overflows ? { expanded } : undefined}
+        accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
+      >
+        <Text
+          style={s.lead}
+          numberOfLines={!hasBody && !expanded ? COLLAPSED_LINES : undefined}
+        >
+          {lead}
+        </Text>
+        {hasBody && (
+          <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
+            {bodyText}
+          </Text>
+        )}
+        {/* Offscreen mirror — measures whichever text is clamped (body when
+            present, else the lead) so the cue only renders on true overflow. */}
+        <Text
+          style={[hasBody ? s.body : s.lead, s.mirror]}
+          onTextLayout={handleMirrorLayout}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+        >
+          {clampText}
+        </Text>
+        {overflows && (
+          <View style={s.readon}>
+            <View style={s.readonRule} />
+            <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+          </View>
+        )}
+      </Pressable>
+
+      {!!verse && (
+        <View style={s.meta}>
+          <Text style={s.verse}>{verse}</Text>
+        </View>
+      )}
 
       {/* author row carries the right-aligned comments */}
       <View style={s.author}>
         <View style={s.av}>
-          <Text style={s.avInitial}>{author.initial}</Text>
+          {author.seal
+            ? <RpMark width={16} height={16} opacity={0.8} />
+            : <Text style={s.avInitial}>{author.initial ?? '·'}</Text>}
         </View>
         <View>
           <Text style={s.name}>{author.name}</Text>
@@ -123,8 +213,18 @@ const s = StyleSheet.create({
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
-  lead: { fontFamily: Typography.scriptureItalic, fontSize: 22, lineHeight: 30, letterSpacing: 0.1, color: Colors.text },
+  // Ruling 2 (Address the Network, 2026-07-22): the leader-word lead is
+  // Cormorant ROMAN, not italic. scriptureItalic stays reserved for
+  // scripture + witness quotes; this is a leader's human voice.
+  lead: { fontFamily: Typography.displayRegular, ...FeedTitle, letterSpacing: 0.1, color: Colors.text },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 12 },
+
+  // Offscreen mirror + page-turn cue — exact style values from
+  // AnnouncementCard so the read-on grammar reads identically app-wide.
+  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
+  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
+  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
 
   meta: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 14 },
   verse: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 0.5, color: Colors.accent },

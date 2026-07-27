@@ -7,6 +7,7 @@ import {
   daysRemaining,
   decodeJwtPayload,
   isSuperAdmin,
+  resolveBranchSubstate,
   resolveStatus,
   type ResolvedStatus,
   type UserStatusRow,
@@ -104,19 +105,78 @@ Deno.test("daysRemaining — throws on invalid timestamp", () => {
   assertThrows(() => daysRemaining("2026-05-05T12:00:00Z", "garbage"));
 });
 
+// Full church-embed shape helper (2026-06-22 substate fields + KAN-205).
+// Explicit nulls matter: the substate resolver's strict `!== null` checks
+// treat `undefined` as "set".
+const ch = (
+  overrides: Partial<NonNullable<UserStatusRow["church"]>> = {},
+): NonNullable<UserStatusRow["church"]> => ({
+  verification_status: null,
+  verification_deadline: null,
+  soft_deleted_at: null,
+  last_outcome_modal_kind: null,
+  ...overrides,
+});
+
 const baseRow = (overrides: Partial<UserStatusRow> = {}): UserStatusRow => ({
   id: "11111111-1111-1111-1111-111111111111",
   verification_status: "verified",
   deactivated_at: null,
   is_active: true,
   church_id: "22222222-2222-2222-2222-222222222222",
-  church: { verification_deadline: null },
+  // KAN-205 — user-level soft-delete columns, null by default.
+  soft_deleted_at: null,
+  soft_delete_reason: null,
+  hard_delete_scheduled_at: null,
+  user_verification_deadline: null,
+  church: ch(),
   ...overrides,
 });
 
 Deno.test("resolveStatus — DB 'verified' maps to active", () => {
   const row = baseRow({ verification_status: "verified" });
   assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), { kind: "active" });
+});
+
+// ─── P1 belt (flow-gaps mini-panel, 2026-07-13) ──────────────────────────
+// A verified leader must never resolve active on a not-in-good-standing
+// church — the hole that let deactivate-church leave verified leaders
+// fully live.
+
+Deno.test("P1 belt — verified leader on a DEACTIVATED church → deactivated/support_contact (never active)", () => {
+  const row = baseRow({
+    verification_status: "verified",
+    church: ch({ verification_status: "deactivated", verification_deadline: "2026-04-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+  });
+});
+
+Deno.test("P1 belt — verified leader on a REJECTED church → support_contact + church_rejected copy", () => {
+  const row = baseRow({
+    verification_status: "verified",
+    church: ch({ verification_status: "rejected" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+    lockout_reason: "church_rejected",
+  });
+});
+
+Deno.test("P1 belt — verified leader on verified / pending / NULL church stays active (belt fires only on bad standing)", () => {
+  for (const status of ["verified", "pending", null]) {
+    const row = baseRow({
+      verification_status: "verified",
+      church: ch({ verification_status: status }),
+    });
+    assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), { kind: "active" });
+  }
+  // Skip-flow verified leader (no church row at all) — unchanged.
+  const skipRow = baseRow({ verification_status: "verified", church_id: null, church: null });
+  assertEquals(resolveStatus(skipRow, "2026-05-05T12:00:00.000Z"), { kind: "active" });
 });
 
 Deno.test("resolveStatus — DB 'deactivated' with NULL deadline (baseRow default) → support_contact", () => {
@@ -130,18 +190,37 @@ Deno.test("resolveStatus — DB 'deactivated' with NULL deadline (baseRow defaul
   });
 });
 
-Deno.test("resolveStatus — DB 'deactivated' with PAST deadline → verification_renewal (cron-flipped pattern)", () => {
+Deno.test("resolveStatus — DB 'deactivated' with PAST deadline on a PENDING church → verification_renewal (cron-flipped pattern)", () => {
   // c.14235 #2 — past, non-NULL deadline on a deactivated row is the
   // cron-flipped fingerprint (or a prior login-check write). Resolves
-  // to verification_renewal.
+  // to verification_renewal. Flow-gaps Panel B stamp (2026-07-13): the
+  // fingerprint now ALSO requires the church to still be pending — a
+  // verified church's stale creation-timer deadline is not a renewal
+  // signal (see the verified-church test below).
   const row = baseRow({
     verification_status: "deactivated",
     deactivated_at: "2026-04-15T00:00:00.000Z",
-    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+    church: ch({ verification_status: "pending", verification_deadline: "2026-04-01T00:00:00.000Z" }),
   });
   assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
     kind: "deactivated",
     recovery_path: "verification_renewal",
+  });
+});
+
+Deno.test("Panel-B predicate (2026-07-13) — deactivated user on a VERIFIED church with stale PAST deadline → support_contact, never renewal", () => {
+  // The stale-deadline copy misfire: verified churches routinely carry
+  // the elapsed 30-day creation timer (2026-06-18 root-fix record). An
+  // admin-manual leader deactivation on a verified church must never be
+  // told "your church verification window expired."
+  const row = baseRow({
+    verification_status: "deactivated",
+    deactivated_at: "2026-05-04T00:00:00.000Z",
+    church: ch({ verification_status: "verified", verification_deadline: "2026-04-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
   });
 });
 
@@ -151,7 +230,7 @@ Deno.test("resolveStatus — DB 'deactivated' with FUTURE deadline → support_c
   const row = baseRow({
     verification_status: "deactivated",
     deactivated_at: "2026-05-04T00:00:00.000Z",
-    church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+    church: ch({ verification_deadline: "2026-06-01T00:00:00.000Z" }),
   });
   assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
     kind: "deactivated",
@@ -162,7 +241,7 @@ Deno.test("resolveStatus — DB 'deactivated' with FUTURE deadline → support_c
 Deno.test("resolveStatus — pending + future deadline returns pending with computed days", () => {
   const row = baseRow({
     verification_status: "pending",
-    church: { verification_deadline: "2026-05-19T12:00:00.000Z" },
+    church: ch({ verification_deadline: "2026-05-19T12:00:00.000Z" }),
   });
   const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
   assertEquals(r.kind, "pending");
@@ -176,7 +255,7 @@ Deno.test("resolveStatus — pending + deadline exactly now returns past-deadlin
   const t = "2026-05-05T12:00:00.000Z";
   const row = baseRow({
     verification_status: "pending",
-    church: { verification_deadline: t },
+    church: ch({ verification_deadline: t }),
   });
   const r = resolveStatus(row, t);
   assertEquals(r.kind, "pending_past_deadline_needs_write");
@@ -185,7 +264,7 @@ Deno.test("resolveStatus — pending + deadline exactly now returns past-deadlin
 Deno.test("resolveStatus — pending + past deadline returns pending_past_deadline_needs_write", () => {
   const row = baseRow({
     verification_status: "pending",
-    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+    church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }),
   });
   const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
   assertEquals(r.kind, "pending_past_deadline_needs_write");
@@ -215,7 +294,7 @@ Deno.test("resolveStatus — pending + church row with null deadline resolves to
   // c.14235 #6 — NULL-deadline fail-closed MUST map to support_contact.
   const row = baseRow({
     verification_status: "pending",
-    church: { verification_deadline: null },
+    church: ch(),
   });
   const r = resolveStatus(row, "2026-05-05T12:00:00.000Z");
   assertEquals(r, { kind: "deactivated", recovery_path: "support_contact" });
@@ -281,6 +360,7 @@ Deno.test("TC-44.7 v2 (c.14235 #7) — login-check and cron both past-deadline �
   const loginCheck = buildResponse({
     kind: "pending_past_deadline_needs_write",
     verification_deadline: "2026-04-01T00:00:00.000Z",
+    isSkipFlow: false,
   });
   const cron = buildResponse({ kind: "deactivated", recovery_path: "verification_renewal" });
   assertEquals(JSON.stringify(loginCheck), JSON.stringify(cron));
@@ -318,7 +398,7 @@ Deno.test("no-leak v2 (c.14235 #1/#7) — only recovery_path is added; no trigge
       expectedKeys: ["days_remaining", "recovery_path", "verification_deadline", "verification_status"],
     },
     {
-      resolved: { kind: "pending_past_deadline_needs_write", verification_deadline: "2026-04-01T00:00:00.000Z" },
+      resolved: { kind: "pending_past_deadline_needs_write", verification_deadline: "2026-04-01T00:00:00.000Z", isSkipFlow: false },
       expectedKeys: ["days_remaining", "recovery_path", "verification_deadline", "verification_status"],
     },
   ];
@@ -337,7 +417,7 @@ Deno.test("c.14235 #7(a) — cron-deactivated (past-deadline row) → verificati
   const row = baseRow({
     verification_status: "deactivated",
     deactivated_at: "2026-04-15T00:00:00.000Z",
-    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+    church: ch({ verification_status: "pending", verification_deadline: "2026-04-01T00:00:00.000Z" }),
   });
   const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
   assertEquals(body.recovery_path, "verification_renewal");
@@ -350,7 +430,7 @@ Deno.test("c.14235 #7(b) — login-check-deactivated (pending + past deadline) �
   // into the same renewal-bucket bytes as cron #7(a).
   const row = baseRow({
     verification_status: "pending",
-    church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+    church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }),
   });
   const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
   assertEquals(body.recovery_path, "verification_renewal");
@@ -363,7 +443,7 @@ Deno.test("c.14235 #7(c) — admin-deactivated (no past-deadline signal) → sup
   const row = baseRow({
     verification_status: "deactivated",
     deactivated_at: "2026-05-04T00:00:00.000Z",
-    church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+    church: ch({ verification_deadline: "2026-06-01T00:00:00.000Z" }),
   });
   const body = buildResponse(resolveStatus(row, "2026-05-05T12:00:00.000Z"));
   assertEquals(body.recovery_path, "support_contact");
@@ -387,13 +467,90 @@ Deno.test("c.14235 #7(e) — admin-deactivated and NULL-deadline responses are s
   const adminRow = baseRow({
     verification_status: "deactivated",
     deactivated_at: "2026-05-04T00:00:00.000Z",
-    church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+    church: ch({ verification_deadline: "2026-06-01T00:00:00.000Z" }),
   });
   const nullRow = baseRow({ verification_status: "pending", church: null });
   const adminBody = buildResponse(resolveStatus(adminRow, "2026-05-05T12:00:00.000Z"));
   const nullBody = buildResponse(resolveStatus(nullRow, "2026-05-05T12:00:00.000Z"));
   assertEquals(JSON.stringify(adminBody), JSON.stringify(nullBody));
   assertEquals(Object.keys(adminBody).sort(), Object.keys(nullBody).sort());
+});
+
+// ─── Flow-gaps F4/G10 (2026-07-13) — lockout_reason amendment ────────────
+// Panel A SEC stamp: closed enum, omit-when-absent, additive-optional
+// (recovery_path binary lock untouched); rejection paths only.
+
+Deno.test("F4 — user-level rejected → support_contact + lockout_reason 'leader_rejected'", () => {
+  const row = baseRow({
+    verification_status: "rejected",
+    church: ch({ verification_status: "verified" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+    lockout_reason: "leader_rejected",
+  });
+});
+
+Deno.test("F4 — pending user on a REJECTED church → lockout_reason 'church_rejected'", () => {
+  const row = baseRow({
+    verification_status: "pending",
+    church: ch({ verification_status: "rejected", verification_deadline: "2026-04-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+    lockout_reason: "church_rejected",
+  });
+});
+
+Deno.test("F4 — pending user on a DEACTIVATED church → NO lockout_reason (generic copy preserved)", () => {
+  const row = baseRow({
+    verification_status: "pending",
+    church: ch({ verification_status: "deactivated", verification_deadline: "2026-04-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveStatus(row, "2026-05-05T12:00:00.000Z"), {
+    kind: "deactivated",
+    recovery_path: "support_contact",
+  });
+});
+
+Deno.test("F4 — precedence: user rejected AND church rejected → leader_rejected (more specific state wins)", () => {
+  const row = baseRow({
+    verification_status: "rejected",
+    church: ch({ verification_status: "rejected" }),
+  });
+  const resolved = resolveStatus(row, "2026-05-05T12:00:00.000Z");
+  assertEquals(
+    resolved.kind === "deactivated" ? resolved.lockout_reason : undefined,
+    "leader_rejected",
+  );
+});
+
+Deno.test("F4 buildResponse — lockout_reason present iff provided; key set exact on both shapes", () => {
+  const withReason = buildResponse({
+    kind: "deactivated",
+    recovery_path: "support_contact",
+    lockout_reason: "church_rejected",
+  });
+  assertEquals(Object.keys(withReason).sort(), [
+    "days_remaining",
+    "lockout_reason",
+    "recovery_path",
+    "verification_deadline",
+    "verification_status",
+  ]);
+  assertEquals(withReason.lockout_reason, "church_rejected");
+
+  const without = buildResponse({ kind: "deactivated", recovery_path: "support_contact" });
+  assertEquals(Object.keys(without).sort(), [
+    "days_remaining",
+    "recovery_path",
+    "verification_deadline",
+    "verification_status",
+  ]);
+  // Omit-when-absent: the key must not exist at all (never null).
+  assertEquals("lockout_reason" in without, false);
 });
 
 Deno.test("buildAuditRow — exact shape per SM 10854 ruling", () => {
@@ -424,4 +581,73 @@ Deno.test("buildAuditRow — keys are exactly the canonical 6 (no extra fields)"
   assertEquals(keys, ["accessed_at", "accessed_by", "action", "church_id", "meta", "triggered_by"]);
   const metaKeys = Object.keys(row.meta).sort();
   assertEquals(metaKeys, ["trigger", "user_id"]);
+});
+
+// ─── KAN-205 — resolveBranchSubstate (SEC panel 2026-07-03, ratified) ────
+// USER-level leader-initiated soft-delete resolves 'self_deleted' FIRST;
+// admin-initiated reasons keep the church-derived 'soft_deleted' ceremony;
+// skip-flow leaders are no longer excluded when THEY self-deleted.
+
+Deno.test("KAN-205 substate — leader-initiated user soft-delete → 'self_deleted' (checked before church state)", () => {
+  const row = baseRow({
+    soft_deleted_at: "2026-05-01T00:00:00.000Z",
+    soft_delete_reason: "leader_initiated",
+    hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+    is_active: false,
+    // Church deliberately ALSO soft-deleted (last-leader mirror case) —
+    // the user-level check must still win.
+    church: ch({ soft_deleted_at: "2026-05-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveBranchSubstate(row), "self_deleted");
+});
+
+Deno.test("KAN-205 substate — skip-flow (no church) leader-initiated soft-delete → 'self_deleted'", () => {
+  const row = baseRow({
+    church: null,
+    church_id: null,
+    soft_deleted_at: "2026-05-01T00:00:00.000Z",
+    soft_delete_reason: "leader_initiated",
+    hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+    is_active: false,
+  });
+  assertEquals(resolveBranchSubstate(row), "self_deleted");
+});
+
+Deno.test("KAN-205 substate — admin-reason user soft-delete falls through to church-derived 'soft_deleted'", () => {
+  const row = baseRow({
+    soft_deleted_at: "2026-05-01T00:00:00.000Z",
+    soft_delete_reason: "admin_deactivation",
+    hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+    is_active: false,
+    church: ch({ soft_deleted_at: "2026-05-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveBranchSubstate(row), "soft_deleted");
+});
+
+Deno.test("KAN-205 substate — safety_evacuation reason likewise stays on the rejection ceremony", () => {
+  const row = baseRow({
+    soft_deleted_at: "2026-05-01T00:00:00.000Z",
+    soft_delete_reason: "safety_evacuation",
+    hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+    is_active: false,
+    church: ch({ soft_deleted_at: "2026-05-01T00:00:00.000Z" }),
+  });
+  assertEquals(resolveBranchSubstate(row), "soft_deleted");
+});
+
+Deno.test("KAN-205 substate — pre-existing behaviors unchanged (church soft-delete / request_info / none)", () => {
+  // Church-only soft-delete (admin reject, user mirror not yet visible) → soft_deleted.
+  assertEquals(
+    resolveBranchSubstate(baseRow({ church: ch({ soft_deleted_at: "2026-05-01T00:00:00.000Z" }) })),
+    "soft_deleted",
+  );
+  // request_info modal kind → request_info.
+  assertEquals(
+    resolveBranchSubstate(baseRow({ church: ch({ last_outcome_modal_kind: "request_info" }) })),
+    "request_info",
+  );
+  // Clean row → no decoration.
+  assertEquals(resolveBranchSubstate(baseRow()), undefined);
+  // Skip-flow, not deleted → no decoration.
+  assertEquals(resolveBranchSubstate(baseRow({ church: null, church_id: null })), undefined);
 });

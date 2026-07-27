@@ -13,10 +13,11 @@
 import {
   AUTHOR_ATTRIBUTION,
   PAGE_SIZE,
+  deriveArticleStandfirst,
   formatRelativeTime,
   getTagChipMeta,
   isPosted,
-  resolveDisplayName,
+  resolveEyebrowTag,
   toHomeCardTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
@@ -80,24 +81,50 @@ describe('getTagChipMeta — AC #13', () => {
   });
 });
 
-describe('toHomeCardTag — Home redesign card-eyebrow mapping', () => {
-  it('maps notice → notice', () => {
-    expect(toHomeCardTag('notice')).toBe('notice');
-  });
+describe('toHomeCardTag — legacy tag_type fallback (post KAN-335 cutover)', () => {
   it('maps urgent → urgent', () => {
     expect(toHomeCardTag('urgent')).toBe('urgent');
+  });
+  it("maps 'new' → new (its own register post-cutover)", () => {
+    expect(toHomeCardTag('new')).toBe('new');
   });
   it('maps update → update', () => {
     expect(toHomeCardTag('update')).toBe('update');
   });
-  it("collapses 'new' to the neutral update register", () => {
-    expect(toHomeCardTag('new')).toBe('update');
+  it("collapses retired 'notice' to neutral update (never 'notice')", () => {
+    expect(toHomeCardTag('notice')).toBe('update');
   });
   it("collapses 'none', null, undefined, and unknown values to update", () => {
     expect(toHomeCardTag('none')).toBe('update');
     expect(toHomeCardTag(null)).toBe('update');
     expect(toHomeCardTag(undefined)).toBe('update');
     expect(toHomeCardTag('emergency')).toBe('update');
+  });
+});
+
+describe('resolveEyebrowTag — KAN-335 badge cutover (badge preferred, tag_type fallback)', () => {
+  it('badge=urgent → urgent', () => {
+    expect(resolveEyebrowTag('urgent', null)).toBe('urgent');
+  });
+  it('badge=new → new (renders "New", never the retired "Notice")', () => {
+    expect(resolveEyebrowTag('new', null)).toBe('new');
+  });
+  it('badge=none → neutral update register', () => {
+    expect(resolveEyebrowTag('none', null)).toBe('update');
+  });
+  it('badge wins over a conflicting legacy tag_type', () => {
+    expect(resolveEyebrowTag('none', 'urgent')).toBe('update');
+    expect(resolveEyebrowTag('urgent', 'none')).toBe('urgent');
+  });
+  it('falls back to tag_type when badge is absent (older cached rows)', () => {
+    expect(resolveEyebrowTag(null, 'urgent')).toBe('urgent');
+    expect(resolveEyebrowTag(undefined, 'new')).toBe('new');
+    expect(resolveEyebrowTag(null, 'notice')).toBe('update'); // retired notice → neutral
+    expect(resolveEyebrowTag(null, null)).toBe('update');
+  });
+  it('is defensive against unknown badge values (falls through to tag_type)', () => {
+    expect(resolveEyebrowTag('emergency', 'urgent')).toBe('urgent');
+    expect(resolveEyebrowTag('emergency', null)).toBe('update');
   });
 });
 
@@ -110,13 +137,15 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     published_at: '2026-05-21T00:00:00.000Z',
     is_active: true,
     source_label: null,
+    source_sublabel: null,
     tag_type: null,
+    // KAN-335 badge cutover — badge column added to AnnouncementRow.
+    badge: null,
     // KAN-201 home redesign — card-routing columns added to AnnouncementRow.
     link_url: null,
     author_type: 'admin',
     comment_count: 0,
     card_type: 'standard',
-    author_id: null,
     ...overrides,
   });
 
@@ -204,48 +233,90 @@ describe('formatRelativeTime — AC #2', () => {
   });
 });
 
-describe('resolveDisplayName — KAN-229 structured-name display', () => {
-  it('formats as "{role-label} {first} {last}" by default (first_name_only)', () => {
-    expect(resolveDisplayName({ firstName: 'Ruth',   lastName: 'James',  role: 'ministry_leader' })).toBe('Minister Ruth James');
-    expect(resolveDisplayName({ firstName: 'Ife',    lastName: 'Arike',  role: 'evangelist' })).toBe('Evangelist Ife Arike');
-    expect(resolveDisplayName({ firstName: 'Daniel', lastName: 'Okoro',  role: 'pastor' })).toBe('Pastor Daniel Okoro');
+
+describe('deriveArticleStandfirst — Founder round-2 (article/long_read)', () => {
+  it('splits the first sentence into the standfirst, remainder into the body', () => {
+    expect(deriveArticleStandfirst('The church gathered at dawn. They prayed for hours.')).toEqual({
+      standfirst: 'The church gathered at dawn.',
+      body: 'They prayed for hours.',
+    });
   });
 
-  it('includes middle name when displayNamePreference="full_name"', () => {
-    expect(resolveDisplayName({
-      firstName: 'Grace', middleName: 'Mary', lastName: 'Mbeki', role: 'bishop',
-      displayNamePreference: 'full_name',
-    })).toBe('Bishop Grace Mary Mbeki');
+  it('keeps the exclamation / question terminator on the standfirst', () => {
+    expect(deriveArticleStandfirst('Behold, He comes! The whole city stirred to meet Him.')).toEqual({
+      standfirst: 'Behold, He comes!',
+      body: 'The whole city stirred to meet Him.',
+    });
+    expect(deriveArticleStandfirst('Who is this King? Even the wind obeys His voice.')).toEqual({
+      standfirst: 'Who is this King?',
+      body: 'Even the wind obeys His voice.',
+    });
   });
 
-  it('honours last_name_first toggle', () => {
-    expect(resolveDisplayName({
-      firstName: 'Dirk', middleName: 'Daniel', lastName: 'Van Wyk',
-      role: 'reverend', displayNamePreference: 'full_name', lastNameFirst: true,
-    })).toBe('Reverend Van Wyk Dirk Daniel');
+  it('returns NO standfirst for a single sentence (guard — never an empty body)', () => {
+    expect(deriveArticleStandfirst('A single unbroken thought carried through to the end.')).toEqual({
+      body: 'A single unbroken thought carried through to the end.',
+    });
+    // Trailing terminator, nothing after it → still one sentence.
+    expect(deriveArticleStandfirst('He is risen indeed.')).toEqual({
+      body: 'He is risen indeed.',
+    });
   });
 
-  it('honorific overrides role prefix', () => {
-    expect(resolveDisplayName({
-      firstName: 'Boutros', lastName: 'Mikhail', honorific: 'Anba', role: 'pastor',
-    })).toBe('Anba Boutros Mikhail');
+  it('does not split on an honorific abbreviation (Rev., Fr., St., Ps.)', () => {
+    expect(deriveArticleStandfirst('Rev. Daniel Okoro opened in prayer. Then the choir sang.')).toEqual({
+      standfirst: 'Rev. Daniel Okoro opened in prayer.',
+      body: 'Then the choir sang.',
+    });
+    expect(deriveArticleStandfirst('We turned to Ps. 23 that morning. Grief lifted as we read.')).toEqual({
+      standfirst: 'We turned to Ps. 23 that morning.',
+      body: 'Grief lifted as we read.',
+    });
   });
 
-  it("maps 'other' role per the Founder ruling (Minister prefix)", () => {
-    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: 'other' })).toBe('Minister Sam Lee');
+  it('does not split on single-letter initials ("C. S. Lewis")', () => {
+    expect(deriveArticleStandfirst('C. S. Lewis wrote of a deeper joy. We remembered him gladly.')).toEqual({
+      standfirst: 'C. S. Lewis wrote of a deeper joy.',
+      body: 'We remembered him gladly.',
+    });
   });
 
-  it('renders without prefix when role is null', () => {
-    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: null })).toBe('Sam Lee');
+  it('does not split inside a decimal ("3.5")', () => {
+    expect(deriveArticleStandfirst('Giving rose 3.5 percent this year. We gave thanks to God.')).toEqual({
+      standfirst: 'Giving rose 3.5 percent this year.',
+      body: 'We gave thanks to God.',
+    });
   });
 
-  it('renders without prefix for unknown role (defensive — no crash)', () => {
-    expect(resolveDisplayName({ firstName: 'Sam', lastName: 'Lee', role: 'archdeacon' })).toBe('Sam Lee');
+  it('treats an ellipsis run as continuation, not a boundary', () => {
+    expect(deriveArticleStandfirst('We waited... and waited for the dawn. Then light broke over the hills.')).toEqual({
+      standfirst: 'We waited... and waited for the dawn.',
+      body: 'Then light broke over the hills.',
+    });
   });
 
-  it('falls back to the masked constant when no name remains', () => {
-    expect(resolveDisplayName({ firstName: null, lastName: null, role: 'pastor' })).toBe('A leader in the network');
-    expect(resolveDisplayName({ firstName: '',   lastName: '',   role: 'pastor' })).toBe('A leader in the network');
-    expect(resolveDisplayName({ firstName: null, lastName: null, role: null })).toBe('A leader in the network');
+  it('carries closing quotes onto the standfirst', () => {
+    expect(deriveArticleStandfirst('He whispered, "It is finished." The room fell silent.')).toEqual({
+      standfirst: 'He whispered, "It is finished."',
+      body: 'The room fell silent.',
+    });
+  });
+
+  it('trims surrounding whitespace and handles empty input', () => {
+    expect(deriveArticleStandfirst('   Grace found us. Mercy kept us.   ')).toEqual({
+      standfirst: 'Grace found us.',
+      body: 'Mercy kept us.',
+    });
+    expect(deriveArticleStandfirst('')).toEqual({ body: '' });
+    expect(deriveArticleStandfirst('   ')).toEqual({ body: '' });
+    expect(deriveArticleStandfirst(null)).toEqual({ body: '' });
+    expect(deriveArticleStandfirst(undefined)).toEqual({ body: '' });
+  });
+
+  it('splits at the FIRST valid boundary only (multi-sentence remainder stays whole)', () => {
+    expect(deriveArticleStandfirst('One. Two. Three.')).toEqual({
+      standfirst: 'One.',
+      body: 'Two. Three.',
+    });
   });
 });

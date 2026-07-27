@@ -45,6 +45,8 @@ import TheVisionScreen from "../screens/main/hamburger/TheVisionScreen";
 import OutreachMissionsScreen from "../screens/main/hamburger/OutreachMissionsScreen";
 import InviteScreen from "../screens/main/hamburger/InviteScreen";
 import FAQScreen from "../screens/main/hamburger/FAQScreen";
+import AddressNetworkScreen from "../screens/main/addressNetwork/AddressNetworkScreen";
+import EditReviewScreen from "../screens/main/addressNetwork/EditReviewScreen";
 import JoinCodeRevealScreen from "../screens/main/JoinCodeRevealScreen";
 import OnboardingNavigator from "./OnboardingNavigator";
 import TabNavigator from "./TabNavigator";
@@ -117,6 +119,22 @@ export default function RootNavigator() {
           <Stack.Screen
             name="FAQ"
             component={FAQScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          {/* Address the Network (KAN-337) — hamburger-launched leader
+              submission flow + the pushed edits-review consent screen. Both
+              slide in from the right, matching the other hamburger screens.
+              Entry is gated to verified leaders in HamburgerPanel; the
+              routes are harmless to register for pending/etc. since nothing
+              navigates to them without the (hidden) row. */}
+          <Stack.Screen
+            name="AddressNetwork"
+            component={AddressNetworkScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="AddressNetworkEditReview"
+            component={EditReviewScreen}
             options={{ animation: 'slide_from_right' }}
           />
           {/* Underground one-shot join-code reveal (2026-06-20). Full-screen

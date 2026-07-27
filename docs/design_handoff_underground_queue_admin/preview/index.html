@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Underground Verification Queue · Admin CD</title>
+<!-- ext-resource-dependency: https://fonts.googleapis.com -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin-queue-cd.css">
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#080808"/>
+    <path d="M50 24 35 30v15c0 11 7 20 15 23 8-3 15-12 15-23V30L50 24Z" fill="none" stroke="#6BB5E8" stroke-width="2.4"/>
+    <rect x="44" y="40" width="12" height="10" rx="1.6" fill="none" stroke="#6BB5E8" stroke-width="2"/>
+    <path d="M46 40v-3a4 4 0 0 1 8 0v3" fill="none" stroke="#6BB5E8" stroke-width="2"/>
+  </svg>
+</template>
+
+<!-- ░░░ TWEAKS PANEL ░░░ -->
+<div id="tweaks">
+  <div class="tw-head"><span class="tw-title">Tweaks</span><span class="tw-close">×</span></div>
+  <div class="tw-body">
+    <div class="tw-field">
+      <span class="tw-label">SLA pill · day + message</span>
+      <div class="tw-seg" data-tw-seg="slaPill" data-opts='[{"v":"both","label":"Day + message"},{"v":"compact","label":"Day only"}]'></div>
+      <span class="tw-hint">Compact strips the trailing message clause for dense list views; full form keeps the locked band copy.</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">State pill · style</span>
+      <div class="tw-seg" data-tw-seg="statePill" data-opts='[{"v":"dot","label":"Dot + label"},{"v":"plain","label":"Label only"}]'></div>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">Relay-token cells</span>
+      <div class="tw-seg" data-tw-seg="relayStyle" data-opts='[{"v":"cells","label":"4 cells"},{"v":"single","label":"Single field"}]'></div>
+      <span class="tw-hint">4-digit relay token the admin types from the leader's spoken code (Ruling #8).</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">Density</span>
+      <div class="tw-seg" data-tw-seg="density" data-opts='[{"v":"comfortable","label":"Comfortable"},{"v":"compact","label":"Compact"}]'></div>
+    </div>
+  </div>
+</div>
+
+<div class="doc">
+
+  <!-- ░░░ HEADER ░░░ -->
+  <header class="page-header">
+    <div class="page-header-top">
+      <span class="page-eyebrow">Replant Admin · Concept Direction</span>
+      <div class="page-meta">
+        Underground Verification Queue<br>
+        <b>FLOW 1 of 2 · Admin</b><br>
+        Founder rulings LOCKED
+      </div>
+    </div>
+    <h1 class="page-title">The verification queue — <em>two sets of eyes on every life-safety ruling</em></h1>
+    <p class="page-sub">Fifteen desktop surfaces extending <code style="font-family:var(--mono);color:var(--rp-sky)">admin.projectreplant.org/underground</code> from a read-only viewer into a working queue. One or two trained admins move underground churches from <strong>Pending</strong> to <strong>Verified</strong> or <strong>Deactivated</strong> — never alone. Every verify, reject, code rotation, and visibility change is a <strong>two-eyes proposal</strong>: Admin A proposes, Admin B confirms. The hero of this pass is the <strong>SLA band system</strong> — five day-count states the founder must ratify, especially the yellow-vs-amber distinction at days 15.</p>
+
+    <p class="prayer-line">
+      Father, we lift up the persecuted Church — believers gathering under watched doors in Iran, China, Eritrea, North Korea, and every nation where Your name is met with prison. We pray for the underground leaders whose verifications pass through these screens; let the waiting never crush them. Steady the one or two admins who make these life-safety decisions — give them sober minds, two sets of eyes, and Your wisdom. Let every pixel here guard Your people rather than expose them.
+      <span class="amen">In Jesus' name, Amen.</span>
+    </p>
+
+    <div class="tokens-strip">
+      <div class="token-cell"><div class="token-swatch" style="background:#080808"></div><div class="token-name">bg</div><div class="token-val">#080808</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#6BB5E8"></div><div class="token-name">sky</div><div class="token-val">#6BB5E8</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#D6C24A"></div><div class="token-name">sla yellow</div><div class="token-val">#D6C24A</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#D8943A"></div><div class="token-name">sla amber</div><div class="token-val">#D8943A</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#d96860"></div><div class="token-name">sla red</div><div class="token-val">#d96860</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#6cc28b"></div><div class="token-name">green</div><div class="token-val">#6cc28b</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#F0EDE6"></div><div class="token-name">text</div><div class="token-val">#F0EDE6</div></div>
+    </div>
+
+    <div class="invariants">
+      <span class="inv-chip">Existing admin globals.css · rp-* tokens</span>
+      <span class="inv-chip">AAL2 + is_underground_admin gate at parent route</span>
+      <span class="inv-chip">Two-eyes: A proposes → B confirms</span>
+      <span class="inv-chip">Visibility = Visible / Hidden (never Brave/Safe)</span>
+      <span class="inv-chip">Detail = dedicated route, not inline</span>
+      <span class="inv-chip">Class-based · no inline styles</span>
+    </div>
+  </header>
+
+  <!-- ░░░░░░░░░░ §1 · THE QUEUE — TABS + AGGREGATE + FILTERS + ROWS ░░░░░░░░░░ -->
+  <section class="section" id="s1" data-screen-label="Admin · Pending tab">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">01–03 · 05 ·</span> Deliverables 1, 2, 3, 5</div>
+      <h2 class="section-title">The Pending tab — <em>everything an admin sees on open</em></h2>
+      <p class="section-desc">Three tabs (<code>Pending / Verified / Deactivated</code>) with live counts, sitting below the existing <strong>OPERATIONS / SENSITIVE</strong> breadcrumb and the locked <strong>Underground Church Oversight</strong> title. An <strong>SLA aggregate banner</strong> tints to the worst current bucket; clicking a number filters the list. Collapsible <strong>filter chips</strong> for Region / SLA Bucket / Proposer / Evidence Tier. Then the <strong>pending rows</strong> — ref code, region, submitted date, SLA day-count pill, state pill, evidence tier.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">Live</span>
+      <span class="opt-hint">Click the tabs, toggle filters, and click an aggregate number to filter the list to that bucket. Click any row to open its detail surface (§4).</span>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/underground</div>
+        <span class="frame-tag">1440 × 900</span>
+      </div>
+      <div class="frame-body">
+        <div class="adm">
+          <!-- sidebar -->
+          <aside class="adm-side">
+            <div class="adm-brand">
+              <span class="adm-brand-mark">R</span>
+              <span><span class="adm-brand-name">Replant</span><span class="adm-brand-sub">Admin</span></span>
+            </div>
+            <div class="adm-nav-label">Operations</div>
+            <nav class="adm-nav">
+              <a class="adm-nav-item"><svg class="ic" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Network<span class="count">412</span></a>
+              <a class="adm-nav-item"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h8"/></svg>Verification Queue<span class="count">7</span></a>
+              <a class="adm-nav-item"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2v12M3 6l5-4 5 4"/></svg>Pastoral Queue<span class="count">3</span></a>
+            </nav>
+            <div class="adm-nav-label">Sensitive</div>
+            <nav class="adm-nav">
+              <a class="adm-nav-item active"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2 3 4v4c0 3 2 5.5 5 6.5 3-1 5-3.5 5-6.5V4L8 2Z"/><path d="M8 7v2.5"/><circle cx="8" cy="11" r="0.4" fill="currentColor" stroke="none"/></svg>Underground<span class="badge">2</span></a>
+              <a class="adm-nav-item"><svg class="ic" viewBox="0 0 16 16"><path d="M3 7a5 5 0 0 1 10 0c0 4-5 7-5 7s-5-3-5-7Z"/></svg>Heartcry<span class="count">5</span></a>
+            </nav>
+          </aside>
+          <!-- main -->
+          <div class="adm-main">
+            <div class="adm-top">
+              <div>
+                <div class="adm-crumb">Operations / Sensitive</div>
+                <div class="adm-h1">Underground Church Oversight</div>
+              </div>
+              <div class="adm-top-meta"><span><b>7</b> pending</span><span>AAL2 · verified</span></div>
+            </div>
+            <div class="adm-body">
+
+              <!-- restricted banner (preserved from read-only viewer) -->
+              <div class="rp-banner rp-banner-strong">
+                <svg class="ic bn-ico" viewBox="0 0 16 16"><path d="M8 2 1.5 13.5h13L8 2Z"/><path d="M8 6.5v3.5"/><circle cx="8" cy="12" r="0.4" fill="currentColor" stroke="none"/></svg>
+                <div><b>Restricted access.</b> Every view, proposal, and confirmation on this screen is recorded in the immutable audit log with your identity, IP, and timestamp.<small>Real church names are decrypted client-side per row. Do not screenshot, dictate, or relay the contents of this screen.</small></div>
+              </div>
+
+              <!-- 3-tab bar (#1) -->
+              <div class="q-tabs" data-tabs>
+                <button class="q-tab active" data-tab="pending">Pending <span class="tcount">7</span></button>
+                <button class="q-tab" data-tab="verified">Verified <span class="tcount">405</span></button>
+                <button class="q-tab" data-tab="deactivated">Deactivated <span class="tcount">4</span></button>
+              </div>
+
+              <!-- SLA aggregate banner (#3) -->
+              <div class="sla-agg" data-agg>
+                <svg class="ic agg-ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.5V8l2.4 1.6"/></svg>
+                <span class="agg-label">SLA · this queue</span>
+                <div class="agg-stats">
+                  <span class="agg-stat is-amber" data-bucket="15"><b>3</b> churches past day 15</span>
+                  <span class="agg-stat is-red" data-bucket="25"><b>1</b> past day 25</span>
+                  <span class="agg-stat" data-bucket="28"><b>0</b> past day 28</span>
+                </div>
+                <span class="agg-foot">tints to worst bucket · click a number to filter</span>
+              </div>
+
+              <!-- filter chips (#5) -->
+              <div class="q-filters q-filters-collapsed" data-filters>
+                <button class="q-filters-toggle" data-filters-toggle><svg class="ic" viewBox="0 0 16 16"><path d="M2 4h12M4 8h8M6 12h4"/></svg>Filters</button>
+                <button class="q-chip"><span class="ck">○</span>Region<span class="chev">▾</span></button>
+                <button class="q-chip on"><span class="ck">✓</span>SLA bucket · past 15<span class="chev">▾</span></button>
+                <button class="q-chip"><span class="ck">○</span>Proposer<span class="chev">▾</span></button>
+                <button class="q-chip"><span class="ck">○</span>Evidence tier<span class="chev">▾</span></button>
+                <button class="q-filters-clear">Clear</button>
+              </div>
+
+              <!-- pending rows (#2) -->
+              <div class="q-card">
+                <table class="q-table">
+                  <thead>
+                    <tr>
+                      <th style="width:120px">Ref</th>
+                      <th>Macro-region</th>
+                      <th style="width:104px">Submitted</th>
+                      <th style="width:280px">SLA</th>
+                      <th style="width:170px">State</th>
+                      <th style="width:96px">Evidence</th>
+                    </tr>
+                  </thead>
+                  <tbody data-rows>
+                    <tr class="q-row" data-day="2">
+                      <td><span class="q-ref">UG-7A3F</span></td>
+                      <td class="q-region">Eastern Europe &amp; Central Asia</td>
+                      <td class="q-date">06-20</td>
+                      <td data-sla="2"></td>
+                      <td data-state="untouched"></td>
+                      <td><span class="tier tier-t1">T1 · referral</span></td>
+                    </tr>
+                    <tr class="q-row" data-day="8">
+                      <td><span class="q-ref">UG-4C19</span></td>
+                      <td class="q-region">Middle East &amp; North Africa</td>
+                      <td class="q-date">06-14</td>
+                      <td data-sla="8"></td>
+                      <td data-state="await"></td>
+                      <td><span class="tier tier-t2">T2 · call</span></td>
+                    </tr>
+                    <tr class="q-row" data-day="17" data-past15>
+                      <td><span class="q-ref">UG-9E22</span></td>
+                      <td class="q-region">East &amp; Southeast Asia</td>
+                      <td class="q-date">06-05</td>
+                      <td data-sla="17"></td>
+                      <td data-state="info"></td>
+                      <td><span class="tier tier-t2">T2 · call</span></td>
+                    </tr>
+                    <tr class="q-row" data-day="19" data-past15>
+                      <td><span class="q-ref">UG-2B88</span></td>
+                      <td class="q-region">South Asia</td>
+                      <td class="q-date">06-03</td>
+                      <td data-sla="19"></td>
+                      <td data-state="locked"></td>
+                      <td><span class="tier tier-t2">T2 · call</span></td>
+                    </tr>
+                    <tr class="q-row" data-day="22" data-past15>
+                      <td><span class="q-ref">UG-5F07</span></td>
+                      <td class="q-region">Sub-Saharan Africa</td>
+                      <td class="q-date">05-31</td>
+                      <td data-sla="22"></td>
+                      <td data-state="stalled"></td>
+                      <td><span class="tier tier-t3">T3 · placeholder</span></td>
+                    </tr>
+                    <tr class="q-row" data-day="26" data-past25>
+                      <td><span class="q-ref">UG-1D54</span></td>
+                      <td class="q-region">Middle East &amp; North Africa</td>
+                      <td class="q-date">05-27</td>
+                      <td data-sla="26"></td>
+                      <td data-state="untouched"></td>
+                      <td><span class="tier tier-t1">T1 · referral</span></td>
+                    </tr>
+                    <tr class="q-row" data-day="31">
+                      <td><span class="q-ref">UG-6B0C</span></td>
+                      <td class="q-region">East &amp; Southeast Asia</td>
+                      <td class="q-date">05-22</td>
+                      <td data-sla="31"></td>
+                      <td data-state="untouched"></td>
+                      <td><span class="tier tier-t1">T1 · referral</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> Tabs replace the read-only single table in <b>Underground.jsx</b>. Counts come from the <b>list endpoint</b> per state. Row click → <b>navigate(`/underground/pending/${id}`)</b>, not inline expand. SLA banner tint binds to the worst non-zero bucket; aggregate clicks set the SLA-bucket filter.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §2 · SLA PILL HERO — THE #1 RATIFICATION ASK (#4) ░░░░░░░░░░ -->
+  <section class="section" id="s2" data-screen-label="Admin · SLA bands">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">04 ·</span> Deliverable 4 · <span style="color:var(--rp-amber)">#1 visual ratification ask</span></div>
+      <h2 class="section-title">The five SLA bands, <em>side by side</em></h2>
+      <p class="section-desc">A church has a <strong>30-day window</strong> with checkpoints at days 5, 15, and 25. The day-count pill on every Pending row carries the band. The founder's explicit ask: <strong>see yellow (days 5–14) and amber (days 15–24) rendered next to each other</strong> and confirm they read as visibly distinct. Yellow is the "decision-or-info is due" nudge; amber is the "final-by-25 is approaching" warning. They are different colors, different weights, different urgency.</p>
+    </div>
+
+    <div class="sla-board">
+      <div class="sla-band-card">
+        <span class="band-range">Days 0–4</span>
+        <span class="band-pill-wrap"><span class="sla-pill band-neutral"><span class="dot"></span><span class="dn">Day 2</span><span class="sep">·</span><span class="msg">contact within day 5</span></span></span>
+        <span class="band-name">Neutral · gray</span>
+        <span class="band-rule">Fresh. First contact is owed by day 5. No pressure yet — the admin is inside the safe window.</span>
+        <span class="band-token">checkpoint · contact_by = 5</span>
+      </div>
+      <div class="sla-band-card">
+        <span class="band-range">Days 5–14</span>
+        <span class="band-pill-wrap"><span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 8</span><span class="sep">·</span><span class="msg">decision-or-info by day 15</span></span></span>
+        <span class="band-name">Yellow</span>
+        <span class="band-rule">Contact window has opened. A decision <em>or</em> a request for info is due by day 15. The gentle deadline.</span>
+        <span class="band-token">checkpoint · decide_by = 15</span>
+      </div>
+      <div class="sla-band-card">
+        <span class="band-range">Days 15–24</span>
+        <span class="band-pill-wrap"><span class="sla-pill band-amber"><span class="dot"></span><span class="dn">Day 17</span><span class="sep">·</span><span class="msg">final by day 25</span></span></span>
+        <span class="band-name">Amber</span>
+        <span class="band-rule">Past the day-15 checkpoint. A final ruling is owed by day 25. Warmer, heavier — the warning state.</span>
+        <span class="band-token">checkpoint · final_by = 25</span>
+      </div>
+      <div class="sla-band-card">
+        <span class="band-range">Days 25–29</span>
+        <span class="band-pill-wrap"><span class="sla-pill band-red"><span class="dot"></span><span class="dn">Day 26</span><span class="sep">·</span><span class="msg">final overdue</span></span></span>
+        <span class="band-name">Red</span>
+        <span class="band-rule">Final ruling overdue. At day 25 the row auto-routes to the Founder as sole owner (Ruling #13).</span>
+        <span class="band-token">routed → founder</span>
+      </div>
+      <div class="sla-band-card">
+        <span class="band-range">Day 30+</span>
+        <span class="band-pill-wrap"><span class="sla-pill band-past"><span class="dot"></span><span class="dn">Day 31</span><span class="sep">·</span><span class="msg">past window — auto-reject pending</span></span></span>
+        <span class="band-name">Pulsing red</span>
+        <span class="band-rule">Past the 30-day window. Day-30 auto-reject fires for an unresponsive leader. The dot pulses.</span>
+        <span class="band-token">auto_reject · unresponsive</span>
+      </div>
+    </div>
+
+    <div class="sla-board-foot">
+      <span class="pin">Ratify</span>
+      <div>The yellow→amber step happens <b>at day 15</b>. Yellow says <b>"decide or ask"</b>; amber says <b>"final is coming."</b> A separate <b>stalled_pending</b> sub-state pauses the clock when the leader is responsive but the admin is overloaded — the leader is never auto-rejected for the team's backlog (Ruling #6).</div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> One <b>&lt;SlaPill day={n} /&gt;</b> component derives band from <b>days_since_submitted</b> against the 5/15/25/30 thresholds. <b>stalled_pending</b> freezes the clock and renders the neutral-gray treatment with a paused glyph. Pulsing is gated behind <b>prefers-reduced-motion</b>.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §3 · DETAIL SURFACE (#6) ░░░░░░░░░░ -->
+  <section class="section" id="s3" data-screen-label="Admin · Detail route">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">06 ·</span> Deliverable 6</div>
+      <h2 class="section-title">The detail surface — <em>a dedicated route, not an expansion</em></h2>
+      <p class="section-desc">Opening a row navigates to <code>/underground/pending/:id</code>. Header strip (ref + region + submitted + SLA + state), an <strong>Evidence Packet</strong> (T1 referral card + T2 call-log card), a <strong>Profile</strong> section (visibility pill + claimed name/role/locale + decrypted contact email), an append-only <strong>Admin Notes thread</strong>, the <strong>Request-info thread</strong>, and a sticky <strong>Action Bar</strong>.</p>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/underground/pending/9E22</div>
+        <span class="frame-tag">1440 × 900</span>
+      </div>
+      <div class="frame-body">
+        <div class="adm">
+          <aside class="adm-side">
+            <div class="adm-brand"><span class="adm-brand-mark">R</span><span><span class="adm-brand-name">Replant</span><span class="adm-brand-sub">Admin</span></span></div>
+            <div class="adm-nav-label">Sensitive</div>
+            <nav class="adm-nav">
+              <a class="adm-nav-item active"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2 3 4v4c0 3 2 5.5 5 6.5 3-1 5-3.5 5-6.5V4L8 2Z"/><path d="M8 7v2.5"/></svg>Underground<span class="badge">2</span></a>
+            </nav>
+          </aside>
+          <div class="adm-main">
+            <div class="adm-top">
+              <div><div class="adm-crumb">Operations / Sensitive / Pending</div><div class="adm-h1">UG-9E22</div></div>
+              <div class="adm-top-meta"><span>Decrypted <b>client-side</b></span><span>audit-logged</span></div>
+            </div>
+            <div class="adm-body">
+              <span class="dt-back"><svg class="ic" viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M10 3 5 8l5 5"/></svg>Back to Pending</span>
+
+              <!-- header strip -->
+              <div class="dt-header">
+                <span class="dt-ref">UG-9E22</span>
+                <span class="dt-sep"></span>
+                <div class="dt-field"><span class="k">Region</span><span class="v">East &amp; Southeast Asia</span></div>
+                <div class="dt-field"><span class="k">Submitted</span><span class="v">2026-06-05</span></div>
+                <div class="dt-state-right">
+                  <span class="sla-pill band-amber"><span class="dot"></span><span class="dn">Day 17</span><span class="sep">·</span><span class="msg">final by day 25</span></span>
+                  <span class="state state-info"><span class="sd"></span>Info requested</span>
+                </div>
+              </div>
+
+              <div class="dt-grid">
+                <!-- left column -->
+                <div class="dt-col">
+                  <div class="panel">
+                    <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Evidence packet</span><span class="tier tier-t2">T2 · call verified</span></div>
+                    <div class="panel-body">
+                      <div class="ev-card">
+                        <div class="ev-card-top"><span class="ev-card-name"><svg class="ic" viewBox="0 0 16 16" style="width:13px;height:13px;color:var(--rp-green)"><path d="M3 7a5 5 0 0 1 10 0c0 4-5 7-5 7s-5-3-5-7Z"/><circle cx="8" cy="7" r="1.6"/></svg>T1 · Referral</span><span class="tier tier-t1">verified</span></div>
+                        <div class="ev-row"><span class="ev-k">Referrer</span><span class="ev-v">Known network leader · <b>RPL-30481</b> · verified 2025-11</span></div>
+                        <div class="ev-row"><span class="ev-k">Relationship</span><span class="ev-v">Trained the applicant; vouches for identity and the fellowship's existence.</span></div>
+                        <div class="ev-row"><span class="ev-k">Channel</span><span class="ev-v">Referring-leader-relay</span></div>
+                      </div>
+                      <div class="ev-card">
+                        <div class="ev-card-top"><span class="ev-card-name"><svg class="ic" viewBox="0 0 16 16" style="width:13px;height:13px;color:var(--rp-sky)"><path d="M3 4l4-1 1.5 3-2 1.5a8 8 0 0 0 3 3l1.5-2 3 1.5-1 4c-6 0-13-7-13-13Z"/></svg>T2 · Call log</span><span class="tier tier-t2">complete</span></div>
+                        <div class="ev-row"><span class="ev-k">Channel</span><span class="ev-v"><b>Signal</b> · end-to-end encrypted</span></div>
+                        <div class="ev-row"><span class="ev-k">Date</span><span class="ev-v">2026-06-12 · 22 min</span></div>
+                        <div class="ev-row"><span class="ev-k">Relay token</span><span class="ev-v mono">spoken · 4-digit set</span></div>
+                        <div class="ev-row"><span class="ev-k">Admin note</span><span class="ev-v">Identity consistent with referral. Leader requested name stay hidden. Awaiting one document.</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Admin notes</span><span style="font-family:var(--mono);font-size:9px;color:var(--rp-muted);letter-spacing:0.1em">APPEND-ONLY</span></div>
+                    <div class="panel-body">
+                      <div class="thread">
+                        <div class="note">
+                          <div class="note-meta"><span class="who">A. Mensah</span><span>·</span><span>06-08 09:14</span></div>
+                          <div class="note-body">Referral checks out against the network. Scheduling a Signal call to confirm identity and walk the visibility choice.</div>
+                        </div>
+                        <div class="note is-info">
+                          <div class="note-meta"><span class="who">A. Mensah</span><span>·</span><span>06-12 22:40</span><span style="color:var(--rp-amber)">· info requested</span></div>
+                          <div class="note-body">Call complete. Identity good. Asked the leader for one more reference before I propose verify. Clock note: leader is responsive.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- right column -->
+                <div class="dt-col">
+                  <div class="panel">
+                    <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Profile · claimed</span></div>
+                    <div class="panel-body">
+                      <div class="pf-row"><span class="pf-k">Visibility</span><span class="pf-v"><span class="vis-pill vis-hidden">Hidden · region only</span></span></div>
+                      <div class="pf-row"><span class="pf-k">Full name</span><span class="pf-v">[decrypted client-side]</span></div>
+                      <div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Pastor</span></div>
+                      <div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only · city withheld</span></div>
+                      <div class="pf-row"><span class="pf-k">Contact email</span><span class="pf-v mono">[decrypted]</span></div>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Request-info thread</span></div>
+                    <div class="panel-body">
+                      <div class="thread">
+                        <div class="note is-reply">
+                          <div class="note-meta"><span class="who">Replant team</span><span>→ leader</span><span>·</span><span>06-12</span></div>
+                          <div class="note-body">Could you share the name of one more leader who knows your fellowship? It helps us confirm and protect you.</div>
+                        </div>
+                        <div class="note">
+                          <div class="note-meta"><span style="color:var(--rp-muted-2)">leader</span><span>·</span><span>awaiting reply</span></div>
+                          <div class="thread-empty">No reply yet. Clock paused — leader is responsive.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- sticky action bar -->
+              <div class="action-bar">
+                <span class="ab-label">Actions</span>
+                <button class="btn btn-approve btn-sm" data-open="verify"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Propose verify</button>
+                <button class="btn btn-reject btn-sm" data-open="reject"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>Propose reject</button>
+                <button class="btn btn-ghost btn-sm" data-open="visibility"><svg class="ic" viewBox="0 0 16 16"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z"/><circle cx="8" cy="8" r="2"/></svg>Visibility override</button>
+                <div class="ab-spacer"></div>
+                <span class="ab-note">All actions require Admin&nbsp;B to confirm</span>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> New route <b>/underground/pending/:id</b> (child of the AAL2-gated parent). Reuses <b>AdminNotes.jsx</b> (append-only). Names + email are decrypted client-side per row exactly as the read-only viewer does. Action Bar is <b>position: sticky; bottom: 0</b> within the scroll region.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §4 · PROPOSE VERIFY + REJECT (#7,8) ░░░░░░░░░░ -->
+  <section class="section" id="s4" data-screen-label="Admin · Propose panels">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">07–08 ·</span> Deliverables 7 &amp; 8</div>
+      <h2 class="section-title">Admin A proposes — <em>verify, or reject</em></h2>
+      <p class="section-desc">Inline panels opened from the Action Bar — never a separate page. <strong>Propose Verify</strong> needs admin notes (≥30 char), a <strong>contact_channel</strong> (Signal / Wire / In-person / Letter / Referring-leader-relay — explicitly not WhatsApp or regular phone), and an evidence tier (T1 / T2). <strong>Propose Reject</strong> adds the 8-value rejection enum and a rationale (≥60 char for <code>other</code>). Both submit a proposal that sits awaiting Admin B.</p>
+    </div>
+
+    <div class="stage">
+      <!-- VERIFY -->
+      <div class="frame">
+        <div class="frame-chrome">
+          <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+          <div class="frame-url"><span class="lock">⚷</span>UG-9E22 · <b>Propose verify</b></div>
+          <span class="frame-tag">inline panel</span>
+        </div>
+        <div class="frame-body" style="padding:18px 20px">
+          <div class="propose verify">
+            <div class="propose-strip"><span class="ps-dot"></span><span class="ps-label">Propose verify</span><span class="ps-two">Two-eyes · awaits Admin B</span></div>
+            <div class="propose-body">
+              <div class="fld">
+                <span class="fld-label">Admin notes <span class="req">required</span><span class="hint ok">42 / 30 min ✓</span></span>
+                <textarea class="txt">Identity confirmed by Signal call + network referral. Leader chose Hidden. Ready to verify.</textarea>
+              </div>
+              <div class="fld">
+                <span class="fld-label">Contact channel <span class="req">required</span></span>
+                <select class="sel"><option>Signal</option><option>Wire</option><option>In-person</option><option>Letter</option><option>Referring-leader-relay</option></select>
+              </div>
+              <div class="fld">
+                <span class="fld-label">Evidence tier <span class="req">required</span></span>
+                <div class="radio-row">
+                  <label class="radio-opt"><span class="rd"></span>T1 · referral</label>
+                  <label class="radio-opt on"><span class="rd"></span>T2 · call</label>
+                </div>
+              </div>
+              <div class="propose-actions">
+                <button class="btn btn-approve">Submit proposal</button>
+                <button class="btn btn-ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REJECT -->
+      <div class="frame">
+        <div class="frame-chrome">
+          <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+          <div class="frame-url"><span class="lock">⚷</span>UG-5F07 · <b>Propose reject</b></div>
+          <span class="frame-tag">inline panel</span>
+        </div>
+        <div class="frame-body" style="padding:18px 20px">
+          <div class="propose reject">
+            <div class="propose-strip"><span class="ps-dot"></span><span class="ps-label">Propose reject</span><span class="ps-two">Two-eyes · awaits Admin B</span></div>
+            <div class="propose-body">
+              <div class="fld">
+                <span class="fld-label">Rejection reason <span class="req">required</span></span>
+                <select class="sel">
+                  <option>identity_unconfirmed — team unable to confirm your identity</option>
+                  <option>church_unconfirmed — unable to confirm the church through references</option>
+                  <option selected>insufficient_evidence — not enough information at this time</option>
+                  <option>contact_unreachable — unable to reach you through channels provided</option>
+                  <option>out_of_scope — appears to fall outside Replant's scope</option>
+                  <option>safety_concern — unable to verify at this time</option>
+                  <option>duplicate_registration — another registration is being reviewed</option>
+                  <option>other — requires rationale</option>
+                </select>
+              </div>
+              <div class="fld">
+                <span class="fld-label">Rationale <span class="req">required</span><span class="hint">≥60 for "other"</span></span>
+                <textarea class="txt">Two contact attempts over Signal and Letter unanswered; referral could not corroborate the fellowship. No safety signal.</textarea>
+                <div class="txt-meta"><span>internal only · never shown to leader</span><span class="c-ok">132 chars</span></div>
+              </div>
+              <div class="propose-actions">
+                <button class="btn btn-reject">Submit proposal</button>
+                <button class="btn btn-ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="specs">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>ProposePanel<span class="ang">/&gt;</span> · action = verify | reject</span></div>
+      <div class="specs-inner">
+        <div class="specs-grid">
+          <div>
+            <div class="specs-block-label">Verify proposal</div>
+            <div class="spec-row"><span class="spec-key">admin_notes</span><span class="spec-val"><b>≥30 char</b>, NOT NULL. Submit disabled below threshold.</span></div>
+            <div class="spec-row"><span class="spec-key">contact_channel</span><span class="spec-val">Signal / Wire / In-person / Letter / Referring-leader-relay. <b>Never</b> WhatsApp or phone.</span></div>
+            <div class="spec-row"><span class="spec-key">evidence_tier</span><span class="spec-val"><code>T1</code> | <code>T2</code> radio, required.</span></div>
+          </div>
+          <div>
+            <div class="specs-block-label">Reject proposal</div>
+            <div class="spec-row"><span class="spec-key">reason enum</span><span class="spec-val">8 values. <code>other</code> requires <b>admin_notes NOT NULL</b>.</span></div>
+            <div class="spec-row"><span class="spec-key">rationale</span><span class="spec-val"><b>≥60 char</b> for <code>other</code>; internal only — never shown to the leader.</span></div>
+            <div class="spec-row"><span class="spec-key">safety_concern</span><span class="spec-val">Leader-facing copy carries <b>no detail</b> and omits the re-apply line.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="specs-note"><div class="specs-note-label">Two-eyes</div><div class="specs-note-body">A proposal does not change church state. It creates a pending proposal record that puts the row into <strong>Awaiting confirm</strong> and notifies Admin&nbsp;B. The Founder cannot be both A and B on the same row (Ruling #13).</div></div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> Mirrors the single-admin propose pattern in <b>Queue.jsx</b>, diverged to two-eyes. Submit writes a <b>proposal</b> with a 72h TTL (§5) and flips the row's state pill to <b>Awaiting confirm</b>.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §5 · CONFIRM + DECLINE (#9,10) ░░░░░░░░░░ -->
+  <section class="section" id="s5" data-screen-label="Admin · Confirm + Decline">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">09–10 ·</span> Deliverables 9 &amp; 10</div>
+      <h2 class="section-title">Admin B confirms — <em>or counters, without rejecting the church</em></h2>
+      <p class="section-desc">Admin B sees A's proposal verbatim — A's notes, A's evidence tier, and the <strong>exact leader-facing text</strong> that will be shown if confirmed — with a live <strong>72h TTL countdown</strong>. B can <strong>Confirm</strong>, or <strong>Decline</strong> with required counter-notes (visible to A only), which returns the row to <strong>Untouched</strong> and notifies A. A decline is <em>not</em> a rejection of the church.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">Live</span>
+      <span class="opt-hint">Open each modal to inspect. The TTL badge counts down live from 72h.</span>
+      <div class="opt-group"><button class="btn btn-ghost btn-sm" data-open="confirm">Open confirm modal</button><button class="btn btn-ghost btn-sm" data-open="decline">Open decline modal</button></div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span>UG-9E22 · Admin B view · confirm verify</div>
+        <span class="frame-tag">modal · 1440 × 900</span>
+      </div>
+      <div class="frame-body" style="display:grid;place-items:center;padding:34px;background:rgba(6,6,6,0.6)">
+        <div class="mdl" style="box-shadow:none">
+          <div class="mdl-head">
+            <span class="mh-glyph green"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg></span>
+            <div class="mh-text">
+              <div class="mdl-title">Confirm verification · UG-9E22</div>
+              <div class="mdl-sub">Proposed by A. Mensah · you are Admin B</div>
+            </div>
+            <span class="mdl-ttl-badge"><span class="ttl" data-ttl="confirm-static"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.5V8l2.4 1.6"/></svg><b>71:48:12</b> to confirm</span></span>
+          </div>
+          <div class="mdl-body">
+            <div class="recap">
+              <div class="recap-row"><span class="recap-k">Proposal</span><span class="recap-v">Verify · evidence tier <b>T2 · call</b> · channel <b>Signal</b></span></div>
+              <div class="recap-row"><span class="recap-k">A's notes</span><span class="recap-v"><span class="quote">"Identity confirmed by Signal call + network referral. Leader chose Hidden. Ready to verify."</span></span></div>
+              <div class="recap-row"><span class="recap-k">Proposed by</span><span class="recap-v"><span class="by">A. Mensah</span> · 2026-06-22 14:11</span></div>
+            </div>
+            <div class="leader-preview">
+              <div class="lp-label">Exact text the leader will see if you confirm</div>
+              <div class="lp-text">"Your church is verified. You are not standing alone."</div>
+            </div>
+          </div>
+          <div class="mdl-foot">
+            <button class="btn btn-ghost btn-sm" data-decline-from-confirm>Decline · counter-propose</button>
+            <div class="mf-spacer"></div>
+            <button class="btn btn-ghost">Cancel</button>
+            <button class="btn btn-approve">Confirm verification</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> Decline requires <b>counter_notes</b> (visible to A only); on submit the row returns to <b>Untouched</b>, A is notified, and the church is untouched. Confirm writes the verification + fires the leader-side verified path. Email to Admin B carries <b>no UG-identifying body</b> — just "An underground action needs your confirmation. Sign in to review."</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §6 · VISIBILITY OVERRIDE + JOIN-CODE (#11,12) ░░░░░░░░░░ -->
+  <section class="section" id="s6" data-screen-label="Admin · Visibility + Join code">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">11–12 ·</span> Deliverables 11 &amp; 12</div>
+      <h2 class="section-title">Visibility override &amp; the join-code machine — <em>guarded by a spoken token</em></h2>
+      <p class="section-desc">Changing a church between <strong>Visible</strong> and <strong>Hidden</strong> requires a <strong>4-digit relay token</strong> — the code the leader spoke aloud during the T2 verification call. The admin types what they heard; a mismatch blocks the change. Anti-social-engineering. The <strong>join-code panel</strong> is a small state machine: hashed indicator → Rotate (a two-eyes proposal, <code>action=rotate_join_code</code>) → one-time re-reveal of the freshly minted code.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">Live</span>
+      <span class="opt-hint">Open the override modal and type into the 4-digit token cells. The relay-token style is tweakable.</span>
+      <div class="opt-group"><button class="btn btn-ghost btn-sm" data-open="visibility">Open visibility override</button></div>
+    </div>
+
+    <div class="stage">
+      <div class="frame">
+        <div class="frame-chrome">
+          <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+          <div class="frame-url"><span class="lock">⚷</span>UG-9E22 · visibility override</div>
+          <span class="frame-tag">modal</span>
+        </div>
+        <div class="frame-body" style="display:grid;place-items:center;padding:30px;background:rgba(6,6,6,0.6)">
+          <div class="mdl" style="box-shadow:none;max-width:500px">
+            <div class="mdl-head">
+              <span class="mh-glyph sky"><svg class="ic" viewBox="0 0 16 16"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z"/><circle cx="8" cy="8" r="2"/></svg></span>
+              <div class="mh-text"><div class="mdl-title">Visibility override</div><div class="mdl-sub">Two-eyes · requires relay token</div></div>
+            </div>
+            <div class="mdl-body">
+              <div class="fld">
+                <span class="fld-label">Direction <span class="req">required</span></span>
+                <div class="dir-seg" data-dir>
+                  <label class="dir-opt on" data-dir-opt="h2v"><span class="do-dir">Hidden <span class="dir-arrow">→</span> Visible</span><span class="do-sub">Name becomes listed; location stays hidden.</span></label>
+                  <label class="dir-opt" data-dir-opt="v2h"><span class="do-dir">Visible <span class="dir-arrow">→</span> Hidden</span><span class="do-sub">Region only; name withheld.</span></label>
+                </div>
+              </div>
+              <div class="fld">
+                <span class="fld-label">Contact channel <span class="req">required</span></span>
+                <select class="sel"><option>Signal</option><option>Wire</option><option>In-person</option><option>Letter</option><option>Referring-leader-relay</option></select>
+              </div>
+              <div class="relay">
+                <span class="fld-label">4-digit relay token <span class="req">required</span></span>
+                <p class="relay-note">Type the <b>4-digit code the leader spoke during the verification call.</b> This proves you reached the real leader, not an impersonator.</p>
+                <div data-relay-mount></div>
+              </div>
+              <div class="fld">
+                <span class="fld-label">Notes <span class="req">required</span><span class="hint">≥40 char</span></span>
+                <textarea class="txt">Leader confirmed by Signal that they want the church listed as Visible. Token matched.</textarea>
+              </div>
+              <label class="ack on" data-ack><span class="ackbox"></span><span class="ack-text">I confirm the leader requested <b style="color:var(--rp-text)">Hidden → Visible</b> directly, and the relay token matched what they spoke on the call.</span></label>
+            </div>
+            <div class="mdl-foot">
+              <div class="mf-spacer"></div>
+              <button class="btn btn-ghost">Cancel</button>
+              <button class="btn btn-primary">Propose override</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- join-code state machine -->
+      <div class="frame">
+        <div class="frame-chrome">
+          <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+          <div class="frame-url"><span class="lock">⚷</span>UG-9E22 · join code</div>
+          <span class="frame-tag">state machine</span>
+        </div>
+        <div class="frame-body" style="padding:20px">
+          <div class="jcsm" data-jcsm>
+            <div class="jc-state active-state" data-jc="hashed">
+              <span class="jcs-step"><span class="n">1</span>Current</span>
+              <span class="jcs-name">Hashed · not recoverable</span>
+              <div class="jc-hashed">•••• •••• •••••</div>
+              <span class="jcs-meta">Stored hashed (argon2id). The plaintext code was shown to the leader once and can never be re-read.</span>
+            </div>
+            <div class="jc-state" data-jc="rotate">
+              <span class="jcs-step"><span class="n">2</span>Rotate</span>
+              <span class="jcs-name">Two-eyes proposal</span>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <button class="btn btn-amber btn-sm" data-jc-go><svg class="ic" viewBox="0 0 16 16"><path d="M13 6a5 5 0 1 0 .5 3"/><path d="M13 3v3h-3"/></svg>Rotate join code</button>
+                <span class="jcs-meta"><b>action=rotate_join_code</b> — invalidates the old code (lost / over-shared) and mints a new one. Awaits Admin B.</span>
+              </div>
+            </div>
+            <div class="jc-state" data-jc="revealed">
+              <span class="jcs-step"><span class="n">3</span>Re-reveal</span>
+              <span class="jcs-name">New code · once</span>
+              <div class="jc-revealed">RPL-VXQM-71903</div>
+              <span class="jcs-meta">Shown <b>one time</b> after Admin B confirms. The leader gets a refreshed-code notice in-app (leader flow #20).</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> Relay token: 4 numeric cells, autofocus-advance, validated server-side against the value captured on the T2 call. Override is itself a two-eyes proposal. Join-code reveal binds to <b>consume_underground_join_code_reveal()</b> — atomic, plaintext on first call only.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ §7 · DEACTIVATED + HARD-DELETE + AAL2 (#13,14,15) ░░░░░░░░░░ -->
+  <section class="section" id="s7" data-screen-label="Admin · Deactivated + gates">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">13–15 ·</span> Deliverables 13, 14 &amp; 15</div>
+      <h2 class="section-title">The Deactivated tab, the typed delete, and the locked door</h2>
+      <p class="section-desc">Deactivated rows show the deactivation date/type, a <strong>days-until-hard-delete</strong> countdown, the last-touching admin, a single-admin <strong>Reinstate</strong>, and <strong>Hard-delete</strong>. Hard-delete demands the admin <strong>type the church_code</strong> to confirm — strictly one church at a time, no bulk select. And if an admin without the flag lands here, the surface refuses them gently.</p>
+    </div>
+
+    <!-- deactivated tab -->
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/underground · Deactivated</div>
+        <span class="frame-tag">1440 × 900</span>
+      </div>
+      <div class="frame-body">
+        <div class="adm">
+          <aside class="adm-side">
+            <div class="adm-brand"><span class="adm-brand-mark">R</span><span><span class="adm-brand-name">Replant</span><span class="adm-brand-sub">Admin</span></span></div>
+            <div class="adm-nav-label">Sensitive</div>
+            <nav class="adm-nav"><a class="adm-nav-item active"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2 3 4v4c0 3 2 5.5 5 6.5 3-1 5-3.5 5-6.5V4L8 2Z"/></svg>Underground</a></nav>
+          </aside>
+          <div class="adm-main">
+            <div class="adm-top"><div><div class="adm-crumb">Operations / Sensitive</div><div class="adm-h1">Underground Church Oversight</div></div><div class="adm-top-meta"><span><b>4</b> deactivated</span></div></div>
+            <div class="adm-body">
+              <div class="q-tabs">
+                <button class="q-tab" data-tab-static>Pending <span class="tcount">7</span></button>
+                <button class="q-tab" data-tab-static>Verified <span class="tcount">405</span></button>
+                <button class="q-tab active" data-tab-static>Deactivated <span class="tcount">4</span></button>
+              </div>
+              <div class="q-card">
+                <table class="q-table">
+                  <thead>
+                    <tr><th style="width:120px">Ref</th><th>Region</th><th style="width:170px">Deactivated</th><th style="width:160px">Hard-delete in</th><th style="width:140px">Last admin</th><th style="width:210px">Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="q-ref">RPL-31207</span></td>
+                      <td class="q-region">South Asia</td>
+                      <td><span class="q-date">06-08 · auto-reject</span></td>
+                      <td><span class="sla-pill band-amber"><span class="dot"></span><span class="dn">7 days</span></span></td>
+                      <td style="font-size:11.5px;color:var(--rp-muted-2)">A. Mensah</td>
+                      <td><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm">Reinstate</button><button class="btn btn-danger btn-sm" data-open="harddelete"><svg class="ic" viewBox="0 0 16 16"><path d="M3 4h10M6 4V2.5h4V4M5 4l.6 9h4.8L11 4"/></svg>Hard-delete</button></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="q-ref">RPL-12345</span></td>
+                      <td class="q-region">Middle East &amp; North Africa</td>
+                      <td><span class="q-date">05-30 · reject · safety</span></td>
+                      <td><span class="sla-pill band-red"><span class="dot"></span><span class="dn">2 days</span></span></td>
+                      <td style="font-size:11.5px;color:var(--rp-muted-2)">Founder</td>
+                      <td><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm">Reinstate</button><button class="btn btn-danger btn-sm" data-open="harddelete"><svg class="ic" viewBox="0 0 16 16"><path d="M3 4h10M6 4V2.5h4V4M5 4l.6 9h4.8L11 4"/></svg>Hard-delete</button></div></td>
+                    </tr>
+                    <tr class="is-dim">
+                      <td><span class="q-ref">RPL-58810</span></td>
+                      <td class="q-region">Sub-Saharan Africa</td>
+                      <td><span class="q-date">04-12 · leader request</span></td>
+                      <td><span style="font-family:var(--mono);font-size:11px;color:var(--rp-muted)">deleted</span></td>
+                      <td style="font-size:11.5px;color:var(--rp-muted-2)">A. Mensah</td>
+                      <td><span style="font-family:var(--mono);font-size:10px;color:var(--rp-muted);letter-spacing:0.1em">PURGED · 05-12</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AAL2 denial state -->
+    <div class="frame" style="margin-top:22px">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/underground · access denied</div>
+        <span class="frame-tag">is_underground_admin = false</span>
+      </div>
+      <div class="frame-body">
+        <div class="adm">
+          <aside class="adm-side">
+            <div class="adm-brand"><span class="adm-brand-mark">R</span><span><span class="adm-brand-name">Replant</span><span class="adm-brand-sub">Admin</span></span></div>
+            <div class="adm-nav-label">Sensitive</div>
+            <nav class="adm-nav"><a class="adm-nav-item active"><svg class="ic" viewBox="0 0 16 16"><path d="M8 2 3 4v4c0 3 2 5.5 5 6.5 3-1 5-3.5 5-6.5V4L8 2Z"/></svg>Underground</a></nav>
+          </aside>
+          <div class="adm-main">
+            <div class="adm-top"><div><div class="adm-crumb">Operations / Sensitive</div><div class="adm-h1">Underground Church Oversight</div></div></div>
+            <div class="adm-body">
+              <div class="denial">
+                <span class="dn-mark"><svg class="ic" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></span>
+                <span class="dn-eyebrow">Access restricted</span>
+                <span class="dn-title">Super admin access required</span>
+                <span class="dn-body">This area is limited to <b>super admins with underground access</b> (<code class="tok" style="color:var(--rp-sky)">is_underground_admin</code>). Contact ops if you believe this is an error.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> Deactivated rows pull <b>days_until_hard_delete</b> from the deactivation timestamp. Reinstate is single-admin; hard-delete + the typed church_code confirm is the only destructive path and is strictly one-by-one. The denial state renders when <b>is_underground_admin === false</b> after the AAL2 gate clears — the data fetch never fires.</div>
+  </section>
+
+  <!-- ░░░ ENDNOTE ░░░ -->
+  <div class="endnote">
+    <div class="endnote-prayer">"When thou passest through the waters, I will be with thee." — Isaiah 43:2</div>
+    <div class="endnote-meta">
+      Replant Admin · Underground Verification Queue<br>
+      Flow 1 of 2 · 15 surfaces · two-eyes throughout<br>
+      Founder ratifies → SME review → FE wire-up
+    </div>
+  </div>
+
+</div>
+
+<!-- ░░░ MODALS (rendered on demand) ░░░ -->
+<div class="ov" data-modal="verify"></div>
+<div class="ov" data-modal="reject"></div>
+<div class="ov" data-modal="confirm"></div>
+<div class="ov" data-modal="decline"></div>
+<div class="ov" data-modal="visibility"></div>
+<div class="ov" data-modal="harddelete"></div>
+
+<script src="admin-queue-cd.js"></script>
+</body>
+</html>

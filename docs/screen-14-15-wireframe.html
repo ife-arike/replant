@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — KAN-65 / KAN-64 Wireframe (Screens 14, 14B, 15)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* tokens lifted verbatim from Replant Wireframes v4.html */
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.35);
+    --sky-dim: rgba(107,181,232,0.10);
+    --black: #080808;
+    --surface: #111111;
+    --surface2: #181818;
+    --surface3: #1f1f1f;
+    --off-white: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --muted-2: rgba(240,237,230,0.60);
+    --faint: rgba(240,237,230,0.08);
+    --faint-2: rgba(240,237,230,0.16);
+    --red: #E05555;
+    --red-dim: rgba(224,85,85,0.10);
+    --red-mid: rgba(224,85,85,0.28);
+    --amber: #D4A855;
+    --green: #5BAD7A;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* annotation layer */
+    --rl: #ff4d6d;          /* redline */
+    --rl-dim: rgba(255,77,109,0.20);
+  }
+
+  html, body {
+    background: #0a0a0a;
+    font-family: var(--sans);
+    color: var(--off-white);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { padding: 64px 48px 96px; }
+
+  /* ────────── PAGE HEADER ────────── */
+  .page-header {
+    max-width: 1280px;
+    margin: 0 auto 56px;
+    padding-bottom: 32px;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .page-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--rl);
+    margin-bottom: 12px;
+  }
+  .page-title {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+  .page-sub {
+    font-size: 13px;
+    color: var(--muted-2);
+    line-height: 1.65;
+    max-width: 720px;
+  }
+  .page-meta {
+    margin-top: 16px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .page-meta b { color: var(--off-white); font-weight: 500; }
+
+  /* ────────── SCREEN ROW ────────── */
+  .screens {
+    display: flex;
+    gap: 220px; /* room for redlines between frames */
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 80px;
+  }
+
+  .screen-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 56px; /* extra room so FRAME · 430 pt label clears the heading */
+  }
+
+  .screen-heading {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .screen-heading .kan {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--rl);
+    margin-bottom: 6px;
+  }
+  .screen-heading h2 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+  .screen-heading .sub {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+  }
+
+  /* ────────── PHONE FRAME (430×932 actual pt) ────────── */
+  .frame-wrap {
+    position: relative;
+    /* 430 phone + 180 left gutter + 180 right gutter = 790 */
+    width: 790px;
+    padding: 0 180px;
+  }
+
+  .phone {
+    width: 430px;
+    height: 932px;
+    background: var(--black);
+    border-radius: 56px;
+    border: 2px solid rgba(240,237,230,0.14);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.6),
+                inset 0 0 0 6px #000;
+  }
+
+  /* dynamic island */
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 122px;
+    height: 36px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 20;
+  }
+
+  /* status bar — height ~ top safe area (59 pt) */
+  .status-bar {
+    height: 59px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 28px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--off-white);
+    letter-spacing: 0.01em;
+  }
+  .status-icons { display: flex; gap: 6px; align-items: center; opacity: 0.9; font-size: 13px; }
+
+  /* safe-bottom indicator */
+  .home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    background: var(--off-white);
+    border-radius: 3px;
+    opacity: 0.85;
+    z-index: 30;
+  }
+
+  /* screen body */
+  .body-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ────────── COMMON IN-SCREEN PRIMITIVES ────────── */
+  .h-margin { padding-left: 20px; padding-right: 20px; }
+
+  .nav-bar {
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .nav-bar .nav-title {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+  .nav-bar .nav-leading,
+  .nav-bar .nav-trailing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--off-white);
+  }
+  .chev-back { width: 9px; height: 14px; border-left: 1.5px solid var(--off-white); border-bottom: 1.5px solid var(--off-white); transform: rotate(45deg); margin-right: 4px; }
+
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* ────────── KAN-65 styles ────────── */
+  .scroll-65 {
+    flex: 1;
+    overflow: hidden;
+    padding: 16px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .banner-block {
+    background: rgba(224,85,85,0.06);
+    border: 0.5px solid var(--red-mid);
+    border-radius: 12px;
+    padding: 16px 18px 18px;
+  }
+  .banner-eyebrow {
+    font-size: 10.5px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .banner-body {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.55;
+    color: var(--off-white);
+    letter-spacing: 0.005em;
+  }
+
+  /* Confirmation card — question + CTA together, centered.
+     Matches v4 wireframe pattern (Replant Wireframes v4.html:1510) */
+  .confirm-card {
+    background: var(--surface2);
+    border: 0.5px solid var(--faint);
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .confirm-q {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    color: var(--off-white);
+    text-wrap: pretty;
+  }
+
+  .btn-primary {
+    width: 100%;
+    height: 52px;
+    border-radius: 12px;
+    background: var(--red);
+    color: #0a0a0a;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+  }
+  .btn-primary.alt {
+    /* outline variant — KEPT for reference, default uses solid red */
+    background: var(--red-dim);
+    color: var(--red);
+    border: 0.5px solid var(--red-mid);
+  }
+
+  .section-header {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-header h3 {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .section-header .rule {
+    flex: 1;
+    height: 0.5px;
+    background: var(--faint-2);
+  }
+
+  /* feed card */
+  .feed-card {
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-left: 2px solid var(--red);
+    border-radius: 10px;
+    padding: 14px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .feed-card .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .feed-card .author {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 500;
+  }
+  .feed-card .ts {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+  .feed-card .excerpt {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--off-white);
+    /* truncation: 3-line clamp */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .feed-card .badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .severity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--red-dim);
+    border: 0.5px solid var(--red-mid);
+    color: var(--red);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .severity-badge .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--red);
+  }
+
+  /* encrypted footer (inline at end of list) */
+  .encrypted-strip {
+    background: var(--sky-dim);
+    border: 0.5px solid var(--sky-mid);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 4px;
+  }
+  .encrypted-strip .lock {
+    font-size: 14px;
+    line-height: 1.3;
+    flex-shrink: 0;
+  }
+  .encrypted-strip .copy {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--sky);
+    letter-spacing: 0.005em;
+  }
+
+  /* tab bar — 83 pt total incl. 34 pt safe area */
+  .tab-bar {
+    height: 83px;
+    flex-shrink: 0;
+    background: rgba(8,8,8,0.96);
+    border-top: 0.5px solid var(--faint);
+    padding: 6px 12px 34px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+  }
+  .tab-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    opacity: 0.4;
+    padding: 4px 8px;
+  }
+  .tab-item.active { opacity: 1; }
+  .tab-item.active .tab-label { color: var(--red); }
+  .tab-item.active svg { stroke: var(--red); }
+  .tab-icon { width: 26px; height: 26px; }
+  .tab-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--off-white);
+    font-weight: 500;
+  }
+
+  /* empty state (annotated separately) */
+  .empty-state {
+    padding: 28px 18px;
+    text-align: center;
+    border: 0.5px dashed var(--faint-2);
+    border-radius: 12px;
+    color: var(--muted-2);
+  }
+  .empty-state h4 {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--off-white);
+    margin-bottom: 6px;
+  }
+  .empty-state p {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--muted-2);
+  }
+
+  /* ────────── KAN-64 styles ────────── */
+  .scroll-64 {
+    flex: 1;
+    overflow: hidden;
+    padding: 18px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .scroll-64::after {
+    /* end-of-scroll-area fade hint, purely visual cue */
+    content: '';
+  }
+
+  .pastoral-intro {
+    position: relative;
+    padding: 18px 18px 18px 22px;
+    border-left: 2px solid var(--red);
+    background: linear-gradient(180deg, rgba(224,85,85,0.06), rgba(224,85,85,0.02));
+    border-radius: 0 12px 12px 0;
+  }
+  .pastoral-intro p {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.55;
+    letter-spacing: 0.005em;
+    color: var(--off-white);
+    text-wrap: pretty;
+  }
+  .pastoral-intro p + p { margin-top: 10px; }
+  .pastoral-intro .src-tag {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--rl);
+    text-transform: uppercase;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .field-label {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--off-white);
+  }
+  .field-helper {
+    font-size: 11.5px;
+    color: var(--muted-2);
+    letter-spacing: 0.01em;
+  }
+
+  .textarea {
+    width: 100%;
+    min-height: 180px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint-2);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: var(--serif);
+    font-size: 17px;
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+  .textarea .caret {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: var(--off-white);
+    vertical-align: -3px;
+    margin-left: 2px;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .chip-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 18px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint-2);
+    color: var(--off-white);
+    font-size: 13px;
+    font-weight: 400;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.005em;
+  }
+  .chip.selected {
+    background: var(--red-dim);
+    border-color: var(--red-mid);
+    color: var(--red);
+    font-weight: 500;
+  }
+  .chip.selected::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .radio-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 4px;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .radio-row:last-child { border-bottom: none; }
+  .radio-mark {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--faint-2);
+    flex-shrink: 0;
+    margin-top: 1px;
+    position: relative;
+  }
+  .radio-row.selected .radio-mark {
+    border-color: var(--red);
+  }
+  .radio-row.selected .radio-mark::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .radio-text { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .radio-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--off-white);
+    letter-spacing: 0.01em;
+  }
+  .radio-desc {
+    font-size: 12.5px;
+    color: var(--muted-2);
+    line-height: 1.45;
+  }
+  .radio-desc.placeholder {
+    color: var(--rl);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+  }
+
+  /* Toggle block — visual weight elevated above a settings switch */
+  .witness-block {
+    background: var(--surface);
+    border: 0.5px solid var(--faint-2);
+    border-radius: 14px;
+    padding: 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .witness-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .witness-label {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    color: var(--off-white);
+  }
+  .witness-sub {
+    font-size: 12.5px;
+    color: var(--muted-2);
+    line-height: 1.55;
+  }
+  .toggle {
+    width: 52px;
+    height: 30px;
+    border-radius: 16px;
+    background: var(--surface3);
+    border: 0.5px solid var(--faint-2);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: '';
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--off-white);
+    position: absolute;
+    top: 2px; left: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    transition: transform 0.2s;
+  }
+  .toggle.on { background: var(--red); border-color: transparent; }
+  .toggle.on::after { transform: translateX(22px); }
+
+  .encrypted-disclosure {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 0 4px;
+  }
+  .encrypted-disclosure .lock { color: var(--sky); font-size: 13px; }
+  .encrypted-disclosure .copy {
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--muted-2);
+    text-wrap: pretty;
+  }
+  .encrypted-disclosure .copy b { color: var(--sky); font-weight: 500; }
+
+
+  /* ────────── KAN-65 / 14B — Pending Verification Gate ────────── */
+  .gate-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 32px;
+    /* radial wash to feel like a sealed room */
+    background:
+      radial-gradient(ellipse at 50% 38%, rgba(240,237,230,0.04), transparent 60%),
+      var(--black);
+  }
+  .gate-glyph {
+    margin-top: 200px; /* sits in upper third — frame body is ~830 pt, so 200 places it well above center */
+    width: 56px;
+    height: 56px;
+    color: var(--muted-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gate-glyph svg { width: 100%; height: 100%; }
+
+  .gate-rule {
+    margin-top: 28px;
+    width: 24px;
+    height: 0.5px;
+    background: var(--faint-2);
+  }
+
+  .gate-copy {
+    margin-top: 26px;
+    max-width: 320px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .gate-copy p {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 19px;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    color: var(--off-white);
+    text-wrap: pretty;
+  }
+  .gate-copy p.sub {
+    font-size: 15px;
+    color: var(--muted-2);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+
+  /* ════════════════════════════════════════
+     REDLINE ANNOTATIONS
+     ════════════════════════════════════════ */
+  .redline {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--rl);
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .redline.box {
+    background: rgba(20,8,12,0.92);
+    border: 0.5px solid var(--rl-dim);
+    padding: 5px 8px;
+    border-radius: 3px;
+    max-width: 160px;
+    white-space: normal;
+  }
+  .redline b { color: #ffb3c2; font-weight: 500; }
+  .redline.tick::before {
+    content: '';
+    position: absolute;
+    background: var(--rl);
+  }
+  /* horizontal tick mark with label to the left */
+  .rl-tick-h {
+    position: absolute;
+    height: 1px;
+    background: var(--rl);
+    opacity: 0.7;
+  }
+  .rl-tick-h::before, .rl-tick-h::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    width: 1px; height: 7px;
+    background: var(--rl);
+  }
+  .rl-tick-h::before { left: 0; }
+  .rl-tick-h::after { right: 0; }
+  .rl-tick-v {
+    position: absolute;
+    width: 1px;
+    background: var(--rl);
+    opacity: 0.7;
+  }
+  .rl-tick-v::before, .rl-tick-v::after {
+    content: '';
+    position: absolute;
+    left: -3px;
+    width: 7px; height: 1px;
+    background: var(--rl);
+  }
+  .rl-tick-v::before { top: 0; }
+  .rl-tick-v::after { bottom: 0; }
+
+  /* leader line from label to its target */
+  .rl-leader {
+    position: absolute;
+    height: 1px;
+    background: var(--rl-dim);
+    transform-origin: 0 50%;
+  }
+
+  /* dotted measurement guide spanning frame width */
+  .rl-guide-h {
+    position: absolute;
+    height: 0;
+    border-top: 1px dashed rgba(255,77,109,0.3);
+  }
+
+
+  /* ════════════════════════════════════════
+     COMPONENT SPEC SECTION
+     ════════════════════════════════════════ */
+  .spec {
+    max-width: 1280px;
+    margin: 80px auto 0;
+    padding-top: 56px;
+    border-top: 0.5px solid var(--faint);
+  }
+  .spec-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--rl);
+    margin-bottom: 10px;
+  }
+  .spec-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  .spec-sub {
+    font-size: 12.5px;
+    color: var(--muted-2);
+    margin-bottom: 36px;
+    max-width: 720px;
+    line-height: 1.6;
+  }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px 56px;
+  }
+
+  .spec-card {
+    border: 0.5px solid var(--faint);
+    border-radius: 12px;
+    padding: 24px 24px 22px;
+    background: var(--surface);
+  }
+  .spec-card h4 {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 16px;
+  }
+  .spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .spec-table td {
+    padding: 7px 0;
+    border-bottom: 0.5px dashed var(--faint);
+    vertical-align: top;
+  }
+  .spec-table tr:last-child td { border-bottom: none; }
+  .spec-table .k {
+    color: var(--muted-2);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    width: 42%;
+    padding-right: 14px;
+  }
+  .spec-table .v {
+    color: var(--off-white);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .spec-table .v b { color: var(--off-white); font-weight: 500; }
+  .spec-table .v em { color: var(--rl); font-style: normal; }
+
+  .swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+    padding: 6px 10px 6px 6px;
+    background: var(--black);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted-2);
+  }
+  .swatch .chip-c {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 0.5px solid var(--faint-2);
+  }
+  .swatch b { color: var(--off-white); font-weight: 500; }
+
+  .map-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+  }
+  .map-table th, .map-table td {
+    text-align: left;
+    padding: 9px 12px;
+    font-size: 12px;
+    border-bottom: 0.5px solid var(--faint);
+    vertical-align: top;
+  }
+  .map-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sky);
+    font-weight: 500;
+  }
+  .map-table td.k {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--off-white);
+    width: 30%;
+  }
+  .map-table td.v {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted-2);
+    width: 30%;
+  }
+  .map-table td.why {
+    font-size: 12px;
+    color: var(--muted-2);
+    line-height: 1.55;
+  }
+
+  .copy-block {
+    background: var(--black);
+    border: 0.5px solid var(--faint);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--off-white);
+  }
+  .copy-block .lbl {
+    color: var(--sky);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 10px;
+    display: block;
+    margin: 8px 0 4px;
+  }
+  .copy-block .lbl:first-child { margin-top: 0; }
+  .copy-block .verbatim { color: var(--off-white); }
+  .copy-block .src { color: var(--rl); font-style: normal; }
+
+  .notes {
+    margin-top: 32px;
+    padding: 20px 24px;
+    border: 0.5px solid var(--rl-dim);
+    border-radius: 12px;
+    background: rgba(255,77,109,0.04);
+  }
+  .notes h5 {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--rl);
+    margin-bottom: 10px;
+  }
+  .notes ul { padding-left: 20px; }
+  .notes li {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--off-white);
+    margin-bottom: 6px;
+  }
+  .notes li b { color: var(--rl); font-weight: 500; }
+
+  /* full-width sections */
+  .full { grid-column: 1 / -1; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     HEADER
+     ═══════════════════════════════════════════════════ -->
+<div class="page-header">
+  <div class="page-eyebrow">KAN-65 · KAN-65/14B · KAN-64 / SCREENS 14, 14B, 15 / CC HANDOFF</div>
+  <h1 class="page-title">Persecuted Church &amp; Heartcry Submission</h1>
+  <p class="page-sub">
+    Wireframes for the Persecuted tab landing (KAN-65 · Screen 14, verified), the Pending Verification Gate (Screen 14B), and the Heartcry submission form pushed from KAN-65 (KAN-64 · Screen 15). Layout follows <b>Replant Wireframes v4</b> lines 1496–1570. All copy is verbatim from <code style="font-family:var(--mono);">content/screen-14-15-persecuted-heartcry.md</code> (2026-05-25 draft).
+  </p>
+  <div class="page-meta">
+    <span><b>Device</b> iPhone 16 Pro Max</span>
+    <span><b>Frame</b> 430 × 932 pt</span>
+    <span><b>Safe top</b> 59 pt</span>
+    <span><b>Safe bottom</b> 34 pt</span>
+    <span><b>H-margin</b> 20 pt</span>
+    <span><b>Tab bar</b> 83 pt</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN FRAMES
+     ═══════════════════════════════════════════════════ -->
+<div class="screens">
+
+  <!-- ────────── KAN-65 ────────── -->
+  <div class="screen-block">
+    <div class="screen-heading">
+      <div class="kan">KAN-65 / SCREEN 14</div>
+      <h2>Persecuted Church — Tab Landing</h2>
+      <div class="sub">TAB CONTEXT · TAB BAR PRESENT · SCREEN SCROLLS AS ONE</div>
+    </div>
+
+    <div class="frame-wrap">
+
+      <!-- LEFT GUTTER ANNOTATIONS -->
+      <!-- Frame width tick -->
+      <div class="rl-tick-h" style="top:-22px; left:0; width:430px;"></div>
+      <div class="redline" style="top:-40px; left:50%; transform:translateX(-50%);">FRAME · <b>430 pt</b></div>
+
+      <!-- Safe top -->
+      <div class="rl-tick-v" style="top:0; left:-30px; height:59px;"></div>
+      <div class="redline" style="top:18px; left:-118px; text-align:right; width:80px;">SAFE TOP<br><b>59 pt</b></div>
+
+      <!-- Nav bar -->
+      <div class="rl-tick-v" style="top:59px; left:-30px; height:44px;"></div>
+      <div class="redline" style="top:70px; left:-118px; text-align:right; width:80px;">NAV BAR<br><b>44 pt</b></div>
+
+      <!-- H margin -->
+      <div class="redline" style="top:140px; left:-130px; text-align:right; width:90px;">H-MARGIN<br><b>20 pt L/R</b></div>
+
+      <!-- Tab bar -->
+      <div class="rl-tick-v" style="bottom:0; left:-30px; height:83px;"></div>
+      <div class="redline" style="bottom:30px; left:-150px; text-align:right; width:110px;">TAB BAR + SAFE<br><b>83 pt</b> total<br>(49 + 34 safe)</div>
+
+      <!-- RIGHT GUTTER ANNOTATIONS — labelled callouts -->
+      <div class="redline box" style="top:108px; right:-180px; width:170px;">
+        <b>Eyebrow</b><br>
+        Copy: <span style="color:#fff;">SET APART</span><br>
+        DM Sans 500, 10.5/0.32em uppercase, color <b>--red</b>.
+        Sits inside banner.
+      </div>
+
+      <div class="redline box" style="top:180px; right:-180px; width:170px;">
+        <b>Banner block</b><br>
+        Dark inset card, radius <b>12</b>, padding <b>16/18</b>.<br>
+        BG: red tint 6% over black.<br>
+        Border 0.5 <b>--red-mid</b>. No gradient, no left rule.<br>
+        Body: Cormorant italic 16/1.55, off-white.<br>
+        Visual weight: <b>serious, not decorative</b>.
+      </div>
+
+      <div class="redline box" style="top:340px; right:-180px; width:170px;">
+        <b>Confirmation card</b><br>
+        BG <b>--surface2</b>, border 0.5 <b>--faint</b>, radius 12, padding 18/18.<br>
+        Center-aligned.<br>
+        Question: Cormorant 19/1.35, weight 400.<br>
+        14 pt gap to CTA inside same card.
+      </div>
+
+      <div class="redline box" style="top:475px; right:-180px; width:170px;">
+        <b>Primary CTA</b><br>
+        Width <b>100%</b> (within card) = 354 pt.<br>
+        Height <b>52 pt</b>, radius <b>12</b>.<br>
+        Solid <b>--red</b>, label DM Sans 600 15/0.04em.<br>
+        Pushes to KAN-64.
+      </div>
+
+      <div class="redline box" style="top:550px; right:-180px; width:170px;">
+        <b>Section header</b><br>
+        Cormorant 18, weight 400.<br>
+        Followed by 0.5 hairline rule, 12 pt gap.<br>
+        Marks the divider into the feed.
+      </div>
+
+      <div class="redline box" style="top:625px; right:-180px; width:170px;">
+        <b>Feed card</b><br>
+        BG <b>--surface</b>, border 0.5 <b>--faint</b>, left rule 2 pt <b>--red</b>, radius 10.<br>
+        Padding 14/16. Vertical stack:<br>
+        ① author + ts row<br>
+        ② excerpt (Cormorant italic 16, <b>3-line clamp</b>)<br>
+        ③ severity badge row
+      </div>
+
+      <div class="redline box" style="top:775px; right:-180px; width:170px;">
+        <b>Severity badge</b><br>
+        Tag/badge — <b>not inline text</b>.<br>
+        Height 20, padding 4/8, radius 4.<br>
+        DM Sans 500 10/0.14em uppercase.<br>
+        Dot + label. One-liner from content file.
+      </div>
+
+      <div class="redline box" style="top:855px; right:-180px; width:170px;">
+        <b>Encrypted footer</b><br>
+        Position: <b>inline at end of list</b> (not sticky — scrolls with feed).<br>
+        BG <b>--sky-dim</b>, border 0.5 <b>--sky-mid</b>, radius 8.<br>
+        Body: DM Sans 12/1.55 in <b>--sky</b>.
+      </div>
+
+      <!-- ░░░░░ THE PHONE ░░░░░ -->
+      <div class="phone">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="0.5"/><rect x="4.5" y="4" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1"><path d="M1 4 Q8 -1 15 4"/><path d="M3.5 6.5 Q8 3 12.5 6.5"/><circle cx="8" cy="9" r="1" fill="currentColor"/></svg>
+            <svg width="25" height="11" viewBox="0 0 25 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="1" width="21" height="9" rx="2"/><rect x="2" y="2.5" width="17" height="6" rx="1" fill="currentColor"/><rect x="22.5" y="4" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+          </span>
+        </div>
+
+        <div class="body-area">
+
+          <!-- Nav bar -->
+          <div class="nav-bar">
+            <div class="nav-leading"></div>
+            <div class="nav-title" style="color:var(--red);">Persecuted</div>
+            <div class="nav-trailing">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            </div>
+          </div>
+
+          <div class="scroll-65">
+
+            <!-- Banner -->
+            <div class="banner-block">
+              <div class="banner-eyebrow">SET APART</div>
+              <div class="banner-body">This section is for churches facing severe persecution — imprisonment, prohibition of fellowship, violence, and active hunting for the faith. Handle with prayer and sobriety.</div>
+            </div>
+
+            <!-- Confirmation Q + CTA (single card, centered) -->
+            <div class="confirm-card">
+              <p class="confirm-q">Are you currently undergoing persecution for the name of Jesus?</p>
+              <button class="btn-primary">Share Your Heartcry</button>
+            </div>
+
+            <!-- Section header -->
+            <div class="section-header">
+              <h3>Heartcries from the Body</h3>
+              <div class="rule"></div>
+            </div>
+
+            <!-- Feed card -->
+            <div class="feed-card">
+              <div class="top-row">
+                <span class="author">Anonymous · Central Asia</span>
+                <span class="ts">3d ago</span>
+              </div>
+              <p class="excerpt">"We have not been able to gather for three months. Two of our leaders have been taken, and we ask the Body to stand with us as we wait, fast, and hold the line…"</p>
+              <div class="badge-row">
+                <span class="severity-badge"><span class="dot"></span>Urgent — Danger is escalating</span>
+              </div>
+            </div>
+
+            <div class="feed-card">
+              <div class="top-row">
+                <span class="author">Anonymous · North Africa</span>
+                <span class="ts">1d ago</span>
+              </div>
+              <p class="excerpt">"Two families displaced this week. Pray for provision, for safe houses, and that the children would not lose their childhood inside this storm."</p>
+              <div class="badge-row">
+                <span class="severity-badge"><span class="dot"></span>Critical — In immediate danger now</span>
+              </div>
+            </div>
+
+            <!-- Encrypted footer -->
+            <div class="encrypted-strip">
+              <span class="lock">🔒</span>
+              <span class="copy">This section is encrypted. What is shared here stays within the Replant network. Your safety is our responsibility.</span>
+            </div>
+
+          </div>
+
+          <!-- Tab bar (Persecuted active) -->
+          <div class="tab-bar">
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14 L12 7 L20 14"/><path d="M6 13 V20 H18 V13"/></svg>
+              <span class="tab-label">Home</span>
+            </div>
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 V20"/><path d="M12 8 H17"/></svg>
+              <span class="tab-label">Church</span>
+            </div>
+            <div class="tab-item active">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9 Q12 4 19 9"/><path d="M12 11 V20"/><path d="M9 16 H15"/></svg>
+              <span class="tab-label">Persecuted</span>
+            </div>
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21 V11 Q5 4 12 4 Q19 4 19 11 V21"/><path d="M9 21 V15 H15 V21"/></svg>
+              <span class="tab-label">Prayer</span>
+            </div>
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/></svg>
+              <span class="tab-label">Connect</span>
+            </div>
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ────────── KAN-65 · 14B / Pending Verification Gate ────────── -->
+  <div class="screen-block">
+    <div class="screen-heading">
+      <div class="kan">KAN-65 / SCREEN 14B</div>
+      <h2>Persecuted Tab — Pending Verification</h2>
+      <div class="sub">TAB CONTEXT · TAB BAR PRESENT · GATED · NO CTA</div>
+    </div>
+
+    <div class="frame-wrap">
+
+      <!-- Frame width tick -->
+      <div class="rl-tick-h" style="top:-22px; left:0; width:430px;"></div>
+      <div class="redline" style="top:-40px; left:50%; transform:translateX(-50%);">FRAME · <b>430 pt</b></div>
+
+      <!-- Safe top -->
+      <div class="rl-tick-v" style="top:0; left:-30px; height:59px;"></div>
+      <div class="redline" style="top:18px; left:-118px; text-align:right; width:80px;">SAFE TOP<br><b>59 pt</b></div>
+
+      <!-- Nav bar -->
+      <div class="rl-tick-v" style="top:59px; left:-30px; height:44px;"></div>
+      <div class="redline" style="top:70px; left:-118px; text-align:right; width:80px;">NAV BAR<br><b>44 pt</b><br>(same as 14)</div>
+
+      <!-- Tab bar -->
+      <div class="rl-tick-v" style="bottom:0; left:-30px; height:83px;"></div>
+      <div class="redline" style="bottom:30px; left:-150px; text-align:right; width:110px;">TAB BAR + SAFE<br><b>83 pt</b><br>(Persecuted still active —<br>tab is <em style="color:#fff;font-style:normal;">visible</em>)</div>
+
+      <!-- Right callouts -->
+      <div class="redline box" style="top:80px; right:-180px; width:170px;">
+        <b>Header shell</b><br>
+        Same &lt;TabHeader&gt; as Screen 14. Title "Persecuted" in <b>--red</b>. Trailing hamburger preserved (no auth-state change to chrome).
+      </div>
+
+      <div class="redline box" style="top:200px; right:-180px; width:170px;">
+        <b>Glyph</b><br>
+        Lock outline, <b>56 × 56</b>, 1.5 stroke.<br>
+        Color: <b>--muted-2</b> (rgba 240/0.60) — not red, not sky.<br>
+        Sits at <b>top + 200 pt</b> below nav (upper third of body area).
+      </div>
+
+      <div class="redline box" style="top:320px; right:-180px; width:170px;">
+        <b>Rule</b><br>
+        <b>24 × 0.5 pt</b> hairline, color <b>--faint-2</b>.<br>
+        28 pt gap above, 26 pt below.<br>
+        Quiet "vow" mark separating glyph from words.
+      </div>
+
+      <div class="redline box" style="top:420px; right:-180px; width:170px;">
+        <b>Gated copy</b><br>
+        Centered, max-width <b>320 pt</b>.<br>
+        Line 1: Cormorant 19/1.4 weight 400, off-white.<br>
+        Line 2: Cormorant italic 15/1.4 weight 300, <b>--muted-2</b>.<br>
+        12 pt gap between lines.
+      </div>
+
+      <div class="redline box" style="top:560px; right:-180px; width:170px;">
+        <b>No CTA</b><br>
+        Per brief — the leader has no action to take. Verification is already underway.<br>
+        <span style="color:#fff;">Do not</span> add "verify now" / "contact us" / status indicator.
+      </div>
+
+      <div class="redline box" style="top:680px; right:-180px; width:170px;">
+        <b>Background</b><br>
+        <b>--black</b> with subtle radial wash (off-white @ 4% → transparent at 60%) centred at 50% / 38%.<br>
+        Reads as "sealed room," not error state.<br>
+        <em>No icons, no red, no toast.</em>
+      </div>
+
+      <!-- ░░░░░ THE PHONE ░░░░░ -->
+      <div class="phone">
+        <div class="status-bar">
+          <span>9:41</span>
+          <span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="0.5"/><rect x="4.5" y="4" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1"><path d="M1 4 Q8 -1 15 4"/><path d="M3.5 6.5 Q8 3 12.5 6.5"/><circle cx="8" cy="9" r="1" fill="currentColor"/></svg>
+            <svg width="25" height="11" viewBox="0 0 25 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="1" width="21" height="9" rx="2"/><rect x="2" y="2.5" width="17" height="6" rx="1" fill="currentColor"/><rect x="22.5" y="4" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+          </span>
+        </div>
+
+        <div class="body-area">
+
+          <!-- Same nav as Screen 14 -->
+          <div class="nav-bar">
+            <div class="nav-leading"></div>
+            <div class="nav-title" style="color:var(--red);">Persecuted</div>
+            <div class="nav-trailing">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            </div>
+          </div>
+
+          <div class="gate-area">
+            <div class="gate-glyph">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="10.5" width="16" height="11" rx="2"/>
+                <path d="M7.5 10.5 V7 a4.5 4.5 0 0 1 9 0 V10.5"/>
+                <circle cx="12" cy="15.5" r="1" fill="currentColor"/>
+                <path d="M12 16.5 V18.5"/>
+              </svg>
+            </div>
+            <div class="gate-rule"></div>
+            <div class="gate-copy">
+              <p>This section is for verified leaders in the Replant network.</p>
+              <p class="sub">Once your church is verified, you'll have full access.</p>
+            </div>
+          </div>
+
+          <!-- Same tab bar as Screen 14, Persecuted active -->
+          <div class="tab-bar">
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14 L12 7 L20 14"/><path d="M6 13 V20 H18 V13"/></svg>
+              <span class="tab-label">Home</span>
+            </div>
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 V20"/><path d="M12 8 H17"/></svg>
+              <span class="tab-label">Church</span>
+            </div>
+            <div class="tab-item active">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9 Q12 4 19 9"/><path d="M12 11 V20"/><path d="M9 16 H15"/></svg>
+              <span class="tab-label">Persecuted</span>
+            </div>
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21 V11 Q5 4 12 4 Q19 4 19 11 V21"/><path d="M9 21 V15 H15 V21"/></svg>
+              <span class="tab-label">Prayer</span>
+            </div>
+            <div class="tab-item">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="#F0EDE6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/></svg>
+              <span class="tab-label">Connect</span>
+            </div>
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ────────── KAN-64 ────────── -->
+  <div class="screen-block">
+    <div class="screen-heading">
+      <div class="kan">KAN-64 / SCREEN 15</div>
+      <h2>Heartcry — Submission Form</h2>
+      <div class="sub">PUSHED SCREEN · NO TAB BAR · SINGLE-PAGE SCROLL</div>
+    </div>
+
+    <div class="frame-wrap">
+
+      <!-- Frame width tick -->
+      <div class="rl-tick-h" style="top:-22px; left:0; width:430px;"></div>
+      <div class="redline" style="top:-40px; left:50%; transform:translateX(-50%);">FRAME · <b>430 pt</b></div>
+
+      <!-- Safe top -->
+      <div class="rl-tick-v" style="top:0; left:-30px; height:59px;"></div>
+      <div class="redline" style="top:18px; left:-118px; text-align:right; width:80px;">SAFE TOP<br><b>59 pt</b></div>
+
+      <!-- Nav bar -->
+      <div class="rl-tick-v" style="top:59px; left:-30px; height:44px;"></div>
+      <div class="redline" style="top:70px; left:-118px; text-align:right; width:80px;">NAV BAR<br><b>44 pt</b></div>
+
+      <!-- Safe bottom (no tab bar) -->
+      <div class="rl-tick-v" style="bottom:0; left:-30px; height:34px;"></div>
+      <div class="redline" style="bottom:10px; left:-150px; text-align:right; width:110px;">SAFE BOTTOM<br><b>34 pt</b><br>(no tab bar)</div>
+
+      <!-- RIGHT CALLOUTS -->
+      <div class="redline box" style="top:64px; right:-180px; width:170px;">
+        <b>Back nav</b><br>
+        Chevron + label "Persecuted" in <b>--red</b>.<br>
+        Hit target 44 × 44 pt.<br>
+        No screen title — pastoral intro carries it.
+      </div>
+
+      <div class="redline box" style="top:140px; right:-180px; width:170px;">
+        <b>Pastoral intro</b><br>
+        <b>Most important copy on screen.</b><br>
+        Cormorant 18/1.55 weight 400, off-white.<br>
+        Container: 2 pt left rule <b>--red</b>, soft red wash BG (10%→2%), radius 0/12/12/0.<br>
+        Padding 18/18/18/22.<br>
+        <span style="color:#fff;">Not</span> a helper-text card — feels like a letter.
+      </div>
+
+      <div class="redline box" style="top:340px; right:-180px; width:170px;">
+        <b>Your Heartcry</b><br>
+        Multiline textarea. Min-height <b>180 pt</b>, auto-grow to content (cap at ~50% viewport).<br>
+        Cormorant italic 17/1.55 (matches feed-card voice).<br>
+        Placeholder uses <b>--muted</b>.<br>
+        <em>No character count.</em>
+      </div>
+
+      <div class="redline box" style="top:545px; right:-180px; width:170px;">
+        <b>What do you need?</b><br>
+        Multi-select chip group. Wraps freely.<br>
+        Chip: height <b>36</b>, padding 0/14, radius 18, gap 8.<br>
+        Unselected: surface + faint border.<br>
+        Selected: red dim BG, red-mid border, red label + 6 pt dot prefix.<br>
+        Helper below in <b>--muted-2</b>.
+      </div>
+
+      <div class="redline box" style="top:680px; right:-180px; width:170px;">
+        <b>Urgency radio</b><br>
+        5 options. Stack with 0.5 hairlines between rows. No outer card.<br>
+        Radio mark <b>22 × 22</b>, 1.5 stroke.<br>
+        Label DM Sans 500 15, descriptor 12.5 muted-2 on row 2.<br>
+        <em>Labels + descriptors from content file.</em>
+      </div>
+
+      <div class="redline box" style="top:1000px; right:-180px; width:170px;">
+        <b>Witness toggle</b><br>
+        Elevated to a <b>card</b> (not inline row).<br>
+        Label Cormorant 18 — matches pastoral voice, distinguishing it from settings toggles.<br>
+        Subtext 12.5 muted-2.<br>
+        Default <b>OFF</b>. When ON, track is solid <b>--red</b>.
+      </div>
+
+      <div class="redline box" style="top:1145px; right:-180px; width:170px;">
+        <b>Submit</b><br>
+        Same primary system as KAN-65 CTA — full-width, height 52, radius 12, solid <b>--red</b>.<br>
+        Label: <span style="color:#fff;">Send My Heartcry</span>.
+      </div>
+
+      <div class="redline box" style="top:1240px; right:-180px; width:170px;">
+        <b>Encrypted disclosure</b><br>
+        Inline below button (16 pt gap).<br>
+        Lock glyph + body. DM Sans 11.5/1.6 in <b>--muted-2</b>, lock + key terms in <b>--sky</b>.<br>
+        No container — reads as a quiet promise.
+      </div>
+
+
+      <!-- ░░░░░ THE PHONE ░░░░░ -->
+      <div class="phone" style="height: 1400px;">
+        <!-- Pro Max is 932; we render the form at full content height (1400) so the entire scroll is visible in the wireframe. Real device scrolls. Annotated below. -->
+        <div class="status-bar">
+          <span>9:41</span>
+          <span class="status-icons">
+            <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="0.5"/><rect x="4.5" y="4" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1"><path d="M1 4 Q8 -1 15 4"/><path d="M3.5 6.5 Q8 3 12.5 6.5"/><circle cx="8" cy="9" r="1" fill="currentColor"/></svg>
+            <svg width="25" height="11" viewBox="0 0 25 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="1" width="21" height="9" rx="2"/><rect x="2" y="2.5" width="17" height="6" rx="1" fill="currentColor"/><rect x="22.5" y="4" width="1.5" height="3" rx="0.5" fill="currentColor"/></svg>
+          </span>
+        </div>
+
+        <div class="body-area">
+
+          <!-- Nav -->
+          <div class="nav-bar">
+            <div class="nav-leading" style="color:var(--red);">
+              <div class="chev-back" style="border-color: var(--red);"></div>
+              <span style="font-size:15px; font-weight:400;">Persecuted</span>
+            </div>
+            <div class="nav-title"></div>
+            <div class="nav-trailing"></div>
+          </div>
+
+          <div class="scroll-64">
+
+            <!-- Pastoral intro -->
+            <div class="pastoral-intro">
+              <p>Speak freely. What you share here goes directly to the Replant team — no other leader will see it, unless you choose to let the Body stand with you in prayer. We receive every word with prayer, and we will respond.</p>
+            </div>
+
+            <!-- Your Heartcry -->
+            <div class="field">
+              <div class="field-label">Your Heartcry</div>
+              <div class="textarea">Write what you are carrying. There is no limit here.<span class="caret"></span></div>
+            </div>
+
+            <!-- What do you need -->
+            <div class="field">
+              <div class="field-label">What do you need?</div>
+              <div class="chip-wrap">
+                <span class="chip selected">Prayer</span>
+                <span class="chip">Practical support</span>
+                <span class="chip">Guidance</span>
+                <span class="chip">Just to be heard</span>
+              </div>
+              <div class="field-helper">Select all that apply.</div>
+            </div>
+
+            <!-- Urgency -->
+            <div class="field">
+              <div class="field-label">How urgent is your situation?</div>
+              <div class="radio-group">
+                <div class="radio-row">
+                  <div class="radio-mark"></div>
+                  <div class="radio-text">
+                    <div class="radio-label">Critical</div>
+                    <div class="radio-desc">Immediate threat to life or freedom.</div>
+                  </div>
+                </div>
+                <div class="radio-row selected">
+                  <div class="radio-mark"></div>
+                  <div class="radio-text">
+                    <div class="radio-label">Urgent</div>
+                    <div class="radio-desc">The situation is worsening and needs prayer now.</div>
+                  </div>
+                </div>
+                <div class="radio-row">
+                  <div class="radio-mark"></div>
+                  <div class="radio-text">
+                    <div class="radio-label">Serious</div>
+                    <div class="radio-desc">Significant pressure — not yet at immediate risk.</div>
+                  </div>
+                </div>
+                <div class="radio-row">
+                  <div class="radio-mark"></div>
+                  <div class="radio-text">
+                    <div class="radio-label">Ongoing</div>
+                    <div class="radio-desc">Persistent persecution, not currently escalating.</div>
+                  </div>
+                </div>
+                <div class="radio-row">
+                  <div class="radio-mark"></div>
+                  <div class="radio-text">
+                    <div class="radio-label">Informational</div>
+                    <div class="radio-desc">I want the Replant team to know what is happening here.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Witness toggle -->
+            <div class="witness-block">
+              <div class="witness-row">
+                <div class="witness-label">Let the Body stand with you</div>
+                <div class="toggle"></div>
+              </div>
+              <div class="witness-sub">After Replant team review, your heartcry may appear in the feed — your region only, never your name or church.</div>
+            </div>
+
+            <!-- Submit -->
+            <button class="btn-primary">Send My Heartcry</button>
+
+            <!-- Encrypted disclosure -->
+            <div class="encrypted-disclosure">
+              <span class="lock">🔒</span>
+              <span class="copy"><b>Your words are encrypted the moment you send them.</b> They go to the Replant team, and no one else.</span>
+            </div>
+
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     COMPONENT SPEC SHEET
+     ═══════════════════════════════════════════════════ -->
+<section class="spec">
+  <div class="spec-eyebrow">COMPONENT SPEC · CC HANDOFF</div>
+  <h2 class="spec-title">Tokens, components, copy</h2>
+  <p class="spec-sub">Map each annotated block to existing Replant RN components where possible. Where a component does not exist, create as named below using the listed token. Tokens are inherited from <code style="font-family:var(--mono);">Replant Wireframes v4.html</code>.</p>
+
+  <div class="spec-grid">
+
+    <!-- TYPOGRAPHY -->
+    <div class="spec-card">
+      <h4>① Typography scale</h4>
+      <table class="spec-table">
+        <tr><td class="k">display.serif</td><td class="v">Cormorant Garamond <b>300/400</b> · 22 / 1.32 · 0.01em</td></tr>
+        <tr><td class="k">heading.serif</td><td class="v">Cormorant Garamond <b>400</b> · 18 / 1.4 · 0.02em</td></tr>
+        <tr><td class="k">pastoral.serif</td><td class="v">Cormorant Garamond <b>400</b> · 18 / 1.55 · 0.005em</td></tr>
+        <tr><td class="k">banner.italic</td><td class="v">Cormorant Garamond <i>italic 300</i> · 17 / 1.55</td></tr>
+        <tr><td class="k">excerpt.italic</td><td class="v">Cormorant Garamond <i>italic 300</i> · 16 / 1.5 · 3-line clamp</td></tr>
+        <tr><td class="k">witness.label</td><td class="v">Cormorant Garamond <b>400</b> · 18 / 1.3</td></tr>
+        <tr><td class="k">body</td><td class="v">DM Sans 400 · 15 / 1.55</td></tr>
+        <tr><td class="k">label / radio.label</td><td class="v">DM Sans <b>500</b> · 13–15</td></tr>
+        <tr><td class="k">helper / radio.desc</td><td class="v">DM Sans 400 · 12.5 / 1.45 · <b>--muted-2</b></td></tr>
+        <tr><td class="k">eyebrow</td><td class="v">DM Sans <b>500</b> · 10.5 / 0.28em uppercase</td></tr>
+        <tr><td class="k">tag / badge</td><td class="v">DM Sans <b>500</b> · 10 / 0.14em uppercase</td></tr>
+        <tr><td class="k">timestamp / mono</td><td class="v">JetBrains Mono 400 · 10.5 / 0.06em</td></tr>
+      </table>
+    </div>
+
+    <!-- COLOR -->
+    <div class="spec-card">
+      <h4>② Color tokens</h4>
+      <div class="swatch-row">
+        <div class="swatch"><div class="chip-c" style="background:#080808;"></div><b>--black</b> #080808</div>
+        <div class="swatch"><div class="chip-c" style="background:#111111;"></div><b>--surface</b> #111</div>
+        <div class="swatch"><div class="chip-c" style="background:#1f1f1f;"></div><b>--surface3</b> #1f1f1f</div>
+        <div class="swatch"><div class="chip-c" style="background:#F0EDE6;"></div><b>--off-white</b> #F0EDE6</div>
+        <div class="swatch"><div class="chip-c" style="background:#E05555;"></div><b>--red</b> #E05555</div>
+        <div class="swatch"><div class="chip-c" style="background:rgba(224,85,85,0.10); border-color:rgba(224,85,85,0.28);"></div><b>--red-dim</b> 10%</div>
+        <div class="swatch"><div class="chip-c" style="background:rgba(224,85,85,0.28);"></div><b>--red-mid</b> 28%</div>
+        <div class="swatch"><div class="chip-c" style="background:#6BB5E8;"></div><b>--sky</b> #6BB5E8</div>
+        <div class="swatch"><div class="chip-c" style="background:rgba(107,181,232,0.10);"></div><b>--sky-dim</b> 10%</div>
+      </div>
+      <table class="spec-table">
+        <tr><td class="k">primary.text</td><td class="v">--off-white</td></tr>
+        <tr><td class="k">primary.muted</td><td class="v">rgba(240,237,230,0.45 / 0.60)</td></tr>
+        <tr><td class="k">accent.persecuted</td><td class="v">--red (#E05555)</td></tr>
+        <tr><td class="k">accent.encrypted</td><td class="v">--sky (#6BB5E8)</td></tr>
+        <tr><td class="k">border.faint</td><td class="v">rgba(240,237,230,0.08)</td></tr>
+        <tr><td class="k">overlay.modal</td><td class="v">#000 @ <b>opacity 0.72</b> — <em>no expo-blur</em></td></tr>
+      </table>
+    </div>
+
+    <!-- SPACING -->
+    <div class="spec-card">
+      <h4>③ Spacing &amp; radii</h4>
+      <table class="spec-table">
+        <tr><td class="k">h-margin</td><td class="v"><b>20 pt</b> left/right</td></tr>
+        <tr><td class="k">section-gap (vertical)</td><td class="v"><b>24 pt</b> between form fields · <b>18 pt</b> between feed cards</td></tr>
+        <tr><td class="k">field-internal-gap</td><td class="v">10 pt label → input, 8 pt input → helper</td></tr>
+        <tr><td class="k">card.padding</td><td class="v">14 / 16 (feed) · 20 / 20 (banner) · 18 / 18 (witness)</td></tr>
+        <tr><td class="k">card.radius</td><td class="v">8 (encrypted strip) · 10 (feed card) · 12 (button, textarea) · 14 (banner, witness)</td></tr>
+        <tr><td class="k">chip.radius / height</td><td class="v">18 / <b>36 pt</b></td></tr>
+        <tr><td class="k">button.radius / height</td><td class="v">12 / <b>52 pt</b></td></tr>
+        <tr><td class="k">hit-target.min</td><td class="v">44 × 44 pt</td></tr>
+        <tr><td class="k">nav-bar.height</td><td class="v">44 pt</td></tr>
+        <tr><td class="k">tab-bar.height</td><td class="v">83 pt (49 + 34 safe)</td></tr>
+      </table>
+    </div>
+
+    <!-- COMPONENT MAP -->
+    <div class="spec-card">
+      <h4>④ RN component map</h4>
+      <table class="map-table">
+        <thead><tr><th>This wireframe</th><th>Maps to</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="k">.nav-bar (KAN-65)</td><td class="v">&lt;TabHeader&gt;</td><td class="why">Same as other tab landings. Title uses <b>--red</b> on Persecuted only.</td></tr>
+          <tr><td class="k">.nav-bar (KAN-64)</td><td class="v">&lt;PushHeader leading="back" /&gt;</td><td class="why">Back label "Persecuted" in <b>--red</b>. No title.</td></tr>
+          <tr><td class="k">.banner-block</td><td class="v">&lt;PersecutedBanner&gt; · <em>new</em></td><td class="why">Dark inset card variant of existing &lt;Callout&gt;. Red tint 6% over black + red-mid border. No gradient, no left rule.</td></tr>
+          <tr><td class="k">.btn-primary</td><td class="v">&lt;Button variant="primary-red" /&gt;</td><td class="why">Extends existing &lt;Button&gt; with red token. Used on both screens for parity.</td></tr>
+          <tr><td class="k">.feed-card</td><td class="v">&lt;HeartcryCard /&gt; · <em>new</em></td><td class="why">Slot-based: author, ts, excerpt (clamp=3), severity. Tap → detail view (out of scope).</td></tr>
+          <tr><td class="k">.severity-badge</td><td class="v">&lt;Tag variant="red-outline" /&gt;</td><td class="why">Existing tag with dot prefix prop. <b>Never inline text.</b></td></tr>
+          <tr><td class="k">.encrypted-strip</td><td class="v">&lt;EncryptedFooter /&gt; · <em>new</em></td><td class="why">Used in feed footer + (variant) on Heartcry inbox.</td></tr>
+          <tr><td class="k">.pastoral-intro</td><td class="v">&lt;PastoralBlock /&gt; · <em>new</em></td><td class="why">Distinct from &lt;HelperText&gt; — higher visual weight, soft red wash + 2 pt left rule, serif body. Reads as a letter, not a hint.</td></tr>
+          <tr><td class="k">.gate-area (14B)</td><td class="v">&lt;PersecutedGate /&gt; · <em>new</em></td><td class="why">Pending-verification state. Renders inside the same &lt;TabHeader&gt; + tab bar shell. No CTA, no error iconography.</td></tr>
+          <tr><td class="k">.gate-glyph</td><td class="v">&lt;LockIcon /&gt;</td><td class="why">Existing lock outline. 56 × 56. Color <b>--muted-2</b>. <b>Not</b> red.</td></tr>
+          <tr><td class="k">.textarea</td><td class="v">&lt;TextArea size="lg" autoGrow /&gt;</td><td class="why">Existing field; force Cormorant italic on value + placeholder.</td></tr>
+          <tr><td class="k">.chip-wrap</td><td class="v">&lt;ChipGroup multi /&gt;</td><td class="why">Existing chip; selected state forces red token + 6 pt dot prefix.</td></tr>
+          <tr><td class="k">.radio-group</td><td class="v">&lt;RadioGroup descriptor /&gt;</td><td class="why">Existing radio extended with second-line descriptor slot.</td></tr>
+          <tr><td class="k">.witness-block</td><td class="v">&lt;WitnessToggle /&gt; · <em>new</em></td><td class="why">Not &lt;SettingsRow&gt;. Serif label, body copy beneath, red track when on.</td></tr>
+          <tr><td class="k">.encrypted-disclosure</td><td class="v">&lt;InlineLockNote /&gt;</td><td class="why">Quiet variant — no card, sky lock glyph + muted body.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- COPY -->
+    <div class="spec-card full">
+      <h4>⑤ Copy · verbatim &amp; sources</h4>
+      <div class="copy-block">
+        <span class="lbl">KAN-65 / Eyebrow</span>SET APART
+        <span class="lbl">KAN-65 / Banner body <span class="src">[v4 wireframe line 1508]</span></span>This section is for churches facing severe persecution — imprisonment, prohibition of fellowship, violence, and active hunting for the faith. Handle with prayer and sobriety.
+        <span class="lbl">KAN-65 / Confirmation question</span>Are you currently undergoing persecution for the name of Jesus?
+        <span class="lbl">KAN-65 / CTA</span>Share Your Heartcry
+        <span class="lbl">KAN-65 / Section header</span>Heartcries from the Body
+        <span class="lbl">KAN-65 / Encrypted footer</span>🔒 This section is encrypted. What is shared here stays within the Replant network. Your safety is our responsibility.
+        <span class="lbl">KAN-65 / Severity badges (feed cards)</span>Critical — In immediate danger now · Urgent — Danger is escalating · Serious — Under real pressure · Ongoing — Enduring for the faith · Informational — Bearing witness to this
+        <span class="lbl">KAN-65 (14B) / Gate line 1</span>This section is for verified leaders in the Replant network.
+        <span class="lbl">KAN-65 (14B) / Gate line 2</span>Once your church is verified, you'll have full access.
+        <span class="lbl">KAN-64 / Pastoral intro</span>Speak freely. What you share here goes directly to the Replant team — no other leader will see it, unless you choose to let the Body stand with you in prayer. We receive every word with prayer, and we will respond.
+        <span class="lbl">KAN-64 / Field label · textarea</span>Your Heartcry
+        <span class="lbl">KAN-64 / Placeholder</span>Write what you are carrying. There is no limit here.
+        <span class="lbl">KAN-64 / Field label · chips</span>What do you need?
+        <span class="lbl">KAN-64 / Chip options</span>Prayer · Practical support · Guidance · Just to be heard
+        <span class="lbl">KAN-64 / Chip helper</span>Select all that apply.
+        <span class="lbl">KAN-64 / Field label · radio</span>How urgent is your situation?
+        <span class="lbl">KAN-64 / Radio options + descriptors</span>Critical — Immediate threat to life or freedom. · Urgent — The situation is worsening and needs prayer now. · Serious — Significant pressure, not yet at immediate risk. · Ongoing — Persistent persecution, not currently escalating. · Informational — I want the Replant team to know what is happening here.
+        <span class="lbl">KAN-64 / Toggle label</span>Let the Body stand with you
+        <span class="lbl">KAN-64 / Toggle subtext</span>After Replant team review, your heartcry may appear in the feed — your region only, never your name or church.
+        <span class="lbl">KAN-64 / Submit</span>Send My Heartcry
+        <span class="lbl">KAN-64 / Encrypted disclosure</span>🔒 Your words are encrypted the moment you send them. They go to the Replant team, and no one else.
+      </div>
+    </div>
+
+    <!-- BEHAVIOR -->
+    <div class="spec-card full">
+      <h4>⑥ Behavior, states &amp; edge cases</h4>
+      <table class="map-table">
+        <thead><tr><th>Concern</th><th>Spec</th><th>Reasoning</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Persecuted tab routing</td><td class="v">If <code>verification_status === 'verified'</code> → render Screen 14. Else → render Screen 14B. Tab is <b>always visible</b> in tab bar.</td><td class="why">No tab-bar mutation between auth states keeps chrome stable. The screen does the work.</td></tr>
+          <tr><td class="k">14B tone</td><td class="v">No CTA, no toast, no status indicator, no "contact us."</td><td class="why">Per brief — verification is already underway; the leader has no action to take. The screen is a sealed room, not an error.</td></tr>
+          <tr><td class="k">KAN-65 scroll</td><td class="v">Whole screen scrolls (single ScrollView). Feed does <b>not</b> scroll independently.</td><td class="why">Banner + question + CTA + feed are one continuous read. Independent feed scroll would split the act of witness from its preamble.</td></tr>
+          <tr><td class="k">KAN-65 empty feed</td><td class="v">Replace feed cards with single &lt;EmptyHeartcry /&gt;: serif italic line "No heartcries have been received yet." + muted body "When the Body brings burdens here, they will appear in this space." Encrypted footer still renders below.</td><td class="why">Empty state must not feel like a bug — it's a vigil.</td></tr>
+          <tr><td class="k">KAN-65 → KAN-64</td><td class="v">CTA <b>"Share Your Heartcry"</b> pushes KAN-64. iOS push transition (no modal).</td><td class="why">Form is a continuation, not an interruption.</td></tr>
+          <tr><td class="k">Severity badge</td><td class="v">One-liner pulled from content file per heartcry. Always tag/badge — <b>never inline body text</b>.</td><td class="why">Per brief — keeps cards scannable + severity legible at a glance.</td></tr>
+          <tr><td class="k">Card tap</td><td class="v">Out of scope for this ticket — placeholder press state only (opacity 0.7).</td><td class="why">Detail view is a separate ticket.</td></tr>
+          <tr><td class="k">KAN-64 scroll model</td><td class="v"><b>Single-page scroll. No steps, no pagination.</b></td><td class="why">Agree with brief. Steps would break the pastoral flow and make the user re-decide to keep going at every threshold. The form is a single act of disclosure.</td></tr>
+          <tr><td class="k">KAN-64 textarea</td><td class="v">Min-height 180. Auto-grow with content, capped at ~50% of viewport (~460 pt). After cap, internal scroll.</td><td class="why">No character count — "There is no limit here."</td></tr>
+          <tr><td class="k">Witness toggle default</td><td class="v"><b>OFF.</b> Submission is private until user explicitly opts in.</td><td class="why">Per brief. Witness is an opt-in act, not a default.</td></tr>
+          <tr><td class="k">Witness toggle visual</td><td class="v">Card-elevated. Serif label. Subtext below the row. <b>Not</b> styled as &lt;SettingsRow&gt;.</td><td class="why">Brief: "should feel like an act of witness, not a settings control." Serif label borrows from pastoral voice; sub line names the exact privacy contract.</td></tr>
+          <tr><td class="k">Submit pressed/loading</td><td class="v">Disable button + replace label with "Sending…" Spinner not required. On success: pop to KAN-65 with toast "Your heartcry is with us."</td><td class="why">Toast in <b>--surface2</b> above safe-bottom area. (Verify toast token in existing system.)</td></tr>
+          <tr><td class="k">Overlays / modals</td><td class="v"><b>No expo-blur anywhere.</b> Use black @ opacity 0.72 as scrim.</td><td class="why">Per brief — performance and aesthetic consistency.</td></tr>
+          <tr><td class="k">KAN-64 keyboard</td><td class="v">Avoid keyboard-cover: ScrollView with <code>keyboardShouldPersistTaps="handled"</code>. When textarea focused, scroll target = textarea top + 20 pt.</td><td class="why">User must see what they're writing without dismissing keyboard to scroll.</td></tr>
+          <tr><td class="k">Tab bar</td><td class="v">Present on KAN-65. <b>Hidden</b> on KAN-64 (pushed screen).</td><td class="why">Per brief.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h5>Open items requiring product input</h5>
+    <ul>
+      <li><b>Empty-feed copy</b> — the verified-state empty case is not in the content file. Wireframe ships a placeholder; confirm canonical text before ship or omit the empty state and rely on the encrypted footer alone.</li>
+      <li><b>Confirmation question outcome</b> — wireframe assumes "Share Your Heartcry" goes directly to KAN-64. If "Are you currently undergoing persecution?" is intended as a gate (Yes / No flow), spec a sheet before push. Current build treats the question as voice, not a gate.</li>
+      <li><b>Severity badge truncation</b> — longest one-liner is "Critical — In immediate danger now" (≈34 chars). At the current badge width this should wrap to a second line on narrowest cards. Confirm wrap vs single-line ellipsis.</li>
+      <li><b>14B → 14 transition</b> — when verification completes while the user is on 14B, does the screen swap immediately, on next tab focus, or after relaunch? Default assumption: on next tab focus.</li>
+    </ul>
+  </div>
+
+</section>
+
+</body>
+</html>

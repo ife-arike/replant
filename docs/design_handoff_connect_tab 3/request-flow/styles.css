@@ -1,0 +1,318 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Message Request Flow — component styles + handoff page layout.
+   Extends Connect Tab tokens/components via import chain:
+     this file → connect-tab/styles.css → shared/styles.css
+   ────────────────────────────────────────────────────────────────────────── */
+
+@import url('../connect-tab/styles.css');
+
+/* ═══════════════════════ HANDOFF PAGE LAYOUT ═══════════════════════════ */
+
+.hoff-section {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto 64px;
+  padding: 0 8px;
+}
+
+.hoff-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 32px;
+  padding: 0 4px;
+}
+
+.hoff-section-num {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  background: var(--sky-dim);
+  border: 0.5px solid var(--sky-mid);
+  color: var(--sky);
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.hoff-section-title {
+  font-family: var(--serif);
+  font-size: 22px; font-weight: 400;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.hoff-section-sub {
+  font-family: var(--body);
+  font-size: 12.5px; line-height: 1.55;
+  color: var(--muted);
+  margin-top: 5px;
+  max-width: 520px;
+}
+
+.hoff-frames {
+  display: flex;
+  gap: 36px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hoff-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.hoff-frame-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  max-width: 430px;
+}
+
+/* ═══════════════════════ RECOMMENDATION CALLOUT ═══════════════════════ */
+
+.rec-callout {
+  width: 100%;
+  max-width: 896px;
+  margin: 0 auto 32px;
+  padding: 18px 22px;
+  background: var(--sky-dim);
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 12px;
+}
+
+.rec-callout .rec-title {
+  font-family: var(--serif);
+  font-size: 17px; font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.rec-callout p {
+  font-family: var(--body);
+  font-size: 13px; line-height: 1.65;
+  color: var(--muted);
+  margin: 0;
+}
+
+.rec-callout strong {
+  color: var(--sky);
+  font-weight: 600;
+}
+
+/* ═══════════════════════ SPEC BLOCKS ══════════════════════════════════ */
+
+.spec-block {
+  width: 430px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  overflow-x: auto;
+}
+
+.spec-block pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 1.85;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.spec-block .st { color: var(--sky); font-weight: 500; }
+.spec-block .sv { color: var(--text); }
+.spec-block .sc { color: var(--subtle); }
+.spec-block .sn {
+  display: block;
+  font-style: italic;
+  color: var(--subtle);
+  margin-top: 6px;
+}
+
+/* ═══════════════════════ NEW IN-APP COMPONENTS ════════════════════════ */
+
+/* ── 1. Request note (contextual notice inside the composer zone) ────── */
+
+.request-note {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: rgba(8,8,8,0.96);
+  border-top: 0.5px solid var(--border);
+  font-family: var(--body);
+  font-size: 11px;
+  color: var(--sky);
+  letter-spacing: 0.005em;
+}
+
+.request-note svg {
+  color: var(--sky);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* ── 2. Pending tag (sender's Leaders list) ──────────────────────────── */
+
+.pending-tag {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sky);
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+/* Pending row — dashed monogram signals "not yet accepted" */
+.thread-row.pending-row .monogram {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.thread-row.pending-row .preview {
+  color: var(--subtle) !important;
+  font-style: italic;
+}
+
+/* ── 3. Declined row (sender's Leaders list) ──────────────────────────── */
+
+.thread-row.declined-row {
+  opacity: 0.72;
+}
+
+.thread-row.declined-row .monogram {
+  opacity: 0.4;
+}
+
+.thread-row.declined-row .name {
+  color: var(--muted) !important;
+}
+
+.decline-msg {
+  font-family: var(--body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+.decline-msg .prayer {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--subtle);
+}
+
+/* Remove affordance on declined rows */
+.remove-link {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  cursor: pointer;
+  transition: color .16s;
+}
+.remove-link:hover {
+  color: var(--muted);
+}
+
+/* ── 4A. Incoming request card (recipient's Leaders list) ─────────────── */
+
+.request-card {
+  margin: 10px 22px 14px;
+  padding: 16px 16px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--sky-mid);
+  border-radius: 14px;
+}
+
+.request-card .rc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.request-card .rc-head .who { min-width: 0; flex: 1; }
+
+.rc-eyebrow {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 4px;
+}
+
+.rc-name {
+  font-family: var(--serif);
+  font-size: 19px; font-weight: 500;
+  color: var(--text);
+}
+
+.rc-church {
+  font-family: var(--body);
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.rc-message {
+  padding: 10px 13px;
+  background: var(--surface2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  font-family: var(--body);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.rc-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rc-actions .btn { flex: 1; }
+.rc-actions .btn-primary { flex: 1.4; }
+
+/* ── 4B. Request actions bar (recipient's in-thread view) ─────────────── */
+
+.request-actions-bar {
+  flex-shrink: 0;
+  padding: 14px 18px;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  text-align: center;
+}
+
+.rab-label {
+  font-family: var(--body);
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.rab-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.rab-btns .btn { flex: 1; }
+.rab-btns .btn-primary { flex: 1.4; }

@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant · Settings — Name fields & Honorific (fix)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080808;
+    --surface: #0F0F0F;
+    --elevated: #141414;
+    --text: #F0EDE6;
+    --muted: rgba(240,237,230,0.45);
+    --soft: rgba(240,237,230,0.65);
+    --faint: rgba(240,237,230,0.08);
+    --hairline: rgba(240,237,230,0.18);
+    --sky: #6BB5E8;
+    --sky-mid: rgba(107,181,232,0.35);
+    --sky-tint: rgba(107,181,232,0.10);
+    --sky-dim: rgba(107,181,232,0.06);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  html, body { background: #0d0d0d; color: var(--text); font-family: var(--sans); font-weight: 300; -webkit-font-smoothing: antialiased; }
+  body { padding: 56px 24px 80px; position: relative; overflow-x: hidden; }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(107,181,232,0.05) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+  .doc { max-width: 1240px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* HEADER */
+  .page-header { text-align: center; padding-bottom: 28px; border-bottom: 0.5px solid var(--faint); margin-bottom: 40px; }
+  .page-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sky); margin-bottom: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .page-eyebrow::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--sky); }
+  .page-title { font-family: var(--serif); font-weight: 300; font-size: 36px; letter-spacing: 0.04em; margin-bottom: 10px; }
+  .page-title em { font-style: italic; color: var(--sky); font-weight: 300; }
+  .page-sub { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 760px; margin: 0 auto; }
+  .page-meta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--muted); margin-top: 18px; text-transform: uppercase; }
+
+  /* CALLOUT */
+  .callout { max-width: 920px; margin: 0 auto 32px; padding: 18px 24px; border-radius: 6px; border: 0.5px solid var(--faint); background: var(--surface); }
+  .callout-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky); margin-bottom: 10px; }
+  .callout-body { font-size: 12.5px; color: var(--soft); line-height: 1.7; }
+  .callout-body strong { color: var(--text); font-weight: 500; }
+  .callout-body em { color: var(--sky); font-style: italic; font-family: var(--serif); font-size: 14px; }
+
+  /* SECTION DIVIDER */
+  .section-divider { text-align: center; margin: 44px 0 28px; display: flex; align-items: center; gap: 18px; }
+  .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 0.5px; background: var(--faint); }
+  .section-divider span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sky); white-space: nowrap; }
+
+  /* STAGE — before/after pair */
+  .stage { display: flex; gap: 56px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+
+  /* phone */
+  .phone-shell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .phone-shell::before { content: ''; position: absolute; inset: -40px;
+    background: radial-gradient(ellipse 60% 40% at 50% 30%, rgba(107,181,232,0.08) 0%, transparent 70%);
+    pointer-events: none; z-index: -1;
+  }
+  .phone-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+  .phone-label.after { color: var(--sky); }
+  .phone {
+    width: 320px;
+    background: var(--bg);
+    border-radius: 42px;
+    border: 1.5px solid rgba(240,237,230,0.14);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(107,181,232,0.04);
+    display: flex; flex-direction: column;
+  }
+  .phone::before {
+    content: ''; position: absolute; top: 12px; left: 50%;
+    transform: translateX(-50%); width: 76px; height: 5px;
+    background: rgba(240,237,230,0.1); border-radius: 10px; z-index: 10;
+  }
+  .phone-status {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 26px 26px 6px; font-size: 10px; color: var(--muted);
+    letter-spacing: 0.06em; font-family: var(--mono); flex-shrink: 0;
+  }
+  .phone-status .right { display: inline-flex; gap: 4px; align-items: center; font-size: 8px; letter-spacing: 0.2em; }
+
+  /* SCREEN */
+  .screen { padding: 0 26px 30px; display: flex; flex-direction: column; }
+
+  /* settings head */
+  .s-head {
+    display: grid; grid-template-columns: 18px 1fr 28px;
+    align-items: center; gap: 14px;
+    padding: 14px 0 22px; border-bottom: 0.5px solid var(--faint); margin-bottom: 4px;
+  }
+  .s-back { font-size: 18px; color: var(--muted); line-height: 1; }
+  .s-head-title { font-family: var(--serif); font-size: 22px; font-weight: 400; letter-spacing: 0.04em; text-align: center; }
+  .s-head-mark { width: 26px; height: 26px; margin-left: auto; display: block; opacity: 0.95; }
+
+  .s-epigraph { text-align: center; padding: 16px 0 4px; font-family: var(--serif); font-style: italic; font-weight: 300; font-size: 13px; color: var(--sky); letter-spacing: 0.02em; }
+  .s-epigraph-rule { width: 28px; height: 0.5px; background: var(--sky-mid); margin: 8px auto 6px; }
+
+  /* sections */
+  .s-section { padding: 22px 0 4px; }
+  .s-section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .s-section-num { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.22em; color: var(--sky); line-height: 1; padding-top: 3px; }
+  .s-section-title { font-family: var(--serif); font-size: 19px; font-weight: 400; color: var(--text); letter-spacing: 0.03em; line-height: 1; }
+  .s-section-rule { width: 100%; height: 0.5px; background: var(--faint); margin-bottom: 4px; }
+
+  .s-row { padding: 13px 0 11px; border-bottom: 0.5px solid var(--faint); }
+  .s-row:last-child { border-bottom: none; }
+  .s-row-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .s-row-value { font-size: 13px; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 10px; letter-spacing: 0.01em; }
+  .s-row-value.muted { color: var(--muted); }
+  .s-row-value .chev { color: var(--muted); font-size: 13px; line-height: 1; }
+  .s-row-value .sky { color: var(--sky); }
+
+  /* radio (existing) */
+  .s-radio-group { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+  .s-radio { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; color: var(--text); padding: 6px 0 2px; }
+  .s-radio .glyph { font-family: var(--mono); font-size: 11px; color: var(--sky); line-height: 1; flex-shrink: 0; }
+  .s-radio.off { color: var(--soft); }
+  .s-radio.off .glyph { color: var(--muted); }
+  .s-radio-preview { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--sky); margin-left: 20px; padding-bottom: 8px; line-height: 1.3; letter-spacing: 0.01em; }
+  .s-radio-preview.off { color: rgba(240,237,230,0.32); }
+
+  /* ─── BEFORE — replicates the field-thrown-in look ─── */
+  .before-misc { padding: 14px 0 4px; }
+  .before-misc .row-loose {
+    display: flex; align-items: baseline; gap: 10px;
+    font-size: 13px; color: var(--soft); padding: 9px 0;
+  }
+  .before-misc .row-loose .sq-empty {
+    font-family: var(--mono); font-size: 12px; color: var(--muted); line-height: 1;
+  }
+  .before-misc .row-loose .dot {
+    font-family: var(--mono); font-size: 12px; color: var(--muted); line-height: 1;
+    padding: 0 1px;
+  }
+  .before-misc .row-loose .label-honor { color: var(--text); }
+  .before-misc .row-loose .val-sky { color: var(--sky); }
+
+  /* ─── AFTER — fix ─── */
+  .name-modifiers { padding: 14px 0 2px; }
+  .modifiers-eyebrow {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  /* dash removed per direction */
+
+  /* checkbox row — proper square in front, brand-register */
+  .s-check {
+    display: flex; align-items: center; gap: 12px;
+    padding: 6px 0 6px;
+    cursor: pointer;
+  }
+  .s-check .box {
+    width: 14px; height: 14px;
+    border: 0.5px solid var(--hairline);
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    transition: 0.15s;
+  }
+  .s-check.on .box {
+    border-color: var(--sky);
+    background: var(--sky-tint);
+  }
+  .s-check.on .box::after {
+    content: '';
+    width: 7px; height: 4px;
+    border-left: 1.2px solid var(--sky);
+    border-bottom: 1.2px solid var(--sky);
+    transform: rotate(-45deg) translate(1px, -1px);
+  }
+  .s-check .label {
+    font-size: 13px; color: var(--text); letter-spacing: 0.01em;
+  }
+  .s-check.off .label { color: var(--soft); }
+  .s-check-helper {
+    font-family: var(--serif); font-style: italic; font-size: 13px;
+    color: rgba(240,237,230,0.42); line-height: 1.45;
+    padding: 4px 0 6px 26px;
+  }
+
+  /* honorific / suffix rows — left-aligned, label and value adjacent */
+  .name-extra {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 0.5px dashed rgba(240,237,230,0.07);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .name-extra .row-line {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 6px 0;
+    cursor: pointer;
+  }
+  .name-extra .h-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--muted);
+    flex-shrink: 0;
+    min-width: 64px;
+  }
+  .name-extra .h-value {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font-family: var(--serif); font-style: italic; font-size: 14.5px;
+    color: var(--sky); letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .name-extra .h-value .chev {
+    font-family: var(--sans); font-style: normal;
+    font-size: 11px; color: var(--sky); opacity: 0.8;
+  }
+
+  /* updated preview line (after) shows ALL choices integrated */
+  .s-radio-preview.composed {
+    color: var(--sky); font-size: 14px;
+  }
+  .s-radio-preview.composed .acc { font-style: italic; }
+  .s-radio-preview.composed .sep { color: rgba(107,181,232,0.45); padding: 0 4px; }
+
+  /* HONORIFIC MODAL */
+  .modal-stage {
+    display: flex; gap: 56px; justify-content: center; align-items: flex-start; flex-wrap: wrap;
+  }
+  .modal-phone .screen { padding: 0; position: relative; min-height: 620px; }
+  .modal-dim {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1;
+  }
+  .modal-dim .behind {
+    padding: 0 26px;
+    opacity: 0.25;
+    pointer-events: none;
+    filter: grayscale(0.3);
+  }
+
+  /* BEFORE modal (sheet style) */
+  .sheet-before {
+    position: absolute; left: 14px; right: 14px; bottom: 14px;
+    background: #1A1A1A;
+    border-radius: 22px;
+    padding: 22px 24px 26px;
+    z-index: 2;
+    border: 0.5px solid rgba(240,237,230,0.05);
+  }
+  .sheet-before .sb-title {
+    font-family: var(--serif); font-size: 22px; font-weight: 400;
+    text-align: center; margin-bottom: 18px; letter-spacing: 0.02em;
+  }
+  .sheet-before .sb-row {
+    padding: 14px 0; font-size: 14.5px; color: var(--text);
+  }
+  .sheet-before .sb-row.selected { color: var(--sky); }
+
+  /* AFTER modal — on-brand */
+  .sheet-after {
+    position: absolute; left: 14px; right: 14px; bottom: 14px;
+    background: #131313;
+    border: 0.5px solid rgba(240,237,230,0.06);
+    border-radius: 18px;
+    padding: 22px 22px 18px;
+    z-index: 2;
+    box-shadow: 0 28px 60px rgba(0,0,0,0.7);
+  }
+  .sheet-after .sa-grip {
+    width: 36px; height: 4px; background: rgba(240,237,230,0.18);
+    border-radius: 2px; margin: 0 auto 14px;
+  }
+  .sheet-after .sa-eyebrow {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--sky); text-align: center;
+    display: flex; align-items: center; gap: 10px; justify-content: center;
+    margin-bottom: 8px;
+  }
+  .sheet-after .sa-eyebrow::before, .sheet-after .sa-eyebrow::after {
+    content: ''; width: 16px; height: 0.5px; background: var(--sky-mid);
+  }
+  .sheet-after .sa-title {
+    font-family: var(--serif); font-style: italic; font-weight: 400;
+    font-size: 22px; text-align: center; letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .sheet-after .sa-sub {
+    font-family: var(--serif); font-style: italic; font-size: 12.5px;
+    color: var(--soft); text-align: center; line-height: 1.55;
+    max-width: 230px; margin: 6px auto 16px;
+  }
+  .sheet-after .sa-rule {
+    width: 28px; height: 0.5px; background: var(--sky-mid); margin: 0 auto 12px;
+  }
+  .sheet-after .sa-option {
+    display: grid; grid-template-columns: 22px 1fr;
+    align-items: center; gap: 10px;
+    padding: 11px 4px 11px;
+    border-bottom: 0.5px solid var(--faint);
+  }
+  .sheet-after .sa-option:last-of-type { border-bottom: none; }
+  .sheet-after .sa-option .gl {
+    font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1;
+  }
+  .sheet-after .sa-option.selected .gl { color: var(--sky); }
+  .sheet-after .sa-option .title {
+    font-family: var(--serif); font-style: italic; font-size: 17px;
+    color: var(--text); letter-spacing: 0.02em; line-height: 1.1;
+  }
+  .sheet-after .sa-option.selected .title { color: var(--sky); }
+  .sheet-after .sa-option.notset .title { font-style: normal; font-family: var(--sans); font-size: 13.5px; letter-spacing: 0.01em; }
+  .sheet-after .sa-foot {
+    padding: 14px 0 2px; text-align: center;
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  /* DESIGN NOTES (kept short) */
+  .notes {
+    max-width: 1040px; margin: 56px auto 0;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 28px;
+  }
+  .note {
+    padding: 22px 24px;
+    background: var(--surface);
+    border: 0.5px solid var(--faint);
+    border-radius: 6px;
+  }
+  .note-eyebrow {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--sky); margin-bottom: 10px;
+    display: inline-flex; gap: 8px; align-items: center;
+  }
+  .note-eyebrow::before { content: ''; width: 8px; height: 0.5px; background: var(--sky-mid); }
+  .note-title {
+    font-family: var(--serif); font-style: italic; font-size: 20px;
+    font-weight: 400; margin-bottom: 12px; letter-spacing: 0.02em;
+  }
+  .note-body { font-size: 12.5px; color: var(--soft); line-height: 1.75; }
+  .note-body strong { color: var(--text); font-weight: 500; }
+  .note-body em { font-family: var(--serif); font-style: italic; color: var(--sky); font-size: 14px; }
+  .note-body ul { list-style: none; margin-top: 10px; }
+  .note-body li { padding: 6px 0 6px 14px; position: relative; }
+  .note-body li::before {
+    content: ''; position: absolute; left: 0; top: 14px;
+    width: 6px; height: 0.5px; background: var(--sky-mid);
+  }
+</style>
+</head>
+<body>
+
+<div class="doc">
+
+  <header class="page-header">
+    <p class="page-eyebrow">Settings · Account · Display name & honorific</p>
+    <h1 class="page-title">Two fields, <em>brought home.</em></h1>
+    <p class="page-sub">The <strong style="color:var(--text);font-weight:500;">Show last name first</strong> checkbox and the <strong style="color:var(--text);font-weight:500;">Honorific</strong> row currently sit in the gap below the radio group and read as add-ons. This pass treats them as <em style="font-family:var(--serif);font-style:italic;color:var(--sky);font-size:14px;">modifiers of the display name</em> — one sub-block, one shared eyebrow, one live preview that reflects every choice.</p>
+    <p class="page-meta">Replant · MVP · Settings — Screen 20 · fix · 14 June 2026</p>
+  </header>
+
+  <!-- ──────── SCOPE CALLOUT ──────── -->
+  <div class="callout">
+    <p class="callout-label">SCOPE — WHAT THIS PASS TOUCHES</p>
+    <p class="callout-body">Only the two fields and the Honorific sheet. Everything else on Settings is preserved as-is: <em>your account, your church.</em> epigraph, the 01 Account section header, the Email row, the Display-name radio group with its italic-serif preview, the Password row, and every section below (02 Privacy → 06 About). No structural reshuffle — just two fields lifted into the same register as the rest of the page, and the modal brought up to brand.</p>
+  </div>
+
+  <!-- ──────── BEFORE / AFTER STAGE ──────── -->
+  <div class="section-divider"><span>· The Account row · before & after ·</span></div>
+
+  <div class="stage">
+
+    <!-- ════════ BEFORE ════════ -->
+    <div class="phone-shell">
+      <div class="phone">
+        <div class="phone-status">
+          <span>10:09</span>
+          <span class="right">···· 95</span>
+        </div>
+        <div class="screen">
+          <div class="s-head">
+            <div class="s-back">‹</div>
+            <div class="s-head-title">Settings</div>
+            <svg class="s-head-mark" viewBox="0 0 26 26"><circle cx="13" cy="13" r="11.25" fill="none" stroke="#6BB5E8" stroke-width="0.8"/><path d="M9 16 Q13 8 17 16 M11 14 L11 18 M15 14 L15 18 M13 10 L13 18" fill="none" stroke="#6BB5E8" stroke-width="0.8" stroke-linecap="round"/></svg>
+          </div>
+
+          <p class="s-epigraph">your account, your church.</p>
+          <div class="s-epigraph-rule"></div>
+
+          <section class="s-section">
+            <div class="s-section-head">
+              <span class="s-section-num">01</span>
+              <span class="s-section-title">Account</span>
+            </div>
+            <div class="s-section-rule"></div>
+
+            <div class="s-row">
+              <p class="s-row-label">Email</p>
+              <div class="s-row-value muted">ruthjames08@gmail.com</div>
+            </div>
+
+            <div class="s-row" style="border-bottom: none;">
+              <p class="s-row-label">Display name shown to others</p>
+              <div class="s-radio-group">
+                <div class="s-radio off"><span class="glyph">○</span><span>First name + role</span></div>
+                <div class="s-radio"><span class="glyph">◉</span><span>Full name + role</span></div>
+                <div class="s-radio-preview">Psalmist Ruth James</div>
+              </div>
+            </div>
+
+            <!-- the "thrown in" fields, reproduced -->
+            <div class="before-misc">
+              <div class="row-loose">
+                <span class="sq-empty">▢</span>
+                <span>Show last name first</span>
+              </div>
+              <div class="row-loose">
+                <span class="dot">·</span>
+                <span class="label-honor">Honorific:</span>
+                <span class="val-sky">Not set</span>
+              </div>
+            </div>
+
+            <div class="s-row" style="border-top: 0.5px solid var(--faint);">
+              <p class="s-row-label">Password</p>
+              <div class="s-row-value"><span>Change password</span><span class="chev">›</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <p class="phone-label">Before — current build</p>
+    </div>
+
+    <!-- ════════ AFTER ════════ -->
+    <div class="phone-shell after-shell">
+      <div class="phone">
+        <div class="phone-status">
+          <span>10:09</span>
+          <span class="right">···· 95</span>
+        </div>
+        <div class="screen">
+          <div class="s-head">
+            <div class="s-back">‹</div>
+            <div class="s-head-title">Settings</div>
+            <svg class="s-head-mark" viewBox="0 0 26 26"><circle cx="13" cy="13" r="11.25" fill="none" stroke="#6BB5E8" stroke-width="0.8"/><path d="M9 16 Q13 8 17 16 M11 14 L11 18 M15 14 L15 18 M13 10 L13 18" fill="none" stroke="#6BB5E8" stroke-width="0.8" stroke-linecap="round"/></svg>
+          </div>
+
+          <p class="s-epigraph">your account, your church.</p>
+          <div class="s-epigraph-rule"></div>
+
+          <section class="s-section">
+            <div class="s-section-head">
+              <span class="s-section-num">01</span>
+              <span class="s-section-title">Account</span>
+            </div>
+            <div class="s-section-rule"></div>
+
+            <div class="s-row">
+              <p class="s-row-label">Email</p>
+              <div class="s-row-value muted">ruthjames08@gmail.com</div>
+            </div>
+
+            <div class="s-row after-row" style="border-bottom: none; padding-bottom: 4px;">
+              <p class="s-row-label">Display name shown to others</p>
+              <div class="s-radio-group">
+                <div class="s-radio off opt-first"><span class="glyph">○</span><span class="opt-text">First name + role</span></div>
+                <div class="s-radio-preview off preview-first">Psalmist Ruth</div>
+                <div class="s-radio opt-full"><span class="glyph">◉</span><span class="opt-text">Full name + role</span></div>
+                <div class="s-radio-preview composed preview-full">Psalmist Ruth James</div>
+              </div>
+
+              <!-- modifiers sub-block, shares the parent row -->
+              <div class="name-modifiers">
+                <p class="modifiers-eyebrow">Format</p>
+
+                <div class="s-check off cb-last">
+                  <span class="box"></span>
+                  <span class="label">Show last name first</span>
+                </div>
+
+                <div class="s-check off cb-middle">
+                  <span class="box"></span>
+                  <span class="label">Include middle name in full name</span>
+                </div>
+
+                <div class="name-extra">
+                  <div class="row-line" data-modal="honorific">
+                    <span class="h-label">Honorific</span>
+                    <span class="h-value"><span class="h-value-text">Not set</span> <span class="chev">›</span></span>
+                  </div>
+                  <div class="row-line" data-modal="suffix">
+                    <span class="h-label">Suffix</span>
+                    <span class="h-value"><span class="s-value-text">Not set</span> <span class="chev">›</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="s-row" style="border-top: 0.5px solid var(--faint);">
+              <p class="s-row-label">Password</p>
+              <div class="s-row-value"><span>Change password</span><span class="chev">›</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <p class="phone-label after">After — Account row</p>
+    </div>
+
+  </div>
+
+  <!-- ──────── HONORIFIC + SUFFIX MODALS ──────── -->
+  <div class="section-divider"><span>· The picker sheets · honorific + suffix ·</span></div>
+
+  <div class="modal-stage">
+
+    <!-- BEFORE modal -->
+    <div class="phone-shell">
+      <div class="phone modal-phone">
+        <div class="phone-status">
+          <span>10:09</span>
+          <span class="right">···· 95</span>
+        </div>
+        <div class="screen">
+          <div class="modal-dim">
+            <div class="behind">
+              <div class="s-head" style="opacity:0.5;">
+                <div class="s-back">‹</div>
+                <div class="s-head-title">Settings</div>
+                <span></span>
+              </div>
+            </div>
+            <div class="sheet-before">
+              <p class="sb-title">Honorific</p>
+              <p class="sb-row selected">Not set</p>
+              <p class="sb-row">Anba</p>
+              <p class="sb-row">Mar</p>
+              <p class="sb-row">Abuna</p>
+              <p class="sb-row">Achen</p>
+              <p class="sb-row">Catholicos</p>
+              <p class="sb-row">Patriarch</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="phone-label">Before — current build</p>
+    </div>
+
+    <!-- AFTER modal -->
+    <div class="phone-shell">
+      <div class="phone modal-phone">
+        <div class="phone-status">
+          <span>10:09</span>
+          <span class="right">···· 95</span>
+        </div>
+        <div class="screen">
+          <div class="modal-dim">
+            <div class="behind">
+              <div class="s-head" style="opacity:0.5;">
+                <div class="s-back">‹</div>
+                <div class="s-head-title">Settings</div>
+                <span></span>
+              </div>
+            </div>
+            <div class="sheet-after">
+              <div class="sa-grip"></div>
+              <p class="sa-eyebrow">Choose one</p>
+              <p class="sa-title">Honorific</p>
+              <p class="sa-sub">A prefix shown before your name in the network.</p>
+              <div class="sa-rule"></div>
+
+              <div class="sa-option selected notset">
+                <span class="gl">◉</span>
+                <span class="title">Not set</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Anba</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Mar</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Abuna</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Achen</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Catholicos</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Patriarch</span>
+              </div>
+
+              <p class="sa-foot">Tap a name to confirm</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="phone-label after">After — Honorific</p>
+    </div>
+
+    <!-- SUFFIX modal (new) -->
+    <div class="phone-shell">
+      <div class="phone modal-phone">
+        <div class="phone-status">
+          <span>10:09</span>
+          <span class="right">···· 95</span>
+        </div>
+        <div class="screen">
+          <div class="modal-dim">
+            <div class="behind">
+              <div class="s-head" style="opacity:0.5;">
+                <div class="s-back">‹</div>
+                <div class="s-head-title">Settings</div>
+                <span></span>
+              </div>
+            </div>
+            <div class="sheet-after">
+              <div class="sa-grip"></div>
+              <p class="sa-eyebrow">Choose one</p>
+              <p class="sa-title">Suffix</p>
+              <p class="sa-sub">Earned or honorary letters shown after your name. PhD, MDiv, ThD…</p>
+              <div class="sa-rule"></div>
+
+              <div class="sa-option selected notset">
+                <span class="gl">◉</span>
+                <span class="title">Not set</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">PhD</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">MDiv</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">DMin</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">ThD</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">DD</span>
+              </div>
+              <div class="sa-option">
+                <span class="gl">○</span>
+                <span class="title">Other…</span>
+              </div>
+
+              <p class="sa-foot">Tap to confirm · "Other" opens a text field</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="phone-label after">After — Suffix (new)</p>
+    </div>
+
+  </div>
+
+  <!-- ──────── DESIGN NOTES ──────── -->
+  <div class="notes">
+
+    <div class="note">
+      <p class="note-eyebrow">The row, not strays</p>
+      <p class="note-title">One parent row, every modifier inside</p>
+      <p class="note-body">
+        The Display-name radio, the two checkboxes, and the Honorific + Suffix pickers are not five peers in the Account section — they are <em>one</em> decision (how my name appears) with five controls. So they all live inside a single <code style="font-family:var(--mono);font-size:11px;color:var(--sky);">s-row</code> under the <em>Display name shown to others</em> label, with the bordered Password row below.
+        <ul>
+          <li><strong>Each radio shows its own example</strong> in italic-serif sky — the selected option in full sky, the other dimmed. So when you flip <em>Show last name first</em>, both labels and previews update — and you can see the shape before committing.</li>
+          <li><strong>Format</strong> mono eyebrow groups the two checkboxes. Real squares — hairline outline off, sky border + sky-tint fill + sky check on — same sky language as the active radio dot.</li>
+          <li><strong>Honorific + Suffix sit side by side, left-aligned.</strong> Mono label and the italic-serif sky value share a line with a small gap between them — because the page reads left-aligned, the value belongs next to its label, not stranded at the right edge.</li>
+          <li><strong>Toggle the checkboxes</strong> in the After phone to watch the labels and previews update live — it's a working spec, not a static mock.</li>
+        </ul>
+      </p>
+    </div>
+
+    <div class="note">
+      <p class="note-eyebrow">The sheets, on-brand</p>
+      <p class="note-title">A sheet, not a system menu</p>
+      <p class="note-body">
+        The current Honorific sheet reads as a stock iOS picker. The fix brings both sheets (Honorific + the new Suffix) into the same register as the rest of Settings.
+        <ul>
+          <li><strong>Mono eyebrow + italic-serif title.</strong> <em>Choose one</em> above <em>Honorific</em> / <em>Suffix</em> — the brand's numbered-section pattern compressed into a modal head, with the hairline rule under it.</li>
+          <li><strong>One short line of context</strong> under the title, so the choice doesn't land cold — nothing about denomination or tradition, just what the field does.</li>
+          <li><strong>Each option is an italic-serif specimen.</strong> Same face as the live name preview — the picker shows you what your name will look like, not just a list of strings.</li>
+          <li><strong>Selected state</strong> uses the same ◉/○ sky glyph as the radio group above; nothing new to learn.</li>
+          <li><strong>Suffix "Other…"</strong> opens a short text field so a leader can enter letters we didn't list (honorary, ThM, EdD, etc.) without us pretending to know every credential register.</li>
+        </ul>
+      </p>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const phone = document.querySelector('.after-shell');
+  if (!phone) return;
+
+  const cbLast = phone.querySelector('.cb-last');
+  const cbMid  = phone.querySelector('.cb-middle');
+  const optFirstText = phone.querySelector('.opt-first .opt-text');
+  const previewFirst = phone.querySelector('.preview-first');
+  const previewFull  = phone.querySelector('.preview-full');
+
+  const FIRST = 'Ruth';
+  const MID   = 'Elizabeth';
+  const LAST  = 'James';
+  const ROLE  = 'Psalmist';
+
+  function render(){
+    const lastFirst  = cbLast.classList.contains('on');
+    const includeMid = cbMid.classList.contains('on');
+
+    if (lastFirst) {
+      optFirstText.textContent = 'Last name + role';
+      previewFirst.textContent = ROLE + ' ' + LAST;
+      previewFull.textContent  = includeMid
+        ? ROLE + ' ' + LAST + ', ' + FIRST + ' ' + MID
+        : ROLE + ' ' + LAST + ', ' + FIRST;
+    } else {
+      optFirstText.textContent = 'First name + role';
+      previewFirst.textContent = ROLE + ' ' + FIRST;
+      previewFull.textContent  = includeMid
+        ? ROLE + ' ' + FIRST + ' ' + MID + ' ' + LAST
+        : ROLE + ' ' + FIRST + ' ' + LAST;
+    }
+  }
+
+  function toggle(cb){
+    cb.classList.toggle('on');
+    cb.classList.toggle('off');
+    render();
+  }
+  cbLast.addEventListener('click', () => toggle(cbLast));
+  cbMid.addEventListener('click',  () => toggle(cbMid));
+
+  render();
+})();
+</script>
+
+</body>
+</html>

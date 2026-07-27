@@ -78,7 +78,10 @@ export interface PrayerRow {
   prayer_text: string;
   urgency: boolean;
   created_at: string;
-  church_id: string;
+  // NULL for underground rows (masked alongside church_name + country +
+  // rag_status). Pre-UAT audit 2026-07-01: get_prayer_wall stops emitting the
+  // real UG church_id — it was the harvest seed into get_open_prayers.
+  church_id: string | null;
   leader_display_name: string | null;
   leader_role: string | null;
   prayed_count: number;
@@ -93,6 +96,14 @@ export interface PrayerRow {
   // i_prayed field above — same EXISTS-on-prayer_request_prayed_by
   // semantics — so only this one column was added.
   rag_status: string | null;
+  // Founder ruling 2026-07-25 (migration 20260725150000): true when the
+  // CALLER authored this request — self-intercede is blocked server-side
+  // (self_interaction_blocked), so the FE swaps the Intercede button for
+  // the quiet "YOUR CHURCH'S REQUEST" state. Author-level, mirroring
+  // stand_in_the_gap's guard; the author id itself never ships (SEC
+  // Obs D). Optional: rows from a pre-flag deployment simply omit it —
+  // treat as false (the server still declines, with the toast backstop).
+  is_own?: boolean;
 }
 
 // Wire shape covering both get_testimonies (with original-request join)

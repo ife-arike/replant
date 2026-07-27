@@ -40,6 +40,8 @@ export interface Deps {
   rateLimit(ip: string): Promise<
     | { allowed: true; count: number }
     | { allowed: false; retryAfterSeconds: number }
+    // Strict fail-closed (pre-UAT audit 2026-07-01): Upstash backend unreachable -> reject with 503.
+    | { allowed: false; backendError: true }
   >;
   getIp(req: Request): string;
   now(): Date;
@@ -66,6 +68,12 @@ export function createHandler(deps: Deps) {
       const ip = deps.getIp(req);
       const rl = await deps.rateLimit(ip);
       if (!rl.allowed) {
+        // Strict fail-closed (pre-UAT audit 2026-07-01): when the rate-limit backend (Upstash) is
+        // unreachable we reject rather than proceed — abuse-surface protection on an anon write RPC.
+        if ("backendError" in rl) {
+          deps.log("error", "register_church_rate_limit_unavailable", { ip_hash: djb2(ip) });
+          return json(503, { error: "rate_limit_unavailable", message: "Service temporarily unavailable — please try again in a moment." });
+        }
         deps.log("warn", "register_church_rate_limited", {
           ip_hash: djb2(ip),
           retry_after_seconds: rl.retryAfterSeconds,

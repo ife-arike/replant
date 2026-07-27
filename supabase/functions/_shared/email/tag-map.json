@@ -1,0 +1,67 @@
+{
+  "$schema_version": "1.0.0",
+  "$source_of_truth": "replant/docs/architecture/email-tag-map.json",
+  "$updated": "2026-07-13 — Batch 6 closeout; admin_t37 wired (KAN-168 Founder-ratified)",
+  "$rationale": "Family-prefix preserved (welcome_*, notify_*, auth_*, ops_*, intake_*, admin_*). Numeric suffix shuffled (NOT monotonic) so neighbor inference fails. Underground + heartcry surfaces ride notify_* alongside non-sensitive admin notify so traffic-class isolation by family fails. The tag is what crosses the wire to Resend AND what lands in email_log.template; semantic names live only in code comments and this file.",
+  "$discipline": [
+    "Tags are immutable post-lock. New templates take the next unused number in family; never reuse retired numbers.",
+    "Sync is MANUAL at MVP (Founder ruling 2026-07-13): update this file in the same change that introduces a tag; pre-launch checklist re-verifies both repos against it.",
+    "SEC refusal posture: no tag may contain 'underground' or 'heartcry' literals."
+  ],
+  "$reserved": {
+    "admin_t40_to_t79_unallocated": "KAN-271 admin-tier bundle continues here (t41/t44/t52/t63/t77 now taken below).",
+    "notify_t90_to_t99": "Future Family 5 carve-outs (Founder-ratified narrow).",
+    "ops_t60_to_t69": "Future ops cron telemetry templates."
+  },
+  "live_wired": {
+    "intake_form_welcome": "intake_t12",
+    "intake_form_admin_notify": "intake_t27",
+    "serve_with_us_welcome": "intake_t18",
+    "serve_with_us_admin_notify": "intake_t33",
+    "welcome_underground_pending (join-underground-church)": "welcome_t08",
+    "verification_approved": "notify_t51",
+    "verification_rejected (church + personal variants)": "notify_t26",
+    "account_deactivated": "notify_t09",
+    "account_reinstated": "notify_t29",
+    "flag_escalated": "notify_t13",
+    "underground_admin_action_needed": "notify_t47",
+    "password_reset_admin": "auth_t24",
+    "admin_access_granted (grant-admin-to-existing)": "admin_t29",
+    "admin_promotion_sponsored_candidate": "admin_t41",
+    "admin_promotion_review_required": "admin_t52",
+    "admin_promotion_approved": "admin_t63",
+    "admin_promotion_denied": "admin_t77",
+    "admin_promotion_expired": "admin_t44",
+    "admin_access_removed (revoke-admin-tier + revoke-admin)": "admin_t37"
+  },
+  "live_legacy_semantic_names": {
+    "$note": "Pre-tag-map senders whose email_log.template carries the semantic string. Rename = data migration; deferred (pastoral pair defers to KAN-271 revisit; heartcry string locked by DBA ruling — 98% of historic rows).",
+    "heartcry_triage_notification": "submit-heartcry (Deno) — KEEP literal (DBA lock)",
+    "pastoral_signal_alert_t1": "send-message t1 (Deno) — opaque rename post-KAN-271",
+    "pastoral_signal_digest_t2": "emit_pastoral_digest (pg_cron) — opaque rename post-KAN-271",
+    "webhook_e2e_test": "test rows only (2026-07-13 verification)"
+  },
+  "designed_not_yet_wired": {
+    "welcome_skip": "welcome_t23",
+    "welcome_pending_church": "welcome_t14",
+    "welcome_verified_church": "welcome_t29",
+    "new_church_registered": "notify_t36",
+    "verification_request_info": "notify_t44 — copy locked; NO surface trigger exists yet (UG-only thread infra)",
+    "verification_reminder_7d": "notify_t17 — Batch 6 cron",
+    "verification_reminder_1d": "notify_t31 — Batch 6 cron",
+    "coleader_departed": "notify_t38",
+    "password_reset_otp": "auth_t17 — KAN-198",
+    "email_change_verify_new": "auth_t31",
+    "email_change_notify_old": "auth_t08",
+    "heartcry_acknowledged": "notify_t19 — copy locked; awaits heartcry thread seeding (F9)",
+    "branch_invite_stale": "notify_t22 — Batch 6 cron",
+    "ops_daily_digest": "ops_t12 — Batch 6",
+    "waitlist_launch_broadcast": "intake_t41 — KAN-321"
+  },
+  "underground_class_set": [
+    "welcome_t08",
+    "notify_t19",
+    "notify_t22",
+    "notify_t47"
+  ]
+}

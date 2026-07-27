@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Account Page · Admin CD</title>
+<!-- ext-resource-dependency: https://fonts.googleapis.com -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="account-chrome.css">
+<link rel="stylesheet" href="account-cd.css">
+<style>
+  /* match the live admin font stack exactly (JetBrains Mono, not DM Mono) */
+  :root { --mono: "JetBrains Mono", ui-monospace, monospace; --rp-mono: "JetBrains Mono", ui-monospace, monospace;
+          --rp-sans: "DM Sans", system-ui, sans-serif; --rp-serif: "Cormorant Garamond", Georgia, serif;
+          --rp-amber: #d8a14a; }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#080808"/>
+    <circle cx="50" cy="40" r="13" fill="none" stroke="#6BB5E8" stroke-width="2.6"/>
+    <path d="M28 74c0-12 10-20 22-20s22 8 22 20" fill="none" stroke="#6BB5E8" stroke-width="2.6"/>
+  </svg>
+</template>
+
+<div class="doc">
+
+  <!-- ░░░ HEADER ░░░ -->
+  <header class="page-header">
+    <div class="page-header-top">
+      <span class="page-eyebrow">Replant Admin · Concept Direction</span>
+      <div class="page-meta">
+        Account page · /account<br>
+        <b>KAN-271 · admin tier bundle</b><br>
+        MVP baseline § 3.5 + CD layer
+      </div>
+    </div>
+    <h1 class="page-title">The Account page — <em>a canonical home for every admin tier</em></h1>
+    <p class="page-sub">One page at <code style="font-family:var(--rp-mono);color:var(--rp-sky)">/account</code>, reached by clicking the whole bottom-left identity block in <code style="font-family:var(--rp-mono);color:var(--rp-sky)">Shell.jsx</code>. It gives <strong>Overseer</strong>, <strong>Super admin</strong>, and the new regular <strong>Admin</strong> a place to manage their own account — most urgently <strong>TOTP enrollment</strong>, which today hides on Team Management, a page the Admin tier can't even see. Built on the live <code style="font-family:var(--rp-mono);color:var(--rp-sky)">rp-*</code> system, clinical register, dark, no new tokens.</p>
+
+    <p class="prayer-line">
+      Father, we lift up the persecuted Church — the underground leaders in Iran, China, Eritrea, North Korea, and every place Your name is met with prison. This quiet page guards them downstream: a second factor an admin can actually find and finish is, in the end, a believer not exposed. Give us seasoned restraint — clear, honest, unshowy; clinical without coddling competent people; never leaking a leader's identity. Steady Ruth and the Replant team who ratify this. Let it serve the Church You love.
+      <span class="amen">In Jesus' name, Amen.</span>
+    </p>
+  </header>
+
+  <!-- ░░░ DESIGN RATIONALE ░░░ -->
+  <section class="section" id="rationale" style="margin-top:64px">
+    <div class="section-header">
+      <div class="section-eyebrow">Design rationale</div>
+      <h2 class="section-title">What populates the page, and why</h2>
+    </div>
+
+    <div class="specs">
+      <div class="specs-inner" style="padding:22px">
+        <div class="specs-grid">
+          <div>
+            <div class="specs-block-label">Layout — single column, sectioned cards</div>
+            <div class="specs-note-body" style="margin-bottom:14px">Account management is low-frequency and personal. A second left-hand nav would fight the global nav already on screen; tabs would hide the one thing a new Admin came for (TOTP). A single readable column (max ~760px) with labelled section cards lets the eye fall straight to the hero and scroll the rest. It also matches the existing <code>rp-body</code> card rhythm.</div>
+            <div class="specs-block-label">Visual register</div>
+            <div class="specs-note-body">Clinical. Serif (<code>Cormorant</code>) headers, dark <code>#080808</code>, <code>rp-*</code> tokens, generous whitespace. No scripture forced onto a settings page — italic is reserved for <code>scriptureItalic</code> and there's no editorial copy that earns it here. Admins are competent: plain, honest labels, standard vocabulary (TOTP, 2FA), zero auth-internal jargon (no AAL2 / JWT / RLS on any surface).</div>
+          </div>
+          <div>
+            <div class="specs-block-label">Sections — baseline + what I'd add</div>
+            <div class="spec-row"><span class="spec-key">baseline</span><span class="spec-val">Identity (name · tier · email) · <b>Two-factor authentication</b> · Sign out. (manifest § 3.5)</span></div>
+            <div class="spec-row"><span class="spec-key">+ add</span><span class="spec-val"><b>Active sessions</b> — sign out other devices. Real risk on a shared/observed machine; the shell already warns about unattended sessions.</span></div>
+            <div class="spec-row"><span class="spec-key">+ add</span><span class="spec-val"><b>Recent account activity</b> — this admin's own sign-ins (a "was this you?" mirror), not the global audit log.</span></div>
+            <div class="spec-row"><span class="spec-key">+ add</span><span class="spec-val"><b>Preferences</b> — timezone (logs render in it), language slot (localization lands later), notification cadence.</span></div>
+            <div class="spec-row"><span class="spec-key">+ add</span><span class="spec-val"><b>Deactivation request</b> — not self-service; routes to another admin.</span></div>
+            <div class="spec-row"><span class="spec-key">excluded</span><span class="spec-val">Theme switch (dark-only is locked), avatar upload (vanity + a security smell), data export (defer — little personal data here).</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="specs-note"><div class="specs-note-label">Team Management redundancy — my recommendation</div><div class="specs-note-body"><strong>Make the Account page the single source of truth for personal TOTP; pull the personal TOTP setup out of Team Management.</strong> Team Management is for managing <em>others</em> — burying your own second factor inside it is exactly what made enrollment invisible. Leave a one-line pointer on Team Management ("Manage your own two-factor authentication on your Account page →") for discoverability during transition. Clean separation: Team Management = team/tier ops; Account = self.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ THE PAGE — interactive shell mockup ░░░ -->
+  <section class="section" id="mockup">
+    <div class="section-header">
+      <div class="section-eyebrow">The page · on the admin shell</div>
+      <h2 class="section-title">Account, <em>rendered in the real chrome</em></h2>
+      <p class="section-desc">The full admin shell at desktop width. Use the <strong>View as</strong> control to switch tier and TOTP state — the nav, tier chip, TOTP section, and Overseer cross-notify block all respond. This is the live spec for all three required variants.</p>
+    </div>
+
+    <div class="viewas">
+      <span class="viewas-label">View as</span>
+      <div class="viewas-group"><span class="gl">Tier</span><div class="seg-sm" data-seg="tier" data-opts='[{"v":"admin","label":"Admin"},{"v":"super","label":"Super admin"},{"v":"overseer","label":"Overseer"}]'></div></div>
+      <div class="viewas-group"><span class="gl">TOTP</span><div class="seg-sm" data-seg="totp" data-opts='[{"v":"not","label":"Not enrolled"},{"v":"enrolled","label":"Enrolled"}]'></div></div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/account</div>
+        <span class="frame-tag">1440 × 900</span>
+      </div>
+      <div class="frame-body">
+        <div class="adm" data-tier="admin" data-mount-shell></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> New screen <b>AccountPage.jsx</b> at route <b>/account</b> (App.jsx), inside <b>RpFrame</b>. The bottom-left identity block in <b>Shell.jsx</b> (<code>.rp-id</code> + the sign-out row's sibling) is wrapped in <code>&lt;Link to="/account"&gt;</code> — whole block is the target, sign out stays above. Tier label uses the user-facing <b>&lt;TierChip/&gt;</b> reading <code>app_metadata.admin_tier</code> → Overseer / Super admin / Admin.</div>
+  </section>
+
+  <!-- ░░░ TOTP — both states close up ░░░ -->
+  <section class="section" id="totp">
+    <div class="section-header">
+      <div class="section-eyebrow">The hero · Two-factor authentication</div>
+      <h2 class="section-title">TOTP — <em>the reason this page exists</em></h2>
+      <p class="section-desc">For a new Admin, this is the whole point. <strong>This component is already built</strong> — the CD does not touch it. <strong>Not enrolled</strong> renders the existing <code>TotpEnrollmentScreen</code> three-step flow verbatim, just hosted on this page instead of Team Management. <strong>Enrolled</strong> shows a calm status card — authenticator, enrolled date, last verified — plus a guarded <strong>Reset TOTP</strong> that runs the existing revoke + re-enroll.</p>
+    </div>
+
+    <div class="mock-grid g2">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Not enrolled · embedded flow</div><span class="frame-tag">new Admin</span></div>
+          <div class="frame-body" style="padding:22px" data-mount-totp-not></div>
+        </div>
+        <div class="state-caption">Reuses <b>TotpEnrollmentScreen.jsx</b> verbatim · no separate gate</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Enrolled · status card</div><span class="frame-tag">returning</span></div>
+          <div class="frame-body" style="padding:22px" data-mount-totp-enrolled></div>
+        </div>
+        <div class="state-caption">Status + <b>Reset TOTP</b> (guarded · existing revoke flow)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░ COMPONENT STATES ░░░ -->
+  <section class="section" id="states">
+    <div class="section-header">
+      <div class="section-eyebrow">Empty · loading · error</div>
+      <h2 class="section-title">Every section degrades gracefully</h2>
+      <p class="section-desc">Each data-backed section (sessions, activity) resolves through the live <code>SkeletonRows</code> / <code>EmptyState</code> / <code>ErrorBanner</code> primitives. Identity + TOTP never block on a fetch — they read from the session already in hand.</p>
+    </div>
+    <div class="states-grid">
+      <div class="state-box">
+        <div class="state-box-label">Loading · sessions</div>
+        <div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:50%"></div>
+      </div>
+      <div class="state-box">
+        <div class="state-box-label">Empty · activity</div>
+        <div class="state-empty-mid"><div><div class="em-eyebrow">No recent activity</div><div class="em-msg">Sign-ins from the last 30 days will appear here.</div></div></div>
+      </div>
+      <div class="state-box">
+        <div class="state-box-label">Error · sessions</div>
+        <div class="state-err" style="flex-direction:column"><div style="display:flex;gap:10px"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2 1.5 13.5h13L8 2Z"/><path d="M8 6.5v3.5"/></svg><div>Couldn't load your active sessions.</div></div><button class="state-err-retry">Try again</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░ COMPONENT SPEC ░░░ -->
+  <section class="section" id="spec">
+    <div class="section-header">
+      <div class="section-eyebrow">React component spec</div>
+      <h2 class="section-title">Component tree &amp; reuse</h2>
+    </div>
+    <div class="specs">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>AccountPage<span class="ang">/&gt;</span> · screens/AccountPage.jsx</span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div>
+          <div class="specs-block-label">Tree</div>
+          <div class="spec-row"><span class="spec-key">RpFrame</span><span class="spec-val">crumb "Account", title = display name. Shell + topbar reused.</span></div>
+          <div class="spec-row"><span class="spec-key">AccountHeader</span><span class="spec-val">avatar · name · <code>&lt;TierChip tier/&gt;</code> · email (read-only).</span></div>
+          <div class="spec-row"><span class="spec-key">TotpSection</span><span class="spec-val"><code>factorId === null</code> → <code>&lt;TotpEnrollmentScreen onEnrolled/&gt;</code>; else status card + Reset.</span></div>
+          <div class="spec-row"><span class="spec-key">SessionsSection</span><span class="spec-val">list + "Sign out other devices". SkeletonRows / EmptyState / ErrorBanner.</span></div>
+          <div class="spec-row"><span class="spec-key">ActivitySection</span><span class="spec-val">this-admin sign-ins. Scoped read, not the global audit log.</span></div>
+          <div class="spec-row"><span class="spec-key">PreferencesSection</span><span class="spec-val">timezone · language · notifications. Overseer → cross-notify sub-block.</span></div>
+          <div class="spec-row"><span class="spec-key">AccountFooter</span><span class="spec-val">Sign out (mirrors nav) · Request deactivation.</span></div>
+        </div>
+        <div>
+          <div class="specs-block-label">Props / state / reuse</div>
+          <div class="spec-row"><span class="spec-key">user</span><span class="spec-val">from session — <code>user_metadata.full_name</code>, <code>email</code>, <code>app_metadata.admin_tier</code>.</span></div>
+          <div class="spec-row"><span class="spec-key">factorId</span><span class="spec-val">resolved on mount; re-resolved in <code>onEnrolled</code> + after Reset.</span></div>
+          <div class="spec-row"><span class="spec-key">tier</span><span class="spec-val"><code>top_tier→Overseer · super_admin→Super admin · regular→Admin</code>. TierChip owns the map.</span></div>
+          <div class="spec-row"><span class="spec-key">reuses</span><span class="spec-val"><code>TotpEnrollmentScreen</code>, <code>SkeletonRows</code>, <code>EmptyState</code>, <code>ErrorBanner</code>, <code>RpToast</code>, <code>rp-btn/-card/-pill/-input/-select</code>.</span></div>
+          <div class="spec-row"><span class="spec-key">tier-aware</span><span class="spec-val">Page identical for all tiers; only the cross-notify sub-block is Overseer-gated. Nav (Team Management / Admin tier) handled in Shell, not here.</span></div>
+          <div class="spec-row"><span class="spec-key">guards</span><span class="spec-val">Reset TOTP + Sign out other devices + Deactivation each open a confirm (reuse modal pattern). Sensitive actions audit-logged.</span></div>
+        </div>
+      </div></div>
+      <div class="specs-note amber"><div class="specs-note-label">Honesty of copy</div><div class="specs-note-body">Every action says what it does. "Reset TOTP" → "You'll set up your authenticator again from scratch." "Sign out other devices" → "Other devices will need to sign in again." No euphemism, no jargon — admins are competent and the stakes are real.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ OPEN QUESTIONS ░░░ -->
+  <section class="section" id="questions">
+    <div class="section-header">
+      <div class="section-eyebrow">For Founder ratification</div>
+      <h2 class="section-title">Open questions</h2>
+    </div>
+    <div class="specs"><div class="specs-inner" style="padding:8px 22px 18px">
+      <div class="acct-field"><span class="k" style="min-width:34px;color:var(--rp-green)">Q1</span><span class="v"><b>Team Management redundancy.</b> <b style="color:var(--rp-green)">Resolved → pull out.</b> Personal TOTP setup moves off Team Management; the Account page is the single source of truth. A one-line pointer stays on Team Management for transition.</span></div>
+      <div class="acct-field"><span class="k" style="min-width:34px;color:var(--rp-green)">Q2</span><span class="v"><b>Beyond-MVP scope.</b> <b style="color:var(--rp-green)">Resolved → all post-MVP.</b> MVP ships identity + TOTP + sign out. Active sessions, Recent activity, and Preferences are approved as post-MVP follow-ups. <b>Deactivation request</b> is still under consideration (Founder dwelling).</span></div>
+      <div class="acct-field"><span class="k" style="min-width:34px;color:var(--rp-green)">Q3</span><span class="v"><b>Recent activity scope.</b> <b style="color:var(--rp-green)">Resolved → aligned.</b> This admin's own account events only (sign-ins, TOTP changes, sessions) — never anything leader-identifying.</span></div>
+      <div class="acct-field"><span class="k" style="min-width:34px;color:var(--rp-green)">Q4</span><span class="v"><b>Cross-notify.</b> <b style="color:var(--rp-green)">Resolved → always-on.</b> Ruth ↔ Replant Ops realtime is always-on system behavior; the page shows it as an <b>Always on</b> status line, not a toggle.</span></div>
+      <div class="acct-field"><span class="k" style="min-width:34px;color:var(--rp-sky)">Q5</span><span class="v"><b>Deactivation request routing.</b> Leaning: the request surfaces in the <b>Ops inbox</b>. Open: does the requester keep access until it's actioned? (Founder still thinking — section marked under consideration.)</span></div>
+      <div class="acct-field"><span class="k" style="min-width:34px;color:var(--rp-sky)">Q6</span><span class="v"><b>Email editability.</b> Email is read-only here. Is changing it ever self-service, or always an admin-mediated path? (Affects whether we add a "Request email change" affordance.)</span></div>
+    </div></div>
+  </section>
+
+  <!-- ░░░ ENDNOTE ░░░ -->
+  <div class="endnote">
+    <div class="endnote-prayer">"Be strong and of a good courage; be not afraid, neither be thou dismayed." — Joshua 1:9</div>
+    <div class="endnote-meta">
+      Replant Admin · Account page<br>
+      KAN-271 admin tier bundle · MVP § 3.5 + CD layer<br>
+      Founder ratifies → FE wire-up
+    </div>
+  </div>
+
+</div>
+
+<script src="account-cd.js"></script>
+</body>
+</html>

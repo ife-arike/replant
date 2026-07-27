@@ -34,7 +34,6 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
-import { getLeaderDisplayName } from '../../utils/getLeaderDisplayName';
 import { getRoleLabel } from '../../utils/displayHelpers';
 
 export interface SearchedLeader {
@@ -106,7 +105,11 @@ async function searchLeaders(query: string): Promise<SearchedLeader[]> {
   if (error || !data) return [];
   return (data as any[]).map((r) => {
     const fullName: string = r.full_name ?? '';
-    const initial = fullName.trim().charAt(0).toUpperCase() || '·';
+    // Server-composed initial — from the NAME, not the role prefix the
+    // resolved byline leads with ("Minister Ruth" -> R, never M).
+    const initial =
+      (r.avatar_initial ?? '').trim().toUpperCase() ||
+      fullName.trim().charAt(0).toUpperCase() || '·';
     return {
       userId: r.user_id,
       fullName,
@@ -158,15 +161,15 @@ export default function LeaderSearch({ onBack, onPick }: Props) {
   const active = debounced.trim().length >= 2;
 
   const renderRow = ({ item }: { item: SearchedLeader }) => {
-    const [first = '', ...rest] = item.fullName.split(' ');
-    const last = rest.join(' ');
-    const display = getLeaderDisplayName({
-      firstName: first,
-      lastName: last,
-      roleLabel: getRoleLabel(item.role),
-      churchName: item.churchName,
-      anonymous: item.anonymous,
-    });
+    // search_leaders returns the SERVER-RESOLVED display name (F11 fix,
+    // 2026-07-27) — it already honours the leader's display_name_preference,
+    // honorific, and last-name-first setting. Splitting it back into
+    // first/last would mangle it ("Minister Ruth" -> first "Minister"), so
+    // render it verbatim. Anonymous rows carry a null name and fall back to
+    // the role label, matching every other surface.
+    const display = item.anonymous || !item.fullName
+      ? `${getRoleLabel(item.role)} · ${item.churchName}`
+      : `${item.fullName} · ${item.churchName}`;
     return (
       <Pressable
         onPress={() => onPick(item)}

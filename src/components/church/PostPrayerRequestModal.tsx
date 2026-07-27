@@ -72,7 +72,10 @@ interface Props {
 }
 
 // Map create_prayer_request error codes → inline copy.
-function errorCopy(code: string | null | undefined): string {
+// Exported for the Prayer Wall rebuild's Compose view (a faithful port
+// of this field set — design_handoff_prayer_wall_NEW §View 5) so the
+// two surfaces can never drift on error copy.
+export function errorCopy(code: string | null | undefined): string {
   switch (code) {
     case 'content_required':   return 'Please add a prayer request before submitting.';
     case 'content_too_long':   return 'Keep it under 300 characters.';

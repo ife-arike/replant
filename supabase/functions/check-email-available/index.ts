@@ -43,11 +43,12 @@ function makeDeps(): Deps {
   // (fixed-window, not sliding). If INCR returns >RATE_LIMIT_MAX_REQUESTS,
   // disallow and surface the remaining TTL as retry_after_seconds.
   //
-  // Fail-open posture: if Upstash is unreachable, allow the request through
-  // (logged at warn). The cost of blocking onboarding because the rate-limit
-  // store is down is higher than the cost of letting through a few unlimited
-  // requests during an outage. The 10/hr cap is a hostile-probe brake, not a
-  // hard correctness boundary.
+  // Rate-limit backend posture (updated by the pre-UAT audit 2026-07-01):
+  //   - Upstash NOT configured (env absent, e.g. local dev): fail-OPEN — the
+  //     request proceeds unthrottled (the `count === null` branch below).
+  //   - Upstash configured but the call ERRORS (outage/unreachable): fail-CLOSED
+  //     — reject with 503 rather than silently dropping the enumeration cap
+  //     (the catch below). Founder ruling: strict fail-closed on outage.
   const upstashUrl = Deno.env.get("UPSTASH_REDIS_REST_URL");
   const upstashToken = Deno.env.get("UPSTASH_REDIS_REST_TOKEN");
 
@@ -130,7 +131,8 @@ function makeDeps(): Deps {
         }
         return { allowed: true, count };
       } catch (e) {
-        // Upstash unavailable mid-flight — fail-open + warn (handler logs).
+        // Strict fail-CLOSED (pre-UAT audit 2026-07-01): was fail-open — an Upstash outage silently
+        // disabled this email-enumeration rate limit. Reject (503) instead; the FE surfaces "try again".
         console.warn(
           JSON.stringify({
             level: "warn",
@@ -139,7 +141,7 @@ function makeDeps(): Deps {
             ts: new Date().toISOString(),
           }),
         );
-        return { allowed: true, count: 0 };
+        return { allowed: false, backendError: true };
       }
     },
 

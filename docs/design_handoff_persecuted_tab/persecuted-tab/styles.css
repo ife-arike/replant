@@ -1,0 +1,356 @@
+/* Persecuted Tab — restrained, reverent. Red on the header only. */
+
+@import url('../shared/shared.css');
+
+/* ─────────── persecuted-specific header ─────────── */
+.persecuted .tab-header h1 {
+  color: var(--red);
+  font-weight: 300;
+}
+/* a thin red rule beneath the title that signals "you have crossed a threshold" */
+.persecuted .tab-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 22px;
+  right: 22px;
+  height: 0.5px;
+  background: linear-gradient(90deg, var(--red-mid), transparent 70%);
+}
+
+/* faint red vertical hairline at the screen's left edge — a vestige of the
+   "set apart" feeling without shouting */
+.persecuted::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    var(--red-mid) 15%,
+    var(--red-mid) 85%,
+    transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* ─────────── threshold note — replaces the chunky red bordered box ─────────── */
+.threshold {
+  padding: 18px 22px 22px;
+  border-bottom: 0.5px solid var(--faint);
+}
+.threshold .eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.threshold .body {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--cream);
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
+.threshold .meta {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  line-height: 1.5;
+}
+.threshold .meta .lock { color: var(--sky); white-space: nowrap; }
+.threshold .meta .dot { color: var(--muted-2); }
+.threshold .meta > span { white-space: nowrap; }
+
+/* ─────────── action panel (Are you currently under persecution? / Share) ─────────── */
+.action-card {
+  margin: 22px 0;
+  padding: 22px 20px 20px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  position: relative;
+}
+.action-card .prompt {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 20px;
+  line-height: 1.35;
+  color: var(--off-white);
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.action-card .sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.action-card .row {
+  display: flex;
+  gap: 8px;
+}
+.action-card .row .btn { flex: 1; }
+
+/* a discrete lock chip in the top-right of the action card */
+.action-card .secure {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+
+/* ─────────── heartcry card ─────────── */
+/* same primitive as .inter, but with a red accent because these voices ARE
+   the heart of the persecuted. used SPARINGLY — color does work, not decoration. */
+.heartcry {
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-left: 2px solid var(--red);
+  border-radius: 0 8px 8px 0;
+  padding: 16px 18px;
+  position: relative;
+}
+.heartcry .loc {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.heartcry .loc .d { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+.heartcry .loc .region { color: var(--off-white); letter-spacing: 0.18em; }
+.heartcry .loc .time {
+  color: var(--muted);
+  margin-left: auto;
+  letter-spacing: 0.14em;
+}
+.heartcry .text {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--cream);
+  letter-spacing: 0.005em;
+}
+.heartcry .meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  gap: 8px;
+}
+.heartcry .meta > * { white-space: nowrap; }
+.heartcry .meta .hold {
+  color: var(--sky);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.heartcry .meta .hold:hover { color: var(--sky-bright); }
+.heartcry .meta .interceding {
+  color: var(--muted);
+}
+.heartcry.held {
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(107,181,232,0.04) 100%);
+}
+.heartcry.held .meta .hold { color: var(--cream); }
+
+/* heartcry list spacing */
+.heartcry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* the "share form" inline state — replaces action-card when user taps Share */
+.share-form {
+  margin: 22px 0;
+  padding: 22px 20px 20px;
+  background: var(--surface);
+  border: 0.5px solid var(--red-mid);
+  border-radius: 10px;
+  position: relative;
+}
+.share-form .secure {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+.share-form .label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 12px;
+}
+.share-form textarea {
+  width: 100%;
+  min-height: 120px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  resize: none;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--cream);
+  letter-spacing: 0.005em;
+}
+.share-form textarea::placeholder { color: var(--muted-2); font-style: italic; }
+.share-form .opts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  margin-bottom: 16px;
+}
+.share-form .opt {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 100px;
+  border: 0.5px solid var(--faint);
+  color: var(--muted);
+  cursor: pointer;
+  background: var(--surface2);
+}
+.share-form .opt.on {
+  color: var(--sky);
+  border-color: var(--sky-mid);
+  background: var(--sky-dim);
+}
+.share-form .actions {
+  display: flex;
+  gap: 8px;
+}
+.share-form .actions .btn { flex: 1; }
+
+/* a "you have shared" thanks state */
+.shared-thanks {
+  margin: 22px 0;
+  padding: 24px 22px 22px;
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(217,89,79,0.04) 100%);
+  border: 0.5px solid var(--red-mid);
+  border-radius: 10px;
+  text-align: center;
+}
+.shared-thanks .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 12px;
+}
+.shared-thanks .title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--cream);
+  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+}
+.shared-thanks .body {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 280px;
+  margin: 0 auto 16px;
+}
+.shared-thanks .meta {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+
+/* ─────────── filter bar (subtle region filter) ─────────── */
+.region-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin: 0 -22px;
+  padding-left: 22px;
+  padding-right: 22px;
+}
+.region-bar::-webkit-scrollbar { display: none; }
+.region-chip {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+  border-radius: 100px;
+  border: 0.5px solid var(--faint);
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+}
+.region-chip.on {
+  color: var(--off-white);
+  border-color: var(--faint-2);
+  background: var(--surface2);
+}
+.region-chip .count {
+  margin-left: 5px;
+  color: var(--red);
+  font-weight: 500;
+}

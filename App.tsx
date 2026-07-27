@@ -23,6 +23,7 @@ import { Linking, StatusBar, View } from "react-native";
 import { useFonts, isLoaded as fontIsLoaded } from "expo-font";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Mapbox from "@rnmapbox/maps";
 import { AuthProvider, useAuth } from "./src/contexts/AuthProvider";
 import { HamburgerProvider } from "./src/contexts/HamburgerContext";
 import { ConnectBadgeProvider } from "./src/contexts/ConnectBadgeContext";
@@ -32,6 +33,13 @@ import RootNavigator from "./src/navigation/RootNavigator";
 import { navigationRef } from "./src/navigation/navigationRef";
 import { supabase } from "./src/lib/supabase";
 import { Colors, fontModules, Typography } from "./src/constants/theme";
+
+// KAN-302 — Mapbox SDK telemetry is default-ON (the SDK registers
+// MGLMapboxMetricsEnabled=true itself): location-flavored usage events off
+// leaders' devices to events.mapbox.com, the exact axis the underground
+// threat model guards. Must run before any MapView mounts; the setting
+// persists in UserDefaults, but re-asserting every launch is deterministic.
+Mapbox.setTelemetryEnabled(false);
 
 // KAN-38 — Extract the PKCE code from an incoming deep link URL.
 // With PKCE flow, Supabase delivers a one-time code in the query string:

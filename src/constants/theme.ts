@@ -29,6 +29,18 @@ export const Colors = {
   surfaceElevated: '#181818',
   border: 'rgba(240, 237, 230, 0.08)',
   borderAccent: 'rgba(107, 181, 232, 0.25)',
+  // Prayer Wall rebuild (design_handoff_prayer_wall_NEW, Founder-approved
+  // 2026-07-24) — sky-tinted hairlines for the wall's header rule and row
+  // separators. The tint is subtle but intentional: it is the only thing
+  // keeping the long request list from reading as grey.
+  borderAccentStrong: 'rgba(107, 181, 232, 0.22)',
+  borderAccentSubtle: 'rgba(107, 181, 232, 0.10)',
+  // Persecuted refinement (design_handoff_persecuted_NEW §3, 2026-07-26).
+  // borderRowSubtle intentionally equals borderAccentSubtle today — named
+  // separately so the two tabs can diverge without a sweep.
+  borderRowSubtle: 'rgba(107, 181, 232, 0.10)',
+  borderAccentRed: 'rgba(224, 85, 85, 0.26)',
+  redRing: 'rgba(224, 85, 85, 0.55)',
 
   // RAG
   green: '#5BAD7A',
@@ -38,7 +50,10 @@ export const Colors = {
   // Home-tab card surfaces (KAN-201 home redesign 2026-06-01) — derived
   // from existing tokens; do not introduce additional brand values.
   cardSurface: '#111113',   // card chassis — a hair above surface
-  cardWarm: '#131110',      // warm card surface (leader word cards)
+  // Founder 2026-07-24: feed cards unified to ONE surface for now — the
+  // subtle warm/cool split didn't help. Token retained so a future
+  // re-split is a one-line change.
+  cardWarm: '#111113',      // = cardSurface (unified; was #131110)
   linkWell: 'rgba(107,181,232,0.04)', // link block background
 
   // Utility
@@ -101,11 +116,25 @@ export const Typography = {
   sansLight: 'DMSans_300Light',
   // DM Mono — identifier register (RPL-XXXXX codes, numbered eyebrows,
   // version stamps). Added for KAN-138 Settings on-brand pass.
-  // KAN-23 v7 Item 08 — kept ONLY for filter chips, feed card category/
-  // urgent tags, testimony chip. All other mono usages on the Prayer
-  // Wall swept to DM Sans.
+  // KAN-23 v7 Item 08 — was: kept ONLY for filter chips, feed card
+  // category/urgent tags, testimony chip; all other Prayer Wall mono
+  // swept to DM Sans.
+  // AMENDED by the Prayer Wall rebuild (design_handoff_prayer_wall_NEW,
+  // token decision A, Founder-approved 2026-07-24): the rebuilt tab
+  // deliberately uses the tiny-caps mono register for its eyebrow/label
+  // layer — location eyebrows, tab labels, section labels, meta labels —
+  // because the mono caps are what make the wall read as a quiet ledger
+  // rather than a social feed. Item 08 remains in force on surfaces
+  // outside the rebuilt Prayer Wall tab.
   mono: 'DMMono_400Regular',
 } as const;
+
+// Feed card title register — ONE size across every Home feed card.
+// Founder 2026-07-27: standardize on the regular announcement card's
+// title (21/26). Cards previously ranged 21–26, which read as accidental
+// rather than hierarchical. Spread this into a card's title/lead style;
+// never re-hardcode a feed title size.
+export const FeedTitle = { fontSize: 21, lineHeight: 26 } as const;
 
 export const Spacing = {
   xs: 4,
@@ -126,14 +155,20 @@ export const Radius = {
 } as const;
 
 // Tag → dot / label / colour for the Home-tab announcement letterhead
-// eyebrow. The DB `announcements.tag_type` CHECK also permits 'new' and
-// 'none'; the home cards collapse those to the neutral 'update' register
-// (see NetworkFeed card routing). Keep this in sync with the eyebrow dot
-// colours — it is the single source of truth for the new Home cards.
+// eyebrow. Post badge-cutover (KAN-335) the mobile feed resolves this
+// register from `announcements.badge` (none | new | urgent), falling back
+// to the legacy `tag_type` shadow only for rows cached before badge
+// entered the projection (see NetworkFeed `resolveEyebrowTag`):
+//   badge 'urgent' → urgent   badge 'new' → new   badge 'none' → update
+// The retired 'notice' register is no longer produced by the feed
+// resolver (kept below only for the legacy chip meta + its tests). Keep
+// this in sync with the eyebrow dot colours — it is the single source of
+// truth for the Home cards.
 export const Tags = {
   update: { label: 'Network update', color: Colors.accent },
-  notice: { label: 'Notice', color: Colors.amber },
+  notice: { label: 'Notice', color: Colors.amber }, // retired — never emitted by resolveEyebrowTag
   urgent: { label: 'Urgent', color: Colors.red },
+  new: { label: 'New', color: Colors.accent }, // KAN-335 badge=new register (sky, static dot)
   // KAN-201 card-system extension 2026-06-02 — new card types.
   together: { label: 'Together', color: Colors.green },
   call_to_action: { label: 'Call to action', color: Colors.accent },

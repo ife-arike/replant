@@ -1,0 +1,19 @@
+# reveal-join-code Edge Function config
+#
+# verify_jwt = true — authenticated underground founders only. The RPC
+# enforces founding-leader-of-underground via auth.uid() lookup, but
+# verify_jwt at the platform is the first defense (rejects forged claims).
+#
+# SEC-locked invariants (Founder ratification 2026-06-20):
+#   - Reveal is LAZY: code generation happens at the FIRST tap-through,
+#     not at verified-flip. auth-status-check returns a "pending reveal"
+#     flag; this function is what actually mints + reveals the plaintext.
+#   - One-shot. The underlying RPC raises 'already_revealed' on any
+#     subsequent call. We map that to 410 code_already_consumed.
+#   - Idempotency tombstone is { revealed: true } — NEVER the plaintext.
+#     If the leader retries with the same idempotency key after a
+#     successful reveal, we return 410 code_already_consumed (forcing
+#     them to either save it that one time or use admin rotation).
+#   - Plaintext is NEVER logged, cached, or persisted beyond the live
+#     response body. No console.log, no Sentry, no Upstash cache.
+verify_jwt = true

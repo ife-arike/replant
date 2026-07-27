@@ -8,11 +8,14 @@
 // (src/components/auth/DeactivationModal.tsx), not a routed screen.
 
 import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { Submission } from "../screens/main/addressNetwork/types";
 
 export type TabsParamList = {
   Home: undefined;
   "The Church": undefined;
-  Persecuted: undefined;
+  // initialView 'voice' — HeartcrySubmission's confirmation Done lands
+  // the leader in My Voice (design_handoff_persecuted_NEW, 2026-07-26).
+  Persecuted: { initialView?: 'voice' } | undefined;
   "Prayer Wall": { initialView?: 'journal'; pendingChurch?: string } | undefined;
   Connect: { initialSubTab?: 'ministries' | 'leaders'; conversationId?: string } | undefined;
 };
@@ -37,6 +40,12 @@ export type MainStackParamList = {
   OutreachMissions: undefined;
   InviteToReplant: undefined;
   FAQ: undefined;
+  // Address the Network (KAN-337) — hamburger-launched leader submission
+  // flow (Compose + My Submissions), sibling of TheVision / Settings. The
+  // edits-review consent screen is pushed on top with the submission it acts
+  // on. Verified leaders only (the hamburger entry is hidden until active).
+  AddressNetwork: undefined;
+  AddressNetworkEditReview: { submission: Submission };
   // Underground one-shot reveal (2026-06-20). Founding leader of a verified
   // underground church taps through a 2-step gate to see the join code
   // exactly once. Presented full-screen, NON-DISMISSIBLE via gesture or

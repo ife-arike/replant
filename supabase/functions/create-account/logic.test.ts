@@ -9,7 +9,6 @@
 import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   CHURCH_LEADER_CAP,
-  computeVerificationDeadline,
   ERROR_CODES,
   exceedsCapacity,
   MAX_NAME_PART,
@@ -18,7 +17,6 @@ import {
   parsePayload,
   rateLimitKey,
   ROLES,
-  VERIFICATION_WINDOW_DAYS,
 } from "./logic.ts";
 
 function basePayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -30,7 +28,6 @@ function basePayload(overrides: Record<string, unknown> = {}): Record<string, un
     role: "pastor",
     anonymous: false,
     churchId: "11111111-2222-3333-4444-555555555555",
-    isNewChurch: false,
     ...overrides,
   };
 }
@@ -64,7 +61,6 @@ Deno.test("ERROR_CODES — stable string codes pinned for FE mapping", () => {
 
 Deno.test("constants — capacity + window pinned to dispatch", () => {
   assertEquals(CHURCH_LEADER_CAP, 2);
-  assertEquals(VERIFICATION_WINDOW_DAYS, 30);
   assertEquals(MIN_PASSWORD, 8);
   assertEquals(MAX_PASSWORD, 64);
   assertEquals(MAX_NAME_PART, 100);
@@ -79,7 +75,7 @@ Deno.test("parsePayload — valid payload returns normalised input", () => {
   assertEquals(r.input.email, "office@maranatha.test");
   assertEquals(r.input.role, "pastor");
   assertEquals(r.input.anonymous, false);
-  assertEquals(r.input.isNewChurch, false);
+  assertEquals(r.input.newChurch, null);
   assertEquals(r.input.firstName, "Ife");
   assertEquals(r.input.lastName, "James");
   assertEquals(r.input.churchId, "11111111-2222-3333-4444-555555555555");
@@ -100,6 +96,21 @@ Deno.test("parsePayload — email canonicalised to lowercase + trimmed for Layer
   assertEquals(r.ok, true);
   if (!r.ok) return;
   assertEquals(r.input.email, "office@maranatha.test");
+});
+
+Deno.test("parsePayload — underground newChurch FORCES anonymous true, even when explicitly false (KAN-338 P0-B, Founder GO 2026-07-25)", () => {
+  const ug = {
+    name: "Hidden Fellowship", country: "Testland", contact_name: "A Servant",
+    contact_email: "servant@hidden.test", state_declaration: "We declare our state before the Lord.",
+    type: "underground", rag_status: "red",
+  };
+  for (const anon of [false, undefined]) {
+    const p = basePayload({ newChurch: ug, churchId: undefined });
+    if (anon === undefined) delete p.anonymous; else p.anonymous = anon;
+    const r = parsePayload(p);
+    if (!r.ok) throw new Error(r.error);
+    assertEquals(r.input.anonymous, true);
+  }
 });
 
 Deno.test("parsePayload — anonymous DEFAULTS to false when absent (DBA c.13321 forward-compat)", () => {
@@ -126,13 +137,11 @@ Deno.test("parsePayload — anonymous: true honored when boolean", () => {
   assertEquals(r.input.anonymous, true);
 });
 
-Deno.test("parsePayload — isNewChurch defaults to false when absent", () => {
-  const p = basePayload();
-  delete p.isNewChurch;
-  const r = parsePayload(p);
+Deno.test("parsePayload — newChurch is null when absent (v4+ object contract; flat isNewChurch flag retired)", () => {
+  const r = parsePayload(basePayload());
   assertEquals(r.ok, true);
   if (!r.ok) return;
-  assertEquals(r.input.isNewChurch, false);
+  assertEquals(r.input.newChurch, null);
 });
 
 Deno.test("parsePayload — accepts all 12 canonical roles", () => {
@@ -244,13 +253,10 @@ Deno.test("exceedsCapacity — allows count < 2", () => {
   assertEquals(exceedsCapacity(1), false);
 });
 
-// ── computeVerificationDeadline ────────────────────────────────────────
-
-Deno.test("computeVerificationDeadline — exactly 30 days from now in ISO", () => {
-  const now = new Date("2026-05-19T12:00:00.000Z");
-  // 30 days after 2026-05-19 = 2026-06-18 (May has 31 days, so May 19 + 30 days = June 18)
-  assertEquals(computeVerificationDeadline(now), "2026-06-18T12:00:00.000Z");
-});
+// ── (pruned 2026-07-13) computeVerificationDeadline ───────────────────
+// The 30-day deadline compute moved into public.create_account_atomic at
+// v4. The surviving handler-side deadline (7-day skip window) is pinned by
+// handler.test.ts "atomic args — skip flow passes ... 7-day personal deadline".
 
 // ── Rate-limit key ─────────────────────────────────────────────────────
 

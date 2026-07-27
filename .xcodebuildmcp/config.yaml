@@ -1,0 +1,7 @@
+schemaVersion: 1
+sessionDefaults:
+  workspacePath: /Users/ife/replant/ios/replant.xcworkspace
+  scheme: replant
+  simulatorName: iPhone 17 Pro
+  simulatorId: 7AE8C944-D959-4D82-8D6C-E165B55DB2FB
+  simulatorPlatform: iOS Simulator

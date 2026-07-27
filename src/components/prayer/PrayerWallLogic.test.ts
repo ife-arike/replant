@@ -11,7 +11,7 @@
 //     cases from the dispatch spelled out
 //   - Card-formatting helpers (church type label, location line,
 //     leader line) still satisfy the underground + anonymous +
-//     "Church (Branch)" rules
+//     "Church branch" rules
 //   - formatRelativeTime boundary cases
 
 import { getChurchTypeLabel } from '../../utils/displayHelpers';
@@ -152,9 +152,16 @@ describe('buildRpcFilters — Set-based v2 RPC payload shape', () => {
   });
 });
 
-describe('getChurchTypeLabel — "Church (Branch)" pinned (NOT "Church Branch")', () => {
-  it('branch → "Church (Branch)" with parentheses', () => {
-    expect(getChurchTypeLabel('branch')).toBe('Church (Branch)');
+describe('getChurchTypeLabel — "Church branch" pinned (Founder lock 2026-06-18)', () => {
+  // Ruling change: this suite pinned the pre-2026-06-18 "Church (Branch)"
+  // form (A-02 revised). The 2026-06-18 Founder lock dropped the parens —
+  // "Church branch", always lead with "Church" (see displayHelpers.ts map
+  // comment). displayHelpers + the KAN-20 suite were reconciled in
+  // 2d1e7a1/70d5889; this pin lagged behind.
+  it('branch → "Church branch" — drop parens, lead with "Church"', () => {
+    expect(getChurchTypeLabel('branch')).toBe('Church branch');
+    // Fence both superseded forms.
+    expect(getChurchTypeLabel('branch')).not.toBe('Church (Branch)');
     expect(getChurchTypeLabel('branch')).not.toBe('Church Branch');
   });
 

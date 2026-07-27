@@ -266,11 +266,15 @@ function makeDeps(): Deps {
     }
 
     // ─── Resend Template 9 fire ───
-    // Body carries ONLY the opaque deep_link template_data. No leader_id,
-    // no message_id, no content, no flag_reason. Subject is literal.
+    // Body carries ONLY the opaque deep_link. No leader_id, no message_id,
+    // no content, no flag_reason. Subject is literal. Inline html/text —
+    // Resend's send API rejects template_id payloads with 422 "Missing
+    // `html` or `text` field" (root cause of the 2/2 t1 emit failures,
+    // diagnosed 2026-07-12 comms audit).
     let resendId: string | null = null;
     let emitOutcome: "sent" | "failed_resend_emit" = "sent";
     try {
+      const t1DeepLink = "https://admin.projectreplant.org/pastoral";
       const resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -278,11 +282,14 @@ function makeDeps(): Deps {
           "Content-Type":  "application/json",
         },
         body: JSON.stringify({
-          from:    "info@projectreplant.org",
-          to:      ["info@projectreplant.org"],
+          // Ops alerts route to accounts@ per the address-purpose map
+          // (Founder ruling 2026-07-12: connect@ = relationship,
+          // accounts@ = record/ops, info@ = community questions).
+          from:    "Replant Operations <accounts@projectreplant.org>",
+          to:      ["accounts@projectreplant.org"],
           subject: "Pastoral signal — Tier 1 (immediate review)",
-          template_id:   "6e417a13-cd5d-4d2f-8534-d16406b0e429",
-          template_data: { deep_link: "https://admin.projectreplant.org/pastoral" },
+          html: `<p>A Tier 1 pastoral signal is awaiting immediate review.</p><p><a href="${t1DeepLink}">Open the pastoral queue</a></p><p>— Replant Operations</p>`,
+          text: `A Tier 1 pastoral signal is awaiting immediate review.\n\nOpen the pastoral queue: ${t1DeepLink}\n\n— Replant Operations`,
         }),
       });
       if (!resendRes.ok) {
@@ -339,7 +346,7 @@ function makeDeps(): Deps {
     }
 
     // audit_log row: NO leader_id, NO message_id (SEC #1 + #6). Surface
-    // + template_id + outcome only. Per-leader forensic linkage lives
+    // + emit_body + outcome only. Per-leader forensic linkage lives
     // in moderation_state (RLS-bounded per axis).
     const { error: auditErr } = await adminClient.from("audit_log").insert({
       action:       "pastoral_digest_emitted",
@@ -347,7 +354,7 @@ function makeDeps(): Deps {
       triggered_by: "system",
       meta: {
         surface:     "t1_emit",
-        template_id: "6e417a13-cd5d-4d2f-8534-d16406b0e429",
+        emit_body:   "inline_html",
         outcome:     emitOutcome,
       },
     });

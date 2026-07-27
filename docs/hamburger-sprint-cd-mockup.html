@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — Hamburger Sprint · CD Mockup · 2026-06-09</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #080808;
+  --surface:     #111111;
+  --elevated:    #181818;
+  --text:        #F0EDE6;
+  --muted:       rgba(240,237,230,0.45);
+  --subtle:      rgba(240,237,230,0.25);
+  --faint:       rgba(240,237,230,0.08);
+  --hairline:    rgba(240,237,230,0.14);
+  --sky:         #6BB5E8;
+  --sky-mid:     rgba(107,181,232,0.25);
+  --sky-tint:    rgba(107,181,232,0.10);
+  --sky-dim:     rgba(107,181,232,0.06);
+  --green:       #5BAD7A;
+  --amber:       #D4A855;
+  --red:         #E05555;
+  --logout:      rgba(240,237,230,0.30);
+  --serif:       'Cormorant Garamond', Georgia, serif;
+  --sans:        'DM Sans', sans-serif;
+  --mono:        'DM Mono', monospace;
+}
+
+html, body {
+  background: #0a0a0a;
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+body {
+  padding: 56px 24px 96px;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 40% at 50% 0%, rgba(107,181,232,0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.doc { max-width: 1560px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* ── PAGE HEADER ── */
+.page-header {
+  text-align: center;
+  padding-bottom: 32px;
+  border-bottom: 0.5px solid var(--faint);
+  margin-bottom: 56px;
+}
+.page-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.page-eyebrow::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sky);
+}
+.page-title {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 40px;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+.page-title em { font-style: italic; color: var(--sky); }
+.page-sub {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.75;
+  max-width: 680px;
+  margin: 0 auto 16px;
+}
+.page-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--subtle);
+  text-transform: uppercase;
+}
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 64px 0 36px;
+}
+.section-divider::before, .section-divider::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--faint);
+}
+.section-divider span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sky);
+  white-space: nowrap;
+}
+
+/* ── MOCKUP STAGE ── */
+.stage {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* ── PHONE FRAME ── */
+.phone-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.phone-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sky);
+  text-align: center;
+}
+
+.phone {
+  width: 320px;
+  min-height: 660px;
+  background: var(--bg);
+  border-radius: 42px;
+  border: 1.5px solid rgba(240,237,230,0.12);
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.75),
+    0 0 0 1px rgba(107,181,232,0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+/* status bar */
+.status-bar {
+  height: 48px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 24px 8px;
+  flex-shrink: 0;
+}
+.status-time {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+.status-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-icon {
+  width: 14px;
+  height: 10px;
+  opacity: 0.85;
+}
+
+/* ── SPECS PANEL ── */
+.specs {
+  width: 320px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.specs-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.specs-label::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--sky);
+  flex-shrink: 0;
+}
+.spec-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 7px;
+  align-items: baseline;
+}
+.spec-key {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  min-width: 90px;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+.spec-val {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.spec-val code {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--sky);
+  background: var(--sky-tint);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.spec-note {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--faint);
+}
+
+/* ── RULING CALLOUT ── */
+.ruling {
+  max-width: 1080px;
+  margin: 0 auto 40px;
+  padding: 18px 24px;
+  border-radius: 8px;
+  border: 0.5px solid var(--faint);
+  background: var(--surface);
+}
+.ruling-eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 10px;
+}
+.ruling-body {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+.ruling-body strong { color: var(--text); font-weight: 500; }
+.ruling-body code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--sky);
+  background: var(--sky-tint);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* ══════════════════════════════════════
+   MOCKUP 1 — HAMBURGER PANEL
+══════════════════════════════════════ */
+
+/* The panel sits on the right side, occupying 75% of the phone width */
+.hamburger-scene {
+  position: relative;
+  width: 320px;
+  min-height: 680px;
+  background: var(--bg);
+  border-radius: 42px;
+  border: 1.5px solid rgba(240,237,230,0.12);
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(107,181,232,0.04);
+  flex-shrink: 0;
+}
+
+.hamburger-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8,8,8,0.60);
+  border-radius: 42px;
+}
+
+/* A hint of the underlying Home tab behind the backdrop */
+.home-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 52px 22px 0;
+  gap: 10px;
+}
+.home-hint-bar {
+  height: 36px;
+  background: var(--surface);
+  border-radius: 6px;
+  opacity: 0.25;
+}
+.home-hint-card {
+  height: 72px;
+  background: var(--surface);
+  border-radius: 8px;
+  opacity: 0.18;
+}
+.home-hint-card.tall { height: 96px; }
+
+.hamburger-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 75%;  /* 240px of 320 */
+  background: var(--surface);
+  border-left: 0.5px solid var(--sky-mid);
+  border-top-right-radius: 40px;
+  border-bottom-right-radius: 40px;
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 56px;
+  padding-bottom: 20px;
+  border-bottom: 0.5px solid var(--faint);
+  margin-bottom: 18px;
+}
+
+/* Logo mark — inline SVG of the RP mark */
+.rp-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.panel-wordmark {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 2.2px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.menu-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 0.5px solid var(--faint);
+  cursor: pointer;
+}
+.menu-row:last-child { border-bottom: none; }
+
+.menu-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.menu-label {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+/* Invite row — slightly highlighted */
+.menu-row.invite .menu-label {
+  color: var(--sky);
+}
+.menu-row.invite .menu-icon svg path,
+.menu-row.invite .menu-icon svg circle,
+.menu-row.invite .menu-icon svg line {
+  stroke: var(--sky);
+}
+
+.panel-footer {
+  border-top: 0.5px solid var(--faint);
+  padding-top: 16px;
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.identity-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-initials {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sky);
+}
+
+.identity-text { flex: 1; min-width: 0; }
+
+.identity-name {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.identity-location {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+
+.logout-label {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--logout);
+}
+
+
+/* ══════════════════════════════════════
+   MOCKUP 2 — INVITE TO REPLANT
+══════════════════════════════════════ */
+
+.invite-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg);
+  padding: 0;
+  position: relative;
+}
+
+.screen-scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: visible;
+}
+
+/* Navigation bar — used across screens */
+.nav-bar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 0.5px solid var(--faint);
+  flex-shrink: 0;
+}
+.nav-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-back-label {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--sky);
+}
+.nav-title {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.nav-action {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--sky);
+}
+
+/* Invite hero */
+.invite-hero {
+  padding: 32px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.invite-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--sky-dim);
+  border: 0.5px solid var(--sky-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.invite-headline {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.invite-sub {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 240px;
+}
+
+/* Link format selector */
+.invite-link-section {
+  padding: 20px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.link-section-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 4px;
+}
+
+.link-option {
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.link-option.selected {
+  border-color: var(--sky-mid);
+  background: var(--sky-dim);
+}
+
+.link-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.link-option-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.link-option-tag.option-a {
+  background: var(--sky-tint);
+  color: var(--sky);
+}
+
+.link-option-tag.option-b {
+  background: rgba(240,237,230,0.06);
+  color: var(--muted);
+}
+
+.selected-badge {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sky);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.selected-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sky);
+}
+
+.link-option-url {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.link-option.selected .link-option-url {
+  color: var(--sky);
+}
+
+.link-option-desc {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Share button */
+.invite-actions {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-primary {
+  height: 48px;
+  background: var(--sky);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary-label {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: #080808;
+}
+
+.btn-secondary {
+  height: 40px;
+  background: transparent;
+  border-radius: 10px;
+  border: 0.5px solid var(--faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary-label {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Mission note */
+.invite-mission-note {
+  margin: 0 20px 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 8px;
+}
+
+.mission-note-eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.mission-note-text {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+
+/* ══════════════════════════════════════
+   MOCKUP 3 — THE VISION
+══════════════════════════════════════ */
+
+.vision-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 0;
+  background: var(--bg);
+}
+
+.vision-body {
+  flex: 1;
+  padding: 28px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: visible;
+}
+
+.vision-eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vision-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 0.5px;
+  background: var(--sky);
+}
+
+.vision-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 34px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  line-height: 1.15;
+  margin-bottom: 24px;
+}
+
+.vision-title em {
+  font-style: italic;
+  color: var(--sky);
+}
+
+.vision-scripture {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 6px;
+  padding-left: 16px;
+  border-left: 1.5px solid var(--sky-mid);
+}
+
+.vision-scripture-ref {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--subtle);
+  letter-spacing: 0.06em;
+  padding-left: 16px;
+  margin-bottom: 28px;
+}
+
+.vision-divider {
+  width: 32px;
+  height: 0.5px;
+  background: var(--faint);
+  margin-bottom: 24px;
+}
+
+.vision-para {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+.vision-para strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.vision-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 0.5px solid var(--faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vision-footer-mark {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--subtle);
+  text-transform: uppercase;
+}
+
+
+/* ══════════════════════════════════════
+   MOCKUP 4 — OUTREACH & MISSIONS
+══════════════════════════════════════ */
+
+.outreach-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg);
+}
+
+.outreach-body {
+  flex: 1;
+  padding: 20px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: visible;
+}
+
+.outreach-intro-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.outreach-intro-sub {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.partner-card {
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.partner-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--sky);
+  opacity: 0.5;
+}
+
+.partner-card.persecuted::before { background: var(--red); opacity: 0.6; }
+.partner-card.planting::before   { background: var(--green); opacity: 0.6; }
+.partner-card.resources::before  { background: var(--amber); opacity: 0.6; }
+
+.partner-eyebrow {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.partner-eyebrow.persecuted { color: var(--red); }
+.partner-eyebrow.planting   { color: var(--green); }
+.partner-eyebrow.resources  { color: var(--amber); }
+.partner-eyebrow.network    { color: var(--sky); }
+
+.partner-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+
+.partner-body {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.partner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--sky);
+}
+
+.outreach-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 8px;
+}
+
+.outreach-note-text {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  color: var(--subtle);
+  line-height: 1.65;
+}
+
+
+/* ══════════════════════════════════════
+   MOCKUP 5 — FAQ
+══════════════════════════════════════ */
+
+.faq-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg);
+}
+
+.faq-body {
+  flex: 1;
+  padding: 20px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.faq-intro {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.faq-intro-sub {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.faq-item {
+  border-bottom: 0.5px solid var(--faint);
+  overflow: hidden;
+}
+
+.faq-item:last-of-type {
+  border-bottom: none;
+}
+
+.faq-question-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  gap: 10px;
+}
+
+.faq-question {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.3;
+  flex: 1;
+}
+
+.faq-chevron {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.faq-answer {
+  padding: 0 0 16px;
+  background: transparent;
+  display: none;
+}
+
+.faq-item.open .faq-answer {
+  display: block;
+}
+
+.faq-item.open {
+  background: transparent;
+}
+
+.faq-item.open .faq-question-row {
+  border-radius: 6px 6px 0 0;
+}
+
+.faq-item.open .faq-question {
+  color: var(--sky);
+}
+
+.faq-item.open .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-answer-text {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.75;
+  padding: 12px 14px;
+  background: var(--elevated);
+  border-radius: 6px;
+  border: 0.5px solid var(--faint);
+}
+
+.faq-contact {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--faint);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.faq-contact-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.faq-contact-email {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--sky);
+}
+
+/* ── UTILITY ── */
+.two-up {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+</style>
+</head>
+
+<body>
+<div class="doc">
+
+  <!-- ─── PAGE HEADER ─── -->
+  <div class="page-header">
+    <div class="page-eyebrow">Claude Design · Hamburger Sprint</div>
+    <h1 class="page-title">Hamburger <em>Expansion</em></h1>
+    <p class="page-sub">Hi-fi mockups for the updated hamburger panel, Invite to Replant, The Vision, Outreach &amp; Missions, and FAQ. Five views. iPhone Pro Max (430×932pt). Dark-themed, no blur.</p>
+    <div class="page-meta">CD Handoff · 2026-06-09 · Branch: fix/connect-composer-height-members-remove-icons</div>
+  </div>
+
+  <!-- ─── RULING CALLOUT ─── -->
+  <div class="ruling">
+    <div class="ruling-eyebrow">Founder Rulings — 2026-06-09</div>
+    <div class="ruling-body">
+      <strong>Menu order (6 items):</strong> The Vision → Outreach &amp; Missions → Language → <strong>Invite to Replant</strong> (new, slot 4) → Settings → FAQ. ·
+      <strong>Invite icon:</strong> user-plus stroke SVG, 22px, accent colour; Invite row label rendered in <code>var(--sky)</code> to signal a new action. ·
+      <strong>Formerly-stub items</strong> (Vision, Outreach, FAQ): no "Coming soon" suffix in the panel itself — labels are clean; navigation wires to real screens. ·
+      <strong>Invite link format:</strong> two options shown (Option A: web URL, Option B: deep link) — Founder to select one. Recommendation: Option A (web URL) for universal reach including Android/iOS link-in-bio clicks.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       MOCKUP 1 — UPDATED HAMBURGER PANEL
+  ══════════════════════════════════════ -->
+  <div class="section-divider"><span>01 · Hamburger Panel — updated</span></div>
+
+  <div class="stage">
+
+    <div class="phone-wrap">
+      <div class="phone-label">Full scene (with backdrop)</div>
+
+      <!-- Hamburger scene: backdrop + panel -->
+      <div class="hamburger-scene">
+        <!-- Status bar -->
+        <div style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 20px 8px;z-index:10;">
+          <span style="font-family:var(--sans);font-size:11px;font-weight:500;color:rgba(240,237,230,0.3);">9:41</span>
+          <span style="display:flex;gap:4px;align-items:center;opacity:0.3;">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="0" y="3" width="2" height="7" rx="1" fill="#F0EDE6"/><rect x="3" y="2" width="2" height="8" rx="1" fill="#F0EDE6"/><rect x="6" y="1" width="2" height="9" rx="1" fill="#F0EDE6"/><rect x="9" y="0" width="2" height="10" rx="1" fill="#F0EDE6"/></svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="1" y="3" width="12" height="7" rx="1.5" stroke="#F0EDE6" stroke-width="1"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="#F0EDE6"/><rect x="13" y="5" width="1.5" height="3" rx="0.75" fill="#F0EDE6"/></svg>
+          </span>
+        </div>
+
+        <!-- Home hints behind backdrop -->
+        <div class="home-hint">
+          <div class="home-hint-bar"></div>
+          <div class="home-hint-card"></div>
+          <div class="home-hint-card tall"></div>
+          <div class="home-hint-card"></div>
+          <div class="home-hint-card"></div>
+        </div>
+
+        <!-- Backdrop overlay -->
+        <div class="hamburger-backdrop"></div>
+
+        <!-- Panel -->
+        <div class="hamburger-panel">
+          <!-- Header lockup -->
+          <div class="panel-header">
+            <!-- RP Logo mark (simplified inline SVG matching RpLogo) -->
+            <svg class="rp-mark" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="21" cy="21" r="18" stroke="#6BB5E8" stroke-width="1.5" fill="none"/>
+              <path d="M14 14h8a5 5 0 0 1 0 10h-8V14z" stroke="#6BB5E8" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+              <path d="M22 24l5 6" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span class="panel-wordmark">Replant</span>
+          </div>
+
+          <!-- Menu list -->
+          <div class="menu-list">
+
+            <!-- 1. The Vision -->
+            <div class="menu-row">
+              <div class="menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <!-- Eye icon for "vision" -->
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="#6BB5E8" stroke-width="1.5" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="3" stroke="#6BB5E8" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <span class="menu-label">The Vision</span>
+            </div>
+
+            <!-- 2. Outreach & Missions -->
+            <div class="menu-row">
+              <div class="menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="#6BB5E8" stroke-width="1.5"/>
+                  <line x1="2" y1="12" x2="22" y2="12" stroke="#6BB5E8" stroke-width="1.5"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="#6BB5E8" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <span class="menu-label">Outreach &amp; Missions</span>
+            </div>
+
+            <!-- 3. Language -->
+            <div class="menu-row">
+              <div class="menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <span class="menu-label">Language</span>
+            </div>
+
+            <!-- 4. Invite to Replant — NEW, accent label -->
+            <div class="menu-row invite">
+              <div class="menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <!-- User-plus icon -->
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="9" cy="7" r="4" stroke="#6BB5E8" stroke-width="1.5"/>
+                  <line x1="19" y1="8" x2="19" y2="14" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="16" y1="11" x2="22" y2="11" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <span class="menu-label">Invite to Replant</span>
+            </div>
+
+            <!-- 5. Settings -->
+            <div class="menu-row">
+              <div class="menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="3" stroke="#6BB5E8" stroke-width="1.5"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <span class="menu-label">Settings</span>
+            </div>
+
+            <!-- 6. FAQ (last — no border) -->
+            <div class="menu-row" style="border-bottom:none;">
+              <div class="menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="#6BB5E8" stroke-width="1.5"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <span class="menu-label">FAQ</span>
+            </div>
+
+          </div>
+
+          <!-- Footer: identity + logout -->
+          <div class="panel-footer">
+            <div class="identity-card">
+              <div class="avatar-circle">
+                <span class="avatar-initials">IJ</span>
+              </div>
+              <div class="identity-text">
+                <div class="identity-name">Minister Ifeoluwa · Maranatha</div>
+                <div class="identity-location">Lagos, Nigeria</div>
+              </div>
+            </div>
+            <div class="logout-row">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="rgba(240,237,230,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M16 17l5-5-5-5" stroke="rgba(240,237,230,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="21" y1="12" x2="9" y2="12" stroke="rgba(240,237,230,0.3)" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span class="logout-label">Log out</span>
+            </div>
+          </div>
+        </div>
+        <!-- /panel -->
+      </div>
+      <!-- /hamburger-scene -->
+    </div>
+    <!-- /phone-wrap -->
+
+    <!-- Specs -->
+    <div class="specs" style="margin-top:60px;">
+      <div class="specs-label">RN Spec — Hamburger Panel</div>
+
+      <div class="spec-row"><span class="spec-key">Panel width</span><span class="spec-val">75% of screen width (<code>WIN_W * 0.75</code>)</span></div>
+      <div class="spec-row"><span class="spec-key">Background</span><span class="spec-val"><code>Colors.surface</code> (#111111)</span></div>
+      <div class="spec-row"><span class="spec-key">Border-left</span><span class="spec-val">0.5px <code>Colors.borderAccent</code></span></div>
+      <div class="spec-row"><span class="spec-key">Menu item H</span><span class="spec-val">paddingVertical 18 (existing)</span></div>
+      <div class="spec-row"><span class="spec-key">Menu font</span><span class="spec-val">CormorantGaramond_400Regular, 18px</span></div>
+      <div class="spec-row"><span class="spec-key">New icon key</span><span class="spec-val"><code>'invite'</code> — user-plus SVG, 22px, stroke 1.5</span></div>
+      <div class="spec-row"><span class="spec-key">Invite label</span><span class="spec-val"><code>Colors.accent</code> (#6BB5E8) for the label text only; icon same accent — no bg tint on row</span></div>
+      <div class="spec-row"><span class="spec-key">Vision icon</span><span class="spec-val">Changed from info-circle → eye SVG (path d="M1 12s4-8 11-8…" + circle r=3); better semantic match for "vision"</span></div>
+      <div class="spec-row"><span class="spec-key">Menu order</span><span class="spec-val">Vision → Outreach → Language → Invite → Settings → FAQ</span></div>
+      <div class="spec-row"><span class="spec-key">No "coming soon"</span><span class="spec-val">Remove Alert stubs for Vision / Outreach / FAQ; wire to new screens</span></div>
+      <div class="spec-row"><span class="spec-key">IconKey type</span><span class="spec-val">Add <code>'invite'</code> to the union type; add case in <code>MenuIcon</code> switch</span></div>
+
+      <div class="spec-note">
+        <strong>Invite row highlight:</strong> Only the label text is sky blue — do NOT add a background tint or border to the row. The label colour alone is sufficient signal. Keep row paddingVertical, border-bottom and gap identical to other rows.
+      </div>
+      <div class="spec-note">
+        <strong>Vision icon swap:</strong> Current icon key <code>'vision'</code> uses info-circle (i). Replace SVG path with the eye outline shown in mockup — semantically "The Vision" reads clearer as an eye than an info tooltip.
+      </div>
+    </div>
+
+  </div>
+  <!-- /stage 1 -->
+
+
+  <!-- ══════════════════════════════════════
+       MOCKUP 2 — INVITE TO REPLANT
+  ══════════════════════════════════════ -->
+  <div class="section-divider"><span>02 · Invite to Replant — screen</span></div>
+
+  <div class="ruling">
+    <div class="ruling-eyebrow">Design Decision — Link Format Options</div>
+    <div class="ruling-body">
+      Two formats are shown for Founder selection. <strong>Recommendation: Option A (web URL)</strong> — universal, works as a link in bio, SMS, email, and any Android/iOS browser. Option B (deep link) only opens if the recipient already has the app installed, which defeats the purpose at the invite stage. Whichever format is chosen, the <code>?ref=CODE</code> param registers the inviter in admin dashboard as "invited by". Code generation: unique 5-char alphanumeric per user, created on first visit to this screen and stored in <code>users.referral_code</code> (DB column to add, post-MVP or as part of invite ticket scope).
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <div class="phone-wrap">
+      <div class="phone-label">Invite screen</div>
+      <div class="phone">
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="0" y="3" width="2" height="7" rx="1" fill="#F0EDE6"/><rect x="3" y="2" width="2" height="8" rx="1" fill="#F0EDE6"/><rect x="6" y="1" width="2" height="9" rx="1" fill="#F0EDE6"/><rect x="9" y="0" width="2" height="10" rx="1" fill="#F0EDE6"/></svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="1" y="3" width="12" height="7" rx="1.5" stroke="#F0EDE6" stroke-width="1"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="#F0EDE6"/><rect x="13" y="5" width="1.5" height="3" rx="0.75" fill="#F0EDE6"/></svg>
+          </span>
+        </div>
+
+        <!-- Nav bar -->
+        <div class="nav-bar" style="position:relative;">
+          <div class="nav-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="nav-back-label">Menu</span>
+          </div>
+          <span class="nav-title">Invite to Replant</span>
+          <span style="width:40px;"></span>
+        </div>
+
+        <!-- Invite hero -->
+        <div class="invite-hero">
+          <div class="invite-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="7" r="4" stroke="#6BB5E8" stroke-width="1.5"/>
+              <line x1="19" y1="8" x2="19" y2="14" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="16" y1="11" x2="22" y2="11" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="invite-headline">Bring a leader<br>into the network</div>
+          <div class="invite-sub">Share your unique invite link with a pastor, church leader, or ministry worker — and they join Replant connected to you in the network.</div>
+        </div>
+
+        <!-- Link format options -->
+        <div class="invite-link-section">
+          <div class="link-section-label">Your invite link — choose a format</div>
+
+          <!-- Option A — selected (recommended) -->
+          <div class="link-option selected">
+            <div class="link-option-header">
+              <span class="link-option-tag option-a">Option A · Recommended</span>
+              <span class="selected-badge">Selected</span>
+            </div>
+            <div class="link-option-url">projectreplant.org/join?ref=RPL-A7K3M</div>
+            <div class="link-option-desc">Web URL — works on Android, iOS, browsers, email, and SMS. No app needed to open the link.</div>
+          </div>
+
+          <!-- Option B -->
+          <div class="link-option">
+            <div class="link-option-header">
+              <span class="link-option-tag option-b">Option B · App-only</span>
+              <span></span>
+            </div>
+            <div class="link-option-url" style="color:var(--muted);">replant://join?ref=RPL-A7K3M</div>
+            <div class="link-option-desc">Deep link — only opens if recipient already has the Replant app installed.</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="invite-actions">
+          <div class="btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" stroke="#080808" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 6 12 2 8 6" stroke="#080808" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="2" x2="12" y2="15" stroke="#080808" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="btn-primary-label">Share invite link</span>
+          </div>
+          <div class="btn-secondary">
+            <span class="btn-secondary-label">Copy link</span>
+          </div>
+        </div>
+
+        <!-- Mission note -->
+        <div class="invite-mission-note">
+          <div class="mission-note-eyebrow">Why invite?</div>
+          <div class="mission-note-text">Every verified leader who joins strengthens the global network — especially for churches in restricted regions who need connection and prayer cover from the wider Body of Christ.</div>
+        </div>
+
+      </div>
+      <!-- /phone -->
+    </div>
+    <!-- /phone-wrap -->
+
+    <!-- Specs -->
+    <div class="specs" style="margin-top:60px;">
+      <div class="specs-label">RN Spec — Invite Screen</div>
+
+      <div class="spec-row"><span class="spec-key">Route name</span><span class="spec-val"><code>'InviteToReplant'</code> — new screen in Settings or standalone stack</span></div>
+      <div class="spec-row"><span class="spec-key">Entry point</span><span class="spec-val">HamburgerPanel → <code>handleInvite()</code> → close panel → navigate('InviteToReplant')</span></div>
+      <div class="spec-row"><span class="spec-key">Referral code</span><span class="spec-val">Placeholder <code>RPL-A7K3M</code>; format: RPL- + 5 alphanumeric uppercase chars. Stored in <code>users.referral_code</code> (DB column, post-MVP or in invite ticket scope)</span></div>
+      <div class="spec-row"><span class="spec-key">Share action</span><span class="spec-val">React Native <code>Share.share({ url, message })</code> — opens native share sheet (no third-party dep needed)</span></div>
+      <div class="spec-row"><span class="spec-key">Copy action</span><span class="spec-val"><code>Clipboard.setStringAsync(link)</code> + toast "Copied to clipboard"</span></div>
+      <div class="spec-row"><span class="spec-key">Format toggle</span><span class="spec-val">Local state <code>linkFormat: 'web' | 'deep'</code>; tapping a card selects it. Selected card: <code>borderColor: Colors.borderAccent</code>, bg <code>rgba(107,181,232,0.06)</code>. Unselected: <code>Colors.surface</code>, <code>Colors.border</code></span></div>
+      <div class="spec-row"><span class="spec-key">Web URL</span><span class="spec-val"><code>https://projectreplant.org/join?ref={code}</code></span></div>
+      <div class="spec-row"><span class="spec-key">Deep link</span><span class="spec-val"><code>replant://join?ref={code}</code></span></div>
+      <div class="spec-row"><span class="spec-key">Hero icon</span><span class="spec-val">user-plus SVG (same as menu icon), 28px, inside 56px circle: bg <code>rgba(107,181,232,0.06)</code>, border <code>Colors.borderAccent</code></span></div>
+      <div class="spec-row"><span class="spec-key">Btn primary</span><span class="spec-val">height 48, bg <code>Colors.accent</code>, label <code>#080808</code>, DM Sans 500 14px, radius 10</span></div>
+      <div class="spec-row"><span class="spec-key">Btn secondary</span><span class="spec-val">height 40, transparent bg, border <code>Colors.border</code>, label <code>Colors.textMuted</code></span></div>
+
+      <div class="spec-note">
+        <strong>DB note:</strong> <code>users.referral_code</code> column doesn't exist yet. At MVP the code can be derived deterministically from <code>user.id</code> (e.g. base36 of last 5 chars) so no migration is needed for the first ship. Add a proper stored column + uniqueness constraint in the invite ticket.
+      </div>
+      <div class="spec-note">
+        <strong>Tone rule:</strong> Do not use "growth" or "refer-a-friend" language anywhere in this screen. This is about building the Body of Christ. Keep copy mission-forward.
+      </div>
+    </div>
+
+  </div>
+  <!-- /stage 2 -->
+
+
+  <!-- ══════════════════════════════════════
+       MOCKUP 3 — THE VISION
+  ══════════════════════════════════════ -->
+  <div class="section-divider"><span>03 · The Vision — screen</span></div>
+
+  <div class="stage">
+
+    <div class="phone-wrap">
+      <div class="phone-label">The Vision screen</div>
+      <div class="phone">
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="0" y="3" width="2" height="7" rx="1" fill="#F0EDE6"/><rect x="3" y="2" width="2" height="8" rx="1" fill="#F0EDE6"/><rect x="6" y="1" width="2" height="9" rx="1" fill="#F0EDE6"/><rect x="9" y="0" width="2" height="10" rx="1" fill="#F0EDE6"/></svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="1" y="3" width="12" height="7" rx="1.5" stroke="#F0EDE6" stroke-width="1"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="#F0EDE6"/><rect x="13" y="5" width="1.5" height="3" rx="0.75" fill="#F0EDE6"/></svg>
+          </span>
+        </div>
+
+        <!-- Nav bar -->
+        <div class="nav-bar" style="position:relative;">
+          <div class="nav-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="nav-back-label">Menu</span>
+          </div>
+          <span style="width:40px;"></span>
+        </div>
+
+        <!-- Vision body -->
+        <div class="vision-body">
+
+          <div class="vision-eyebrow">Replant · The Vision</div>
+
+          <div class="vision-title">One Body.<br><em>No borders.</em></div>
+
+          <div class="vision-scripture">"That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me."</div>
+          <div class="vision-scripture-ref">John 17:21 — KJV</div>
+
+          <div class="vision-divider"></div>
+
+          <p class="vision-para">
+            <strong>The Church was never meant to be fragmented by borders, language, or persecution.</strong> Across the world, thousands of pastors, ministers, and church leaders carry the Gospel in contexts of hostility, isolation, and risk — cut off from the wider Body of Christ by geography, surveillance, and censorship.
+          </p>
+
+          <p class="vision-para">
+            Replant is secure communication infrastructure for the global Church. It connects verified leaders — from established congregations to underground house networks — in a single, encrypted space where prayer, counsel, and solidarity can flow without restriction.
+          </p>
+
+          <p class="vision-para">
+            This is not a social platform. It is a covenant network — built on the conviction that the Body of Christ, made one, is the most powerful witness on earth.
+          </p>
+
+          <div class="vision-footer">
+            <span class="vision-footer-mark">Replant · Est. 2025</span>
+          </div>
+        </div>
+
+      </div>
+      <!-- /phone -->
+    </div>
+    <!-- /phone-wrap -->
+
+    <!-- Specs -->
+    <div class="specs" style="margin-top:60px;">
+      <div class="specs-label">RN Spec — The Vision Screen</div>
+
+      <div class="spec-row"><span class="spec-key">Route name</span><span class="spec-val"><code>'TheVision'</code></span></div>
+      <div class="spec-row"><span class="spec-key">Layout</span><span class="spec-val">ScrollView (content may exceed phone height on small devices); bg <code>Colors.background</code></span></div>
+      <div class="spec-row"><span class="spec-key">Back button</span><span class="spec-val">Standard nav back (CC handles). No custom close button needed — hamburger panel already dismisses before navigation</span></div>
+      <div class="spec-row"><span class="spec-key">Eyebrow</span><span class="spec-val">DM Mono 400, 9.5px, letterSpacing 0.26em, uppercase, <code>Colors.accent</code>; left-aligned; preceded by 20px hairline rule (View, height 0.5, bg accent)</span></div>
+      <div class="spec-row"><span class="spec-key">Title</span><span class="spec-val">CormorantGaramond_600SemiBold, 34px, letterSpacing 0.02em; "No borders." in italic (<code>CormorantGaramond_600SemiBold_Italic</code>), color <code>Colors.accent</code></span></div>
+      <div class="spec-row"><span class="spec-key">Scripture</span><span class="spec-val">CormorantGaramond_300Light_Italic, 14px, color <code>Colors.textMuted</code>; paddingLeft 16, borderLeft 1.5px <code>Colors.borderAccent</code></span></div>
+      <div class="spec-row"><span class="spec-key">Ref line</span><span class="spec-val">CormorantGaramond_400Regular, 11.5px, letterSpacing 0.06em, <code>Colors.textSubtle</code>, paddingLeft 16</span></div>
+      <div class="spec-row"><span class="spec-key">Paragraphs</span><span class="spec-val">DM Sans 400, 12px, <code>Colors.textMuted</code>, lineHeight 1.8; strong = DM Sans 500, <code>Colors.text</code></span></div>
+      <div class="spec-row"><span class="spec-key">Footer mark</span><span class="spec-val">CormorantGaramond_400Regular, 12px, letterSpacing 2px, uppercase, <code>Colors.textSubtle</code>; centered, paddingTop 24, borderTop 0.5px <code>Colors.border</code></span></div>
+      <div class="spec-row"><span class="spec-key">Content</span><span class="spec-val">Static copy — no API call. Hardcode in the screen file or a separate <code>visionContent.ts</code> constant. Do NOT pull from CMS at MVP.</span></div>
+
+      <div class="spec-note">
+        <strong>Tone note:</strong> The Vision screen is a manifesto, not a marketing page. The copy above is a first draft — Founder should review wording before ship, especially the first paragraph. The structure (eyebrow → large title → anchor scripture → three paragraphs → mark) is the locked design pattern.
+      </div>
+    </div>
+
+  </div>
+  <!-- /stage 3 -->
+
+
+  <!-- ══════════════════════════════════════
+       MOCKUP 4 — OUTREACH & MISSIONS
+  ══════════════════════════════════════ -->
+  <div class="section-divider"><span>04 · Outreach &amp; Missions — screen</span></div>
+
+  <div class="ruling">
+    <div class="ruling-eyebrow">Live Data Note</div>
+    <div class="ruling-body">
+      At MVP, all content on this screen is <strong>static editorial copy</strong> (hardcoded or from a <code>outreachContent.ts</code> constant). <strong>Post-MVP hook points:</strong> each partner card should be backed by a Supabase <code>outreach_partners</code> table with <code>{ id, title, category, body, cta_label, cta_url, sort_order, active }</code>. The "Connect with us" CTA on each card should deep-link to a DM thread or external URL depending on whether the partner is an internal Replant entity or an external org.
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <div class="phone-wrap">
+      <div class="phone-label">Outreach &amp; Missions screen</div>
+      <div class="phone">
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="0" y="3" width="2" height="7" rx="1" fill="#F0EDE6"/><rect x="3" y="2" width="2" height="8" rx="1" fill="#F0EDE6"/><rect x="6" y="1" width="2" height="9" rx="1" fill="#F0EDE6"/><rect x="9" y="0" width="2" height="10" rx="1" fill="#F0EDE6"/></svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="1" y="3" width="12" height="7" rx="1.5" stroke="#F0EDE6" stroke-width="1"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="#F0EDE6"/><rect x="13" y="5" width="1.5" height="3" rx="0.75" fill="#F0EDE6"/></svg>
+          </span>
+        </div>
+
+        <!-- Nav bar -->
+        <div class="nav-bar" style="position:relative;">
+          <div class="nav-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="nav-back-label">Menu</span>
+          </div>
+          <span style="width:40px;"></span>
+        </div>
+
+        <!-- Outreach body -->
+        <div class="outreach-body">
+
+          <div class="vision-eyebrow" style="margin-bottom:14px;">Outreach &amp; Missions</div>
+          <div class="outreach-intro-title">Mission<br>focus areas</div>
+          <div class="outreach-intro-sub">Where the network directs prayer, resources, and partnership — in season and out of season.</div>
+
+          <!-- Card 1: Persecuted Regions -->
+          <div class="partner-card persecuted">
+            <div class="partner-eyebrow persecuted">Priority focus</div>
+            <div class="partner-title">Persecuted Regions</div>
+            <div class="partner-body">Standing with leaders and congregations in areas of active hostility — providing secure communication, prayer networks, and connection to the wider Body of Christ.</div>
+            <div class="partner-cta">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><line x1="5" y1="12" x2="19" y2="12" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/><path d="M12 5l7 7-7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Pray with this region
+            </div>
+          </div>
+
+          <!-- Card 2: Church Planting -->
+          <div class="partner-card planting">
+            <div class="partner-eyebrow planting">Network growth</div>
+            <div class="partner-title">Church Planting</div>
+            <div class="partner-body">Supporting church planters who are establishing new congregations in unreached and under-resourced areas — with counsel, prayer, and network connections.</div>
+            <div class="partner-cta">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><line x1="5" y1="12" x2="19" y2="12" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/><path d="M12 5l7 7-7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Connect with a planter
+            </div>
+          </div>
+
+          <!-- Card 3: Resource Distribution -->
+          <div class="partner-card resources">
+            <div class="partner-eyebrow resources">Practical support</div>
+            <div class="partner-title">Resource Distribution</div>
+            <div class="partner-body">Coordinating Bibles, discipleship materials, and training resources to congregations in areas where physical access is restricted or dangerous.</div>
+            <div class="partner-cta">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><line x1="5" y1="12" x2="19" y2="12" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round"/><path d="M12 5l7 7-7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Get involved
+            </div>
+          </div>
+
+          <!-- Static note -->
+          <div class="outreach-note">
+            <div class="outreach-note-text">More partnerships coming. If your organisation serves the persecuted or global Church and wants to connect with the Replant network — reach out via Settings → Contact.</div>
+          </div>
+
+        </div>
+      </div>
+      <!-- /phone -->
+    </div>
+    <!-- /phone-wrap -->
+
+    <!-- Specs -->
+    <div class="specs" style="margin-top:60px;">
+      <div class="specs-label">RN Spec — Outreach &amp; Missions</div>
+
+      <div class="spec-row"><span class="spec-key">Route name</span><span class="spec-val"><code>'OutreachMissions'</code></span></div>
+      <div class="spec-row"><span class="spec-key">Layout</span><span class="spec-val">ScrollView, bg <code>Colors.background</code>, padding 20</span></div>
+      <div class="spec-row"><span class="spec-key">Eyebrow</span><span class="spec-val">Same pattern as Vision screen (DM Mono, 9.5px, accent, with left-hairline)</span></div>
+      <div class="spec-row"><span class="spec-key">Intro title</span><span class="spec-val">CormorantGaramond_600SemiBold, 24px; marginBottom 8</span></div>
+      <div class="spec-row"><span class="spec-key">Intro sub</span><span class="spec-val">DM Sans 400, 11.5px, <code>Colors.textMuted</code>, lineHeight 1.7; marginBottom 24</span></div>
+      <div class="spec-row"><span class="spec-key">Partner card</span><span class="spec-val">bg <code>Colors.surface</code>, border 0.5px <code>Colors.border</code>, radius 10, padding 16; left accent bar: 2px wide, absolute, full height. Colors per category: persecuted=red (0.6 opacity), planting=green (0.6), resources=amber (0.6)</span></div>
+      <div class="spec-row"><span class="spec-key">Card eyebrow</span><span class="spec-val">DM Mono 400, 8.5px, letterSpacing 0.22em, uppercase; color matches category</span></div>
+      <div class="spec-row"><span class="spec-key">Card title</span><span class="spec-val">CormorantGaramond_600SemiBold, 17px</span></div>
+      <div class="spec-row"><span class="spec-key">Card body</span><span class="spec-val">DM Sans 400, 11px, <code>Colors.textMuted</code>, lineHeight 1.7; marginBottom 12</span></div>
+      <div class="spec-row"><span class="spec-key">CTA row</span><span class="spec-val">DM Sans 400, 11px, <code>Colors.accent</code>; leading arrow-right SVG 12px; onPress → Alert "Coming soon" at MVP, or route to Prayer Wall filter / DM post-MVP</span></div>
+      <div class="spec-row"><span class="spec-key">Content</span><span class="spec-val">Static at MVP. Post-MVP: <code>outreach_partners</code> Supabase table. See ruling callout above.</span></div>
+      <div class="spec-row"><span class="spec-key">Bottom note</span><span class="spec-val">bg <code>Colors.surface</code>, border <code>Colors.border</code>, radius 8, DM Sans 400, 10.5px, <code>Colors.textSubtle</code></span></div>
+    </div>
+
+  </div>
+  <!-- /stage 4 -->
+
+
+  <!-- ══════════════════════════════════════
+       MOCKUP 5 — FAQ
+  ══════════════════════════════════════ -->
+  <div class="section-divider"><span>05 · FAQ — screen</span></div>
+
+  <div class="stage">
+
+    <div class="phone-wrap">
+      <div class="phone-label">FAQ — closed state</div>
+      <div class="phone">
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="0" y="3" width="2" height="7" rx="1" fill="#F0EDE6"/><rect x="3" y="2" width="2" height="8" rx="1" fill="#F0EDE6"/><rect x="6" y="1" width="2" height="9" rx="1" fill="#F0EDE6"/><rect x="9" y="0" width="2" height="10" rx="1" fill="#F0EDE6"/></svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="1" y="3" width="12" height="7" rx="1.5" stroke="#F0EDE6" stroke-width="1"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="#F0EDE6"/><rect x="13" y="5" width="1.5" height="3" rx="0.75" fill="#F0EDE6"/></svg>
+          </span>
+        </div>
+
+        <!-- Nav bar -->
+        <div class="nav-bar" style="position:relative;">
+          <div class="nav-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="nav-back-label">Menu</span>
+          </div>
+          <span style="width:40px;"></span>
+        </div>
+
+        <!-- FAQ body: all closed -->
+        <div class="faq-body">
+          <div class="faq-intro">Frequently<br>asked questions</div>
+          <div class="faq-intro-sub">Quick answers about Replant, security, and how the network works.</div>
+
+          <!-- Q1 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">What is Replant?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q2 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">Who can join Replant?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q3 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">How is my data kept secure?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q4 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">What is a "branch"?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q5 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">How do I verify my church?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q6 — closed -->
+          <div class="faq-item" style="border-bottom:none;">
+            <div class="faq-question-row">
+              <span class="faq-question">Who do I contact for help?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Contact row -->
+          <div class="faq-contact">
+            <div class="faq-contact-label">Direct support</div>
+            <div class="faq-contact-email">accounts@projectreplant.org</div>
+          </div>
+
+        </div>
+      </div>
+      <!-- /phone -->
+    </div>
+    <!-- /phone-wrap -->
+
+    <!-- Open state phone -->
+    <div class="phone-wrap">
+      <div class="phone-label">FAQ — item 3 expanded (open state)</div>
+      <div class="phone">
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="0" y="3" width="2" height="7" rx="1" fill="#F0EDE6"/><rect x="3" y="2" width="2" height="8" rx="1" fill="#F0EDE6"/><rect x="6" y="1" width="2" height="9" rx="1" fill="#F0EDE6"/><rect x="9" y="0" width="2" height="10" rx="1" fill="#F0EDE6"/></svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><rect x="1" y="3" width="12" height="7" rx="1.5" stroke="#F0EDE6" stroke-width="1"/><rect x="2" y="4" width="8" height="5" rx="0.5" fill="#F0EDE6"/><rect x="13" y="5" width="1.5" height="3" rx="0.75" fill="#F0EDE6"/></svg>
+          </span>
+        </div>
+
+        <!-- Nav bar -->
+        <div class="nav-bar" style="position:relative;">
+          <div class="nav-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="nav-back-label">Menu</span>
+          </div>
+          <span style="width:40px;"></span>
+        </div>
+
+        <!-- FAQ body: Q3 open -->
+        <div class="faq-body">
+          <div class="faq-intro">Frequently<br>asked questions</div>
+          <div class="faq-intro-sub">Quick answers about Replant, security, and how the network works.</div>
+
+          <!-- Q1 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">What is Replant?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q2 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">Who can join Replant?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q3 — OPEN -->
+          <div class="faq-item open">
+            <div class="faq-question-row">
+              <span class="faq-question" style="color:var(--sky);">How is my data kept secure?</span>
+              <svg class="faq-chevron" style="transform:rotate(180deg);" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#6BB5E8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="faq-answer" style="display:block;">
+              <div class="faq-answer-text">
+                Replant uses Supabase with row-level security — your messages and data are only visible to the intended recipients. The platform is built to be hostile to bulk data extraction. For leaders in high-risk regions, additional protections (underground mode, anonymous posting) further limit exposure. We do not sell data, and we do not surface location to other users without your explicit consent.
+              </div>
+            </div>
+          </div>
+
+          <!-- Q4 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">What is a "branch"?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q5 — closed -->
+          <div class="faq-item">
+            <div class="faq-question-row">
+              <span class="faq-question">How do I verify my church?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Q6 — closed, no border -->
+          <div class="faq-item" style="border-bottom:none;">
+            <div class="faq-question-row">
+              <span class="faq-question">Who do I contact for help?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="rgba(240,237,230,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <!-- Contact row -->
+          <div class="faq-contact">
+            <div class="faq-contact-label">Direct support</div>
+            <div class="faq-contact-email">accounts@projectreplant.org</div>
+          </div>
+
+        </div>
+      </div>
+      <!-- /phone 2 -->
+    </div>
+    <!-- /phone-wrap -->
+
+    <!-- Specs -->
+    <div class="specs" style="margin-top:60px;">
+      <div class="specs-label">RN Spec — FAQ Screen</div>
+
+      <div class="spec-row"><span class="spec-key">Route name</span><span class="spec-val"><code>'FAQ'</code></span></div>
+      <div class="spec-row"><span class="spec-key">Layout</span><span class="spec-val">ScrollView, bg <code>Colors.background</code>, padding 20</span></div>
+      <div class="spec-row"><span class="spec-key">Accordion</span><span class="spec-val">Each item: local <code>openIndex</code> state or per-item boolean. Only one open at a time recommended (collapse previous on tap)</span></div>
+      <div class="spec-row"><span class="spec-key">Question row H</span><span class="spec-val">paddingVertical 14, borderBottom 0.5px <code>Colors.border</code>; last item no border</span></div>
+      <div class="spec-row"><span class="spec-key">Question font</span><span class="spec-val">CormorantGaramond_400Regular, 15px, <code>Colors.text</code>; open state: <code>Colors.accent</code></span></div>
+      <div class="spec-row"><span class="spec-key">Chevron</span><span class="spec-val">18×18 SVG, stroke <code>rgba(240,237,230,0.35)</code>; open state: stroke <code>Colors.accent</code>, rotated 180°</span></div>
+      <div class="spec-row"><span class="spec-key">Answer bg</span><span class="spec-val"><code>Colors.surfaceElevated</code> (#181818), border 0.5px <code>Colors.border</code>, radius 6, padding 12 14</span></div>
+      <div class="spec-row"><span class="spec-key">Answer font</span><span class="spec-val">DM Sans 400, 11px, <code>Colors.textMuted</code>, lineHeight 1.75</span></div>
+      <div class="spec-row"><span class="spec-key">Animation</span><span class="spec-val">Animate answer height 0→auto using <code>LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)</code> before setState — no Animated.Value needed</span></div>
+      <div class="spec-row"><span class="spec-key">Contact card</span><span class="spec-val">bg <code>Colors.surface</code>, border <code>Colors.border</code>, radius 10, margin-top 20; email: DM Mono 400, 11px, <code>Colors.accent</code>; label: DM Mono 9px uppercase muted</span></div>
+      <div class="spec-row"><span class="spec-key">Email address</span><span class="spec-val"><code>accounts@projectreplant.org</code> (NOT team@ — per memory ref)</span></div>
+
+      <div class="spec-note">
+        <strong>FAQ content note:</strong> Full answer copy for all 6 questions is below for CC implementation reference.
+      </div>
+      <div class="spec-note" style="margin-top:8px;">
+        <strong>Q1 What is Replant?</strong> — Replant is a secure communication platform for verified Christian leaders globally. It connects pastors, ministers, and church workers across borders — with a particular focus on churches facing persecution or operating in restricted regions.
+      </div>
+      <div class="spec-note" style="margin-top:8px;">
+        <strong>Q2 Who can join?</strong> — Replant is for verified church leaders — pastors, ministers, deacons, and recognised ministry workers. Each leader is verified by the Replant team before gaining full access to the network.
+      </div>
+      <div class="spec-note" style="margin-top:8px;">
+        <strong>Q3 Data security</strong> — see mockup open state above.
+      </div>
+      <div class="spec-note" style="margin-top:8px;">
+        <strong>Q4 What is a branch?</strong> — A branch is a group conversation within Replant, tied to a church or ministry context. Branch members can post messages, share prayer requests, and coordinate — separate from your direct messages.
+      </div>
+      <div class="spec-note" style="margin-top:8px;">
+        <strong>Q5 Church verification?</strong> — Submit your church profile through the app. The Replant team reviews it and approves access — usually within 1–3 business days. You'll receive an in-app notification when your church is verified.
+      </div>
+      <div class="spec-note" style="margin-top:8px;">
+        <strong>Q6 Contact?</strong> — Email the Replant team at <code>accounts@projectreplant.org</code>, or use the Settings → Contact form in the app.
+      </div>
+    </div>
+
+  </div>
+  <!-- /stage 5 -->
+
+
+  <!-- ─── FOOTER ─── -->
+  <div class="section-divider" style="margin-top:80px;"><span>End of CD handoff · 2026-06-09</span></div>
+  <div style="text-align:center;padding:12px 0 0;">
+    <p style="font-family:var(--mono);font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--subtle);">Claude Design · Replant · 5 mockup views · No blur · iPhone Pro Max 430×932pt</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — MFA Login Gate · Admin CD</title>
+<!-- ext-resource-dependency: https://fonts.googleapis.com -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mfa-gate-chrome.css">
+<link rel="stylesheet" href="mfa-gate.css">
+<style>
+  /* match the live admin font stack exactly (JetBrains Mono) */
+  :root {
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --rp-mono: "JetBrains Mono", ui-monospace, monospace;
+    --rp-sans: "DM Sans", system-ui, sans-serif;
+    --rp-serif: "Cormorant Garamond", Georgia, serif;
+    --rp-surface-2: #161616;
+    --rp-amber: #d8a14a;
+  }
+  /* the two surfaces live inside fixed-height frame bodies */
+  .frame-body.gate-host { height: 768px; overflow: hidden; }
+  .frame-body.su-host { height: 600px; position: relative; overflow: hidden; padding: 0; }
+  /* surface-2 backdrop (the triggering screen, dimmed under the modal) */
+  .su-host .adm-body { filter: saturate(0.9); }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#080808"/>
+    <rect x="34" y="46" width="32" height="26" rx="2" fill="none" stroke="#6BB5E8" stroke-width="2.6"/>
+    <path d="M40 46v-6a10 10 0 0 1 20 0v6" fill="none" stroke="#6BB5E8" stroke-width="2.6"/>
+    <circle cx="50" cy="59" r="3" fill="#6BB5E8"/>
+  </svg>
+</template>
+
+<div class="doc">
+
+  <!-- ░░░ HEADER ░░░ -->
+  <header class="page-header">
+    <div class="page-header-top">
+      <span class="page-eyebrow">Replant Admin · Concept Direction</span>
+      <div class="page-meta">
+        MFA login gate · two surfaces<br>
+        <b>Option C+ · SEC + BE panel</b><br>
+        AAL2-at-sign-in enforcement · UX layer
+      </div>
+    </div>
+    <h1 class="page-title">Closing the gate — <em>two-factor that actually holds from the first moment</em></h1>
+    <p class="page-sub">Today every admin session sits at <strong>AAL1</strong> and every per-action second-factor check rejects, because nothing ever elevates the session after the password. This CD designs the two surfaces that fix the UX layer of that gap: a <strong>full-screen enrollment gate</strong> an admin can't get past without a verified authenticator, and a <strong>step-up modal</strong> that re-challenges with a <strong>TOTP code</strong> — not the password it used to re-probe — before a destructive action lands. Built on the live <code>rp-*</code> system. No new tokens.</p>
+
+    <p class="prayer-line">
+      Father, this is a small gate guarding people we will never meet — underground leaders whose safety rests on an admin's session being exactly as strong as we claim it is. Let no session sit weaker than we believe. Make the seams hold, and make our copy honest: clear, unshowy, never coddling competent people, never leaking a name. Steady the Founder and the team who ratify this. Guard the Church You love.
+      <span class="amen">In Jesus' name, Amen.</span>
+    </p>
+
+    <div class="invariants">
+      <span class="inv-chip">Desktop admin web · 1280–1440px</span>
+      <span class="inv-chip">Dark base #080808</span>
+      <span class="inv-chip">Serif headers · mono for codes</span>
+      <span class="inv-chip">Italic = scripture only</span>
+      <span class="inv-chip">Red = threshold only</span>
+      <span class="inv-chip">No AAL2 / step-up / elevation in copy</span>
+      <span class="inv-chip">No new tokens</span>
+    </div>
+  </header>
+
+  <!-- ░░░ RATIONALE ░░░ -->
+  <section class="section" id="rationale" style="margin-top:64px">
+    <div class="section-header">
+      <div class="section-eyebrow">Where these sit in the sign-in flow</div>
+      <h2 class="section-title">Two surfaces, one enforcement</h2>
+      <p class="section-desc">After this work, <code>signInWithPassword</code> no longer lands an admin on the dashboard at AAL1. If a verified factor exists, the inline TOTP challenge elevates the session. If <strong>no</strong> factor exists, <strong>Surface&nbsp;1</strong> stands in the way until enrollment completes. <strong>Surface&nbsp;2</strong> is the per-action re-challenge that mints a short-lived, action-bound token — and it asks for a code, because re-entering the password only re-proves what the session already proved by existing.</p>
+    </div>
+
+    <div class="specs">
+      <div class="specs-inner" style="padding:22px">
+        <div class="specs-grid">
+          <div>
+            <div class="specs-block-label">Surface 1 — BlockingEnrollmentGate</div>
+            <div class="spec-row"><span class="spec-key">renders</span><span class="spec-val">on sign-in when the admin has <b>no verified TOTP factor</b>. Replaces the entire <code>RpFrame</code> layout — no left nav, no topbar.</span></div>
+            <div class="spec-row"><span class="spec-key">two cases</span><span class="spec-val"><b>New invitee</b> (just set a password, no factor yet) · <b>factor-reset admin</b> (break-glass reset per OPS-03). Same gate, different welcome framing.</span></div>
+            <div class="spec-row"><span class="spec-key">holds</span><span class="spec-val">the already-built <code>TotpEnrollmentScreen</code> verbatim. CD adds the <b>wrapper chrome</b> only: logo, welcome copy, sign-out.</span></div>
+            <div class="spec-row"><span class="spec-key">no exit</span><span class="spec-val">no skip, no "later", no dismiss. One quiet <b>Sign out</b> link is the only escape hatch.</span></div>
+          </div>
+          <div>
+            <div class="specs-block-label">Surface 2 — StepUpTotpModal</div>
+            <div class="spec-row"><span class="spec-key">replaces</span><span class="spec-val">the current password-based <code>StepUpModal</code>. Same host architecture; the <b>input mechanism + copy</b> change.</span></div>
+            <div class="spec-row"><span class="spec-key">asks for</span><span class="spec-val">a <b>6-digit code</b>, mirroring the built-and-approved <code>TotpChallengeModal</code> treatment (mono cells, focus ring, lockout).</span></div>
+            <div class="spec-row"><span class="spec-key">action-bound</span><span class="spec-val">names the destructive action it's gating (reject UG-A540, demote, revoke…). The token it mints binds to that one action, 5-min TTL.</span></div>
+            <div class="spec-row"><span class="spec-key">cancel</span><span class="spec-val">returns the admin to the triggering screen with the action <b>not</b> performed.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="specs-note"><div class="specs-note-label">Why a code and not the password</div><div class="specs-note-body">Re-entering the password proves the admin knows the same secret the session was opened with — it establishes nothing new. A TOTP code proves <strong>possession of the second factor right now</strong>. That is the whole point of step-up, and it's the pattern Stripe / GitHub sudo-mode / Okta / Atlassian all settled on. The user-facing copy never says "AAL2," "step-up," or "elevation" — admins are told plainly to <strong>confirm with their code</strong>.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ SURFACE 1 ░░░ -->
+  <section class="section" id="surface-1">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 1 · <span class="num">BlockingEnrollmentGate</span></div>
+      <h2 class="section-title">The gate, <em>rendered full-screen</em></h2>
+      <p class="section-desc">An admin's first impression of the dashboard is this screen — so it greets them, frames why they're stopped, and gets out of the way of the enrollment flow they came to finish. One <strong>universal</strong> welcome serves both entry conditions — a brand-new invitee and a break-glass factor-reset admin see the same message. The card below is the existing <code>TotpEnrollmentScreen</code>, rendered verbatim — CD does not touch the three steps.</p>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/</div>
+        <span class="frame-tag">1440 × 900</span>
+      </div>
+      <div class="frame-body gate-host" data-mount-gate></div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> New component <b>BlockingEnrollmentGate.jsx</b>. It is <b>not</b> a route — it's rendered by the post-sign-in router (or a top-level guard) <b>in place of</b> <code>RpFrame</code> whenever <code>resolveTotpFactorId</code> → <code>null</code>. Composition: <code>&lt;BlockingEnrollmentGate&gt;&lt;TotpEnrollmentScreen onEnrolled={navigateToDashboard}/&gt;&lt;/BlockingEnrollmentGate&gt;</code>. The wrapper owns logo chrome + welcome copy + sign-out; the child owns enrollment + the <code>mfa.verify</code> that auto-issues the elevated session.</div>
+
+    <div class="specs" style="margin-top:18px">
+      <div class="specs-header"><span class="specs-label">Wrapper spec</span><span class="specs-component"><span class="ang">&lt;</span>BlockingEnrollmentGate<span class="ang">/&gt;</span> · components/BlockingEnrollmentGate.jsx</span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div>
+          <div class="specs-block-label">Chrome — what CD adds</div>
+          <div class="spec-row"><span class="spec-key">.gate-chrome</span><span class="spec-val">Logo-only bar: bordered <b>R</b> mark + <b>Replant</b> wordmark, top-left. No nav, no topbar, no crumb. Lifts the Login.jsx logo treatment.</span></div>
+          <div class="spec-row"><span class="spec-key">.gate-welcome</span><span class="spec-val">Serif headline + sub, centered. No eyebrow. <b>One universal message</b> for both entry conditions.</span></div>
+          <div class="spec-row"><span class="spec-key">.gate-signout</span><span class="spec-val">Top-right of the chrome bar. <code>supabase.auth.signOut()</code> → <code>/login</code>. Quiet, not a CTA (open Q2).</span></div>
+          <div class="spec-row"><span class="spec-key">bg</span><span class="spec-val">Login.jsx vignette + grid-mask reused so the gate reads as an auth surface, not the dashboard.</span></div>
+        </div>
+        <div>
+          <div class="specs-block-label">Reuse / contract</div>
+          <div class="spec-row"><span class="spec-key">child</span><span class="spec-val"><code>&lt;TotpEnrollmentScreen onEnrolled/&gt;</code> — verbatim, no prop changes. On verify it auto-issues the elevated session; <code>onEnrolled</code> navigates to <code>/network</code>.</span></div>
+          <div class="spec-row"><span class="spec-key">case</span><span class="spec-val"><code>case="invitee" | "reset"</code> — still passed for routing / analytics, but the welcome copy is <b>universal</b> (same message either way). Router sets <code>"reset"</code> after an admin_mfa_factor_reset.</span></div>
+          <div class="spec-row"><span class="spec-key">no scroll trap</span><span class="spec-val">Gate owns the scroll; the enrollment flow is tall. Card max-width 720, centered, generous top/bottom padding.</span></div>
+          <div class="spec-row"><span class="spec-key">tokens</span><span class="spec-val">Every value resolves to <code>rp-*</code>. No new tokens. Reuses <code>rp-surface</code>, <code>rp-border</code>, <code>rp-sky</code>, <code>rp-serif</code>.</span></div>
+        </div>
+      </div></div>
+      <div class="specs-note amber"><div class="specs-note-label">Open Q1 + Q2 live here</div><div class="specs-note-body"><strong>Welcome copy</strong> (Q1) and <strong>sign-out placement</strong> (Q2) are both staged for Founder ratification — see the copy log + open questions below. CD pick on placement: <strong>top-right corner of the chrome bar</strong> (shown). It stays visible without competing with the enrollment card, and reads as an escape hatch rather than an option.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ SURFACE 2 ░░░ -->
+  <section class="section" id="surface-2">
+    <div class="section-header">
+      <div class="section-eyebrow">Surface 2 · <span class="num">StepUpTotpModal</span></div>
+      <h2 class="section-title">Step-up, <em>re-challenged with a code</em></h2>
+      <p class="section-desc">Triggered by a destructive action — here, rejecting an underground verification. The modal names the action, takes a 6-digit code, and runs the same state machine the approved <code>TotpChallengeModal</code> uses: <strong>idle → verifying → error → locked</strong> (5 attempts, 15-minute cooldown). Use <strong>View as</strong> to inspect each state. Cancel returns to the queue with nothing rejected.</p>
+    </div>
+
+    <div class="opt-rail">
+      <span class="opt-rail-label">View as</span>
+      <div class="opt-group">
+        <span class="opt-name">State</span>
+        <div data-seg-stepup data-opts='[{"v":"idle","label":"Idle"},{"v":"verifying","label":"Verifying"},{"v":"error","label":"Error"},{"v":"locked","label":"Locked"}]'></div>
+      </div>
+      <span class="opt-hint">In Idle the cells are live — type a code. Error shows the attempt counter; Locked shows the 15-min cooldown.</span>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome">
+        <div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div>
+        <div class="frame-url"><span class="lock">⚷</span><b>admin.projectreplant.org</b>/underground</div>
+        <span class="frame-tag">1440 × 900</span>
+      </div>
+      <div class="frame-body su-host">
+        <!-- the triggering screen, dimmed under the modal (preview context) -->
+        <div class="adm-body su-behind" style="padding:22px 26px">
+          <div class="dt-header" style="margin-bottom:16px">
+            <span class="dt-ref">UG-A540</span>
+            <span class="dt-sep"></span>
+            <div class="dt-field"><span class="k">Region</span><span class="v">Restricted · redacted</span></div>
+            <span class="dt-sep"></span>
+            <div class="dt-field"><span class="k">Evidence tier</span><span class="v">T3 · unverifiable</span></div>
+            <div class="dt-state-right"><span class="state state-await"><span class="sd"></span>Awaiting decision</span></div>
+          </div>
+          <div class="propose reject">
+            <div class="propose-strip"><span class="ps-dot"></span><span class="ps-label">Proposing reject</span><span class="ps-two">two-admin</span></div>
+            <div class="propose-body">
+              <div class="fld">
+                <div class="fld-label"><span class="req">·</span> Reason for reject</div>
+                <div class="txt" style="min-height:46px;color:#cfcabd">Evidence does not meet the threshold for verification at this time.</div>
+              </div>
+              <div class="propose-actions">
+                <button class="btn btn-reject btn-sm">Confirm reject</button>
+                <button class="btn btn-ghost btn-sm">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- the modal -->
+        <div data-mount-stepup></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> New component <b>StepUpTotpModal.jsx</b> — refresh of <code>StepUpModal.jsx</code>. Keeps the <code>useStepUp()</code> host architecture (<code>_registerOpener</code> / <code>_resolvePending</code> / z-index 2000 over <code>.ov</code>). Swaps the <code>&lt;input type="password"/&gt;</code> for the 6-cell code input + lockout state machine lifted from <code>TotpChallengeModal.jsx</code>. Contract: <code>&lt;StepUpTotpModal action={ACTIONS.REJECT_UNDERGROUND} target="UG-A540" onVerified={(token)=>…} onCancel={…}/&gt;</code>.</div>
+
+    <div class="specs" style="margin-top:18px">
+      <div class="specs-header"><span class="specs-label">Change vs reuse</span><span class="specs-component"><span class="ang">&lt;</span>StepUpTotpModal<span class="ang">/&gt;</span> · components/StepUpTotpModal.jsx</span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div>
+          <div class="specs-block-label">Reuse — unchanged from StepUpModal</div>
+          <div class="spec-row"><span class="spec-key">host</span><span class="spec-val"><code>useStepUp()</code> opener registration, pending-promise resolve/reject, single global mount at app root.</span></div>
+          <div class="spec-row"><span class="spec-key">z-index</span><span class="spec-val"><code>2000</code> — clears <code>.ov</code> (300) + <code>rp-toast</code> (1000). Backdrop-click + ESC cancel (when not verifying / locked).</span></div>
+          <div class="spec-row"><span class="spec-key">shell</span><span class="spec-val">Card surface, border, radius. Width <b>380 → 440</b> to seat six cells comfortably (only structural change to the shell).</span></div>
+        </div>
+        <div>
+          <div class="specs-block-label">Change — from StepUpModal</div>
+          <div class="spec-row"><span class="spec-key">input</span><span class="spec-val"><code>.rp-input</code> password field → <b>6× <code>.otp-cell</code></b> (mono 26px, sky focus ring, error tint) + paste/advance handlers from <code>TotpChallengeModal</code>.</span></div>
+          <div class="spec-row"><span class="spec-key">verify</span><span class="spec-val"><code>POST request-step-up {password, action}</code> → <code>challengeAndVerify(factorId, code)</code> then mint the action-bound token (no password in the body).</span></div>
+          <div class="spec-row"><span class="spec-key">state</span><span class="spec-val">adds <b>error</b> (attempt counter) + <b>locked</b> (5-attempt / 15-min, persisted per <code>factorId</code>) from <code>TotpChallengeModal</code>.</span></div>
+          <div class="spec-row"><span class="spec-key">copy</span><span class="spec-val">"Confirm your password" → <b>"Verify your identity"</b>; action surfaced by name + ref. No auth-internal vocabulary.</span></div>
+        </div>
+      </div></div>
+      <div class="specs-note"><div class="specs-note-label">Token contract (for the implementing engineer)</div><div class="specs-note-body">On a passing code: <code>challengeAndVerify</code> establishes second-factor possession, then the step-up token mints — <strong>bound to the (user_id, action) pair</strong>, 5-minute TTL, separate from session freshness, single-use against that one action to prevent replay across a different destructive call. CD does not wire <code>mfa.challenge/verify</code>; <code>onVerified(token)</code> hands the token back to the caller that opened the modal.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ COPY LOG ░░░ -->
+  <section class="section" id="copy">
+    <div class="section-header">
+      <div class="section-eyebrow">Copy log · for ratification</div>
+      <h2 class="section-title">Every string, and why</h2>
+      <p class="section-desc">Voice: clinical, peer-respecting, honest about mechanism. Admins know what TOTP is — nothing is coddled, nothing euphemised. Italic stays reserved for scripture; none is forced onto an auth surface.</p>
+    </div>
+    <div class="specs"><div class="specs-inner" style="padding:20px 22px">
+      <div class="specs-grid">
+        <div>
+          <div class="specs-block-label">Surface 1 — welcome framing</div>
+          <div class="spec-row"><span class="spec-key">title</span><span class="spec-val"><b>"One more step before you're in."</b> Universal — shown to new invitees and factor-reset admins alike. Alt for Founder pick: <b>"Finish setting up your account."</b></span></div>
+          <div class="spec-row"><span class="spec-key">sub</span><span class="spec-val">"Replant admins <b>must</b> sign in with an authenticator code. Set yours up to continue."</span></div>
+          <div class="spec-row"><span class="spec-key">why (card)</span><span class="spec-val">The access justification lives in the card, now <b>universal</b> (not Heartcry-specific, since the screen also hosts profile re-enroll): "Admin access reaches sensitive information about leaders in restricted contexts. Two-factor authentication is required before you continue."</span></div>
+          <div class="spec-row"><span class="spec-key">recovery</span><span class="spec-val">"…contact the <b>Replant Operations team</b> at <b>accounts@projectreplant.org</b> to restore access. There is no automated recovery."</span></div>
+          <div class="spec-row"><span class="spec-key">foot</span><span class="spec-val">"Every admin enrolls before reaching the dashboard. There's no skip." — honest about the gate, no drama.</span></div>
+        </div>
+        <div>
+          <div class="specs-block-label">Surface 2 — step-up</div>
+          <div class="spec-row"><span class="spec-key">title</span><span class="spec-val"><b>"Verify your identity"</b> — matches <code>TotpChallengeModal</code> exactly, so the two re-challenges read as one system.</span></div>
+          <div class="spec-row"><span class="spec-key">sub</span><span class="spec-val">"Enter the 6-digit code from your authenticator app to confirm this action."</span></div>
+          <div class="spec-row"><span class="spec-key">action</span><span class="spec-val">"You're about to <b>reject underground verification</b> <code>UG-A540</code>. This can't be undone." — action named, consequence stated, ref carried.</span></div>
+          <div class="spec-row"><span class="spec-key">error</span><span class="spec-val">"Incorrect code — <b>N attempts remaining</b> before 15-minute lockout." (verbatim from <code>TotpChallengeModal</code>)</span></div>
+          <div class="spec-row"><span class="spec-key">locked</span><span class="spec-val">"Too many attempts. Try again in 15 minutes. <b>The action was not performed.</b>" — the added clause reassures nothing fired.</span></div>
+        </div>
+      </div>
+      <div class="specs-note red" style="margin:18px 0 0"><div class="specs-note-label">Banned, per the voice ruling</div><div class="specs-note-body">No "Oops!", no "Copy it somewhere safe", no exclamation reassurance. No "AAL2," "step-up," "elevation," "freshness," "JWT" on any user-facing string. Red is used only on the destructive-action context line and error/locked states — never on a headline.</div></div>
+    </div></div>
+  </section>
+
+  <!-- ░░░ OPEN QUESTIONS ░░░ -->
+  <section class="section" id="questions">
+    <div class="section-header">
+      <div class="section-eyebrow">For Founder ratification</div>
+      <h2 class="section-title">Open questions</h2>
+    </div>
+    <div class="specs"><div class="specs-inner" style="padding:8px 22px 18px">
+      <div class="spec-row" style="padding-top:14px"><span class="spec-key" style="color:var(--rp-sky)">Q1</span><span class="spec-val"><b>Welcome copy (Surface 1).</b> Copy is now <b>universal</b> across both entry conditions (no eyebrow, no case split). Headline staged for final lock — A "One more step before you're in." (CD lean) vs B "Finish setting up your account." <b>Founder locks final.</b></span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-sky)">Q2</span><span class="spec-val"><b>Sign-out placement (Surface 1).</b> CD pick: <b>top-right corner of the logo chrome</b> (shown). Alternative considered: a quiet link below the card. Founder ratify.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-green)">Q3</span><span class="spec-val"><b>Surface 2 chrome.</b> <b style="color:var(--rp-green)">CD recommends → modal overlay.</b> Pure overlay (shown) over the triggering screen, for visual consistency with <code>TotpChallengeModal</code> — not a body-replace or side panel. Founder confirm.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-sky)">Q4</span><span class="spec-val"><b>Loading state between password entry and the inline TOTP challenge (Login).</b> Out of these two surfaces' scope, but flagged: recommend an <b>instant</b> transition (the challenge modal's own focus state is feedback enough); add a spinner only if the factor lookup proves slow in practice.</span></div>
+      <div class="spec-row"><span class="spec-key" style="color:var(--rp-amber)">Q5</span><span class="spec-val"><b>Recovery flow ("Lost your authenticator?").</b> <b style="color:var(--rp-amber)">Out of scope — post-MVP, acknowledged.</b> Today recovery is OPS-03 break-glass (founder-mediated SQL). A self-serve "lost authenticator" surface <b>will</b> need to exist; not designed here.</span></div>
+    </div></div>
+  </section>
+
+  <!-- ░░░ ENDNOTE ░░░ -->
+  <div class="endnote">
+    <div class="endnote-prayer">"The name of the LORD is a strong tower: the righteous runneth into it, and is safe." — Proverbs 18:10</div>
+    <div class="endnote-meta">
+      Replant Admin · MFA login gate<br>
+      Option C+ · SEC + BE panel · CD layer<br>
+      Founder ratifies → FE wire-up
+    </div>
+  </div>
+
+</div>
+
+<script src="mfa-gate.js"></script>
+</body>
+</html>

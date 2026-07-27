@@ -55,13 +55,33 @@ function makeDeps(overrides: Partial<Deps> = {}): { deps: Deps; calls: Calls } {
   return { deps, calls };
 }
 
+// Full church-embed shape helper. The 2026-06-22 branch_substate fields
+// (soft_deleted_at / last_outcome_modal_kind) MUST be present as explicit
+// nulls — the resolver's strict `!== null` checks treat `undefined` as
+// "set", which is exactly the mock-drift bug that broke 8 body-equality
+// tests here when the substate decoration shipped (fixed with KAN-205).
+const ch = (
+  overrides: Partial<NonNullable<UserStatusRow["church"]>> = {},
+): NonNullable<UserStatusRow["church"]> => ({
+  verification_status: null,
+  verification_deadline: null,
+  soft_deleted_at: null,
+  last_outcome_modal_kind: null,
+  ...overrides,
+});
+
 const userRow = (overrides: Partial<UserStatusRow> = {}): UserStatusRow => ({
   id: "user-uuid-1",
   verification_status: "verified",
   deactivated_at: null,
   is_active: true,
   church_id: "church-uuid-1",
-  church: { verification_deadline: "2026-06-01T00:00:00.000Z" },
+  // KAN-205 — user-level soft-delete columns, null by default.
+  soft_deleted_at: null,
+  soft_delete_reason: null,
+  hard_delete_scheduled_at: null,
+  user_verification_deadline: null,
+  church: ch({ verification_deadline: "2026-06-01T00:00:00.000Z" }),
   ...overrides,
 });
 
@@ -132,7 +152,7 @@ Deno.test("super_admin happy-path — is_active=true with past deadline → acti
       userRow({
         is_active: true,
         verification_status: "pending",
-        church: { verification_deadline: "2020-01-01T00:00:00.000Z" }, // far in past
+        church: ch({ verification_deadline: "2020-01-01T00:00:00.000Z" }), // far in past
       }),
   });
   const handler = createHandler(deps);
@@ -211,7 +231,7 @@ Deno.test("pending in window — 200 pending with computed days_remaining", asyn
     fetchUserStatus: async () =>
       userRow({
         verification_status: "pending",
-        church: { verification_deadline: "2026-05-19T12:00:00.000Z" },
+        church: ch({ verification_deadline: "2026-05-19T12:00:00.000Z" }),
       }),
   });
   const handler = createHandler(deps);
@@ -257,7 +277,9 @@ Deno.test("deactivated — pre-existing DB 'deactivated' with PAST deadline → 
         verification_status: "deactivated",
         deactivated_at: "2026-04-15T00:00:00.000Z",
         is_active: false,
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+        // Panel-B predicate (2026-07-13): the renewal fingerprint now also
+        // requires the church to still be PENDING.
+        church: ch({ verification_status: "pending", verification_deadline: "2026-04-01T00:00:00.000Z" }),
       }),
   });
   const handler = createHandler(deps);
@@ -273,6 +295,32 @@ Deno.test("deactivated — pre-existing DB 'deactivated' with PAST deadline → 
   assertEquals(calls.deactivateAtomically, 0);
 });
 
+Deno.test("F4 (2026-07-13) — pending user on a REJECTED church → 200 deactivated/support_contact + lockout_reason church_rejected", async () => {
+  // Flow-gaps F4/G10 wire pin: the rejection decoration must survive the
+  // full handler path (fetch → resolve → buildResponse) and appear on the
+  // wire exactly once, with recovery_path untouched.
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () =>
+      userRow({
+        verification_status: "pending",
+        church: ch({ verification_status: "rejected", verification_deadline: "2026-04-01T00:00:00.000Z" }),
+      }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(new Request("http://t/", bearer()));
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body, {
+    verification_status: "deactivated",
+    verification_deadline: null,
+    days_remaining: null,
+    recovery_path: "support_contact",
+    lockout_reason: "church_rejected",
+  });
+  // A rejected-church leader must never trip the deadline write.
+  assertEquals(calls.deactivateAtomically, 0);
+});
+
 // --- Option B atomic deactivation --------------------------------------
 
 Deno.test("Option B — pending+past → calls deactivateAtomically, returns deactivated/verification_renewal", async () => {
@@ -282,7 +330,7 @@ Deno.test("Option B — pending+past → calls deactivateAtomically, returns dea
     fetchUserStatus: async () =>
       userRow({
         verification_status: "pending",
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" }, // past
+        church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }), // past
       }),
   });
   const handler = createHandler(deps);
@@ -312,7 +360,7 @@ Deno.test("Option B idempotency (TC-44.3a) — deactivateAtomically reports wrot
     fetchUserStatus: async () =>
       userRow({
         verification_status: "pending",
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+        church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }),
       }),
     deactivateAtomically: async () => ({ wrote: false }),
   });
@@ -334,7 +382,7 @@ Deno.test("Transaction rollback — deactivateAtomically throws → 500, respons
     fetchUserStatus: async () =>
       userRow({
         verification_status: "pending",
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+        church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }),
       }),
     deactivateAtomically: async () => {
       throw new Error("audit_log INSERT failed: violates check constraint at server.internal:5432");
@@ -364,7 +412,7 @@ Deno.test("Transaction rollback — second call after rollback still sees pre-de
     fetchUserStatus: async () =>
       userRow({
         verification_status: "pending",
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+        church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }),
       }),
     deactivateAtomically: async () => {
       attempt++;
@@ -399,7 +447,7 @@ Deno.test("TC-44.7 v2 — Option B and cron-with-past-deadline → byte-identica
     fetchUserStatus: async () =>
       userRow({
         verification_status: "pending",
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+        church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }),
       }),
   });
   const cron = makeDeps({
@@ -408,7 +456,7 @@ Deno.test("TC-44.7 v2 — Option B and cron-with-past-deadline → byte-identica
         verification_status: "deactivated",
         deactivated_at: "2026-04-15T00:00:00.000Z",
         is_active: false,
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" }, // past
+        church: ch({ verification_status: "pending", verification_deadline: "2026-04-01T00:00:00.000Z" }), // past + still-pending (Panel-B predicate)
       }),
   });
 
@@ -456,7 +504,7 @@ Deno.test("c.14235 #7 cross-bucket — renewal and support bodies differ only on
         verification_status: "deactivated",
         deactivated_at: "2026-04-15T00:00:00.000Z",
         is_active: false,
-        church: { verification_deadline: "2026-04-01T00:00:00.000Z" },
+        church: ch({ verification_status: "pending", verification_deadline: "2026-04-01T00:00:00.000Z" }),
       }),
   });
   const support = makeDeps({
@@ -556,4 +604,141 @@ Deno.test("Response Content-Type is application/json on every path", async () =>
     const res = await createHandler(deps)(c.req);
     assertEquals(res.headers.get("Content-Type"), "application/json", `case ${c.name}`);
   }
+});
+
+// --- KAN-205 — self_deleted substate (SEC panel 2026-07-03, ratified) ----
+// The blocker fix: auth-status-check must SEE user-level soft-deletion.
+// Wire contract: top-level verification_status 'pending' (never
+// 'deactivated' — the FE deactivation modal fires on that before substate
+// mapping) + branch_substate 'self_deleted'. No deadline write may run.
+
+const SELF_DELETED_WIRE_BODY = {
+  verification_status: "pending",
+  verification_deadline: null,
+  days_remaining: null,
+  branch_substate: "self_deleted",
+};
+
+Deno.test("KAN-205 — self-deleted VERIFIED leader (second-leader case) → self_deleted body, no write", async () => {
+  // The headline blocker: church stays live (co-leader remains), user row
+  // is verified + self-deleted. Pre-fix this resolved 'active' and the
+  // leader saw a working-looking app where every write failed on RLS.
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () =>
+      userRow({
+        verification_status: "verified",
+        is_active: false,
+        soft_deleted_at: "2026-05-01T00:00:00.000Z",
+        soft_delete_reason: "leader_initiated",
+        hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+        deactivated_at: "2026-05-01T00:00:00.000Z",
+      }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(new Request("http://t/", bearer()));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), SELF_DELETED_WIRE_BODY);
+  assertEquals(calls.deactivateAtomically, 0);
+});
+
+Deno.test("KAN-205 — self-deleted PENDING leader with lapsed church deadline → self_deleted body, deactivateAtomically NOT called", async () => {
+  // Pre-fix this was the clobber path: pending_past_deadline_needs_write
+  // fired deactivateAtomically over the self-deletion state.
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () =>
+      userRow({
+        verification_status: "pending",
+        is_active: false,
+        soft_deleted_at: "2026-05-01T00:00:00.000Z",
+        soft_delete_reason: "leader_initiated",
+        hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+        church: ch({ verification_deadline: "2026-04-01T00:00:00.000Z" }), // past
+      }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(new Request("http://t/", bearer()));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), SELF_DELETED_WIRE_BODY);
+  assertEquals(calls.deactivateAtomically, 0);
+});
+
+Deno.test("KAN-205 — self-deleted SKIP-FLOW leader (no church) → self_deleted body (previously excluded from substates)", async () => {
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () =>
+      userRow({
+        verification_status: "pending",
+        is_active: false,
+        church: null,
+        church_id: null,
+        soft_deleted_at: "2026-05-01T00:00:00.000Z",
+        soft_delete_reason: "leader_initiated",
+        hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+        user_verification_deadline: "2026-04-20T00:00:00.000Z", // lapsed — must NOT write
+      }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(new Request("http://t/", bearer()));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), SELF_DELETED_WIRE_BODY);
+  assertEquals(calls.deactivateAtomically, 0);
+});
+
+Deno.test("KAN-205 — self-deleted super_admin → self_deleted body (not the deactivated/support modal)", async () => {
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () =>
+      userRow({
+        is_active: false,
+        soft_deleted_at: "2026-05-01T00:00:00.000Z",
+        soft_delete_reason: "leader_initiated",
+        hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+      }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(
+    new Request("http://t/", bearer({ role: "authenticated", super_admin: true })),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), SELF_DELETED_WIRE_BODY);
+  assertEquals(calls.deactivateAtomically, 0);
+});
+
+Deno.test("KAN-205 — ADMIN-reason soft-deleted user keeps the church-derived 'soft_deleted' rejection surface", async () => {
+  // Two-eyes admin reject mirrors soft-delete onto users AND church with
+  // reason 'admin_deactivation'. That lifecycle must stay on the existing
+  // rejection ceremony ('soft_deleted'), NOT the self-restore screen.
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () =>
+      userRow({
+        verification_status: "pending",
+        is_active: false,
+        soft_deleted_at: "2026-05-01T00:00:00.000Z",
+        soft_delete_reason: "admin_deactivation",
+        hard_delete_scheduled_at: "2026-05-31T00:00:00.000Z",
+        church: ch({
+          verification_status: "rejected",
+          soft_deleted_at: "2026-05-01T00:00:00.000Z",
+        }),
+      }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(new Request("http://t/", bearer()));
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.branch_substate, "soft_deleted");
+  assertEquals(body.verification_status, "deactivated");
+  // The deadline write path must not fire for ANY soft-deleted row.
+  assertEquals(calls.deactivateAtomically, 0);
+});
+
+Deno.test("KAN-205 — NON-deleted leader is untouched by the new branch (regression guard)", async () => {
+  const { deps, calls } = makeDeps({
+    fetchUserStatus: async () => userRow({ verification_status: "verified" }),
+  });
+  const handler = createHandler(deps);
+  const res = await handler(new Request("http://t/", bearer()));
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.verification_status, "active");
+  assertEquals("branch_substate" in body, false);
+  assertEquals(calls.deactivateAtomically, 0);
 });

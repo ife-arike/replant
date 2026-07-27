@@ -1,0 +1,55 @@
+---
+/**
+ * Scripture block — italic Cormorant Garamond + sky-uppercase citation.
+ * Mirrors .scripture-strip from website/index.html:109.
+ *
+ * Usage in MDX:
+ *   <Scripture ref="John 17:21" translation="ESV">
+ *     that they may all be one, just as you, Father, are in me, and I in you,
+ *     that they also may be in us
+ *   </Scripture>
+ */
+interface Props {
+  ref: string
+  translation?: string
+}
+const { ref, translation } = Astro.props
+---
+
+<aside class="scripture">
+  <blockquote>
+    <slot />
+  </blockquote>
+  <cite>
+    {ref}{translation ? ` · ${translation}` : ''}
+  </cite>
+</aside>
+
+<style>
+  .scripture {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    margin: 2.5em auto;
+    border-top: 0.5px solid var(--ink-faint);
+    border-bottom: 0.5px solid var(--ink-faint);
+    max-width: 56ch;
+  }
+  blockquote {
+    font-family: var(--serif);
+    font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+    font-weight: 300;
+    font-style: italic;
+    color: var(--ink-mid);
+    margin: 0 auto 0.9rem;
+    line-height: 1.6;
+  }
+  cite {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    color: var(--sky);
+    text-transform: uppercase;
+    font-style: normal;
+  }
+</style>

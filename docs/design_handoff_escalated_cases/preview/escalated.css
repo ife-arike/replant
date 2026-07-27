@@ -1,0 +1,339 @@
+/* ============================================================
+   ESCALATED CASES — surface-specific classes (KAN-293/295/296/292)
+   Layered ON TOP of the lifted globals.css. Reuses --rp-* tokens,
+   .state / .sla-agg / .mdl / .btn / .tier families verbatim; adds
+   only what the two-section register + drawer + tier switcher need.
+   ============================================================ */
+
+/* ---- prototype harness (NOT part of the shipped surface) ---- */
+.ec-harness {
+  position: fixed; right: 16px; bottom: 16px; z-index: 400;
+  width: 280px;
+  background: #0d0d0d;
+  border: 1px solid var(--rp-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  font-family: var(--rp-sans);
+  overflow: hidden;
+}
+.ec-harness-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px; border-bottom: 1px solid var(--rp-border);
+  cursor: pointer;
+}
+.ec-harness-head .h-t {
+  font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--rp-muted-2); font-weight: 600;
+}
+.ec-harness-head .h-chev { color: var(--rp-muted-2); transition: transform .15s; }
+.ec-harness.collapsed .h-chev { transform: rotate(-90deg); }
+.ec-harness.collapsed .ec-harness-body { display: none; }
+.ec-harness-body { padding: 13px 14px 15px; display: flex; flex-direction: column; gap: 14px; }
+.ec-hfield { display: flex; flex-direction: column; gap: 7px; }
+.ec-hlabel { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--rp-muted); font-weight: 500; }
+.ec-seg { display: flex; gap: 4px; background: var(--rp-bg); border: 1px solid var(--rp-border); border-radius: 6px; padding: 3px; }
+.ec-seg button {
+  flex: 1; appearance: none; border: none; background: transparent; cursor: pointer;
+  font: 500 11px var(--rp-sans); color: var(--rp-muted-2); padding: 6px 4px; border-radius: 4px;
+  letter-spacing: 0.01em; transition: background .12s, color .12s; white-space: nowrap;
+}
+.ec-seg button.on { background: var(--rp-surface-2); color: var(--rp-text); }
+.ec-seg.tiers button.on { background: var(--rp-sky-08); color: var(--rp-sky); box-shadow: inset 0 0 0 1px rgba(107,181,232,0.3); }
+.ec-hnote { font-size: 10.5px; color: var(--rp-muted); line-height: 1.5; }
+.ec-hnote b { color: var(--rp-muted-2); font-weight: 500; }
+
+/* ---- viewer tier badge in the topbar ---- */
+.ec-viewer {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--rp-border-strong); background: var(--rp-bg);
+}
+.ec-viewer .vt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rp-sky); }
+.ec-viewer .vt-name { font-size: 12px; color: var(--rp-text); font-weight: 500; }
+.ec-viewer .vt-tier { font: 500 9px var(--rp-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--rp-sky); }
+
+/* ============================================================
+   SLA aggregate — three buckets (3 / 7 / 14). Mirrors .sla-agg,
+   stays sky/informational (Founder ruling); per-stat numbers tint.
+   ============================================================ */
+.sla-agg .agg-stat.is-active { border-bottom-color: rgba(240,237,230,0.5); }
+.sla-agg .agg-foot-link { margin-left: auto; }
+
+/* ============================================================
+   SECTION — two source axes stacked on the page. Neutral headers
+   (the colored "spine" was removed on review); Pastoral renders FIRST.
+   ============================================================ */
+.ec-section { margin-bottom: 48px; }
+.ec-section-head {
+  display: flex; align-items: baseline; gap: 14px;
+  padding: 0 2px 11px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--rp-border);
+}
+.ec-section-eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+  color: var(--rp-text); display: inline-flex; align-items: center;
+}
+/* gentle lineage cue — a single dot, continuous with /pastoral (amber) + /flagged (red) */
+.ec-section-eyebrow::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; margin-right: 10px;
+}
+.from-pastoral .ec-section-eyebrow::before { background: var(--rp-amber); }
+.from-flagged  .ec-section-eyebrow::before { background: var(--rp-red); }
+.ec-section-q { font-size: 12px; color: var(--rp-muted-2); font-weight: 300; }
+.ec-section-count { margin-left: auto; font-family: var(--rp-mono); font-size: 11px; color: var(--rp-muted-2); }
+
+/* tabbed-surface per-axis caption (neutral) — sits under the q-tabs bar */
+.ec-axis-cap {
+  display: flex; align-items: baseline; gap: 12px; margin: 0 2px 14px;
+}
+.ec-axis-cap .cap-q { font-size: 12.5px; color: var(--rp-muted-2); font-weight: 300; }
+.ec-axis-cap .cap-count { margin-left: auto; font-family: var(--rp-mono); font-size: 11px; color: var(--rp-muted-2); }
+/* parent surface — 4-tab bar shared chrome */
+.q-tabs.ec-tabs { margin-bottom: 22px; }
+
+/* row accent left edge by lineage */
+.ec-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+.ec-table thead th {
+  text-align: left; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--rp-muted); font-weight: 500; padding: 11px 14px;
+  border-bottom: 1px solid var(--rp-border); background: var(--rp-surface);
+}
+.ec-table tbody td { padding: 13px 14px; border-bottom: 1px solid var(--rp-border); vertical-align: middle; }
+.ec-table tbody tr:last-child > td { border-bottom: none; }
+.ec-table tbody tr.ec-row { cursor: pointer; }
+.ec-table tbody tr.ec-row:hover > td { background: rgba(255,255,255,0.018); }
+/* no colored row spine — the tab + columns carry the axis (grownup restraint) */
+
+.ec-caseid {
+  font-family: var(--rp-mono); font-size: 10.5px; color: var(--rp-sky);
+  border: 1px solid rgba(107,181,232,0.3); padding: 2px 7px; border-radius: 2px; white-space: nowrap;
+}
+.ec-leader { font-size: 13px; font-weight: 500; color: var(--rp-text); }
+.ec-leader .arr { color: var(--rp-muted-2); margin: 0 7px; }
+.ec-leader .recv { color: #cfcabd; font-weight: 400; }
+.ec-sub { font-size: 11px; color: var(--rp-muted-2); margin-top: 2px; }
+.ec-anon { font-style: italic; color: var(--rp-muted-2); font-family: var(--rp-serif); font-size: 13.5px; font-weight: 400; }
+.ec-reason {
+  font-size: 12px; color: #cfcabd; max-width: 280px;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ec-by { font-size: 11.5px; color: var(--rp-muted-2); }
+.ec-by b { color: #cfcabd; font-weight: 500; }
+.ec-by .ec-when { font-family: var(--rp-mono); font-size: 10px; color: var(--rp-muted); }
+.ec-age { font-family: var(--rp-mono); font-size: 11px; color: var(--rp-muted-2); display: inline-flex; align-items: center; gap: 6px; }
+.ec-age.hot { color: #cfcabd; }
+.ec-age .age-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rp-muted-2); }
+.ec-age .age-dot.late { background: var(--rp-red); box-shadow: 0 0 0 3px var(--rp-red-bg); }
+.ec-chev { color: var(--rp-muted-2); display: inline-flex; transition: transform .15s; }
+.ec-row.open .ec-chev { transform: rotate(0); }
+.ec-row:not(.open) .ec-chev { transform: rotate(-90deg); }
+
+/* original-tier chip — T1 expedited carries a gentle amber (act sooner); T2 stays neutral */
+.tier.t-expedite { color: var(--rp-amber); border-color: rgba(216,161,74,0.3); background: transparent; gap: 6px; }
+.tier.t-standard { color: var(--rp-muted-2); border-color: var(--rp-border-strong); background: transparent; gap: 6px; }
+.tier.t-expedite::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--rp-amber); }
+.tier.t-standard::before { content: ''; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--rp-muted-2); }
+
+/* ============================================================
+   TIER-LEVEL PILL (.tlvl) — severity by color, label in WHITE.
+   Used for the pastoral original-tier chip AND the flagged taxonomy
+   codes. T1 red · T2 amber · T3 blue. The pill (border + faint wash)
+   carries the hue; the text stays white so the color reads as a
+   severity edge, not loud type.
+   ============================================================ */
+.tlvl {
+  display: inline-flex; align-items: center; height: 19px; padding: 0 8px;
+  border-radius: 3px; border: 1px solid var(--rp-border-strong); white-space: nowrap; background: transparent;
+  font: 500 9px var(--rp-mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--rp-text);
+}
+/* outline stays grey; the TIER TOKEN carries the color (T1 red, T2 amber),
+   the rest of the label stays white. Flagged codes are plain grey. */
+.tlvl .lv { font-weight: 600; }
+.tlvl .lv.t1 { color: var(--rp-red); }
+.tlvl .lv.t2 { color: var(--rp-amber); }
+
+/* ============================================================
+   STATE PILLS — goldilocks: color rises with "this needs someone".
+   Open = calm/neutral · Awaiting = cool sky (in motion, waiting on the
+   leader) · Acting = amber (an action is live) · Proposal pending Manager
+   = amber with a faint wash (the one that needs a hand). No glowing
+   halos, no loud fills — text + a single dot carry the signal.
+   ============================================================ */
+.state-open { color: #b8b5ad; border-color: var(--rp-border-strong); background: transparent; font-weight: 400; }
+.state-open .sd { background: var(--rp-muted-2); }
+.state-awaiting { color: var(--rp-sky); border-color: rgba(107,181,232,0.3); background: transparent; font-weight: 400; }
+.state-awaiting .sd { background: transparent; border: 1.5px solid var(--rp-sky); }
+.state-awaiting .cd { font-family: var(--rp-mono); font-size: 9px; color: var(--rp-muted-2); margin-left: 2px; }
+.state-pending-mgr { color: var(--rp-text); border-color: rgba(216,161,74,0.4); background: rgba(216,161,74,0.07); font-weight: 500; }
+.state-pending-mgr .sd { background: var(--rp-amber); }
+/* +N for additional taxonomy flags beyond the first */
+.tlvl.ec-more { color: var(--rp-muted-2); }
+
+/* ============================================================
+   ROW DRAWER — case detail + per-tier action set
+   ============================================================ */
+.ec-drawer-cell { padding: 0 !important; background: rgba(255,255,255,0.012); }
+.ec-drawer { padding: 4px 18px 22px; }
+.ec-drawer-inner {
+  background: #0b0b0b; border: 1px solid var(--rp-border); border-radius: 7px;
+  overflow: hidden;
+}
+.ec-drawer-inner { border-top: 1px solid var(--rp-border-strong); }
+.ec-drawer-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1px; background: var(--rp-border); }
+.ec-drawer-col { background: #0b0b0b; padding: 18px 20px; min-width: 0; }
+@media (max-width: 1100px) { .ec-drawer-grid { grid-template-columns: 1fr; } }
+
+.ec-dlabel {
+  font: 600 9.5px var(--rp-mono); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--rp-muted); margin-bottom: 11px; display: flex; align-items: center; gap: 8px;
+}
+.ec-thread { display: flex; flex-direction: column; gap: 9px; }
+.ec-msg {
+  border-left: 2px solid var(--rp-border-strong); padding: 7px 12px;
+  background: #0c0c0c; border-radius: 0 3px 3px 0;
+  font-size: 12.5px; line-height: 1.6; color: #cfcabd;
+}
+.ec-msg.anchor { border-left-color: var(--rp-muted-2); background: rgba(255,255,255,0.02); color: var(--rp-text); }
+.from-pastoral .ec-msg.anchor { border-left-color: var(--rp-amber); background: rgba(216,161,74,0.045); }
+.from-flagged  .ec-msg.anchor { border-left-color: var(--rp-red);   background: rgba(217,104,96,0.05); }
+.ec-msg .m-meta { font: 500 10px var(--rp-mono); color: var(--rp-muted-2); margin-bottom: 4px; display: flex; gap: 10px; align-items: center; }
+.ec-msg .m-flag { color: var(--rp-muted); }
+.from-pastoral .ec-msg .m-flag { color: var(--rp-amber); }
+.from-flagged  .ec-msg .m-flag { color: var(--rp-red); }
+
+.ec-pf-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 0.5px solid var(--rp-faint); }
+.ec-pf-row:last-child { border-bottom: none; }
+.ec-pf-k { font: 500 9.5px var(--rp-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--rp-muted-2); min-width: 104px; flex-shrink: 0; padding-top: 2px; }
+.ec-pf-v { font-size: 12.5px; color: var(--rp-text); line-height: 1.5; }
+.ec-pf-v .q { font-family: var(--rp-serif); font-style: italic; font-weight: 300; font-size: 14px; color: #d8d4ca; }
+
+/* action set — listen-first ordering rendered as a vertical stack */
+.ec-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.ec-actions .btn { justify-content: flex-start; width: 100%; height: 36px; }
+.ec-actions .btn .ic { margin-right: 2px; }
+.ec-action-note {
+  font-size: 11px; color: var(--rp-muted-2); line-height: 1.55; font-weight: 300;
+  margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--rp-faint);
+}
+.ec-action-note b { color: #cfcabd; font-weight: 500; }
+.ec-order-hint {
+  font: 500 9px var(--rp-mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--rp-muted); margin-bottom: 9px;
+}
+
+/* pending-proposal review card (Manager) */
+.ec-proposal {
+  background: rgba(216,161,74,0.06); border: 1px solid rgba(216,161,74,0.28);
+  border-radius: 6px; padding: 14px 15px; margin-bottom: 14px;
+}
+.ec-proposal .pr-strip { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+.ec-proposal .pr-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rp-amber); }
+.ec-proposal .pr-label { font: 500 10px var(--rp-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--rp-amber); }
+.ec-proposal .pr-row { display: flex; gap: 12px; margin-bottom: 7px; }
+.ec-proposal .pr-k { font: 500 9.5px var(--rp-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--rp-muted-2); min-width: 78px; flex-shrink: 0; padding-top: 2px; }
+.ec-proposal .pr-v { font-size: 12.5px; color: var(--rp-text); line-height: 1.55; }
+.ec-proposal .pr-v .by { color: var(--rp-amber); }
+.ec-proposal .pr-v .quote { font-family: var(--rp-serif); font-style: italic; font-weight: 300; font-size: 14px; color: #d8d4ca; }
+.ec-proposal .pr-actions { display: flex; gap: 8px; margin-top: 13px; padding-top: 13px; border-top: 1px solid rgba(216,161,74,0.2); }
+.ec-proposal .pr-self {
+  margin-top: 12px; font-size: 11.5px; color: var(--rp-muted-2); line-height: 1.55;
+  display: flex; gap: 8px; align-items: flex-start;
+}
+
+/* awaiting-reply / acting inline cue */
+.ec-cue {
+  display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border-radius: 4px;
+  font-size: 11.5px; line-height: 1.5; margin-bottom: 14px;
+}
+.ec-cue.sky { background: var(--rp-sky-08); border: 1px solid rgba(107,181,232,0.25); color: #aed4ee; }
+.ec-cue.amber { background: var(--rp-amber-bg); border: 1px solid rgba(216,161,74,0.28); color: #e3c887; }
+.ec-cue .ic { width: 14px; height: 14px; margin-top: 1px; flex-shrink: 0; }
+.ec-cue b { font-weight: 600; }
+
+/* ============================================================
+   RESOLVED (last 14 days) — collapsible
+   ============================================================ */
+.ec-resolved { margin-top: 6px; }
+.ec-resolved-head {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: transparent; border: 1px solid var(--rp-border); border-radius: 6px;
+  padding: 13px 16px; cursor: pointer; text-align: left; color: inherit;
+}
+.ec-resolved-head:hover { background: var(--rp-surface); }
+.ec-resolved-head .rh-chev { color: var(--rp-muted-2); transition: transform .15s; }
+.ec-resolved.open .ec-resolved-head .rh-chev { transform: rotate(90deg); }
+.ec-resolved-head .rh-label { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rp-muted-2); font-weight: 500; }
+.ec-resolved-head .rh-count {
+  font-family: var(--rp-mono); font-size: 10.5px; color: var(--rp-muted-2);
+  border: 1px solid var(--rp-border-strong); border-radius: 9px; padding: 1px 8px;
+}
+.ec-resolved-head .rh-window { margin-left: auto; font: 400 10px var(--rp-mono); letter-spacing: 0.06em; color: var(--rp-muted); }
+.ec-resolved-body { margin-top: 4px; }
+.ec-resolved.collapsed .ec-resolved-body { display: none; }
+.ec-resolved-row {
+  display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+  border-bottom: 1px solid var(--rp-border);
+}
+.ec-resolved-row:last-child { border-bottom: none; }
+.ec-disp-pill {
+  font: 500 9.5px var(--rp-mono); letter-spacing: 0.06em;
+  border-radius: 11px; padding: 3px 10px; border: 1px solid; white-space: nowrap;
+  color: var(--rp-muted-2); border-color: var(--rp-border-strong); background: transparent;
+}
+/* acted-on dispositions carry a gentle tone so a reviewer sees the outcome at a glance */
+.ec-disp-pill.green { color: var(--rp-green); border-color: rgba(108,194,139,0.3); }
+.ec-disp-pill.amber { color: var(--rp-amber); border-color: rgba(216,161,74,0.3); }
+.ec-disp-pill.red   { color: var(--rp-red);   border-color: rgba(217,104,96,0.32); }
+
+/* ============================================================
+   ACCESS DENIED (regular admin hits /escalated) + page states
+   ============================================================ */
+.ec-denied {
+  max-width: 460px; margin: 60px auto; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.ec-denied .d-glyph { width: 48px; height: 48px; color: var(--rp-muted-2); margin-bottom: 8px; }
+.ec-denied .d-title { font-family: var(--rp-serif); font-size: 24px; font-weight: 500; color: var(--rp-text); }
+.ec-denied .d-body { font-size: 13px; color: var(--rp-muted-2); line-height: 1.6; max-width: 40ch; }
+
+/* disabled post-MVP stub affordances */
+.ec-stub {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--rp-muted); border: 1px dashed var(--rp-border-strong);
+  border-radius: 3px; padding: 6px 10px; cursor: not-allowed; background: transparent;
+}
+.ec-stub .stub-tag { font: 500 8px var(--rp-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--rp-muted); border: 1px solid var(--rp-border); border-radius: 3px; padding: 1px 5px; }
+
+/* confirmation modal — centered, single phrase (locked copy) */
+.ec-confirm-body { text-align: center; padding: 34px 30px 26px; }
+.ec-confirm-body .cb-glyph { width: 52px; height: 52px; margin: 0 auto 18px; color: var(--rp-sky); display: grid; place-items: center; }
+.ec-confirm-body .cb-title { font-family: var(--rp-serif); font-size: 21px; font-weight: 500; line-height: 1.3; color: var(--rp-text); max-width: 30ch; margin: 0 auto 22px; }
+
+/* toast */
+.ec-toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+  z-index: 500; display: flex; align-items: center; gap: 10px;
+  background: #0d0d0d; border: 1px solid var(--rp-border-strong); border-radius: 6px;
+  padding: 12px 16px; font-size: 12.5px; color: var(--rp-text);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6); animation: rp-fadein 0.2s ease;
+  max-width: 460px;
+}
+.ec-toast .t-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rp-green); flex-shrink: 0; }
+.ec-toast.sky .t-dot { background: var(--rp-sky); }
+.ec-toast .t-sub { color: var(--rp-muted-2); }
+
+/* filters row */
+.ec-filters { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.ec-filters .ec-sortnote { margin-left: auto; font: 400 10.5px var(--rp-mono); letter-spacing: 0.04em; color: var(--rp-muted); }
+
+/* the regular's /pastoral + /flagged demo strip */
+/* plain, uncolored safe-keeping note (no banner) */
+.ec-quiet-note { font-size: 11.5px; color: var(--rp-muted); margin-bottom: 18px; letter-spacing: 0.01em; }
+
+.ec-mini-note {
+  font-size: 11.5px; color: var(--rp-muted-2); line-height: 1.6; margin-bottom: 16px;
+  padding: 11px 14px; background: var(--rp-sky-08); border: 1px solid rgba(107,181,232,0.22);
+  border-radius: 4px; color: #aed4ee;
+}
+.ec-mini-note b { color: var(--rp-text); font-weight: 600; }

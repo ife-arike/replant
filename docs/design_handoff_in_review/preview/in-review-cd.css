@@ -1,0 +1,343 @@
+/* ═══════════════════════════════════════════════════
+   Replant Admin — "Mark as in review" workstream · CD
+   Extends admin-queue-cd.css (CD doc chrome) + the live
+   src/styles/globals.css design system (rp-* + sla-* +
+   .state-* pill family). NO new design tokens — every
+   value below resolves to an existing globals.css token
+   or a tint of one. Desktop-first (1440 canvas).
+   Founder rulings LOCKED. Tweaks = visual forks only.
+═══════════════════════════════════════════════════ */
+
+/* ─── In Review state pill (Ask 1 + Ask 7) ───
+   REVISED 2026-06-23 (Founder): the RAG-colored fills read as
+   videogamey. The pill is now NEUTRAL — a calm monochrome chip;
+   the flag glyph is the only marker. Urgency is signalled by
+   RESTRAINT, not a colored fill: as a claim ages the flag warms
+   to a single muted accent (the live --rp-amber), and only the
+   genuinely-overdue tier gets a hairline warm edge. One hue,
+   used once, at the extreme. Everything else stays in the
+   text/muted palette. */
+.ir-pill {
+  font-family: var(--rp-sans); font-size: 10.5px; letter-spacing: 0.04em;
+  border-radius: 11px; padding: 3px 11px 3px 9px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 7px; font-weight: 500;
+  color: var(--rp-text); border: 1px solid var(--rp-border-strong); background: transparent;
+}
+.ir-pill .flag { width: 11px; height: 11px; flex-shrink: 0; color: var(--rp-muted-2); }
+.ir-pill .since { font-weight: 400; color: var(--rp-muted-2); }
+.ir-pill .route { font-weight: 500; }
+.ir-pill .arrow { opacity: 0.5; margin: 0 1px; }
+
+/* active · < day 3 — fully neutral. Flag + text carry it. */
+.ir-active { }
+
+/* stale · day 3–6 — the flag warms to a single muted accent. No fill. */
+.ir-stale .flag { color: var(--rp-amber); }
+
+/* very stale · day 7+ — same accent flag + a hairline warm edge so it
+   reads at a glance in a long list. Text stays neutral. */
+.ir-vstale .flag { color: var(--rp-amber); }
+.ir-vstale { border-color: rgba(216,161,74,0.30); }
+.ir-vstale .since { color: #b89a5e; }
+
+/* routed-to-Founder secondary segment (Ask 1 state 6 / Ask 7 v4) */
+.ir-pill .route-seg {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: 7px; padding-left: 8px;
+  border-left: 1px solid var(--rp-border-strong); color: var(--rp-muted-2);
+}
+
+/* ─── Claim affordance, top-right (Ask 1) ───
+   REVISED: pill + action sit on ONE row (the stacked layout
+   pushed the action up against the pill — poor UI). The action
+   is a quiet muted link, separated by a gap + a thin divider,
+   that only brightens on hover so it never competes with the pill. */
+.claim-wrap { display: inline-flex; align-items: center; gap: 12px; }
+.claim-cluster { display: inline-flex; flex-direction: row; align-items: center; gap: 11px; }
+.claim-cluster .claim-link::before {
+  content: ''; display: inline-block; width: 1px; height: 13px;
+  background: var(--rp-border-strong); margin-right: 11px; vertical-align: middle;
+}
+
+/* unclaimed — checkbox-style control */
+.claim-check {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+  font-family: var(--rp-sans); font-size: 12.5px; color: #c8c5be;
+  background: transparent; border: 1px solid var(--rp-border-strong);
+  border-radius: 3px; padding: 6px 12px; position: relative;
+}
+.claim-check:hover { border-color: #3a3a3a; color: var(--rp-text); }
+.claim-check .box {
+  width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--rp-muted-2);
+  flex-shrink: 0; display: grid; place-items: center;
+}
+.claim-check:hover .box { border-color: var(--rp-sky); }
+
+/* helper tooltip */
+.claim-tip {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
+  width: 220px; padding: 9px 12px; border-radius: 6px;
+  background: #0c0c0c; border: 1px solid var(--rp-border-strong);
+  font-family: var(--rp-sans); font-size: 11px; font-weight: 300; line-height: 1.55; color: #cfcabd;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transform: translateY(-3px);
+  transition: opacity 0.14s, transform 0.14s;
+}
+.claim-check:hover .claim-tip { opacity: 1; transform: translateY(0); }
+
+/* claim text-links (Release / Request release / Force unmark) —
+   quiet by default (muted), brighten on hover. Never louder than the pill. */
+.claim-link {
+  font-family: var(--rp-sans); font-size: 11px; background: none; border: none; cursor: pointer;
+  color: var(--rp-muted-2); padding: 0; display: inline-flex; align-items: center; gap: 5px;
+}
+.claim-link:hover { color: var(--rp-sky); }
+.claim-link.danger:hover { color: #cf938c; }
+.claim-link.muted { color: var(--rp-muted-2); }
+
+/* ─── Action-bar claim slot (Ask 2) ─── */
+.ab-claim { display: inline-flex; align-items: center; gap: 10px; }
+.ab-claim-inert {
+  font-family: var(--rp-sans); font-size: 11.5px; color: var(--rp-muted-2);
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.ab-claim-inert .flag { width: 11px; height: 11px; color: var(--rp-muted-2); }
+.action-bar .ab-divider { width: 1px; height: 22px; background: var(--rp-border-strong); margin: 0 4px; }
+/* The bar must never wrap — single row in the real build (Founder 2026-06-23). */
+.action-bar { flex-wrap: nowrap !important; }
+.action-bar .btn { white-space: nowrap; flex-shrink: 0; }
+.action-bar .ab-claim { flex-shrink: 0; }
+.btn.is-disabled { opacity: 0.4; cursor: not-allowed; position: relative; }
+.btn.is-disabled:hover { background: transparent; }
+/* enforcement tooltip on disabled primary CTAs */
+.btn-tipwrap { position: relative; display: inline-flex; }
+.btn-tip {
+  position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%) translateY(3px);
+  width: 250px; padding: 9px 12px; border-radius: 6px; z-index: 40;
+  background: #0c0c0c; border: 1px solid var(--rp-border-strong);
+  font-family: var(--rp-sans); font-size: 11px; font-weight: 300; line-height: 1.55; color: #cfcabd;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transition: opacity 0.14s, transform 0.14s;
+}
+.btn-tip b { color: var(--rp-text); font-weight: 500; }
+.btn-tip a { color: var(--rp-sky); }
+.btn-tipwrap:hover .btn-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ─── Narrative composer (Ask 3) ─── */
+.nc {
+  border: 1px solid var(--rp-border-strong); border-radius: 6px; overflow: hidden;
+  background: #0c0c0c; margin-bottom: 16px;
+}
+.nc-strip {
+  padding: 9px 14px; display: flex; align-items: center; gap: 9px;
+  border-bottom: 1px solid var(--rp-faint); background: rgba(107,181,232,0.05);
+}
+.nc-strip .pt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rp-sky); }
+.nc-strip .lbl { font-family: var(--rp-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rp-sky); }
+.nc-strip .who { margin-left: auto; font-family: var(--rp-sans); font-size: 10.5px; color: var(--rp-muted-2); }
+.nc-body { padding: 13px 14px; display: flex; flex-direction: column; gap: 11px; }
+.nc-row { display: flex; gap: 10px; }
+.nc-channel { width: 168px; flex-shrink: 0; }
+.nc-actions { display: flex; gap: 9px; align-items: center; }
+.nc-actions .hint { font-family: var(--rp-sans); font-size: 10.5px; color: var(--rp-muted); font-weight: 300; }
+
+/* channel chip (in thread rows) — neutral by default; a chip, not a color code */
+.chan-chip {
+  font-family: var(--rp-mono); font-size: 9px; letter-spacing: 0.06em;
+  border-radius: 3px; padding: 2px 7px; border: 1px solid var(--rp-border-strong);
+  color: var(--rp-muted-2); background: transparent; white-space: nowrap;
+}
+.chan-chip.phone { font-style: italic; }
+.note-attach {
+  font-family: var(--rp-sans); font-size: 10.5px; color: var(--rp-muted-2);
+  background: none; border: none; cursor: pointer; padding: 4px 0 0; display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;
+}
+.note-attach:hover { color: var(--rp-sky); }
+.note-attach .ic { width: 11px; height: 11px; }
+
+/* read-only lock note for non-claimer */
+.nc-readonly {
+  display: flex; align-items: center; gap: 9px; padding: 10px 13px; margin-bottom: 14px;
+  border: 1px dashed var(--rp-border-strong); border-radius: 6px;
+  font-family: var(--rp-sans); font-size: 11.5px; color: var(--rp-muted-2); font-weight: 300;
+}
+.nc-readonly .ic { width: 13px; height: 13px; color: var(--rp-muted-2); flex-shrink: 0; }
+.nc-readonly b { color: #cfcabd; font-weight: 500; }
+
+/* ─── Evidence upload widget (Ask 4) ─── */
+.ev-up { border-top: 1px solid var(--rp-faint); margin-top: 14px; padding-top: 14px; }
+.dropzone {
+  border: 1.5px dashed var(--rp-border-strong); border-radius: 8px; padding: 20px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; text-align: center;
+}
+.dropzone:hover, .dropzone.active { border-color: var(--rp-sky); background: var(--rp-sky-04); }
+.dropzone .dz-ico { width: 22px; height: 22px; color: var(--rp-muted-2); }
+.dropzone.active .dz-ico { color: var(--rp-sky); }
+.dropzone .dz-main { font-family: var(--rp-sans); font-size: 12.5px; color: #cfcabd; }
+.dropzone .dz-hint { font-family: var(--rp-sans); font-size: 10.5px; color: var(--rp-muted); font-weight: 300; }
+.ev-up-form { display: flex; flex-direction: column; gap: 11px; margin-top: 12px; }
+
+/* storage cap bar */
+.cap { margin-top: 4px; }
+.cap-meta { display: flex; justify-content: space-between; font-family: var(--rp-mono); font-size: 9.5px; color: var(--rp-muted-2); margin-bottom: 5px; }
+.cap-meta .pct { color: #cfcabd; }
+.cap-track { height: 5px; border-radius: 3px; background: var(--rp-surface-2); overflow: hidden; }
+.cap-fill { height: 100%; border-radius: 3px; background: var(--rp-sky); }
+.cap.warn .cap-fill { background: var(--sla-amber); }
+.cap.warn .cap-meta .pct { color: var(--sla-amber); }
+.cap-warn-note { font-family: var(--rp-sans); font-size: 10.5px; color: var(--sla-amber); font-weight: 300; margin-top: 6px; }
+
+/* evidence file list */
+.evf { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.evf-row {
+  display: flex; align-items: center; gap: 11px; padding: 10px 12px;
+  background: #0c0c0c; border: 1px solid var(--rp-border); border-radius: 5px;
+}
+.evf-ico { width: 30px; height: 30px; border-radius: 5px; background: var(--rp-surface-2); display: grid; place-items: center; flex-shrink: 0; color: var(--rp-muted-2); font-family: var(--rp-mono); font-size: 8.5px; letter-spacing: 0.04em; }
+/* file-type icons stay monochrome — the extension label conveys type; no rainbow */
+.evf-main { flex: 1; min-width: 0; }
+.evf-name { font-family: var(--rp-sans); font-size: 12.5px; color: var(--rp-text); display: flex; align-items: center; gap: 8px; }
+.evf-name .lock { color: var(--rp-green); width: 11px; height: 11px; flex-shrink: 0; }
+.evf-name .spinner { width: 11px; height: 11px; border: 1.5px solid var(--rp-border-strong); border-top-color: var(--rp-sky); border-radius: 50%; animation: evspin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes evspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .evf-name .spinner { animation: none; } }
+.evf-sub { font-family: var(--rp-sans); font-size: 11px; color: var(--rp-muted-2); font-weight: 300; margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.evf-sub .sz { font-family: var(--rp-mono); }
+.link-chip { font-family: var(--rp-mono); font-size: 8.5px; letter-spacing: 0.04em; border-radius: 3px; padding: 2px 6px; border: 1px solid; }
+.link-chip.linked { color: var(--rp-muted-2); border-color: var(--rp-border-strong); background: transparent; }
+.link-chip.unlinked { color: var(--rp-amber); border-color: rgba(216,161,74,0.3); background: transparent; }
+.evf-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.evf-mini { font-family: var(--rp-sans); font-size: 10.5px; background: none; border: none; cursor: pointer; color: var(--rp-muted-2); }
+.evf-mini:hover { color: var(--rp-sky); }
+.evf-mini.del:hover { color: #cf938c; }
+.ev-enc-foot { font-family: var(--rp-sans); font-size: 10.5px; color: var(--rp-muted); font-weight: 300; margin-top: 11px; display: flex; align-items: center; gap: 7px; }
+.ev-enc-foot .ic { width: 11px; height: 11px; color: var(--rp-green); }
+
+/* ─── Force-unmark modal (Ask 5) ─── */
+.gate {
+  display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-radius: 6px;
+  font-family: var(--rp-sans); font-size: 12px; font-weight: 300;
+}
+.gate .ic { width: 14px; height: 14px; flex-shrink: 0; }
+.gate.ok { background: var(--rp-green-bg); border: 1px solid rgba(108,194,139,0.3); color: #9bd6b1; }
+.gate.ok .ic { color: var(--rp-green); }
+.gate.warn { background: var(--rp-amber-bg); border: 1px solid rgba(216,161,74,0.3); color: #e3c887; justify-content: space-between; }
+.gate.warn .ic { color: var(--rp-amber); }
+.gate.warn .gate-left { display: inline-flex; align-items: center; gap: 9px; }
+.gate .reauth { font-family: var(--rp-sans); font-size: 11.5px; color: var(--rp-amber); background: none; border: 1px solid rgba(216,161,74,0.4); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
+.charcount { font-family: var(--rp-mono); font-size: 9.5px; color: var(--rp-muted); text-align: right; }
+.charcount.under { color: #cf938c; } .charcount.ok { color: var(--rp-green); }
+.ct-typed { font-family: var(--rp-mono); letter-spacing: 0.04em; }
+
+/* ─── Two-leader profile cards (Ask 6) ─── */
+.leaders-stack { display: flex; flex-direction: column; gap: 12px; }
+.leader-card { background: #0c0c0c; border: 1px solid var(--rp-border); border-radius: 5px; padding: 14px 15px; }
+.leader-card .lc-id { font-family: var(--rp-serif); font-size: 18px; font-weight: 500; color: var(--rp-text); margin-bottom: 12px; line-height: 1.1; }
+.leader-card .pf-row:first-of-type { padding-top: 0; }
+
+/* ─── Sibling row in queue (Ask 10) ─── */
+.q-table tbody tr.sibling td:first-child { padding-left: 30px; position: relative; }
+.q-table tbody tr.sibling td:first-child::before {
+  content: ''; position: absolute; left: 16px; top: 50%; width: 8px; height: 8px;
+  border-left: 1px solid var(--rp-border-strong); border-bottom: 1px solid var(--rp-border-strong);
+  transform: translateY(-60%);
+}
+.sib-meta { display: flex; flex-direction: column; gap: 3px; }
+.sib-parent { font-family: var(--rp-sans); font-size: 11px; color: var(--rp-muted-2); font-weight: 300; display: inline-flex; align-items: center; gap: 6px; }
+.sib-parent .ic { width: 11px; height: 11px; color: var(--rp-muted); }
+.sib-verified { font-family: var(--rp-mono); font-size: 8.5px; letter-spacing: 0.06em; color: var(--rp-green); border: 1px solid rgba(108,194,139,0.3); background: var(--rp-green-bg); border-radius: 3px; padding: 1px 6px; display: inline-flex; align-items: center; gap: 4px; }
+.row-kind { font-family: var(--rp-mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--rp-muted); }
+
+/* vouch panel */
+.vouch-note { font-family: var(--rp-sans); font-size: 11.5px; color: var(--rp-muted-2); font-weight: 300; margin-bottom: 10px; line-height: 1.6; }
+
+/* ─── inbox composite row (cross-cutting) ─── */
+.inbox-row {
+  display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+  background: var(--rp-surface); border: 1px solid var(--rp-border); border-radius: 5px;
+}
+.inbox-row .ib-ref { font-family: var(--rp-mono); font-size: 10.5px; color: var(--rp-sky); border: 1px solid rgba(107,181,232,0.3); padding: 2px 7px; border-radius: 2px; }
+.inbox-row .ib-region { color: #cfcabd; font-size: 12.5px; flex: 1; }
+.inbox-row .ib-reply { font-family: var(--rp-sans); font-size: 11.5px; color: var(--rp-muted-2); display: inline-flex; align-items: center; gap: 6px; }
+.inbox-row .ib-reply .sd { width: 6px; height: 6px; border-radius: 50%; background: var(--rp-sky); }
+
+/* ─── SLA banner — gray revision (cross-cutting / Founder 2026-06-23) ─── */
+.sla-agg.sla-agg-neutral { background: var(--sla-neutral-bg); border-color: rgba(122,122,122,0.28); }
+.sla-agg.sla-agg-neutral .agg-ico { color: var(--rp-muted-2); }
+.sla-agg.sla-agg-neutral .agg-label { color: var(--rp-muted-2); }
+
+/* ─── Restrained SLA day pill — override the RAG band fills doc-wide ───
+   Founder 2026-06-23: the colored band pills read as videogamey. The day
+   COUNT is the real signal, so it stays a calm mono chip. Urgency is a
+   single small dot: hollow (fresh) → muted-filled → one warm accent at the
+   genuinely-late tiers. One hue, at the extreme only — no yellow/red fills. */
+.sla-pill {
+  background: transparent !important; border-color: var(--rp-border-strong) !important;
+  color: var(--rp-text) !important; font-weight: 400 !important;
+}
+.sla-pill .msg { color: var(--rp-muted-2); }
+.sla-pill .sep { color: var(--rp-muted); opacity: 1; }
+.sla-pill .dot { box-shadow: none !important; background: var(--rp-muted-2) !important; }
+.sla-pill.band-neutral .dot { background: transparent !important; border: 1.5px solid var(--rp-muted-2); }
+.sla-pill.band-amber .dot,
+.sla-pill.band-red .dot,
+.sla-pill.band-past .dot { background: var(--rp-amber) !important; }
+.sla-pill.band-red, .sla-pill.band-past { font-weight: 500 !important; }
+.sla-pill.band-past .dot { animation: none !important; }
+
+/* side-by-side banner comparison strip */
+.banner-compare { display: flex; flex-direction: column; gap: 12px; }
+.banner-compare .bc-tag { font-family: var(--rp-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rp-muted); margin-bottom: 6px; display: block; }
+.banner-compare .bc-tag.was { color: #cf938c; }
+.banner-compare .bc-tag.now { color: var(--rp-green); }
+
+/* tweak: bold staleness (the REJECTED alarm treatment, for comparison) */
+body.stale-bold .ir-stale { color: #eaa85a; border-color: rgba(216,148,58,0.6); background: rgba(216,148,58,0.18); }
+body.stale-bold .ir-vstale { color: #f0938b; border-color: rgba(217,104,96,0.7); background: rgba(217,104,96,0.22); }
+/* tweak: hide flag glyph */
+body.no-flag .ir-pill .flag, body.no-flag .ab-claim-inert .flag { display: none; }
+
+/* ─── State pill dots (2026-06-23 exploration) ───
+   The state chip goes neutral (consistent with the restraint pass); a small
+   left dot brings a bit of notice. Untouched + In Review are unchanged.
+   Default dot = neutral circle; colored-pins mode tints each active state's
+   dot. Tweak `stateDots` flips between the two. */
+.doc .state { background: transparent; border-color: var(--rp-border-strong); color: var(--rp-text); }
+.doc .state .sd { background: var(--rp-muted-2); box-shadow: none; }
+/* Untouched is the null state — muted, unchanged in both modes */
+.doc .state-untouched { color: var(--rp-muted-2); }
+.doc .state-untouched .sd { background: transparent; border: 1.5px solid var(--rp-muted-2); }
+/* Stalled — paused, stays muted */
+.doc .state-stalled .sd { background: var(--rp-muted-2); border: 1px solid var(--rp-bg); }
+
+/* colored-pins mode — a single small accent dot per active state */
+body.state-dots-colored .doc .state-replied .sd { background: var(--rp-sky); }
+body.state-dots-colored .doc .state-await   .sd { background: var(--rp-sky); }
+body.state-dots-colored .doc .state-info    .sd { background: var(--rp-amber); }
+body.state-dots-colored .doc .state-locked  .sd { background: #F0EDE6; }
+body.state-dots-colored .doc .state-verified .sd { background: var(--rp-green); }
+.doc .state-verified { color: var(--rp-text); }
+
+/* pill strip layout helper */
+.pill-strip { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 4px 0; }
+.pill-cell { display: flex; flex-direction: column; gap: 8px; }
+.pill-cell .pc-label { font-family: var(--rp-mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--rp-muted-2); }
+.pill-cell .pc-sub { font-family: var(--rp-sans); font-size: 10.5px; color: var(--rp-muted); font-weight: 300; }
+
+/* small section divider inside a frame body */
+.frame-section-label {
+  font-family: var(--rp-mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--rp-muted); margin: 0 0 12px; display: flex; align-items: center; gap: 10px;
+}
+.frame-section-label::after { content: ''; flex: 1; height: 1px; background: var(--rp-faint); }
+
+/* state caption under each framed mock */
+.state-caption {
+  margin-top: 10px; font-family: var(--rp-mono); font-size: 10px; letter-spacing: 0.04em;
+  color: var(--rp-muted-2); text-align: center;
+}
+.state-caption b { color: var(--rp-sky); font-weight: 400; }
+.state-caption.danger b { color: #cf938c; }
+
+/* grid for multi-frame asks */
+.mock-grid { display: grid; gap: 20px; }
+.mock-grid.g2 { grid-template-columns: 1fr 1fr; }
+.mock-grid.g3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1180px) { .mock-grid.g3 { grid-template-columns: 1fr 1fr; } .mock-grid.g2 { grid-template-columns: 1fr; } }

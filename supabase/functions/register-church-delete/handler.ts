@@ -28,6 +28,7 @@ export interface Deps {
   rateLimit(ip: string): Promise<
     | { allowed: true; count: number }
     | { allowed: false; retryAfterSeconds: number }
+    | { allowed: false; backendError: true }
   >;
 
   getIp(req: Request): string;
@@ -65,6 +66,8 @@ const error429 = (retryAfterSeconds: number) =>
     error: "Too many requests. Please try again later.",
     retry_after_seconds: retryAfterSeconds,
   });
+// Strict fail-closed (pre-UAT audit 2026-07-01): rate-limit backend (Upstash) unreachable -> reject.
+const error503 = () => json(503, { error: "Service temporarily unavailable — please try again in a moment." });
 const error500 = () => json(500, { error: "Church delete failed" });
 
 export function createHandler(deps: Deps) {
@@ -77,6 +80,10 @@ export function createHandler(deps: Deps) {
       const ip = deps.getIp(req);
       const rl = await deps.rateLimit(ip);
       if (!rl.allowed) {
+        if ("backendError" in rl) {
+          deps.log("error", "register_church_delete_rate_limit_unavailable", { ip_hash: hashIp(ip) });
+          return error503();
+        }
         deps.log("warn", "register_church_delete_rate_limited", {
           ip_hash: hashIp(ip),
           retry_after_seconds: rl.retryAfterSeconds,

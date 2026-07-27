@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Replant — "Mark as in review" · Admin CD</title>
+<!-- ext-resource-dependency: https://fonts.googleapis.com -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="admin-queue-cd.css">
+<link rel="stylesheet" href="in-review-cd.css">
+<style>
+  /* This CD uses the LIVE admin font stack (JetBrains Mono, not DM Mono) to
+     match globals.css exactly. Override the doc-chrome mono var. */
+  :root { --mono: "JetBrains Mono", ui-monospace, monospace; --rp-mono: "JetBrains Mono", ui-monospace, monospace;
+          --rp-sans: "DM Sans", system-ui, sans-serif; --rp-serif: "Cormorant Garamond", Georgia, serif;
+          --rp-sky-line: rgba(107,181,232,0.3); --rp-faint: rgba(240,237,230,0.08);
+          --rp-amber: #d8a14a; --rp-amber-bg: rgba(216,161,74,0.12); }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#080808"/>
+    <path d="M36 26v48" stroke="#6BB5E8" stroke-width="3" stroke-linecap="round"/>
+    <path d="M36 28h26l-5 8 5 8H36Z" fill="none" stroke="#6BB5E8" stroke-width="2.6" stroke-linejoin="round"/>
+  </svg>
+</template>
+
+<!-- ░░░ TWEAKS ░░░ -->
+<div id="tweaks">
+  <div class="tw-head"><span class="tw-title">Tweaks</span><span class="tw-close">×</span></div>
+  <div class="tw-body">
+    <div class="tw-field">
+      <span class="tw-label">SLA aggregate banner</span>
+      <div class="tw-seg" data-tw-seg="slaBanner" data-opts='[{"v":"neutral","label":"Gray (quiet)"},{"v":"blue","label":"Blue (current)"}]'></div>
+      <span class="tw-hint">Founder 2026-06-23: blue felt too loud. Gray reads as informational, leaving the per-row pills to carry urgency.</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">In Review staleness escalation</span>
+      <div class="tw-seg" data-tw-seg="staleness" data-opts='[{"v":"quiet","label":"Quiet (neutral)"},{"v":"bold","label":"Bold (rejected)"}]'></div>
+      <span class="tw-hint">Quiet = neutral pill; the flag warms to a single muted accent only when a claim ages. Bold restores the rejected RAG fills for comparison.</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">State pill dots</span>
+      <div class="tw-seg" data-tw-seg="stateDots" data-opts='[{"v":"colored","label":"Colored pins"},{"v":"plain","label":"Plain circle"}]'></div>
+      <span class="tw-hint">A small left dot brings notice to active states (Leader replied · blue, Awaiting confirm · blue, Info requested · amber, Locked · white). Untouched + In Review unchanged. Plain = neutral circle, no color.</span>
+    </div>
+    <div class="tw-field">
+      <span class="tw-label">Claim flag glyph</span>
+      <div class="tw-seg" data-tw-seg="flagGlyph" data-opts='[{"v":"flag","label":"Flag ⚑"},{"v":"none","label":"None"}]'></div>
+    </div>
+  </div>
+</div>
+
+<div class="doc">
+
+  <!-- ░░░ HEADER ░░░ -->
+  <header class="page-header">
+    <div class="page-header-top">
+      <span class="page-eyebrow">Replant Admin · Concept Direction</span>
+      <div class="page-meta">
+        "Mark as in review" workstream<br>
+        <b>10 asks · desktop 1440</b><br>
+        Founder rulings LOCKED
+      </div>
+    </div>
+    <h1 class="page-title">Mark as in review — <em>one admin claims the case, and walks with the leader</em></h1>
+    <p class="page-sub">A claim layer over <code style="font-family:var(--rp-mono);color:var(--rp-sky)">UndergroundDetail.jsx</code> and the Pending queue. When an admin marks a submission <strong>in review</strong>, the case is theirs to progress — and the claim <strong>locks proposal initiation</strong> to them (Founder ruling, overriding BA's lean). Others can still confirm the claimer's proposal (the two-eyes step) and can <strong>request release</strong>, but only the claimer writes narrative notes, uploads evidence, or initiates Verify / Reject / Request-info / Visibility-override / Rotate. Built entirely in the live <code style="font-family:var(--rp-mono);color:var(--rp-sky)">rp-*</code> + <code style="font-family:var(--rp-mono);color:var(--rp-sky)">.state-*</code> design system — no new tokens.</p>
+
+    <p class="prayer-line">
+      Father, we lift up the persecuted Church — the underground leaders in Iran, China, Eritrea, North Korea, Saudi Arabia, Afghanistan, Somalia, Libya, and every jurisdiction where Your people gather under threat. Each case that passes through this surface is a brother or sister You know by name. Steady the admin who claims it — let this UI hold accountability, dignity, and coordination at once. Guard the evidence that could cost a life, and let two sets of eyes never collide or leave anyone stranded.
+      <span class="amen">In Jesus' name, Amen.</span>
+    </p>
+
+    <div class="tokens-strip" style="grid-template-columns:repeat(6,1fr)">
+      <div class="token-cell"><div class="token-swatch" style="background:#F0EDE6"></div><div class="token-name">text · In review</div><div class="token-val">--rp-text</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#7a7a7a"></div><div class="token-name">muted · calm default</div><div class="token-val">--rp-muted-2</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#d8a14a"></div><div class="token-name">amber · the ONE accent</div><div class="token-val">--rp-amber</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#7a7a7a"></div><div class="token-name">SLA banner · gray</div><div class="token-val">--sla-neutral</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#6cc28b"></div><div class="token-name">green · verified only</div><div class="token-val">#6cc28b</div></div>
+      <div class="token-cell"><div class="token-swatch" style="background:#1f1f1f;border-color:#2a2a2a"></div><div class="token-name">border · the chip edge</div><div class="token-val">--rp-border-strong</div></div>
+    </div>
+
+    <div class="invariants">
+      <span class="inv-chip">Live globals.css · rp-* + .state-* family</span>
+      <span class="inv-chip">Claim LOCKS proposal initiation to claimer</span>
+      <span class="inv-chip">Two-eyes confirm survives the claim lock</span>
+      <span class="inv-chip">Attribution: "In review by Maria S · since Jun 22"</span>
+      <span class="inv-chip">Founder-only force-unmark · 24h grace</span>
+      <span class="inv-chip">No sub-headings on leader cards · role is the identifier</span>
+      <span class="inv-chip">Audit-immutable · evidence delete is the only mutation</span>
+    </div>
+  </header>
+
+  <!-- ░░░░░░░░░░ ASK 1 + 7 · CLAIM AFFORDANCE & PILL FAMILY ░░░░░░░░░░ -->
+  <section class="section" id="a1" data-screen-label="Ask 1+7 · Claim affordance & In Review pill">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">01 · 07 ·</span> Claim affordance + In Review state pill</div>
+      <h2 class="section-title">The claim, top-right — <em>and the pill it becomes</em></h2>
+      <p class="section-desc">A discoverable control beside the Day-# status badge. Unclaimed, it reads as a <strong>checkbox</strong> ("Mark as in review"). Claimed, it <strong>becomes the State pill</strong> — <code>⚑ In review by Maria S · since Jun 22</code>. Per your color feedback the pill is now a <strong>calm neutral chip</strong> — no RAG fill; the flag glyph is the only marker, and it warms to a <strong>single muted accent</strong> as a claim ages (day 3, day 7). Urgency by restraint, not a colored pill. Attribution stays <code>since Jun 22</code> as a date, never a day-count.</p>
+    </div>
+
+    <!-- pill family strip (Ask 7) -->
+    <div class="opt-rail"><span class="opt-rail-label">Pill family · Ask 7</span><span class="opt-hint">All four In Review variants. Same neutral chip + content — only the flag glyph warms to a single muted accent as the claim ages. Toggle "staleness" in Tweaks to compare against the rejected RAG version.</span></div>
+    <div class="frame" style="margin-bottom:28px">
+      <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url"><b>StatePill</b> · In Review family</div><span class="frame-tag">component</span></div>
+      <div class="frame-body" style="padding:24px 26px">
+        <div class="pill-strip" data-pill-strip>
+          <div class="pill-cell"><span class="pc-label">Active · &lt; day 3</span><span class="ir-pill ir-active" data-ir><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span><span class="pc-sub">Neutral chip — calm, in progress.</span></div>
+          <div class="pill-cell"><span class="pc-label">Stale · day 3–6</span><span class="ir-pill ir-stale" data-ir><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span><span class="pc-sub">Flag warms — a gentle nudge.</span></div>
+          <div class="pill-cell"><span class="pc-label">Very stale · day 7+</span><span class="ir-pill ir-vstale" data-ir><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span><span class="pc-sub">Accent flag + hairline edge — needs attention.</span></div>
+          <div class="pill-cell"><span class="pc-label">Day 25 · routed</span><span class="ir-pill ir-vstale" data-ir><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span><span class="route-seg"><span class="arrow">→</span>Routed to Founder</span></span><span class="pc-sub">Claim attribution unchanged; routing appended.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- state pill family — dot exploration (2026-06-23) -->
+    <div class="opt-rail"><span class="opt-rail-label">State pill family · dots</span><span class="opt-hint">Exploring a small colored dot on each active state to bring a bit of notice — the chip itself stays neutral. Untouched + In Review are unchanged. Toggle "State pill dots" in Tweaks to compare against the plain circle.</span></div>
+    <div class="frame" style="margin-bottom:28px">
+      <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url"><b>StatePill</b> · all states</div><span class="frame-tag">component</span></div>
+      <div class="frame-body" style="padding:24px 26px">
+        <div class="pill-strip">
+          <div class="pill-cell"><span class="pc-label">Untouched</span><span class="state state-untouched"><span class="sd"></span>Untouched</span><span class="pc-sub">Null state — hollow muted, unchanged.</span></div>
+          <div class="pill-cell"><span class="pc-label">Leader replied</span><span class="state state-replied"><span class="sd"></span>Leader replied</span><span class="pc-sub">Blue dot — leader acted, needs a look.</span></div>
+          <div class="pill-cell"><span class="pc-label">Awaiting confirm</span><span class="state state-await"><span class="sd"></span>Awaiting confirm</span><span class="pc-sub">Blue dot — two-eyes pending.</span></div>
+          <div class="pill-cell"><span class="pc-label">Info requested</span><span class="state state-info"><span class="sd"></span>Info requested</span><span class="pc-sub">Amber dot — waiting on the leader.</span></div>
+          <div class="pill-cell"><span class="pc-label">Locked</span><span class="state state-locked"><span class="sd"></span>Locked</span><span class="pc-sub">White dot.</span></div>
+          <div class="pill-cell"><span class="pc-label">In review</span><span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S</span><span class="pc-sub">Unchanged — flag pill (not a dot).</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- claim affordance states (Ask 1) -->
+    <div class="opt-rail"><span class="opt-rail-label">Affordance · Ask 1</span><span class="opt-hint">Five states of the top-right control. Hover the unclaimed checkbox to see the helper tooltip.</span></div>
+    <div class="mock-grid g2">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">UG-9E22 · header top-right</div><span class="frame-tag">unclaimed</span></div>
+          <div class="frame-body" style="padding:26px;display:flex;justify-content:flex-end;align-items:center;gap:14px;min-height:120px">
+            <span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 2</span></span>
+            <div class="claim-wrap"><div class="claim-cluster"><label class="claim-check"><span class="box"></span>Mark as in review<span class="claim-tip">Claim this case so other admins know you're actively working it.</span></label></div></div>
+          </div>
+        </div>
+        <div class="state-caption">1 · <b>Unclaimed</b> — checkbox + hover tooltip</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">UG-9E22 · viewer is claimer</div><span class="frame-tag">claimed · me</span></div>
+          <div class="frame-body" style="padding:26px;display:flex;justify-content:flex-end;align-items:center;gap:14px;min-height:120px">
+            <span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 2</span></span>
+            <div class="claim-cluster">
+              <span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span>
+              <button class="claim-link">Release claim</button>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">2 · <b>Claimed by me</b> — pill + Release claim</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">UG-9E22 · viewer is NOT claimer</div><span class="frame-tag">claimed · other</span></div>
+          <div class="frame-body" style="padding:26px;display:flex;justify-content:flex-end;align-items:center;gap:14px;min-height:120px">
+            <span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 2</span></span>
+            <div class="claim-cluster">
+              <span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Daniel K<span class="since">· since Jun 22</span></span>
+              <button class="claim-link">Request release</button>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">3 · <b>Claimed by other</b> — no release; Request release pings claimer</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">UG-1D54 · staleness escalation</div><span class="frame-tag">day 3+ / day 7+</span></div>
+          <div class="frame-body" style="padding:22px 26px;display:flex;flex-direction:column;gap:16px;min-height:120px;justify-content:center">
+            <div style="display:flex;justify-content:flex-end;align-items:center;gap:14px"><span class="sla-pill band-neutral"><span class="dot"></span><span class="dn">Day 4</span></span><span class="ir-pill ir-stale"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span></div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;gap:14px"><span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 9</span></span><span class="ir-pill ir-vstale"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span></div>
+          </div>
+        </div>
+        <div class="state-caption">4 · 5 · <b>Stale (day 3+)</b> + <b>very stale (day 7+)</b> — quiet escalation</div>
+      </div>
+    </div>
+
+    <!-- in-context renders -->
+    <div class="opt-rail" style="margin-top:24px"><span class="opt-rail-label">In context</span><span class="opt-hint">Where the pill renders: detail header, queue row, and the Inbox composite (claim + leader-reply on one row).</span></div>
+    <div class="frame">
+      <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url"><b>admin.projectreplant.org</b>/underground · Pending + Inbox</div><span class="frame-tag">1440 × …</span></div>
+      <div class="frame-body" style="padding:22px 26px">
+        <div class="frame-section-label">Queue row — claimed surfaces the In Review pill in place of Untouched</div>
+        <div class="q-card" style="margin-bottom:22px">
+          <table class="q-table">
+            <thead><tr><th style="width:120px">Ref</th><th>Macro-region</th><th style="width:104px">Submitted</th><th style="width:150px">SLA</th><th style="width:240px">State</th></tr></thead>
+            <tbody>
+              <tr class="q-row"><td><span class="q-ref">UG-9E22</span></td><td class="q-region">East &amp; Southeast Asia</td><td class="q-date">06-22</td><td><span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 8</span></span></td><td><span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S<span class="since">· since Jun 22</span></span></td></tr>
+              <tr class="q-row"><td><span class="q-ref">UG-2B88</span></td><td class="q-region">South Asia</td><td class="q-date">06-03</td><td><span class="sla-pill band-amber"><span class="dot"></span><span class="dn">Day 19</span></span></td><td><span class="ir-pill ir-stale"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Daniel K<span class="since">· since Jun 14</span></span></td></tr>
+              <tr class="q-row"><td><span class="q-ref">UG-7A3F</span></td><td class="q-region">Eastern Europe &amp; Central Asia</td><td class="q-date">06-20</td><td><span class="sla-pill band-neutral"><span class="dot"></span><span class="dn">Day 3</span></span></td><td><span class="state state-untouched"><span class="sd"></span>Untouched</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="frame-section-label">Inbox row — appears only when an in-review row has an active leader-reply convo (ruling #4)</div>
+        <div class="inbox-row">
+          <span class="ib-ref">UG-9E22</span>
+          <span class="ib-region">East &amp; Southeast Asia</span>
+          <span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S</span>
+          <span class="ib-reply"><span class="sd"></span>Leader replied 2 hours ago</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="specs" style="margin-top:24px">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>ClaimAffordance<span class="ang">/&gt;</span> + StatePill <span class="ang">state="in_review"</span></span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div><div class="specs-block-label">States</div>
+          <div class="spec-row"><span class="spec-key">unclaimed</span><span class="spec-val">Checkbox + tooltip. Any admin can claim.</span></div>
+          <div class="spec-row"><span class="spec-key">mine</span><span class="spec-val">Pill + <code>Release claim</code> link.</span></div>
+          <div class="spec-row"><span class="spec-key">other</span><span class="spec-val">Pill + <code>Request release</code> (pings claimer, ruling #3). NO release link.</span></div>
+          <div class="spec-row"><span class="spec-key">founder</span><span class="spec-val">Pill + <code>Force unmark</code> (Ask 5). Never "steward".</span></div>
+        </div>
+        <div><div class="specs-block-label">Staleness (ruling #9) · by restraint</div>
+          <div class="spec-row"><span class="spec-key">&lt; day 3</span><span class="spec-val">neutral chip · <code>.ir-active</code></span></div>
+          <div class="spec-row"><span class="spec-key">day 3–6</span><span class="spec-val">flag warms to <code>--rp-amber</code> · <code>.ir-stale</code></span></div>
+          <div class="spec-row"><span class="spec-key">day 7+</span><span class="spec-val">accent flag + hairline warm edge · <code>.ir-vstale</code></span></div>
+          <div class="spec-row"><span class="spec-key">day 25</span><span class="spec-val">+ <code>→ Routed to Founder</code> segment (ruling #1). Claim attribution unchanged.</span></div>
+        </div>
+      </div></div>
+      <div class="specs-note"><div class="specs-note-label">Locked copy</div><div class="specs-note-body">Attribution format is <strong>"In review by Maria S · since Jun 22"</strong> — "since" + a date, never a day-count on the surface. The pill itself is <strong>non-actionable</strong>; the text-link beside it is the affordance.</div></div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">FE note</span> Extend the live <b>StatePill</b> (UndergroundPending.jsx / UndergroundDetail.jsx) with an <code>in_review</code> family keyed on <b>claim.claimed_by</b> + <b>days-since-claim</b>. Baseline reuses <code>.state-replied</code> exactly. The affordance reads <b>viewerUserId === claim.claimed_by</b> to pick mine/other; <b>isFounder</b> adds Force unmark.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 2 · STICKY ACTION BAR CTA ░░░░░░░░░░ -->
+  <section class="section" id="a2" data-screen-label="Ask 2 · Action bar claim CTA">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">02 ·</span> Sticky Action Bar</div>
+      <h2 class="section-title">The bar enforces the claim — <em>quietly, by disabling</em></h2>
+      <p class="section-desc">A secondary "Mark as in review" CTA sits <strong>bottom-left</strong>, visually separated from the primary proposal cluster on the right. The disabled state of those primary CTAs <em>is</em> the discoverable enforcement of the claim-locks-proposal rule: a non-claimer sees them greyed with a tooltip pointing to Request release.</p>
+    </div>
+
+    <div class="mock-grid">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">unclaimed · any admin</div><span class="frame-tag">action bar</span></div>
+          <div class="frame-body" style="padding:0">
+            <div class="action-bar" style="position:static;border-radius:0;border-left:none;border-right:none;border-bottom:none">
+              <div class="ab-claim"><button class="btn btn-ghost btn-sm"><span class="box" style="display:inline-block;width:12px;height:12px;border:1.5px solid currentColor;border-radius:3px"></span>Mark as in review</button></div>
+              <div class="ab-divider"></div>
+              <button class="btn btn-approve btn-sm"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Propose verify</button>
+              <button class="btn btn-reject btn-sm"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>Propose reject</button>
+              <button class="btn btn-ghost btn-sm">Request info</button>
+              <div class="ab-spacer"></div>
+              <span class="ab-note">Unclaimed — proposing prompts a claim first</span>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">1 · <b>Unclaimed</b> — primaries enabled, soft-modal on click (Ask 8)</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">claimed · viewer is claimer</div><span class="frame-tag">action bar</span></div>
+          <div class="frame-body" style="padding:0">
+            <div class="action-bar" style="position:static;border-radius:0;border-left:none;border-right:none;border-bottom:none">
+              <div class="ab-claim"><button class="btn btn-ghost btn-sm">Release claim</button></div>
+              <div class="ab-divider"></div>
+              <button class="btn btn-approve btn-sm"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Propose verify</button>
+              <button class="btn btn-reject btn-sm"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>Propose reject</button>
+              <button class="btn btn-ghost btn-sm">Request info</button>
+              <div class="ab-spacer"></div>
+              <span class="ab-note">You're reviewing this · all actions enabled</span>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">2 · <b>Claimed by me</b> — Release claim; primaries enabled</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">claimed · viewer is NOT claimer</div><span class="frame-tag">action bar</span></div>
+          <div class="frame-body" style="padding:0">
+            <div class="action-bar" style="position:static;border-radius:0;border-left:none;border-right:none;border-bottom:none">
+              <div class="ab-claim"><span class="ab-claim-inert"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>Claimed by Daniel K</span><button class="claim-link">Request release</button></div>
+              <div class="ab-divider"></div>
+              <span class="btn-tipwrap"><button class="btn btn-approve btn-sm is-disabled"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Propose verify</button><span class="btn-tip">Only <b>Daniel K</b>, who is reviewing this submission, can initiate this. Use <a href="#">Request release</a> to coordinate.</span></span>
+              <button class="btn btn-reject btn-sm is-disabled"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>Propose reject</button>
+              <button class="btn btn-ghost btn-sm is-disabled">Request info</button>
+              <div class="ab-spacer"></div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">3 · <b>Claimed by other</b> — primaries disabled + tooltip</div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> The bar already lives in <b>UndergroundDetail.jsx</b>. Add the left claim slot before the existing <code>.ab-label</code> cluster. Disable the primary CTAs when <b>claim &amp;&amp; claim.claimed_by !== viewerUserId</b>. The two-eyes <b>Confirm proposal</b> button stays enabled for non-claimers — confirming is not initiating.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 3 · NARRATIVE COMPOSER ░░░░░░░░░░ -->
+  <section class="section" id="a3" data-screen-label="Ask 3 · Narrative composer">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">03 ·</span> Narrative composer · claimer-only</div>
+      <h2 class="section-title">Logging the walk — <em>contact attempts, responses, next steps</em></h2>
+      <p class="section-desc">An inline composer at the <strong>top</strong> of the Admin Notes panel, claimer-only. Required <strong>contact channel</strong> dropdown + a free note body + a sky-tinted <strong>Add note</strong>. New notes land newest-first with the claimer's name, timestamp, and a channel chip. Each note carries a <code>+ Attach evidence</code> affordance that opens the upload widget (Ask 4) pre-linked to that note.</p>
+    </div>
+
+    <div class="mock-grid g2">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Admin notes · claimer view</div><span class="frame-tag">composer + thread</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Admin notes</span><span style="font-family:var(--rp-mono);font-size:9px;color:var(--rp-muted);letter-spacing:0.1em">APPEND-ONLY</span></div>
+              <div class="panel-body">
+                <!-- composer (filled) -->
+                <div class="nc">
+                  <div class="nc-strip"><span class="pt-dot"></span><span class="lbl">Log a note</span><span class="who">Maria S</span></div>
+                  <div class="nc-body">
+                    <div class="nc-row">
+                      <select class="sel nc-channel"><option>Signal</option><option>Wire</option><option>Email</option><option>Phone (rare)</option><option>In-person</option><option>Other</option></select>
+                      <textarea class="txt" style="min-height:54px" placeholder="What happened? Who did you reach? What did they say? Next step?">Reached the leader on Signal — confirmed identity against the referral. Asked for one more reference; he'll send by Friday.</textarea>
+                    </div>
+                    <div class="nc-actions"><button class="btn btn-primary btn-sm">Add note</button><span class="hint">Appends to the audit log · cannot be edited after</span></div>
+                  </div>
+                </div>
+                <!-- thread -->
+                <div class="thread">
+                  <div class="note">
+                    <div class="note-meta"><span class="who">Maria S</span><span>·</span><span>06-22 14:11</span><span class="chan-chip">Signal</span></div>
+                    <div class="note-body">First contact made. Leader responsive, warm. Walked through what verification involves and the visibility choice.</div>
+                    <button class="note-attach"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>Attach evidence</button>
+                  </div>
+                  <div class="note">
+                    <div class="note-meta"><span class="who">Maria S</span><span>·</span><span>06-20 09:40</span><span class="chan-chip">Email</span></div>
+                    <div class="note-body">Sent intro email via the encrypted relay. Awaiting first response.</div>
+                    <button class="note-attach"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>Attach evidence</button>
+                  </div>
+                  <div class="note">
+                    <div class="note-meta"><span class="who">Maria S</span><span>·</span><span>06-19 16:02</span><span class="chan-chip phone">Phone (rare)</span></div>
+                    <div class="note-body">Brief call to confirm the number works. Kept it short per protocol.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">Claimer view — <b>composer (filled)</b> + newest-first thread w/ channel chips</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Admin notes · non-claimer view</div><span class="frame-tag">read-only</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Admin notes</span><span style="font-family:var(--rp-mono);font-size:9px;color:var(--rp-muted);letter-spacing:0.1em">APPEND-ONLY</span></div>
+              <div class="panel-body">
+                <div class="nc-readonly"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="7" width="9" height="6" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg><span><b>Daniel K is reviewing this submission.</b> Only the claimer can log narrative notes.</span></div>
+                <div class="thread">
+                  <div class="note"><div class="note-meta"><span class="who">Daniel K</span><span>·</span><span>06-22 14:11</span><span class="chan-chip">Signal</span></div><div class="note-body">First contact made. Leader responsive, warm. Walked through what verification involves and the visibility choice.</div></div>
+                  <div class="note"><div class="note-meta"><span class="who">Daniel K</span><span>·</span><span>06-20 09:40</span><span class="chan-chip">Email</span></div><div class="note-body">Sent intro email via the encrypted relay. Awaiting first response.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">Non-claimer view — read-only, <b>no composer</b></div>
+      </div>
+    </div>
+
+    <div class="specs" style="margin-top:24px">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>NarrativeComposer<span class="ang">/&gt;</span> · claimer-only</span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div><div class="specs-block-label">Fields (locked)</div>
+          <div class="spec-row"><span class="spec-key">channel</span><span class="spec-val"><b>Required.</b> Signal / Wire / Email / Phone (rare) / In-person / Other.</span></div>
+          <div class="spec-row"><span class="spec-key">body</span><span class="spec-val">Multiline, no min/max. Placeholder is the locked prompt.</span></div>
+          <div class="spec-row"><span class="spec-key">submit</span><span class="spec-val">Sky <code>Add note</code>; clears, prepends to thread.</span></div>
+        </div>
+        <div><div class="specs-block-label">Rules</div>
+          <div class="spec-row"><span class="spec-key">visibility</span><span class="spec-val">Composer renders only when <b>viewer === claimer</b>.</span></div>
+          <div class="spec-row"><span class="spec-key">attach</span><span class="spec-val"><code>+ Attach evidence</code> opens Ask 4 with <b>linked_audit_id</b> = this note (ruling #5).</span></div>
+          <div class="spec-row"><span class="spec-key">immutable</span><span class="spec-val">No edit / delete on notes — append-only audit row.</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">FE note</span> Mounts above the existing <b>adminNotes</b> thread in UndergroundDetail.jsx. Writes an <code>underground_admin_note_added</code> row to <b>audit_log_underground</b> with <b>contact_channel</b>. The thread already aggregates these via <b>fn_get_admin_notes_thread</b> — add the channel chip + attach affordance to each row.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 4 · EVIDENCE UPLOAD WIDGET ░░░░░░░░░░ -->
+  <section class="section" id="a4" data-screen-label="Ask 4 · Evidence upload">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">04 ·</span> Evidence upload · claimer-only</div>
+      <h2 class="section-title">Evidence that's <em>linked, summarized, and encrypted</em></h2>
+      <p class="section-desc">Below the T1/T2 cards: a drag-or-pick widget with a required <strong>channel</strong>, a required <strong>summary</strong>, and an optional <strong>link-to-note</strong> (unlinked files get a soft <code>unlinked</code> chip — the UI gently discourages free-floating evidence). Each file row carries an encryption lock (client-side envelope keys, ruling #13). A per-church <strong>storage bar</strong> warns amber at 200&nbsp;MB of the 250&nbsp;MB cap.</p>
+    </div>
+
+    <div class="mock-grid g2">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Evidence packet · empty + mid-upload</div><span class="frame-tag">widget</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Evidence packet</span><span class="tier tier-t2">T2 · call verified</span></div>
+              <div class="panel-body">
+                <div class="ev-up" style="border-top:none;margin-top:0;padding-top:0">
+                  <div class="dropzone active">
+                    <svg class="dz-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M3 11v2h10v-2"/></svg>
+                    <span class="dz-main">Drop file or click to choose</span>
+                    <span class="dz-hint">Images (jpg/png/heic/webp), PDF, audio (mp3/m4a), DOCX. Max 25MB per file.</span>
+                  </div>
+                  <div class="ev-up-form">
+                    <div class="fld"><span class="fld-label">Channel <span class="req">required</span></span><select class="sel"><option>Signal</option><option>Wire</option><option>Email</option><option>Phone (rare)</option><option>In-person</option><option>Other</option></select></div>
+                    <div class="fld"><span class="fld-label">Summary <span class="req">required</span></span><input class="inp" value="Signal screenshot — leader confirms baptism count"></div>
+                    <div class="fld"><span class="fld-label">Link to note <span style="font-family:var(--rp-sans);font-size:10px;color:var(--rp-muted);text-transform:none;letter-spacing:0.01em">optional</span></span><select class="sel"><option>— unlinked —</option><option>06-22 · Reached the leader on Signal — confirmed…</option><option>06-20 · Sent intro email via the encrypted relay…</option></select></div>
+                    <div class="propose-actions"><button class="btn btn-primary btn-sm">Upload</button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">Empty drop-zone (active) + <b>mid-upload form</b></div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Evidence packet · file list + cap warning</div><span class="frame-tag">215 MB / 250</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Evidence files</span><span style="font-family:var(--rp-mono);font-size:9px;color:var(--rp-muted);letter-spacing:0.1em">4 FILES</span></div>
+              <div class="panel-body">
+                <div class="cap warn">
+                  <div class="cap-meta"><span>Storage used</span><span class="pct">215 MB of 250 MB</span></div>
+                  <div class="cap-track"><div class="cap-fill" style="width:86%"></div></div>
+                  <div class="cap-warn-note">Approaching the 250MB cap. Consider summarizing older evidence in narrative notes.</div>
+                </div>
+                <div class="evf">
+                  <div class="evf-row">
+                    <span class="evf-ico jpg">JPG</span>
+                    <div class="evf-main"><div class="evf-name">signal-baptism-count.jpg<svg class="lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="7" width="9" height="6" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></div><div class="evf-sub"><span class="sz">1.2 MB</span><span>· Signal screenshot — leader confirms baptism count</span><span class="link-chip linked">linked · 06-22</span></div></div>
+                    <div class="evf-actions"><button class="evf-mini">View</button><button class="evf-mini del">Delete</button></div>
+                  </div>
+                  <div class="evf-row">
+                    <span class="evf-ico pdf">PDF</span>
+                    <div class="evf-main"><div class="evf-name">court-summons-translation.pdf<svg class="lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="7" width="9" height="6" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></div><div class="evf-sub"><span class="sz">680 KB</span><span>· Court document — corroborates persecution claim</span><span class="link-chip linked">linked · 06-20</span></div></div>
+                    <div class="evf-actions"><button class="evf-mini">View</button><button class="evf-mini del">Delete</button></div>
+                  </div>
+                  <div class="evf-row">
+                    <span class="evf-ico m4a">M4A</span>
+                    <div class="evf-main"><div class="evf-name">verification-call-clip.m4a<svg class="lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="7" width="9" height="6" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></div><div class="evf-sub"><span class="sz">8.4 MB</span><span>· Call excerpt — spoken relay token confirmed</span><span class="link-chip unlinked">unlinked</span></div></div>
+                    <div class="evf-actions"><button class="evf-mini">View</button><button class="evf-mini del">Delete</button></div>
+                  </div>
+                  <div class="evf-row">
+                    <span class="evf-ico docx">DOCX</span>
+                    <div class="evf-main"><div class="evf-name">reference-letter.docx<span class="spinner"></span></div><div class="evf-sub"><span class="sz">44 KB</span><span>· Encrypting…</span></div></div>
+                    <div class="evf-actions"><button class="evf-mini" style="opacity:0.4">View</button></div>
+                  </div>
+                </div>
+                <div class="ev-enc-foot"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="7" width="9" height="6" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Files are encrypted client-side with per-church envelope keys.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">File list — 4 types · 2 linked · 1 <b>unlinked</b> · 1 mid-encryption · <b>amber cap</b></div>
+      </div>
+    </div>
+
+    <div class="handoff-note"><span class="hn-label">FE note</span> Claimer-only, below the T1/T2 cards. MIME allowlist + 25MB/file + 250MB/church enforced client- and server-side. <b>linked_audit_id</b> ties a file to a narrative note (ruling #5). Encryption is client-side envelope (ruling #13) — the lock + footer are the only reassurance, kept quiet. <b>View</b> opens a signed URL; <b>Delete</b> (claimer, soft-confirm) writes an <code>evidence_deleted</code> audit row — the only mutable affordance in the whole workstream.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 5 · FORCE-UNMARK MODAL ░░░░░░░░░░ -->
+  <section class="section" id="a5" data-screen-label="Ask 5 · Force-unmark modal">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">05 ·</span> Force-unmark · Founder-only</div>
+      <h2 class="section-title">Removing someone else's claim — <em>guarded, never casual</em></h2>
+      <p class="section-desc">Only the Founder can force-unmark, and only through gates: a fresh <strong>AAL2</strong> check (5-min window), a <strong>typed claimer-name</strong> confirmation, a structured <strong>reason</strong>, and a <strong>≥30-char</strong> supplement for the audit log. The body invokes the 24-hour grace protocol — reach out first. The Day-25 re-route variant pre-fills the reason but keeps every gate.</p>
+    </div>
+
+    <div class="opt-rail"><span class="opt-rail-label">Live</span><span class="opt-hint">Open each variant. Type "Maria S" and fill the supplement to watch the gates turn green.</span><div class="opt-group"><button class="btn btn-ghost btn-sm" data-open="fu-default">Default</button><button class="btn btn-ghost btn-sm" data-open="fu-stale">AAL2 stale</button><button class="btn btn-ghost btn-sm" data-open="fu-day25">Day 25 re-route</button></div></div>
+
+    <div class="mock-grid g2">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Force unmark · default (gates failing)</div><span class="frame-tag">modal</span></div>
+          <div class="frame-body" style="display:grid;place-items:center;padding:24px;background:rgba(6,6,6,0.6)">
+            <div class="mdl" style="box-shadow:none;max-width:460px">
+              <div class="mdl-head"><span class="mh-glyph red"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></span><div class="mh-text"><div class="mdl-title">Force-unmark Maria S?</div><div class="mdl-sub">Founder action · audit-logged</div></div></div>
+              <div class="mdl-body" style="gap:13px">
+                <p style="font-family:var(--rp-sans);font-size:12.5px;color:var(--rp-muted-2);font-weight:300;line-height:1.6">This removes Maria S's claim. They'll be notified via Slack burst-alert and in-app banner. Reach out to them first when possible — the 24-hour grace protocol is part of how we steward each other's work.</p>
+                <div class="gate ok"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Re-authenticated 2 minutes ago</div>
+                <div class="fld"><span class="fld-label">Type "Maria S" to confirm</span><input class="inp ct-typed" placeholder="Maria S"></div>
+                <div class="fld"><span class="fld-label">Reason <span class="req">required</span></span><select class="sel"><option>— select —</option><option>Admin off &gt; 7 days</option><option>Admin offboarded</option><option>Case re-routed</option><option>Other</option></select></div>
+                <div class="fld"><span class="fld-label">Audit supplement <span class="req">required</span><span class="hint">min 30</span></span><textarea class="txt" placeholder="Add context for the audit log. Why is this force-unmark necessary?"></textarea><div class="charcount under">0 / 30 (min)</div></div>
+              </div>
+              <div class="mdl-foot"><button class="btn btn-ghost" data-close>Cancel</button><div class="mf-spacer"></div><button class="btn btn-danger" disabled>Force unmark</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption danger">1 · <b>Default</b> — all gates failing, Force unmark disabled</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">Force unmark · ready</div><span class="frame-tag">all gates green</span></div>
+          <div class="frame-body" style="display:grid;place-items:center;padding:24px;background:rgba(6,6,6,0.6)">
+            <div class="mdl" style="box-shadow:none;max-width:460px">
+              <div class="mdl-head"><span class="mh-glyph red"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></span><div class="mh-text"><div class="mdl-title">Force-unmark Maria S?</div><div class="mdl-sub">Founder action · audit-logged</div></div></div>
+              <div class="mdl-body" style="gap:13px">
+                <p style="font-family:var(--rp-sans);font-size:12.5px;color:var(--rp-muted-2);font-weight:300;line-height:1.6">This removes Maria S's claim. They'll be notified via Slack burst-alert and in-app banner. Reach out first — the 24-hour grace protocol is part of how we steward each other's work.</p>
+                <div class="gate ok"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Re-authenticated 2 minutes ago</div>
+                <div class="fld"><span class="fld-label">Type "Maria S" to confirm</span><input class="inp ct-typed" value="Maria S" style="border-color:var(--rp-red)"></div>
+                <div class="fld"><span class="fld-label">Reason <span class="req">required</span></span><select class="sel"><option>Admin off &gt; 7 days</option></select></div>
+                <div class="fld"><span class="fld-label">Audit supplement <span class="req">required</span><span class="hint ok">42 ✓</span></span><textarea class="txt">Maria has been offline 9 days with no Slack response; case is going stale and the leader needs continuity.</textarea><div class="charcount ok">42 / 30 (min)</div></div>
+              </div>
+              <div class="mdl-foot"><button class="btn btn-ghost" data-close>Cancel</button><div class="mf-spacer"></div><button class="btn btn-danger">Force unmark</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption danger">3 · <b>Ready</b> — name matched, reason picked, supplement ≥30</div>
+      </div>
+    </div>
+
+    <div class="specs" style="margin-top:24px">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component"><span class="ang">&lt;</span>ForceUnmarkModal<span class="ang">/&gt;</span> · Founder-only</span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div><div class="specs-block-label">Four gates — ALL must pass</div>
+          <div class="spec-row"><span class="spec-key">AAL2</span><span class="spec-val">Fresh &lt; 5 min. Stale → amber banner + <code>Re-authenticate</code>, blocks Confirm.</span></div>
+          <div class="spec-row"><span class="spec-key">typed name</span><span class="spec-val">Must match claimer display name exactly.</span></div>
+          <div class="spec-row"><span class="spec-key">reason</span><span class="spec-val">Off &gt;7d / Offboarded / Re-routed / Other.</span></div>
+          <div class="spec-row"><span class="spec-key">supplement</span><span class="spec-val"><b>≥30 char</b>; live counter.</span></div>
+        </div>
+        <div><div class="specs-block-label">Day-25 re-route variant</div>
+          <div class="spec-row"><span class="spec-key">title</span><span class="spec-val">"Day 25 — re-route Maria S's claim?"</span></div>
+          <div class="spec-row"><span class="spec-key">reason</span><span class="spec-val">Pre-locked <code>Case re-routed</code>.</span></div>
+          <div class="spec-row"><span class="spec-key">supplement</span><span class="spec-val">Pre-filled "Day 25 auto-routing…", editable, already ≥30.</span></div>
+          <div class="spec-row"><span class="spec-key">gates</span><span class="spec-val">AAL2 + typed-name <b>still apply</b> — no safety shortcut.</span></div>
+        </div>
+      </div></div>
+      <div class="specs-note red"><div class="specs-note-label">Never "Force unmark" for non-Founders</div><div class="specs-note-body">Other admins see <strong>Request release</strong> (Ask 1), which pings the claimer. The destructive path exists only for the Founder, behind all four gates, and writes a force-unmark row to <code>audit_log_underground</code>.</div></div>
+    </div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 6 · TWO-LEADER PROFILE CARDS ░░░░░░░░░░ -->
+  <section class="section" id="a6" data-screen-label="Ask 6 · Leader profile cards">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">06 ·</span> Profile · one or two leaders</div>
+      <h2 class="section-title">"Leaders" — <em>the role is the identifier, no sub-headings</em></h2>
+      <p class="section-desc">When a church has a second leader, the Profile panel stacks <strong>two cards</strong>. Per your 2026-06-23 ratification there are <strong>no sub-headings</strong> — the section header ("Leader" / "Leaders") carries it, and each card's top line is the claimed <code>role</code> field. Cards order by signup (<code>created_at ASC</code>), implicit only — no badge, no numeral. Same role on both cards is acceptable.</p>
+    </div>
+
+    <div class="mock-grid g3">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">1 leader</div><span class="frame-tag">singular</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Leader · claimed</span></div>
+              <div class="panel-body">
+                <div class="leaders-stack"><div class="leader-card">
+                  <div class="lc-id">Pastor Daniel</div>
+                  <div class="pf-row"><span class="pf-k">Visibility</span><span class="pf-v"><span class="vis-pill vis-hidden">Hidden · region only</span></span></div>
+                  <div class="pf-row"><span class="pf-k">Full name</span><span class="pf-v">[decrypted]</span></div>
+                  <div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Pastor</span></div>
+                  <div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only</span></div>
+                  <div class="pf-row"><span class="pf-k">Contact</span><span class="pf-v mono">[AAL2 reveal]</span></div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">1 leader → <b>"Leader"</b> (singular)</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">2 leaders · different roles</div><span class="frame-tag">plural</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Leaders · claimed</span></div>
+              <div class="panel-body">
+                <div class="leaders-stack">
+                  <div class="leader-card"><div class="lc-id">Pastor Daniel</div><div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Pastor</span></div><div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only</span></div><div class="pf-row"><span class="pf-k">Contact</span><span class="pf-v mono">[AAL2 reveal]</span></div></div>
+                  <div class="leader-card"><div class="lc-id">Bishop Naomi</div><div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Bishop</span></div><div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only</span></div><div class="pf-row"><span class="pf-k">Contact</span><span class="pf-v mono">[AAL2 reveal]</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">2 leaders → <b>"Leaders"</b> · different roles</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">2 leaders · same role</div><span class="frame-tag">edge case</span></div>
+          <div class="frame-body" style="padding:18px">
+            <div class="panel" style="border:none">
+              <div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Leaders · claimed</span></div>
+              <div class="panel-body">
+                <div class="leaders-stack">
+                  <div class="leader-card"><div class="lc-id">Pastor</div><div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Pastor</span></div><div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only</span></div><div class="pf-row"><span class="pf-k">Contact</span><span class="pf-v mono">[AAL2 reveal]</span></div></div>
+                  <div class="leader-card"><div class="lc-id">Pastor</div><div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Pastor</span></div><div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only</span></div><div class="pf-row"><span class="pf-k">Contact</span><span class="pf-v mono">[AAL2 reveal]</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">Both "Pastor" — <b>acceptable</b>, order implicit</div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">FE note</span> Reuse the single-card layout (LeadersTab.jsx) per leader; map over leaders sorted <b>created_at ASC</b>. Header pluralizes on <b>leaders.length</b>. Top line = <b>leader.role</b> (the claimed role string) — never "First/Second leader". Contact email stays behind the AAL2-fresh reveal exactly as today.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 8 + 9 · SOFT-MODAL + RACE CONDITION ░░░░░░░░░░ -->
+  <section class="section" id="a8" data-screen-label="Ask 8+9 · Coordination modals">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">08 · 09 ·</span> Claim-first prompt + race condition</div>
+      <h2 class="section-title">Two small modals that keep admins from colliding</h2>
+      <p class="section-desc"><strong>Ask 8</strong> (post-MVP, locked now): when an admin acts on an <em>unclaimed</em> row, a soft-modal offers to claim first. <strong>Ask 9</strong>: when two admins claim simultaneously, the loser gets a clear explanation and a path to Request release — never a dead end.</p>
+    </div>
+
+    <div class="mock-grid g2">
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">soft-modal · claim first?</div><span class="frame-tag">Ask 8</span></div>
+          <div class="frame-body" style="display:grid;place-items:center;padding:24px;background:rgba(6,6,6,0.6)">
+            <div class="mdl" style="box-shadow:none;max-width:440px">
+              <div class="mdl-head"><span class="mh-glyph sky"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg></span><div class="mh-text"><div class="mdl-title">Mark as in review first?</div><div class="mdl-sub">This submission is unclaimed</div></div></div>
+              <div class="mdl-body"><p style="font-family:var(--rp-sans);font-size:13px;color:var(--rp-muted-2);font-weight:300;line-height:1.65">You're about to <b style="color:var(--rp-text);font-weight:500">propose Verify</b>. Other admins will see this submission is unclaimed. Claim it first so your work is attributed and other admins know you're engaged.</p></div>
+              <div class="mdl-foot"><button class="btn btn-ghost" data-close>Skip claim, just propose</button><div class="mf-spacer"></div><button class="btn btn-primary" data-close>Mark as in review + propose</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">Ask 8 · <b>"propose Verify"</b> variant</div>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">race condition · already claimed</div><span class="frame-tag">Ask 9</span></div>
+          <div class="frame-body" style="display:grid;place-items:center;padding:24px;background:rgba(6,6,6,0.6)">
+            <div class="mdl" style="box-shadow:none;max-width:440px">
+              <div class="mdl-head"><span class="mh-glyph amber"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.5V8l2.4 1.6"/></svg></span><div class="mh-text"><div class="mdl-title">Maria S is already reviewing this submission</div></div></div>
+              <div class="mdl-body"><p style="font-family:var(--rp-sans);font-size:13px;color:var(--rp-muted-2);font-weight:300;line-height:1.65">Maria S claimed this submission a moment ago (since Jun 22). Coordinate with them before taking action — you can ping them to request release if you need to take over.</p></div>
+              <div class="mdl-foot"><button class="btn btn-ghost" data-close>OK</button><div class="mf-spacer"></div><button class="btn btn-primary" data-close>Request release</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="state-caption">Ask 9 · <b>race-condition</b> conflict</div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">FE note</span> Ask 8 is a client-side intercept on primary CTAs when no claim exists (post-MVP per ADMIN F8 — surface locked now). Ask 9 fires on a server <b>409 conflict</b> from the claim mutation; <b>Request release</b> reuses the ruling-#3 ping.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ ASK 10 · SIBLING ROW TREATMENT ░░░░░░░░░░ -->
+  <section class="section" id="a10" data-screen-label="Ask 10 · Second-leader sibling">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">10 ·</span> Second-leader sibling row</div>
+      <h2 class="section-title">A second leader joins — <em>a smaller, parented approval</em></h2>
+      <p class="section-desc">When a verified-church leader uses the one-shot join code, a sibling <code>ug_second_leader</code> row appears in the queue — inset, parent-linked, carrying the church's verified pill. Clicking it opens a <strong>lightweight</strong> detail (just the leader profile + an optional founding-leader vouch + Approve / Reject) — not the full underground Detail page.</p>
+    </div>
+
+    <div class="frame" style="margin-bottom:22px">
+      <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url"><b>admin.projectreplant.org</b>/underground · Pending (mixed)</div><span class="frame-tag">1440</span></div>
+      <div class="frame-body" style="padding:22px 26px">
+        <div class="q-card">
+          <table class="q-table">
+            <thead><tr><th style="width:130px">Ref</th><th>Macro-region / parent</th><th style="width:104px">Submitted</th><th style="width:150px">SLA</th><th style="width:160px">State</th><th style="width:84px">Kind</th></tr></thead>
+            <tbody>
+              <tr class="q-row"><td><span class="q-ref">UG-7A3F</span></td><td class="q-region">Eastern Europe &amp; Central Asia</td><td class="q-date">06-20</td><td><span class="sla-pill band-neutral"><span class="dot"></span><span class="dn">Day 3</span></span></td><td><span class="state state-untouched"><span class="sd"></span>Untouched</span></td><td><span class="row-kind">Church</span></td></tr>
+              <tr class="q-row sibling"><td><span class="q-ref">UG-7A3F-L2</span></td><td><div class="sib-meta"><span class="sib-parent"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h8M8 4l4 4-4 4"/></svg>Second leader for Grace Fellowship</span><span class="sib-verified">✓ Verified church</span></div></td><td class="q-date">06-22</td><td><span class="sla-pill band-neutral"><span class="dot"></span><span class="dn">Day 1</span></span></td><td><span class="state state-untouched"><span class="sd"></span>Untouched</span></td><td><span class="row-kind">2nd ldr</span></td></tr>
+              <tr class="q-row"><td><span class="q-ref">UG-9E22</span></td><td class="q-region">East &amp; Southeast Asia</td><td class="q-date">06-14</td><td><span class="sla-pill band-yellow"><span class="dot"></span><span class="dn">Day 8</span></span></td><td><span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S</span></td><td><span class="row-kind">Church</span></td></tr>
+              <tr class="q-row sibling"><td><span class="q-ref">UG-9E22-L2</span></td><td><div class="sib-meta"><span class="sib-parent"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h8M8 4l4 4-4 4"/></svg>Second leader for [Hidden · region only]</span><span class="sib-verified">✓ Verified church</span></div></td><td class="q-date">06-21</td><td><span class="sla-pill band-neutral"><span class="dot"></span><span class="dn">Day 2</span></span></td><td><span class="state state-replied"><span class="sd"></span>Leader replied</span></td><td><span class="row-kind">2nd ldr</span></td></tr>
+              <tr class="q-row"><td><span class="q-ref">UG-2B88</span></td><td class="q-region">South Asia</td><td class="q-date">06-03</td><td><span class="sla-pill band-amber"><span class="dot"></span><span class="dn">Day 19</span></span></td><td><span class="state state-untouched"><span class="sd"></span>Untouched</span></td><td><span class="row-kind">Church</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-family:var(--rp-sans);font-size:11px;color:var(--rp-muted);font-weight:300;margin-top:12px">Sibling rows are inset with a parent-link elbow. Church name renders per the parent's visibility — masked when Hidden.</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url"><b>admin.projectreplant.org</b>/underground/second-leader/7A3F-L2</div><span class="frame-tag">lightweight detail</span></div>
+      <div class="frame-body" style="padding:22px 26px">
+        <span class="dt-back"><svg class="ic" viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M10 3 5 8l5 5"/></svg>Back to Pending</span>
+        <div class="dt-header" style="margin-bottom:18px">
+          <span class="dt-ref">UG-7A3F-L2</span><span class="dt-sep"></span>
+          <div class="dt-field"><span class="k">Second leader for</span><span class="v">Grace Fellowship <span class="sib-verified" style="margin-left:6px">✓ Verified</span></span></div>
+          <div class="dt-state-right"><span class="ir-pill ir-active"><svg class="flag" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2v12M4 3h7l-2 2.5L11 8H4"/></svg>In review by Maria S</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+          <div class="panel"><div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Leader · claimed</span></div><div class="panel-body">
+            <div class="leader-card" style="background:transparent;border:none;padding:0">
+              <div class="lc-id">Pastor John</div>
+              <div class="pf-row"><span class="pf-k">Role</span><span class="pf-v">Pastor</span></div>
+              <div class="pf-row"><span class="pf-k">Locale</span><span class="pf-v">Macro-region only · city withheld</span></div>
+              <div class="pf-row"><span class="pf-k">Contact</span><span class="pf-v mono">[AAL2 reveal]</span></div>
+            </div>
+          </div></div>
+          <div class="panel"><div class="panel-head"><span class="panel-title"><span class="pt-dot"></span>Founding-leader vouch <span style="font-family:var(--rp-sans);font-size:9px;color:var(--rp-muted);text-transform:none;letter-spacing:0.01em;margin-left:6px">optional</span></span></div><div class="panel-body">
+            <p class="vouch-note">Note any confirmation from the existing verified leader.</p>
+            <textarea class="txt" style="min-height:78px">Spoken code matched; founding pastor confirmed John in person at the Tuesday gathering.</textarea>
+          </div></div>
+        </div>
+        <div class="action-bar" style="position:static;margin-top:18px">
+          <span class="ab-label">Actions</span>
+          <button class="btn btn-approve btn-sm"><svg class="ic" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4"/></svg>Approve</button>
+          <button class="btn btn-reject btn-sm"><svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>Reject</button>
+          <div class="ab-spacer"></div>
+          <span class="ab-note">Scoped to this leader · no full-church actions</span>
+        </div>
+      </div>
+    </div>
+    <div class="handoff-note"><span class="hn-label">FE note</span> Sibling rows come from <b>ug_second_leader</b> parented to the verified church (ruling #7). Distinct route <b>/underground/second-leader/:id</b> with a reduced action set — <b>Approve / Reject</b> only, no Verify/Reject/Request-info/Visibility/Rotate (those are full-church actions). Claim + In Review pill behave exactly as primary rows.</div>
+  </section>
+
+  <!-- ░░░░░░░░░░ CROSS-CUTTING · SLA BANNER REVISION ░░░░░░░░░░ -->
+  <section class="section" id="xcut" data-screen-label="Cross-cutting · SLA banner + cues">
+    <div class="section-header">
+      <div class="section-eyebrow"><span class="num">+ ·</span> Cross-cutting</div>
+      <h2 class="section-title">The gray SLA banner — <em>and the quiet safety cues</em></h2>
+      <p class="section-desc">Your 2026-06-23 note: the blue SLA banner felt too loud. Here it is in neutral gray — informational, letting the per-row pills carry urgency. Plus the standing cues this workstream depends on: the encryption lock on evidence, and the append-only audit posture (no edit/delete on notes; evidence delete is the only mutation, and it writes its own audit row).</p>
+    </div>
+
+    <div class="frame">
+      <div class="frame-chrome"><div class="frame-dots"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span></div><div class="frame-url">SLA aggregate banner · before → after</div><span class="frame-tag">revision</span></div>
+      <div class="frame-body" style="padding:22px 26px">
+        <div class="banner-compare">
+          <div>
+            <span class="bc-tag was">Current (blue)</span>
+            <div class="sla-agg sla-agg-blue">
+              <svg class="ic agg-ico" viewBox="0 0 16 16" style="width:15px;height:15px"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.5V8l2.4 1.6"/></svg>
+              <span class="agg-label">SLA · this queue</span>
+              <div class="agg-stats"><span class="agg-stat is-amber"><b>4</b> churches past day 15</span><span class="agg-stat is-red"><b>4</b> past day 25</span><span class="agg-stat"><b>4</b> past day 28</span></div>
+            </div>
+          </div>
+          <div>
+            <span class="bc-tag now">Proposed (gray · quiet)</span>
+            <div class="sla-agg sla-agg-neutral" data-sla-banner>
+              <svg class="ic agg-ico" viewBox="0 0 16 16" style="width:15px;height:15px"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.5V8l2.4 1.6"/></svg>
+              <span class="agg-label">SLA · this queue</span>
+              <div class="agg-stats"><span class="agg-stat is-amber"><b>4</b> churches past day 15</span><span class="agg-stat is-red"><b>4</b> past day 25</span><span class="agg-stat"><b>4</b> past day 28</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--rp-sans);font-size:11px;color:var(--rp-muted);font-weight:300;margin-top:14px;line-height:1.6">The per-number counts keep their amber/red text accents (they're the actual urgency signal and remain clickable to filter). Only the banner's overall field goes from sky-tinted to neutral-gray. Toggle in Tweaks.</div>
+      </div>
+    </div>
+
+    <div class="specs" style="margin-top:22px">
+      <div class="specs-header"><span class="specs-label">Spec</span><span class="specs-component">Cross-cutting cues</span></div>
+      <div class="specs-inner"><div class="specs-grid">
+        <div><div class="specs-block-label">SLA banner</div>
+          <div class="spec-row"><span class="spec-key">change</span><span class="spec-val"><code>.sla-agg-blue</code> → <code>.sla-agg-neutral</code> in UndergroundPending.jsx.</span></div>
+          <div class="spec-row"><span class="spec-key">keep</span><span class="spec-val">Per-number <code>.is-amber</code>/<code>.is-red</code> accents + click-to-filter.</span></div>
+        </div>
+        <div><div class="specs-block-label">Safety posture</div>
+          <div class="spec-row"><span class="spec-key">encryption</span><span class="spec-val">Lock on each evidence row + quiet footer (ruling #13).</span></div>
+          <div class="spec-row"><span class="spec-key">audit</span><span class="spec-val">No edit/delete on notes. Evidence delete = only mutation → <code>evidence_deleted</code> row.</span></div>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ░░░ ENDNOTE ░░░ -->
+  <div class="endnote">
+    <div class="endnote-prayer">"Bear ye one another's burdens, and so fulfil the law of Christ." — Galatians 6:2</div>
+    <div class="endnote-meta">
+      Replant Admin · "Mark as in review" workstream<br>
+      10 asks · desktop 1440 · live rp-* / .state-* system<br>
+      Founder ratifies → SME review → FE wire-up
+    </div>
+  </div>
+
+</div>
+
+<!-- modals -->
+<div class="ov" data-modal="fu-default"></div>
+<div class="ov" data-modal="fu-stale"></div>
+<div class="ov" data-modal="fu-day25"></div>
+
+<script src="in-review-cd.js"></script>
+</body>
+</html>

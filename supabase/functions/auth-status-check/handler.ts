@@ -74,6 +74,25 @@ const DEACTIVATED_BODY_SUPPORT: AuthStatusResponse = {
   recovery_path: "support_contact",
 };
 
+// KAN-205 (SEC panel 2026-07-03, ratified 2026-07-03) — the wire shape for
+// a leader inside their own 30-day deletion window. Top-level status is
+// deliberately 'pending', NOT 'deactivated':
+//   - The FE's deactivated handling (modal + forced signOut) fires on
+//     verification_status BEFORE branch_substate mapping — returning
+//     'deactivated' here would hijack the RestoreScreen ceremony.
+//   - Old app builds that don't know 'self_deleted' fall through to
+//     verification_status; 'pending' is the safest degraded surface
+//     (no false-active writes-silently-fail shell, no wrong modal).
+// New builds branch on branch_substate === 'self_deleted' and mount
+// RestoreScreen; deleted-on / permanent-on dates are read by the FE from
+// its own users row (users_select_own covers the soft-delete columns).
+const SELF_DELETED_BODY: AuthStatusResponse = {
+  verification_status: "pending",
+  verification_deadline: null,
+  days_remaining: null,
+  branch_substate: "self_deleted",
+};
+
 export function createHandler(deps: Deps) {
   return async (req: Request): Promise<Response> => {
     try {
@@ -102,6 +121,13 @@ export function createHandler(deps: Deps) {
       if (isSuperAdmin(claims)) {
         const row = await deps.fetchUserStatus(validated.authUid);
         if (!row) return error500();
+        // KAN-205 — a super_admin who self-deleted gets the same restore
+        // ceremony as any leader (self-deletion sets is_active=false, so
+        // without this check they'd land on the deactivated/support modal
+        // with no path back inside their own 30-day window).
+        if (resolveBranchSubstate(row) === "self_deleted") {
+          return json(200, SELF_DELETED_BODY);
+        }
         if (row.is_active === false) return json(200, DEACTIVATED_BODY_SUPPORT);
         return json(200, ACTIVE_BODY);
       }
@@ -110,9 +136,33 @@ export function createHandler(deps: Deps) {
       if (!row) return error500();
 
       const nowISO = deps.now().toISOString();
+
+      // KAN-205 (SEC §2.2 — the ratified blocker fix) — USER-level
+      // self-deletion short-circuits the whole resolver. Without this:
+      //   - a self-deleted second leader on a live church resolved
+      //     'active' and saw a working-looking app where every write
+      //     failed on RLS, with no restore surface;
+      //   - a self-deleted pending leader whose church deadline later
+      //     lapsed hit the deactivateAtomically write below, clobbering
+      //     the self-deletion with verification_status='deactivated'.
+      // Checked BEFORE resolveStatus so neither path can fire. The
+      // underground reveal decoration is also skipped by construction —
+      // a leader inside their deletion window gets no reveal prompt.
+      const selfDeletedSubstate = resolveBranchSubstate(row);
+      if (selfDeletedSubstate === "self_deleted") {
+        return json(200, SELF_DELETED_BODY);
+      }
+
       const resolved = resolveStatus(row, nowISO);
 
-      if (resolved.kind === "pending_past_deadline_needs_write") {
+      if (
+        resolved.kind === "pending_past_deadline_needs_write" &&
+        // KAN-205 belt — never let the login-check deadline write clobber
+        // ANY soft-deleted row (admin-initiated reasons included). The
+        // self_deleted short-circuit above already covers leader_initiated;
+        // this guard covers every other soft_delete_reason.
+        row.soft_deleted_at === null
+      ) {
         // Atomic UPDATE + audit_log INSERT (SEC 10920). On any failure inside the
         // transaction (UPDATE error, audit INSERT error, etc.) the impl throws —
         // the catch-all returns 500 and the DB stays in pre-deactivation state, so

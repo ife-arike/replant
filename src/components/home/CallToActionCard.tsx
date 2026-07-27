@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
+import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import {
   Animated,
   LayoutAnimation,
@@ -27,7 +28,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Arrow, Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
@@ -43,6 +44,11 @@ const safeOpen = (url: string) => {
     void Linking.openURL(url);
   }
 };
+
+// Body resting clamp — matches AnnouncementCard so Home's collapsed rhythm
+// stays consistent. Cue + tap only surface when the body overflows; the
+// fold row sits above the CTA button.
+const COLLAPSED_LINES = 3;
 
 type Props = {
   tag?: TagType;
@@ -70,6 +76,33 @@ export default function CallToActionCard({
   const [cOpen, setCOpen] = useState(false);
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
   const tg = Tags[tag];
+
+  // Page-turn body — 3-line clamp with a gated "read on" ⇄ "fold" cue.
+  const [expanded, setExpanded] = useState(false);
+  const [naturalLines, setNaturalLines] = useState<number | null>(null);
+  useEffect(() => {
+    setNaturalLines(null);
+  }, [body]);
+
+  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
+  // custom fonts resolve and before the absolute mirror has its final
+  // width. The old code LATCHED that first result and discarded every
+  // correction, so one bogus early count killed the cue permanently.
+  // Take the newest valid measurement instead; a zero-line pass is never
+  // valid. (Founder device pass 2026-07-27.)
+  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+    const n = e.nativeEvent.lines.length;
+    if (n <= 0) return;
+    setNaturalLines((prev) => (prev === n ? prev : n));
+  };
+
+  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+
+  const toggleExpand = () => {
+    if (!overflows) return;
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
+    setExpanded((v) => !v);
+  };
 
   // Urgent dot halo — gentle breathing pulse, generic so an urgent CTA
   // would blink; non-urgent tags hold static.
@@ -110,17 +143,46 @@ export default function CallToActionCard({
       </View>
 
       <Text style={s.title}>{title}</Text>
-      <Text style={s.body}>{body}</Text>
 
-      {/* filled sky-accent CTA — dark text on sky fill */}
+      <Pressable
+        onPress={toggleExpand}
+        disabled={!overflows}
+        accessibilityRole={overflows ? 'button' : undefined}
+        accessibilityState={overflows ? { expanded } : undefined}
+        accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
+      >
+        <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
+          {body}
+        </Text>
+        {/* Offscreen mirror — measures the body's natural line count so the
+            cue only renders on true overflow (offscreen-top, not height:0). */}
+        <Text
+          style={[s.body, s.mirror]}
+          onTextLayout={handleMirrorLayout}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+        >
+          {body}
+        </Text>
+        {overflows && (
+          <View style={s.readon}>
+            <View style={s.readonRule} />
+            <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
+          </View>
+        )}
+      </Pressable>
+
+      {/* CTA link — accent words + arrow, no fill (CD register) */}
       <Pressable
         style={s.cta}
         onPress={() => safeOpen(url)}
-        accessibilityRole="button"
+        accessibilityRole="link"
         accessibilityLabel={ctaLabel}
+        hitSlop={8}
       >
         <Text style={s.ctaLabel}>{ctaLabel}</Text>
-        <Arrow color={Colors.background} />
+        <Arrow color={Colors.accent} />
       </Pressable>
 
       {/* footer — seal · Replant Team · [comments right-aligned] */}
@@ -178,21 +240,26 @@ const s = StyleSheet.create({
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
-  title: { fontFamily: Typography.displayRegular, fontSize: 21, lineHeight: 26, color: Colors.text, letterSpacing: 0.1 },
+  title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
 
-  // Filled sky-accent action row — dark text on sky fill, arrow at right.
+  // Offscreen mirror + page-turn cue — exact style values from
+  // AnnouncementCard so the read-on grammar reads identically app-wide.
+  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
+  readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
+  readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
+  readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
+
+  // CTA = words as a hyperlink + arrow (CD register; the filled sky pill
+  // was rejected by the Founder 2026-07-22). Left-aligned, accent text.
   cta: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.md,
-    paddingVertical: 13,
+    gap: 8,
     marginTop: 16,
+    alignSelf: 'flex-start',
   },
-  ctaLabel: { fontFamily: Typography.bodyMedium, fontSize: 14, color: Colors.background },
+  ctaLabel: { fontFamily: Typography.bodyMedium, fontSize: 14, color: Colors.accent },
 
   foot: {
     flexDirection: 'row',

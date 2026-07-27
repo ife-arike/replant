@@ -57,7 +57,7 @@ import {
 
 type DisplayNamePreference = 'first_name_only' | 'full_name';
 type RagStatus = 'green' | 'amber' | 'red';
-type SavedSection = 'account' | 'privacy' | 'church' | null;
+type SavedSection = 'account' | 'privacy' | 'church' | 'notifications' | null;
 
 // KAN-229 — name-fields fix (design_handoff_settings_name_fields, 2026-06-14).
 // Honorific list trimmed to the canonical 6 per the design (no "Other" — the
@@ -257,6 +257,11 @@ interface SettingsScreenProps {
   initialHonorific?: string | null;
   initialSuffix?: string | null;
   anonymousMode?: boolean;
+  // Flow-gaps gap-4 (2026-07-13) — Settings → Notifications email toggle.
+  // Backed by users.email_notifications_enabled (NOT NULL DEFAULT true);
+  // the shared send contract suppresses notification-class email when
+  // false, transactional/security never.
+  emailNotificationsEnabled?: boolean;
   fullName?: string | null;
   // KAN-229 — structured name parts. Container fetches these from
   // users.first_name / middle_name / last_name so previews don't need
@@ -410,6 +415,7 @@ export default function SettingsScreen({
   initialHonorific = null,
   initialSuffix = null,
   anonymousMode = false,
+  emailNotificationsEnabled = true,
   fullName = null,
   firstName: firstNameProp = null,
   middleName: middleNameProp = null,
@@ -447,6 +453,7 @@ export default function SettingsScreen({
       : '',
   );
   const [anonymousModeState, setAnonymousModeState] = useState<boolean>(anonymousMode);
+  const [emailNotifState, setEmailNotifState] = useState<boolean>(emailNotificationsEnabled);
   const [ragStatusState, setRagStatusState] = useState<RagStatus | null>(ragStatus);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [churchIdCopied, setChurchIdCopied] = useState<boolean>(false);
@@ -697,6 +704,34 @@ export default function SettingsScreen({
     }
   };
 
+  // Flow-gaps gap-4 (2026-07-13) — email-notifications toggle. Same
+  // optimistic single-flight shape as handleAnonymousToggle; the write
+  // rides the users_update_own RLS row policy + the column-scoped UPDATE
+  // grant that shipped with this build's migration.
+  const handleEmailNotifToggle = async (newValue: boolean) => {
+    if (writeInFlight.current) return;
+    const previousValue = emailNotifState;
+    setEmailNotifState(newValue);
+    setWriteError(null);
+    writeInFlight.current = true;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ email_notifications_enabled: newValue })
+        .eq('auth_id', userId);
+      if (error) throw error;
+      flashSaved('notifications');
+    } catch {
+      setEmailNotifState(previousValue);
+      setWriteError("Couldn't save. Check your connection and try again.");
+      AccessibilityInfo.announceForAccessibility(
+        "Couldn't save your email-notifications preference. Check your connection.",
+      );
+    } finally {
+      writeInFlight.current = false;
+    }
+  };
+
   const handleRagChange = async (newValue: RagStatus) => {
     if (!churchId) return;
     if (newValue === ragStatusState) return;
@@ -794,6 +829,11 @@ export default function SettingsScreen({
   const REFERENCE = 'JOHN 17 · 21 · KJV';
   const ANONYMOUS_HELPER =
     'When on, others see your role and church only — never your name.';
+  // Flow-gaps gap-4 — Founder-RATIFIED helper (2026-07-13, verbatim; shown
+  // beneath the email toggle ONLY when it is off). Any change needs a
+  // fresh Founder ruling.
+  const EMAIL_NOTIF_OFF_HELPER =
+    'Account and security emails — sign-in codes, verification decisions, and account notices — will still reach you. These cannot be turned off.';
   const NOTIF_BADGE_HELPER =
     'Shows a count on the Connect tab when you have unread messages.';
   // Para-ministry directors see "your account, your organization." (BA-para #1).
@@ -1151,6 +1191,33 @@ export default function SettingsScreen({
         <SectionHeader number="05" title="Notifications" isOpen={openSections.has('05')} onPress={() => toggleSection('05')} />
         {openSections.has('05') && (
         <>
+        {/* Flow-gaps gap-4 (2026-07-13) — email notifications toggle, backed
+            by users.email_notifications_enabled. The send contract keeps
+            transactional/security email flowing regardless; the ratified
+            helper states that ONLY when the toggle is off. */}
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Email notifications</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.rowValue}>{emailNotifState ? 'On' : 'Off'}</Text>
+            <ToggleSwitch
+              value={emailNotifState}
+              onValueChange={handleEmailNotifToggle}
+            />
+          </View>
+          {!emailNotifState && (
+            <Text style={styles.rowHelper}>{EMAIL_NOTIF_OFF_HELPER}</Text>
+          )}
+        </View>
+
+        {/* Push notifications — dormant until KAN-322 lands push infra.
+            Renders as coming-soon (Language-section pattern); no toggle. */}
+        <View style={styles.row} accessibilityLabel="Push notifications, coming soon">
+          <Text style={styles.rowLabel}>Push notifications</Text>
+          <View style={styles.rowValueRow}>
+            <Text style={[styles.rowValue, styles.languageComingSoon]}>Coming soon</Text>
+          </View>
+        </View>
+
         <View style={styles.rowLast}>
           <Text style={styles.rowLabel}>New message badge</Text>
           <View style={styles.toggleRow}>
@@ -1162,6 +1229,10 @@ export default function SettingsScreen({
           </View>
           <Text style={styles.rowHelper}>{NOTIF_BADGE_HELPER}</Text>
         </View>
+
+        {savedSection === 'notifications' && (
+          <Text style={styles.savedFlash}>Saved</Text>
+        )}
         </>
         )}
 
