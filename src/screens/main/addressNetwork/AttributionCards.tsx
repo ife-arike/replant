@@ -14,7 +14,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../../constants/theme';
 import type { Attribution } from './types';
-import { articleFor, type ComposeIdentity } from './useComposeIdentity';
+import { type ComposeIdentity } from './useComposeIdentity';
 import { SKY_04, SKY_25 } from './tokens';
 
 interface Props {
@@ -23,25 +23,26 @@ interface Props {
   onChange: (a: Attribution) => void;
 }
 
-// "Pastor Elias, Living Word Assembly."
+// All three helpers are now pure passthroughs of the server-composed byline
+// (my_attribution_preview / kan338_0007) — byte-parity with what publishes.
+// The region is the real macro-region label, never the old "your region"
+// placeholder.
+
+// "Minister Ruth James, Maranatha Ministries."
 function showNameHelper(identity: ComposeIdentity): string {
-  const who = [identity.roleLabel, identity.firstName].filter(Boolean).join(' ');
-  return identity.churchName ? `${who}, ${identity.churchName}.` : `${who}.`;
+  const who = identity.showNameLabel ?? '';
+  return identity.showNameSublabel ? `${who}, ${identity.showNameSublabel}.` : `${who}.`;
 }
 
-// Public: "A Pastor from West Africa. No name, no church."
+// Public: "A Minister from North America. No name, no church."
 function roleRegionHelperPublic(identity: ComposeIdentity): string {
-  const lead = `${articleFor(identity.roleLabel)} ${identity.roleLabel}`;
-  return identity.region
-    ? `${lead} from ${identity.region}. No name, no church.`
-    : `${lead}. No name, no church.`;
+  const lead = identity.roleRegionLabel ?? '';
+  return `${lead}. No name, no church.`;
 }
 
-// Underground: "A Pastor from South Asia." — region resolved server-side;
-// falls back to "your region" until a client-safe label exists.
+// Underground: "A Minister from North America." — server-resolved, no name.
 function roleRegionHelperUnderground(identity: ComposeIdentity): string {
-  const lead = `${articleFor(identity.roleLabel)} ${identity.roleLabel}`;
-  return `${lead} from ${identity.region ?? 'your region'}.`;
+  return `${identity.roleRegionLabel ?? ''}.`;
 }
 
 function Radio({ on }: { on: boolean }) {

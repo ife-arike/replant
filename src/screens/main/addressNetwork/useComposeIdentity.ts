@@ -1,42 +1,48 @@
 // ─────────────────────────────────────────────
-// useComposeIdentity — the leader's own identity for the attribution
-// control + the live preview.
+// useComposeIdentity — the leader's attribution as it will ACTUALLY publish.
 //
-// This is a SELF-view. A leader always sees their own real name / church
-// on their own surface (never governed by the anonymous flag or
-// display_name_preference — same rule as HamburgerPanel's identity card).
+// Sourced from the my_attribution_preview() SECURITY DEFINER RPC
+// (kan338_0007), which returns the EXACT strings content_submission_publish
+// stamps — composed by the same server helpers (content_named_leader_label
+// + content_role_region_label). The compose preview therefore equals the
+// published artifact byte-for-byte (KAN-338 FE lane F5: the preview must
+// not promise a name the publish path denies, and must never say "your
+// region" when publish says "South Asia").
 //
-// Region is DISPLAY-ONLY here and authoritative SERVER-SIDE. The client
-// cannot safely derive the CD's sub-region:
-//   - underground churches have NULL city/lat/lng by CHECK constraint, and
-//   - coordinates live on church_profiles (RLS-restricted), not churches.
-// So `region` stays null for now and the attribution helper degrades
-// gracefully ("A Pastor from your region."). When DBA lands a client-safe
-// macro-region label (see the NetworkFeed `macro_region_label` TODO), this
-// hook is the single place to fill it in — the submit payload never sends
-// region regardless (the server re-derives + scrubs).
+// No client-side identity read or name composition happens here anymore —
+// the old .from('users') self-read + JS byline builder is deleted. The
+// server owns every string; region is real (macro-region label), not a
+// placeholder. The submit payload still sends no region/name — the server
+// re-derives at publish.
 // ─────────────────────────────────────────────
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { getRoleLabel } from '../../../utils/displayHelpers';
 import type { Attribution } from './types';
 
 export interface ComposeIdentity {
-  roleLabel: string; // e.g. "Pastor" (getRoleLabel — always resolves)
-  firstName: string | null;
-  churchName: string | null;
+  // "Minister Ruth James" — the frozen show_name byline (null while loading
+  // or if unresolvable). Church rides showNameSublabel, not this string.
+  showNameLabel: string | null;
+  // "Maranatha Ministries" — the church sublabel for a named post ('' when
+  // the leader has no surfaced church).
+  showNameSublabel: string | null;
+  // "A Minister from North America" — the role+region byline (also what an
+  // underground leader always publishes as).
+  roleRegionLabel: string | null;
   isUnderground: boolean;
-  region: string | null; // display-only; null until a client-safe field exists
+  // A surface, non-anonymous leader may choose show_name; everyone else is
+  // role_region only (server-forced for underground).
+  canShowName: boolean;
   loading: boolean;
 }
 
 const EMPTY: ComposeIdentity = {
-  roleLabel: 'Minister',
-  firstName: null,
-  churchName: null,
+  showNameLabel: null,
+  showNameSublabel: null,
+  roleRegionLabel: null,
   isUnderground: false,
-  region: null,
+  canShowName: false,
   loading: true,
 };
 
@@ -46,43 +52,27 @@ export function useComposeIdentity(): ComposeIdentity {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const authId = sessionData?.session?.user?.id ?? null;
-      if (!authId) {
-        if (!cancelled) setIdentity((p) => ({ ...p, loading: false }));
-        return;
-      }
-      // Same shape HamburgerPanel uses — role + embedded church row.
-      const { data } = await supabase
-        .from('users')
-        .select('full_name, role, church:church_id(name, type)')
-        .eq('auth_id', authId)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('my_attribution_preview');
       if (cancelled) return;
-
-      const row = data as unknown as {
-        full_name: string | null;
-        role?: string | null;
-        church?: unknown;
-      } | null;
-
-      if (!row) {
+      const row = (Array.isArray(data) ? data[0] : data) as
+        | {
+            show_name_label: string | null;
+            show_name_sublabel: string | null;
+            role_region_label: string | null;
+            is_underground: boolean | null;
+            can_show_name: boolean | null;
+          }
+        | null;
+      if (error || !row) {
         setIdentity((p) => ({ ...p, loading: false }));
         return;
       }
-
-      const cf = row.church;
-      const c = (Array.isArray(cf) ? (cf[0] ?? null) : (cf ?? null)) as
-        | { name?: string | null; type?: string | null }
-        | null;
-      const fullName = row.full_name ?? null;
-
       setIdentity({
-        roleLabel: getRoleLabel(row.role ?? null),
-        firstName: fullName ? fullName.trim().split(/\s+/)[0] : null,
-        churchName: c?.name ?? null,
-        isUnderground: c?.type === 'underground',
-        region: null,
+        showNameLabel: row.show_name_label ?? null,
+        showNameSublabel: row.show_name_sublabel ?? null,
+        roleRegionLabel: row.role_region_label ?? null,
+        isUnderground: !!row.is_underground,
+        canShowName: !!row.can_show_name,
         loading: false,
       });
     })();
@@ -94,42 +84,37 @@ export function useComposeIdentity(): ComposeIdentity {
   return identity;
 }
 
-// Grammar helper — "A Pastor" / "An Apostle". The CD copy always leads with
-// an article; vowel-initial role labels take "An".
-export function articleFor(word: string): string {
-  return /^[aeiou]/i.test(word.trim()) ? 'An' : 'A';
-}
-
 // Single-line byline for the publish-shape reading card (§G / testimony
-// preview). show_name → "Pastor Elias · Living Word Assembly";
-// role_region → "A Pastor from South Asia".
+// preview). Pure passthrough of the server strings — no composition.
+//   show_name   → "Minister Ruth James · Maranatha Ministries"
+//   role_region → "A Minister from North America"
 export function readingAttributionLine(
   identity: ComposeIdentity,
   attribution: Attribution,
 ): string {
   if (attribution === 'show_name') {
-    const who = [identity.roleLabel, identity.firstName].filter(Boolean).join(' ');
-    return identity.churchName ? `${who} · ${identity.churchName}` : who;
+    const label = identity.showNameLabel ?? '';
+    return identity.showNameSublabel
+      ? `${label} · ${identity.showNameSublabel}`
+      : label;
   }
-  return `${articleFor(identity.roleLabel)} ${identity.roleLabel} from ${identity.region ?? 'your region'}`;
+  return identity.roleRegionLabel ?? '';
 }
 
-// Author block for the live LeaderWordCard preview (word type).
+// Author block for the live LeaderWordCard preview (word type). Mirrors the
+// published card exactly: the Replant seal avatar + the frozen byline in the
+// name slot + the church sublabel (attribution is frozen at publish — the
+// feed never renders a leader initial for these cards).
 export function previewAuthor(
   identity: ComposeIdentity,
   attribution: Attribution,
-): { initial: string; name: string; church: string } {
+): { seal: true; name: string; church: string } {
   if (attribution === 'show_name') {
-    const name = [identity.roleLabel, identity.firstName].filter(Boolean).join(' ');
     return {
-      initial: (identity.firstName ?? identity.roleLabel).charAt(0).toUpperCase(),
-      name,
-      church: identity.churchName ?? '',
+      seal: true,
+      name: identity.showNameLabel ?? '',
+      church: identity.showNameSublabel ?? '',
     };
   }
-  return {
-    initial: identity.roleLabel.charAt(0).toUpperCase(),
-    name: `${articleFor(identity.roleLabel)} ${identity.roleLabel} from ${identity.region ?? 'your region'}`,
-    church: '',
-  };
+  return { seal: true, name: identity.roleRegionLabel ?? '', church: '' };
 }
