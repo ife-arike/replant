@@ -77,7 +77,7 @@ type RpcCommentRow = Comment;
 
 // Threads rest at this many comments; the rest open on demand (Founder
 // 2026-07-27). Newest stay visible — a thread reads bottom-up, so the
-// fold hides the OLDEST, matching how the card body folds.
+// collapsed view hides the OLDEST.
 const COMMENT_PAGE = 5;
 
 // Local relative-time — light-touch, mirrors the feed's register. Kept
@@ -199,9 +199,11 @@ export function CommentThread({
   // Keep the NEWEST COMMENT_PAGE; the fold hides older ones above them.
   const hidden = showAll ? 0 : Math.max(0, comments.length - COMMENT_PAGE);
   const visible = hidden > 0 ? comments.slice(hidden) : comments;
-  // The page-turn is a PAIR (locked read-on/fold grammar): once a thread is
-  // long enough to fold, the control stays put and flips label, so an opened
-  // thread can always be closed again.
+  // The control is a PAIR (locked read-on/fold grammar) — but the LABEL is
+  // the thread's own vocabulary, not the cards': a comment list is not a
+  // page being turned, so it reads "show N earlier comments" / "hide earlier
+  // comments" (Founder 2026-07-27). Once a thread is long enough, the
+  // control stays put and flips, so an opened thread can always be closed.
   const foldable = comments.length > COMMENT_PAGE;
 
   return (
@@ -232,7 +234,7 @@ export function CommentThread({
               accessibilityState={{ expanded: showAll }}
               accessibilityLabel={
                 showAll
-                  ? 'Fold earlier comments'
+                  ? 'Hide earlier comments'
                   : `Show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`
               }
               style={s.moreRow}
@@ -241,7 +243,7 @@ export function CommentThread({
               <View style={s.moreRule} />
               <Text style={s.moreText}>
                 {showAll
-                  ? 'fold'
+                  ? 'hide earlier comments'
                   : `show ${hidden} earlier ${hidden === 1 ? 'comment' : 'comments'}`}
               </Text>
             </Pressable>
