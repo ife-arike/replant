@@ -137,7 +137,7 @@
 | G12 | Volunteer triple-fire | ✅ FIXED + prod-proven |
 | G13 | Zero webhooks / bounce-blind | ✅ webhook live + e2e verified |
 | **G14** | **create-account welcome family unmigrated + copy unreviewed (⚠ B1/B2)** | 🔶 **OPEN — the one build straggler; found in this update** |
-| G15 | KAN-61 deadline-sweep cron (deactivation automation + its email + coleader_departed) | 🔶 OPEN — separate workstream (not comms-only; touches deactivation policy) |
+| G15 | ~~KAN-61 deadline sweep~~ **✅ SHIPPED 2026-07-14** (flag-for-confirm, church-level): digest cron armed (09:20 UTC, counts-only) · queue chip + Extend(30d)/Confirm (PR #82) · login-flipped leaders now emailed at confirm · reminder cron rewritten to church clock (DBA live-bug fix). Founder fixture walk pending (register R7 + smoke checklist). Out-of-scope remainders: skip-flow expired leaders (flow-gaps G9 owns), `coleader_departed` (leader-level trigger — flow session's deactivate-leader path could adopt notify_t38 later) | ✅ (walk pending) |
 
 ## Build batches — closeout
 

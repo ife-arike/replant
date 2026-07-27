@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Replant Family 1 — light / dark proof</title>
+<style>
+body{margin:0;background:#1c1b19;font-family:'Helvetica Neue',Arial,sans-serif;color:#d8d4cb}
+a{color:#6BB5E8}a:hover{color:#8fc7ee}
+header{padding:28px 32px 8px}
+h1{font-family:Georgia,serif;font-weight:400;font-size:22px;letter-spacing:0.02em;color:#f0ece4;margin:0 0 6px}
+header p{margin:0;font-size:12.5px;color:#8a867d}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:24px 32px 48px;max-width:1400px}
+.pane h2{font-size:11px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:#8a867d;margin:18px 0 10px}
+iframe{width:100%;height:1120px;border:1px solid #33312d;border-radius:4px;background:#f4f1ea;display:block}
+.dark iframe{background:#080808}
+</style>
+</head>
+<body>
+<header>
+<h1>Family 1 — light vs dark rendering proof</h1>
+<p>Same HTML file per column pair; the dark pane force-applies the <code>prefers-color-scheme: dark</code> block (what Apple Mail / Outlook dark deliver). Greeting slot filled with &ldquo;Dear Ruth,&rdquo; for preview only.</p>
+</header>
+<div class="grid" id="grid"></div>
+<script>
+const files=[["join-network-welcome.html","join-network welcome"],["serve-with-us-welcome.html","serve-with-us welcome"]];
+const grid=document.getElementById("grid");
+(async()=>{for(const[f,label]of files){
+let html=await(await fetch(f)).text();
+html=html.replace("{{GREETING}}","Dear Ruth,").replace(/https:\/\/projectreplant\.org\/logo\.png/g,"logo.png");
+const dark=html.replace("@media (prefers-color-scheme: dark){","@media all{");
+const light=html.replace("@media (prefers-color-scheme: dark){","@media not all{");
+[[light,label+" — light"],[dark,label+" — dark",1]].forEach(([doc,cap,isDark])=>{
+const d=document.createElement("div");d.className="pane"+(isDark?" dark":"");
+const h=document.createElement("h2");h.textContent=cap;d.appendChild(h);
+const fr=document.createElement("iframe");fr.srcdoc=doc;d.appendChild(fr);
+grid.appendChild(d);});
+}})();
+</script>
+</body>
+</html>

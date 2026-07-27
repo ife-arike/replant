@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Mono:wght@400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#060607;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#6BB5E8;text-decoration:none}a:hover{color:#8fcaf0}
+.rp-scroll::-webkit-scrollbar{width:0;height:0}
+.rp-scroll{scrollbar-width:none}
+@keyframes rp-breathe{0%,100%{opacity:.3}50%{opacity:.85}}
+@keyframes rp-rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes rp-fade{from{opacity:0}to{opacity:1}}
+@keyframes rp-expand{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+@keyframes rp-gap{from{transform:scaleY(0);opacity:0}to{transform:scaleY(1);opacity:1}}
+@keyframes rp-urg{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes rp-echo{from{transform:scale(1);opacity:.65}to{transform:scale(2.7);opacity:0}}
+@keyframes rp-spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div style="min-height:100vh;padding:44px 24px 60px">
+
+<div style="max-width:660px;margin:0 auto 32px">
+  <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:5px;color:#F0EDE6">REPLANT</div>
+  <div style="font-family:'Cormorant Garamond',serif;font-weight:300;font-size:27px;color:#F0EDE6;margin-top:16px;letter-spacing:.3px;line-height:1.2">Prayer Wall — feed and testimonies, one rhythm.</div>
+  <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12.5px;line-height:1.6;color:rgba(240,237,230,.5);margin-top:10px">Pull down to refresh. Rows fade in as they arrive. Intercede closes the gap. Try: expand a request, the filter mark, ⋮ → Mark as testimony, and the Journal.</div>
+</div>
+
+<div style="display:flex;justify-content:center">
+  <div style="width:414px;padding:12px;background:#131314;border:1px solid rgba(240,237,230,.10);border-radius:46px">
+    <div style="width:390px;height:812px;background:#080808;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;position:relative">
+
+      <div style="padding:15px 22px 0;flex:none">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;color:rgba(240,237,230,.5)">9:41</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:27px;color:#F0EDE6;letter-spacing:.4px;line-height:1">Prayer Wall</div>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;padding-bottom:3px">
+            <sc-if value="{{ journalActive }}"><button onClick="{{ openJournal }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:#6BB5E8">Journal</button></sc-if>
+            <sc-if value="{{ journalIdle }}"><button onClick="{{ openJournal }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.42)">Journal</button></sc-if>
+            <sc-if value="{{ journalLocked }}"><button onClick="{{ openJournal }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.28)">Journal</button></sc-if>
+            <sc-if value="{{ canPost }}"><button onClick="{{ post }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:#6BB5E8">+ Post</button></sc-if>
+            <sc-if value="{{ gated }}"><button onClick="{{ gateNudge }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.28)">+ Post</button></sc-if>
+          </div>
+        </div>
+        <div style="display:flex;gap:26px;margin-top:18px;position:relative">
+          <sc-for list="{{ nav }}" as="t" hint-placeholder-count="3">
+            <button onClick="{{ t.onSelect }}" style="background:transparent;border:0;padding:0 0 12px;cursor:pointer" key="{{ t.k }}">
+              <sc-if value="{{ t.active }}"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#F0EDE6">{{ t.label }}</span></sc-if>
+              <sc-if value="{{ t.idle }}"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:rgba(240,237,230,.38)">{{ t.label }}</span></sc-if>
+            </button>
+          </sc-for>
+          <span style="position:absolute;bottom:-1px;height:1.5px;background:#6BB5E8;left:{{ navL }}px;width:{{ navW }}px;transition:left .42s cubic-bezier(.22,.61,.36,1),width .42s cubic-bezier(.22,.61,.36,1)"></span>
+        </div>
+        <div style="height:1px;background:rgba(107,181,232,.22)"></div>
+      </div>
+
+      <div class="rp-scroll" onWheel="{{ onWheel }}" onTouchStart="{{ onTouchStart }}" onTouchMove="{{ onTouchMove }}" onTouchEnd="{{ onTouchEnd }}" style="flex:1;min-height:0;overflow-y:auto;padding:0 22px 30px">
+
+        <sc-if value="{{ pullShown }}">
+          <div style="display:flex;align-items:center;justify-content:center;gap:9px;height:{{ pullH }}px;overflow:hidden">
+            <sc-if value="{{ refreshing }}"><span style="width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(107,181,232,.3);border-top-color:#6BB5E8;animation:rp-spin .8s linear infinite"></span></sc-if>
+            <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.45)">{{ pullLabel }}</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isFeed }}">
+          <div style="animation:rp-fade .35s ease both">
+            <div style="padding:20px 0 14px">
+              <sc-if value="{{ hasFeed }}"><div style="font-family:'Cormorant Garamond',serif;font-weight:300;font-size:19px;line-height:1.45;color:#E6E1D5">The body is already praying. Add your voice.</div></sc-if>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:16px">
+                <span style="width:6px;height:6px;border-radius:50%;background:#6BB5E8;flex:none"><sc-if value="{{ motion }}"><span style="display:block;width:100%;height:100%;border-radius:50%;background:#6BB5E8;animation:rp-breathe 3.4s ease-in-out infinite"></span></sc-if></span>
+                <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.5)">Interceding now</span>
+                <span style="font-family:'Cormorant Garamond',serif;font-weight:500;font-size:21px;color:#F0EDE6;margin-left:auto">{{ nowCount }}</span>
+                <button onClick="{{ toggleFilter }}" style="background:transparent;border:0;cursor:pointer;padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:2.5px;align-items:flex-end;flex:none">
+                  <span style="display:block;width:13px;height:1px;background:{{ filterTint }}"></span>
+                  <span style="display:block;width:9px;height:1px;background:{{ filterTint }}"></span>
+                  <span style="display:block;width:5px;height:1px;background:{{ filterTint }}"></span>
+                </button>
+              </div>
+              <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.3);margin-top:9px">{{ feedMeta }}</div>
+            </div>
+            <sc-if value="{{ filterOpen }}">
+              <div style="border:1px solid rgba(107,181,232,.18);border-radius:8px;padding:14px;margin-bottom:18px;animation:rp-expand .25s ease both">
+                <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.35)">Sort</div>
+                <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:9px">
+                  <sc-for list="{{ sorts }}" as="o" hint-placeholder-count="3">
+                    <button onClick="{{ o.onPick }}" style="background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12.5px;color:{{ o.tint }}" key="{{ o.k }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.35);margin-top:16px">Show</div>
+                <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:9px">
+                  <sc-for list="{{ shows }}" as="o" hint-placeholder-count="2">
+                    <button onClick="{{ o.onPick }}" style="background:transparent;border:0;padding:0;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12.5px;color:{{ o.tint }}" key="{{ o.k }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ feedEmptyFiltered }}">
+              <div style="padding:34px 2px 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">Nothing urgent right now.</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:16px;line-height:1.5;color:rgba(240,237,230,.45);margin-top:14px">That is its own kind of mercy.</div>
+                <button onClick="{{ showAll }}" style="display:flex;align-items:center;gap:9px;margin-top:20px;background:transparent;border:.5px solid rgba(107,181,232,.3);border-radius:7px;padding:10px 18px;cursor:pointer"><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:#6BB5E8">Show all requests</span></button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ feedEmptyAll }}">
+              <div style="padding:34px 2px 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">The wall is quiet.</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px;max-width:290px">No requests have been lifted yet. Yours can be the first the body carries.</div>
+              </div>
+            </sc-if>
+            <sc-for list="{{ feed }}" as="r" hint-placeholder-count="6">
+              <div style="border-top:1px solid rgba(107,181,232,.10);animation:rp-rise .5s ease both;animation-delay:{{ r.delay }}" key="{{ r.k }}">
+                <button onClick="{{ r.onToggle }}" style="display:block;width:100%;text-align:left;background:transparent;border:0;padding:19px 2px 0;cursor:pointer">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <sc-if value="{{ r.urgent }}"><span style="width:5px;height:5px;border-radius:50%;background:#E05555;flex:none"></span></sc-if>
+                    <sc-if value="{{ r.normal }}"><span style="width:5px;height:5px;border-radius:50%;background:#6BB5E8;flex:none"></span></sc-if>
+                    <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.5)">{{ r.loc }}</span>
+                    <sc-if value="{{ r.urgent }}"><span style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.4px;text-transform:uppercase;color:#E05555;margin-left:auto;flex:none;animation:rp-urg 2.6s ease-in-out infinite">Urgent</span></sc-if>
+                  </div>
+                  <sc-if value="{{ r.collapsed }}">
+                    <div style="display:flex;gap:11px;margin-top:9px">
+                      <sc-if value="{{ r.urgent }}"><span style="width:1.5px;background:rgba(224,85,85,.5);flex:none;border-radius:1px"></span></sc-if>
+                      <span style="flex:1;min-width:0;font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.5;color:#F0EDE6">{{ r.preview }}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:11px 0 19px">
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">Posted {{ r.when }}</span>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;color:rgba(240,237,230,.45);flex:none">{{ r.countStr }} interceding</span>
+                    </div>
+                  </sc-if>
+                </button>
+                <sc-if value="{{ r.expanded }}">
+                  <div style="animation:rp-expand .3s ease both;padding:10px 2px 22px">
+                    <div style="font-family:'DM Sans',sans-serif;font-weight:500;font-size:12px;color:rgba(240,237,230,.6)">{{ r.leader }}</div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;line-height:1.55;color:#F0EDE6;margin-top:8px">{{ r.text }}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:14px">
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">Posted {{ r.when }} · {{ r.category }}</span>
+                      <button onClick="{{ r.onToggle }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(240,237,230,.4);flex:none">Fold</button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:14px;margin-top:18px">
+                      <sc-if value="{{ r.gated }}"><span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:rgba(240,237,230,.32)">Unlocks once your church is verified</span></sc-if>
+                      <sc-if value="{{ r.idle }}">
+                        <button onClick="{{ r.onIntercede }}" style="display:flex;align-items:center;gap:10px;background:transparent;border:.5px solid rgba(107,181,232,.3);border-radius:7px;padding:10px 18px;cursor:pointer">
+                          <span style="display:flex;align-items:flex-end;gap:2.5px;height:13px">
+                            <span style="width:1.5px;height:13px;background:rgba(240,237,230,.5);display:block"></span>
+                            <span style="width:1.5px;height:13px;background:rgba(240,237,230,.09);display:block"></span>
+                            <span style="width:1.5px;height:13px;background:rgba(240,237,230,.5);display:block"></span>
+                          </span>
+                          <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:#F0EDE6">Intercede</span>
+                        </button>
+                      </sc-if>
+                      <sc-if value="{{ r.done }}">
+                        <button onClick="{{ r.onIntercede }}" style="display:flex;align-items:center;gap:10px;background:rgba(107,181,232,.07);border:.5px solid rgba(107,181,232,.5);border-radius:7px;padding:10px 18px;cursor:pointer">
+                          <span style="display:flex;align-items:flex-end;gap:2.5px;height:13px">
+                            <span style="width:1.5px;height:13px;background:rgba(240,237,230,.5);display:block"></span>
+                            <span style="width:1.5px;height:13px;background:#6BB5E8;display:block;animation:rp-gap .45s cubic-bezier(.22,.61,.36,1) both"></span>
+                            <span style="width:1.5px;height:13px;background:rgba(240,237,230,.5);display:block"></span>
+                          </span>
+                          <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;white-space:nowrap;text-transform:uppercase;color:#F0EDE6">Standing in the gap</span>
+                        </button>
+                      </sc-if>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:11.5px;color:rgba(240,237,230,.45);margin-left:auto;flex:none">{{ r.countStr }} interceding</span>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="text-align:center;margin-top:34px;padding-top:24px;border-top:1px solid rgba(107,181,232,.10)">
+              <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.55;color:#E6E1D5;max-width:300px;margin:0 auto">Praying always with all prayer and supplication in the Spirit, and watching thereunto with all perseverance.</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.4);margin-top:12px">Ephesians 6:18 · KJV</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isTest }}">
+          <div style="animation:rp-fade .35s ease both">
+            <div style="padding:20px 0 14px">
+              <div style="font-family:'Cormorant Garamond',serif;font-weight:300;font-size:19px;line-height:1.45;color:#E6E1D5">See what God has been doing — and share your own.</div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:16px">
+                <span style="width:6px;height:6px;border-radius:50%;background:#E6E1D5;flex:none"></span>
+                <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.5)">Answered this month</span>
+                <span style="font-family:'Cormorant Garamond',serif;font-weight:500;font-size:21px;color:#F0EDE6;margin-left:auto">{{ testCount }}</span>
+              </div>
+              <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.3);margin-top:9px">Newest first · Pull to refresh</div>
+            </div>
+            <sc-if value="{{ testsEmpty }}">
+              <div style="padding:34px 2px 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">No testimonies yet.</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px;max-width:290px">When a prayer is answered, mark it in My Prayers — it will be told here, and the body will rejoice with you.</div>
+              </div>
+            </sc-if>
+            <sc-for list="{{ tests }}" as="t" hint-placeholder-count="4">
+              <div style="border-top:1px solid rgba(107,181,232,.10);animation:rp-rise .5s ease both;animation-delay:{{ t.delay }}" key="{{ t.k }}">
+                <button onClick="{{ t.onToggle }}" style="display:block;width:100%;text-align:left;background:transparent;border:0;padding:19px 2px 0;cursor:pointer">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span style="width:5px;height:5px;border-radius:50%;background:#E6E1D5;flex:none"></span>
+                    <span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.5)">{{ t.loc }}</span>
+                    <sc-if value="{{ t.fromReq }}"><span style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.42);margin-left:auto;flex:none">Answered request</span></sc-if>
+                  </div>
+                  <sc-if value="{{ t.collapsed }}">
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.5;color:#F0EDE6;margin-top:9px">{{ t.preview }}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:11px 0 19px">
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">{{ t.when }} ago</span>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;color:rgba(240,237,230,.45);flex:none">{{ t.countStr }} rejoicing</span>
+                    </div>
+                  </sc-if>
+                </button>
+                <sc-if value="{{ t.expanded }}">
+                  <div style="animation:rp-expand .3s ease both;padding:10px 2px 22px">
+                    <div style="font-family:'DM Sans',sans-serif;font-weight:500;font-size:12px;color:rgba(240,237,230,.6)">{{ t.leader }}</div>
+                    <sc-if value="{{ t.fromReq }}">
+                      <div style="border-left:1.5px solid rgba(240,237,230,.16);padding:2px 0 2px 13px;margin-top:14px">
+                        <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.7px;text-transform:uppercase;color:rgba(240,237,230,.38)">The request · {{ t.reqWhen }}</div>
+                        <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:16px;line-height:1.55;color:rgba(240,237,230,.55);margin-top:7px">{{ t.reqText }}</div>
+                        <div style="font-family:'DM Sans',sans-serif;font-size:10.5px;color:rgba(240,237,230,.3);margin-top:8px">{{ t.reqCount }} stood in the gap</div>
+                      </div>
+                      <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.7px;text-transform:uppercase;color:rgba(240,237,230,.7);margin-top:20px">The answer</div>
+                    </sc-if>
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;line-height:1.55;color:#F0EDE6;margin-top:8px">{{ t.text }}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:14px">
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">{{ t.when }} ago</span>
+                      <button onClick="{{ t.onToggle }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(240,237,230,.4);flex:none">Fold</button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:14px;margin-top:18px">
+                      <sc-if value="{{ t.gated }}"><span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:rgba(240,237,230,.32)">Unlocks once your church is verified</span></sc-if>
+                      <sc-if value="{{ t.idleRej }}"><button onClick="{{ t.onRejoice }}" style="display:flex;align-items:center;gap:10px;background:transparent;border:.5px solid rgba(107,181,232,.3);border-radius:7px;padding:10px 18px;cursor:pointer"><span style="width:9px;height:9px;border-radius:50%;border:1px solid #6BB5E8;display:block"></span><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:#6BB5E8">Rejoice</span></button></sc-if>
+                      <sc-if value="{{ t.rejoiced }}"><button onClick="{{ t.onRejoice }}" style="display:flex;align-items:center;gap:10px;background:rgba(107,181,232,.07);border:.5px solid rgba(107,181,232,.5);border-radius:7px;padding:10px 18px;cursor:pointer"><span style="position:relative;width:9px;height:9px;display:block;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:#6BB5E8"></span><span style="position:absolute;inset:0;border-radius:50%;border:1px solid #6BB5E8;animation:rp-echo 1.9s ease-out infinite"></span><span style="position:absolute;inset:0;border-radius:50%;border:1px solid #6BB5E8;animation:rp-echo 1.9s ease-out .95s infinite"></span></span><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:#F0EDE6">Rejoicing</span></button></sc-if>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:11.5px;color:rgba(240,237,230,.45);margin-left:auto;flex:none">{{ t.countStr }} rejoicing</span>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="text-align:center;margin-top:34px;padding-top:24px;border-top:1px solid rgba(107,181,232,.10)">
+              <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.55;color:#E6E1D5;max-width:300px;margin:0 auto">And they overcame him by the blood of the Lamb, and by the word of their testimony.</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.4);margin-top:12px">Revelation 12:11 · KJV</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isMine }}">
+          <div style="animation:rp-fade .35s ease both">
+            <div style="padding:20px 0 14px">
+              <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:22px;color:#F0EDE6">Your church's open prayers</div>
+              <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.4);margin-top:8px">{{ mineCountLabel }}</div>
+            </div>
+            <sc-if value="{{ gated }}">
+              <div style="border-top:1px solid rgba(240,237,230,.08);padding:24px 2px 0">
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:22px;color:#F0EDE6">Verification pending</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px">Your church is visible to the network but limited until verified. Posting and interceding open once the Replant team confirms your church.</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:16px;line-height:1.5;color:rgba(240,237,230,.45);margin-top:16px">You are welcome to read the wall and pray with the body in the meantime.</div>
+                <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,237,230,.32);margin-top:22px;padding-top:16px;border-top:1px solid rgba(240,237,230,.08)">Questions? Email the Replant team.</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ mineEmpty }}">
+              <div style="padding:34px 2px 6px;border-top:1px solid rgba(240,237,230,.08);animation:rp-fade .4s ease both">
+                <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6">Nothing lifted yet.</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;line-height:1.65;color:rgba(240,237,230,.5);margin-top:10px;max-width:290px">When your church brings something before the Lord, post it here and the body will carry it with you.</div>
+              </div>
+            </sc-if>
+            <sc-for list="{{ mine }}" as="m" hint-placeholder-count="4">
+              <div style="border-top:1px solid rgba(107,181,232,.10);padding:19px 2px" key="{{ m.k }}">
+                <div style="display:flex;gap:12px;align-items:flex-start">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:18px;line-height:1.5;color:#F0EDE6">{{ m.text }}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:10px">
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;white-space:nowrap;color:rgba(240,237,230,.38)">Posted {{ m.posted }}</span>
+                      <span style="font-family:'DM Sans',sans-serif;font-size:10.5px;color:rgba(240,237,230,.45);flex:none">{{ m.countStr }} interceding</span>
+                    </div>
+                  </div>
+                  <button onClick="{{ m.onMenu }}" style="background:transparent;border:0;cursor:pointer;padding:2px;flex:none;color:rgba(240,237,230,.4);line-height:1;font-size:16px">⋮</button>
+                </div>
+                <sc-if value="{{ m.menuOpen }}">
+                  <div style="margin-top:13px;border:1px solid rgba(107,181,232,.16);border-radius:8px;overflow:hidden;animation:rp-expand .25s ease both">
+                    <button onClick="{{ m.onStartTestimony }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid rgba(107,181,232,.09);padding:12px 14px;cursor:pointer"><span style="width:6px;height:6px;border-radius:50%;background:#E6E1D5;flex:none"></span><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:#F0EDE6">Mark as testimony</span></button>
+                    <button onClick="{{ m.onRemove }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:0;padding:12px 14px;cursor:pointer"><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:rgba(240,237,230,.5)">Remove</span></button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.testifyOpen }}">
+                  <div style="margin-top:14px;border-left:1.5px solid rgba(240,237,230,.18);padding-left:13px;animation:rp-expand .25s ease both">
+                    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.7px;text-transform:uppercase;color:rgba(240,237,230,.7)">The answer</div>
+                    <textarea ref="{{ testifyRef }}" placeholder="Add a few words of praise — or mark it as it stands." style="width:100%;min-height:74px;resize:none;background:transparent;border:0;border-bottom:1px solid rgba(240,237,230,.14);padding:9px 0 12px;color:#F0EDE6;font-family:'Cormorant Garamond',serif;font-size:18px;line-height:1.45;outline:none;margin-top:8px"></textarea>
+                    <div style="display:flex;gap:18px;align-items:center;margin-top:14px">
+                      <button onClick="{{ m.onConfirmTestimony }}" style="display:flex;align-items:center;gap:9px;background:transparent;border:.5px solid rgba(240,237,230,.3);border-radius:7px;padding:9px 16px;cursor:pointer"><span style="width:7px;height:7px;border-radius:50%;background:#E6E1D5;flex:none"></span><span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#F0EDE6">Mark as testimony</span></button>
+                      <button onClick="{{ m.onCancelTestimony }}" style="background:transparent;border:0;cursor:pointer;padding:0;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:rgba(240,237,230,.4)">Cancel</button>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ canPost }}"><button onClick="{{ post }}" style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:26px;background:transparent;border:.5px solid rgba(107,181,232,.3);border-radius:7px;padding:13px;cursor:pointer"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#6BB5E8">+ Post a prayer request</span></button></sc-if>
+            <div style="text-align:center;margin-top:34px;padding-top:24px;border-top:1px solid rgba(107,181,232,.10)">
+              <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:17px;line-height:1.55;color:#E6E1D5;max-width:300px;margin:0 auto">Cast thy burden upon the Lord, and he shall sustain thee.</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,237,230,.4);margin-top:12px">Psalm 55:22 · KJV</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isJournal }}">
+          <div style="animation:rp-fade .35s ease both">
+            <button onClick="{{ closeToFeed }}" style="display:flex;align-items:center;gap:8px;background:transparent;border:0;cursor:pointer;padding:18px 0 0"><span style="color:#6BB5E8;font-size:15px;line-height:1">←</span><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:#6BB5E8">Back to the wall</span></button>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:22px"><span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6;flex:none">Intercession journal</span><span style="flex:1;height:1px;background:rgba(107,181,232,.14)"></span></div>
+            <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12px;color:rgba(240,237,230,.45);margin-top:8px">Private — only you can see this.</div>
+            <textarea ref="{{ composeRef }}" placeholder="A name, a burden, a line of prayer…" style="width:100%;min-height:88px;resize:none;background:transparent;border:0;border-bottom:1px solid rgba(240,237,230,.14);padding:14px 2px;color:#F0EDE6;font-family:'Cormorant Garamond',serif;font-size:20px;line-height:1.45;outline:none;margin-top:16px"></textarea>
+            <button onClick="{{ submitJournal }}" style="display:flex;align-items:center;gap:9px;background:transparent;border:0;cursor:pointer;padding:0;margin-top:16px"><span style="width:10px;height:10px;border-radius:50%;border:1px solid #6BB5E8"></span><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:#6BB5E8">Keep</span></button>
+            <sc-for list="{{ journal }}" as="j" hint-placeholder-count="2">
+              <div style="border-left:1.5px solid rgba(240,237,230,.12);padding:2px 0 2px 14px;margin-top:20px" key="{{ j.k }}">
+                <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.6px;color:rgba(240,237,230,.35)">{{ j.date }}</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:18px;line-height:1.55;color:#E6E1D5;margin-top:7px">{{ j.text }}</div>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{ journalEmpty }}">
+              <div style="padding:22px 2px 0;animation:rp-fade .4s ease both">
+                <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:16px;line-height:1.5;color:rgba(240,237,230,.45);margin-top:14px">Nothing kept yet. Write a name or a burden above — only you will see it.</div>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:36px"><span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;color:#F0EDE6;flex:none">Standing in the gap</span><span style="flex:1;height:1px;background:rgba(107,181,232,.14)"></span><span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.4px;color:rgba(240,237,230,.4);flex:none">{{ standingCount }}</span></div>
+            <sc-if value="{{ standingEmpty }}"><div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12px;line-height:1.6;color:rgba(240,237,230,.4);margin-top:12px">Requests you intercede for on the wall gather here.</div></sc-if>
+            <sc-for list="{{ standing }}" as="p" hint-placeholder-count="2">
+              <div style="border-top:1px solid rgba(107,181,232,.10);padding:15px 2px;display:flex;gap:12px;align-items:flex-start;animation:rp-rise .4s ease both" key="{{ p.k }}">
+                <span style="display:flex;align-items:flex-end;gap:2px;height:12px;flex:none;margin-top:4px">
+                  <span style="width:1.5px;height:12px;background:rgba(240,237,230,.45);display:block"></span>
+                  <span style="width:1.5px;height:12px;background:#6BB5E8;display:block"></span>
+                  <span style="width:1.5px;height:12px;background:rgba(240,237,230,.45);display:block"></span>
+                </span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.4px;text-transform:uppercase;color:rgba(240,237,230,.45)">{{ p.loc }}</div>
+                  <div style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:17px;line-height:1.45;color:#E6E1D5;margin-top:6px">{{ p.preview }}</div>
+                </div>
+                <button onClick="{{ p.onRelease }}" style="background:transparent;border:0;cursor:pointer;padding:2px 0;flex:none;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.35)">Release</button>
+              </div>
+            </sc-for>
+
+            <div style="display:flex;align-items:center;gap:14px;margin-top:34px"><span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:19px;color:#F0EDE6;flex:none">Churches you carry</span><span style="flex:1;height:1px;background:rgba(107,181,232,.14)"></span><span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.4px;color:rgba(240,237,230,.4);flex:none">{{ churchCount }}</span></div>
+            <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:12px;color:rgba(240,237,230,.4);margin-top:8px">Added from The Church. Ten at a time.</div>
+            <sc-if value="{{ churchesEmpty }}">
+              <div style="padding:16px 2px 0">
+                <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:16px;line-height:1.5;color:rgba(240,237,230,.45)">None yet. Pray for a church from The Church and it will be held here.</div>
+              </div>
+            </sc-if>
+
+            <sc-for list="{{ churches }}" as="c" hint-placeholder-count="3">
+              <div style="border-top:1px solid rgba(107,181,232,.10);padding:14px 2px;display:flex;align-items:center;gap:11px" key="{{ c.k }}">
+                <span style="width:5px;height:5px;border-radius:50%;background:#6BB5E8;flex:none"></span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:#F0EDE6">{{ c.name }}</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.35);margin-top:3px">{{ c.loc }} · since {{ c.since }}</div>
+                </div>
+                <button onClick="{{ c.onRelease }}" style="background:transparent;border:0;cursor:pointer;padding:2px 0;flex:none;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(240,237,230,.35)">Release</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isCompose }}">
+          <div style="animation:rp-fade .35s ease both">
+            <button onClick="{{ closeToFeed }}" style="display:flex;align-items:center;gap:8px;background:transparent;border:0;cursor:pointer;padding:18px 0 0"><span style="color:#6BB5E8;font-size:15px;line-height:1">←</span><span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:#6BB5E8">Back</span></button>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:22px"><span style="font-family:'Cormorant Garamond',serif;font-weight:400;font-size:21px;color:#F0EDE6;flex:none">Post a request</span><span style="flex:1;height:1px;background:rgba(107,181,232,.14)"></span></div>
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:15px;line-height:1.5;color:rgba(240,237,230,.5);margin-top:10px">{{ attribution }}</div>
+
+            <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.35);margin-top:24px">Your prayer</div>
+            <textarea ref="{{ composeRef }}" onChange="{{ onComposeInput }}" onKeyUp="{{ onComposeInput }}" maxLength="300" placeholder="Share what your church is bringing before the Lord." style="width:100%;min-height:132px;resize:none;background:transparent;border:0;border-bottom:1px solid rgba(240,237,230,.14);padding:12px 2px;color:#F0EDE6;font-family:'Cormorant Garamond',serif;font-size:21px;line-height:1.45;outline:none;margin-top:8px"></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px"><span style="font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:1.2px;color:{{ counterTint }}">{{ counterLabel }}</span></div>
+
+            <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.8px;text-transform:uppercase;color:rgba(240,237,230,.35);margin-top:22px">Category</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:11px">
+              <sc-for list="{{ cats }}" as="c" hint-placeholder-count="8">
+                <button onClick="{{ c.onPick }}" style="background:transparent;border:.5px solid {{ c.border }};border-radius:6px;padding:8px 13px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:{{ c.tint }}" key="{{ c.k }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-top:26px;padding-top:18px;border-top:1px solid rgba(107,181,232,.10)">
+              <div style="flex:1">
+                <div style="font-family:'DM Sans',sans-serif;font-size:13.5px;color:#F0EDE6">Mark as urgent</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:11.5px;line-height:1.5;color:rgba(240,237,230,.42);margin-top:3px">For requests needing immediate intercession.</div>
+              </div>
+              <button onClick="{{ toggleUrgent }}" style="flex:none;width:42px;height:24px;border-radius:12px;border:.5px solid {{ urgentTrackBorder }};background:{{ urgentTrack }};cursor:pointer;padding:0;position:relative;transition:background .25s ease"><span style="position:absolute;top:2.5px;left:{{ urgentKnob }}px;width:17px;height:17px;border-radius:50%;background:#F0EDE6;transition:left .25s cubic-bezier(.22,.61,.36,1)"></span></button>
+            </div>
+
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid rgba(107,181,232,.10)">
+              <div style="flex:1">
+                <div style="font-family:'DM Sans',sans-serif;font-size:13.5px;color:#F0EDE6">Post anonymously</div>
+                <div style="font-family:'DM Sans',sans-serif;font-weight:300;font-size:11.5px;line-height:1.5;color:rgba(240,237,230,.42);margin-top:3px">Your name will be hidden. Your church will still be shown.</div>
+              </div>
+              <button onClick="{{ toggleAnon }}" style="flex:none;width:42px;height:24px;border-radius:12px;border:.5px solid {{ anonTrackBorder }};background:{{ anonTrack }};cursor:pointer;padding:0;position:relative;transition:background .25s ease"><span style="position:absolute;top:2.5px;left:{{ anonKnob }}px;width:17px;height:17px;border-radius:50%;background:#F0EDE6;transition:left .25s cubic-bezier(.22,.61,.36,1)"></span></button>
+            </div>
+
+            <button onClick="{{ submitPost }}" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:28px;background:rgba(240,237,230,.05);border:.5px solid rgba(240,237,230,.3);border-radius:7px;padding:15px;cursor:pointer"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#F0EDE6">Lift it up</span></button>
+          </div>
+        </sc-if>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<sc-if value="{{ toastShown }}">
+  <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;background:#161617;border:.5px solid rgba(240,237,230,.14);border-radius:8px;padding:12px 22px;animation:rp-rise .3s ease both">
+    <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:#F0EDE6">{{ toast }}</span>
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;churchVerified&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;showEmptyStates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;reduceMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+class Component extends DCLogic {
+  composeRef = React.createRef();
+  testifyRef = React.createRef();
+  CATS = ['Healing','Protection','Provision','Salvation','Unity','Guidance','Endurance','Laborers'];
+
+  D = {
+    feed: [
+      {id:'f1',loc:'Lagos, Nigeria',leader:'Apostle Femi Okafor',when:'1h ago',t:1,n:47,urgent:false,category:'Salvation',
+        text:'A baptism on Sunday — fourteen souls, most of them young men the streets nearly took. Pray they are kept under the wings, that the joy of this week becomes a root deep enough to hold them when the newness wears thin. And pray for the ones still standing at the edge of the water, afraid of what following will cost them.'},
+      {id:'f2',loc:'Mumbai, India',leader:'Pastor Anand Rao',when:'3h ago',t:3,n:63,urgent:false,category:'Guidance',
+        text:'For our pastor’s clarity as he begins the next teaching series. The room has been unusually hungry for the Word these past weeks, and we do not want to squander it with cleverness or noise. Pray he would preach it plainly, and that the hearing would turn into doing before the week is out.'},
+      {id:'f3',loc:'São Paulo, Brazil',leader:'A fellow leader',when:'5h ago',t:5,n:128,urgent:true,category:'Healing',
+        text:'A brother of ours goes in for surgery on Thursday, and the doctors have been honest that it carries real danger. Pray for steady hands in the theatre and quiet hearts in the waiting room. His wife is carrying more than she can put into words right now — hold her especially, and the three children who keep asking when their father comes home.'},
+      {id:'f4',loc:'Warsaw, Poland',leader:'Pastor Tomasz Nowak',when:'1d ago',t:26,n:31,urgent:false,category:'Unity',
+        text:'Wisdom for a hard decision our elders carry into Sunday — whether to continue a partnership that has strained us more than it has served the city. We are divided, and each side is arguing in good conscience. Pray we would seek His face before our own preferences, and leave the room more one than we entered it.'},
+      {id:'f5',loc:'Chișinău, Moldova',leader:'A fellow leader',when:'1d ago',t:30,n:54,urgent:true,category:'Provision',
+        text:'Provision for the winter that is already at the door. The building is cold, and the families who shelter with us on the hardest nights have started to arrive earlier each week. Pray for fuel, for blankets, and for the kind of generosity that surprises even the ones who give it.'},
+      {id:'f6',loc:'Seoul, South Korea',leader:'Pastor Ji-woo Han',when:'2d ago',t:50,n:72,urgent:false,category:'Endurance',
+        text:'That the young would keep the faith of their fathers and make it their own, rather than carry it secondhand until it is convenient to set down. So many have gone quiet since finishing their studies. Pray we would not lecture them back, but love them back — and that we would have the patience for the long road home.'},
+      {id:'f7',loc:'Cusco, Peru',leader:'Pastor Elena Quispe',when:'3d ago',t:74,n:22,urgent:false,category:'Laborers',
+        text:'The river took the road again and the villages above us have gone three weeks without a visit. Pray for a way through, and for the two young men who have offered to walk it on foot. They are willing; we are afraid for them. Give us wisdom to send or to wait.'},
+    ],
+    tests: [
+      {id:'t1',leader:'Pastor Anand Rao',loc:'Mumbai, India',when:'2d',t:2,n:1289,
+        text:'She came through surgery last Tuesday. The surgeons found the tumour smaller than the scans had shown, and removed it cleanly. She is home now, walking the garden in the evenings — slowly, but on her own feet. We keep finding ourselves thanking people who never knew her name.',
+        reqText:'Our pastor’s wife goes in on Tuesday. The scans are not good and we are asking for mercy — for her, and for him, who is trying to shepherd us while carrying this.',reqWhen:'lifted 3w ago',reqCount:'1,204'},
+      {id:'t2',leader:'Pastor Wangari Mwangi',loc:'Nairobi, Kenya',when:'4d',t:4,n:2104,
+        text:'Sixty-three baptisms at the university this week. They came up out of the water singing, and would not stop singing when we asked them to make room for the next group. We did not have enough towels. We have never been so glad to be unprepared.'},
+      {id:'t3',leader:'Pastor Diego Mora',loc:'Quito, Ecuador',when:'1w',t:8,n:876,
+        text:'The funds for the new gathering space arrived — all of it, in eleven days. Every cent came from churches inside this network, and none of them know each other. We have a wall now where we write the names of the cities. He knows what we could not have arranged.',
+        reqText:'We have outgrown the room we meet in and have no way to fund another. Pray for provision, and for patience while we wait on it.',reqWhen:'lifted 2m ago',reqCount:'642'},
+      {id:'t4',leader:'A fellow leader',loc:'Manila, Philippines',when:'1w',t:9,n:1567,
+        text:'My nephew, who you prayed for in January, walked out of the hospital yesterday on his own feet. The doctors had prepared us for a different ending. He is whole. He is whole.'},
+    ],
+    mine: [
+      {id:'m1',posted:'2d ago',n:23,text:'A wisdom decision before our elders this Sunday — a difficult call about a partner ministry.'},
+      {id:'m2',posted:'6d ago',n:88,text:'Provision for a family in our fellowship during her recovery. Three children, no income for weeks.'},
+      {id:'m3',posted:'1w ago',n:45,text:'Our youth group meets Wednesday — pray for hearts softened and for the message to land.'},
+      {id:'m4',posted:'2w ago',n:134,text:'Safe travel for the missions team to the regional gathering next month.'},
+    ],
+    churches: [
+      {id:'c1',name:'Grace Chapel',loc:'Nairobi, Kenya',since:'Jul 14'},
+      {id:'c2',name:'Iglesia del Camino',loc:'Quito, Ecuador',since:'Jul 16'},
+      {id:'c3',name:'Living Word Fellowship',loc:'Manila, Philippines',since:'Jul 19'},
+      {id:'c4',name:'Bethel Assembly',loc:'Warsaw, Poland',since:'Jul 21'},
+    ],
+  };
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      view: 'feed', expandedId: null, expandedT: null, menuId: null, testifyId: null,
+      interceded: {}, rejoiced: {}, removed: {}, testified: {},
+      journal: [{id:'j0',date:'JUL 20',text:'Interceded for the elders before dawn. Peace came.'}],
+      standing: [], churches: this.D.churches.slice(),
+      posted: [], extraTest: [],
+      live: 0, toast: null, navL: 0, navW: 0, animTick: 0,
+      filterOpen: false, sort: 'new', show: 'all',
+      pull: 0, refreshing: false, refreshed: 0,
+      composeLen: 0, urgentOn: false, anonOn: false, category: null,
+    };
+  }
+
+  componentDidMount() {
+    this._t = setInterval(() => { if (this.props.reduceMotion) return; this.setState(s => ({ live: s.live + 1 })); }, 4500);
+    this._measureNav();
+    [0, 200, 600, 1200].forEach(ms => setTimeout(() => this._measureNav(), ms));
+    document.addEventListener('input', this._onDocInput, true);
+    document.addEventListener('keyup', this._onDocInput, true);
+  }
+  componentDidUpdate() { this._measureNav(); this._syncCompose(); }
+  _syncCompose() {
+    if (this.state.view !== 'compose' || this.props.churchVerified === false) return;
+    const el = document.querySelector('textarea');
+    if (!el) return;
+    this.composeRef.current = el;
+    if (el.value.length !== this.state.composeLen) this.setState({ composeLen: el.value.length });
+  }
+  _onDocInput = (e) => {
+    const el = e.target;
+    if (!el || el.tagName !== 'TEXTAREA') return;
+    this.composeRef.current = el;
+    if (this.state.view === 'compose') this.setState({ composeLen: el.value.length });
+  };
+  componentWillUnmount() {
+    clearInterval(this._t);
+    if (this._toastT) clearTimeout(this._toastT);
+    if (this._rT) clearTimeout(this._rT);
+    document.removeEventListener('input', this._onDocInput, true);
+    document.removeEventListener('keyup', this._onDocInput, true);
+  }
+
+  _measureNav() {
+    const gv = this.state.view;
+    const v = (this.props.churchVerified === false && (gv === 'journal' || gv === 'compose')) ? 'feed' : gv;
+    const idx = { feed: 0, testimonies: 1, mine: 2 }[v];
+    if (idx == null) { if (this.state.navW !== 0) this.setState({ navW: 0 }); return; }
+    const labels = ['Feed', 'Testimonies', 'My Prayers'];
+    const btn = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === labels[idx]);
+    if (!btn) return;
+    const span = btn.querySelector('span') || btn;
+    const left = btn.offsetLeft, width = span.offsetWidth;
+    if (!width) return;
+    if (this.state.navL !== left || this.state.navW !== width) this.setState({ navL: left, navW: width });
+  }
+
+  fmt(n) { return Number(n).toLocaleString('en-US'); }
+  flash(m) { this.setState({ toast: m }); if (this._toastT) clearTimeout(this._toastT); this._toastT = setTimeout(() => this.setState({ toast: null }), 2600); }
+  preview(text) {
+    const i1 = text.indexOf('. ');
+    if (i1 < 0) return text;
+    let end = i1 + 1;
+    if (end < 74) { const i2 = text.indexOf('. ', end + 1); if (i2 >= 0) end = i2 + 1; }
+    const more = end < text.length - 1;
+    const base = text.slice(0, end).trim();
+    return more ? base.replace(/\.$/, '') + '…' : base;
+  }
+
+  // ── pull to refresh ──
+  _pullable() { const v = this.state.view; return v === 'feed' || v === 'testimonies'; }
+  onWheel = (e) => {
+    if (!this._pullable() || this.state.refreshing) return;
+    const el = e.currentTarget;
+    if (el.scrollTop > 0) { if (this.state.pull) this.setState({ pull: 0 }); return; }
+    if (e.deltaY < 0) {
+      const next = Math.min(70, this.state.pull + Math.abs(e.deltaY) * 0.7);
+      this.setState({ pull: next });
+      if (next >= 60) this._fire();
+    } else if (this.state.pull) this.setState({ pull: 0 });
+  };
+  onTouchStart = (e) => { this._ty = e.touches[0].clientY; this._top = e.currentTarget.scrollTop <= 0; };
+  onTouchMove = (e) => {
+    if (!this._pullable() || !this._top || this.state.refreshing) return;
+    const d = e.touches[0].clientY - (this._ty || 0);
+    if (d > 0) { const next = Math.min(70, d * 0.6); this.setState({ pull: next }); if (next >= 60) this._fire(); }
+  };
+  onTouchEnd = () => { if (!this.state.refreshing && this.state.pull) this.setState({ pull: 0 }); };
+  _fire() {
+    if (this.state.refreshing) return;
+    this.setState({ refreshing: true, pull: 60 });
+    if (this._rT) clearTimeout(this._rT);
+    this._rT = setTimeout(() => {
+      this.setState(s => ({ refreshing: false, pull: 0, refreshed: s.refreshed + 1, animTick: s.animTick + 1, live: s.live + 3 }));
+      this.flash('The wall is current.');
+    }, 1100);
+  }
+
+  setView(v) {
+    this.setState(s => ({ view: v, expandedId: null, expandedT: null, menuId: null, testifyId: null, filterOpen: false, pull: 0, animTick: s.animTick + 1,
+      composeLen: v === 'compose' ? 0 : s.composeLen }));
+    if (v === 'compose' || v === 'journal') this.composeRef.current = null;
+  }
+  toggleExpand(id) { this.setState(s => ({ expandedId: s.expandedId === id ? null : id })); }
+  toggleExpandT(id) { this.setState(s => ({ expandedT: s.expandedT === id ? null : id })); }
+  toggleFilter() { this.setState(s => ({ filterOpen: !s.filterOpen })); }
+  setSort(v) { this.setState(s => ({ sort: v, animTick: s.animTick + 1 })); }
+  setShow(v) { this.setState(s => ({ show: v, animTick: s.animTick + 1 })); }
+
+  intercede(r) {
+    const on = !this.state.interceded[r.id];
+    this.setState(s => {
+      const standing = on
+        ? [{ id: r.id, loc: r.loc, preview: this.preview(r.text) }, ...s.standing.filter(x => x.id !== r.id)]
+        : s.standing.filter(x => x.id !== r.id);
+      return { interceded: { ...s.interceded, [r.id]: on }, standing };
+    });
+  }
+  releaseStanding(id) { this.setState(s => ({ standing: s.standing.filter(x => x.id !== id), interceded: { ...s.interceded, [id]: false } })); }
+  releaseChurch(id) { this.setState(s => ({ churches: s.churches.filter(c => c.id !== id) })); this.flash('Released. You can carry another.'); }
+  rejoice(id) { this.setState(s => ({ rejoiced: { ...s.rejoiced, [id]: !s.rejoiced[id] } })); }
+  toggleMenu(id) { this.setState(s => ({ menuId: s.menuId === id ? null : id, testifyId: null })); }
+  startTestimony(id) { this.setState({ testifyId: id, menuId: null }); }
+  cancelTestimony() { this.setState({ testifyId: null }); }
+  confirmTestimony(m) {
+    const el = this.testifyRef.current;
+    const words = el ? el.value.trim() : '';
+    this.setState(s => ({
+      testified: { ...s.testified, [m.id]: true }, testifyId: null,
+      extraTest: [{ id: 'et' + m.id, leader: 'You · Your church', loc: 'Your church', when: 'just now', t: 0, n: 1,
+        text: words || 'The Lord answered this. We are giving thanks.', reqText: m.text, reqWhen: 'lifted ' + m.posted, reqCount: this.fmt(m.n) }, ...s.extraTest],
+    }));
+    this.flash('Marked as testimony — moved to Testimonies.');
+  }
+  remove(id) { this.setState(s => ({ removed: { ...s.removed, [id]: true }, menuId: null })); this.flash('Removed from your prayers.'); }
+
+  gateNudge() { this.flash('Your church must be verified to post.'); }
+  onComposeInput = (e) => {
+    const el = (e && e.target && typeof e.target.value === 'string') ? e.target : this.composeRef.current;
+    if (el && !this.composeRef.current) this.composeRef.current = el;
+    this.setState({ composeLen: el ? el.value.length : 0 });
+  };
+  submitPost() {
+    const el = this.composeRef.current; const v = el ? el.value.trim() : '';
+    if (!v) { this.flash('Please add a prayer request before submitting.'); return; }
+    if (!this.state.category) { this.flash('Please pick a category.'); return; }
+    el.value = '';
+    const id = 'p' + Date.now();
+    this.setState(s => ({
+      posted: [{ id, loc: 'Your church', leader: s.anonOn ? 'A fellow leader' : 'You', when: 'just now', t: 0, n: 1, urgent: s.urgentOn, category: s.category, text: v }, ...s.posted],
+      view: 'feed', expandedId: id, composeLen: 0, urgentOn: false, anonOn: false, category: null, animTick: s.animTick + 1,
+    }));
+    this.flash('Lifted up. The body will pray it through.');
+  }
+  submitJournal() {
+    const el = this.composeRef.current; const v = el ? el.value.trim() : '';
+    if (!v) { this.flash('Write a few words first.'); return; }
+    el.value = '';
+    this.setState(s => ({ journal: [{ id: 'j' + Date.now(), date: 'JUL 24', text: v }, ...s.journal] }));
+    this.flash('Kept. Only you can see this.');
+  }
+
+  renderVals() {
+    const s = this.state;
+    const gated = this.props.churchVerified === false;
+    const empty = this.props.showEmptyStates === true;
+    const view = (gated && (s.view === 'journal' || s.view === 'compose')) ? 'feed' : s.view;
+    const tint = (on) => on ? '#6BB5E8' : 'rgba(240,237,230,.42)';
+
+    let feedAll = [...s.posted, ...this.D.feed];
+    if (s.show === 'urgent') feedAll = feedAll.filter(r => r.urgent);
+    if (s.sort === 'most') feedAll = [...feedAll].sort((a, b) => b.n - a.n);
+    else if (s.sort === 'urgent') feedAll = [...feedAll].sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || a.t - b.t);
+    else feedAll = [...feedAll].sort((a, b) => a.t - b.t);
+    if (empty) feedAll = [];
+    const journalRows = empty ? [] : s.journal;
+    const churchRows = empty ? [] : s.churches;
+
+    const mineRows = empty ? [] : this.D.mine.filter(m => !s.removed[m.id] && !s.testified[m.id]);
+    const interSum = mineRows.reduce((a, m) => a + m.n, 0);
+    const tests = empty ? [] : [...s.extraTest, ...this.D.tests];
+    const nowCount = empty ? '0' : this.fmt(1247 + Math.min(s.live, 90));
+    const pullLabel = s.refreshing ? 'Gathering' : (s.pull >= 60 ? 'Release to refresh' : 'Pull to refresh');
+    const sortLabel = { new: 'Newest first', most: 'Most interceding', urgent: 'Urgent first' }[s.sort];
+    const feedMeta = s.show === 'urgent' ? sortLabel + ' · Urgent only' : sortLabel + ' · Pull to refresh';
+    const hasFeed = feedAll.length > 0;
+
+    return {
+      composeRef: this.composeRef, testifyRef: this.testifyRef,
+      motion: !this.props.reduceMotion,
+      toast: s.toast, toastShown: !!s.toast,
+      nowCount, navL: s.navL, navW: s.navW,
+      gated, canPost: !gated, gateNudge: () => this.gateNudge(), hasFeed,
+      feedEmptyFiltered: feedAll.length === 0 && s.show === 'urgent' && !empty,
+      feedEmptyAll: feedAll.length === 0 && (s.show !== 'urgent' || empty),
+      testsEmpty: tests.length === 0,
+      mineEmpty: !gated && mineRows.length === 0,
+      journalEmpty: journalRows.length === 0,
+      churchesEmpty: churchRows.length === 0,
+      showAll: () => this.setShow('all'),
+      isFeed: view === 'feed', isTest: view === 'testimonies', isMine: view === 'mine',
+      isJournal: view === 'journal', isCompose: view === 'compose',
+      journalActive: view === 'journal', journalIdle: view !== 'journal' && !gated, journalLocked: gated,
+      openJournal: () => { if (gated) { this.flash('The journal unlocks once your church is verified.'); return; } this.setView('journal'); },
+      post: () => { if (gated) { this.gateNudge(); return; } this.setView('compose'); },
+      closeToFeed: () => this.setView('feed'),
+      submitPost: () => this.submitPost(),
+      submitJournal: () => this.submitJournal(),
+      onWheel: this.onWheel, onTouchStart: this.onTouchStart, onTouchMove: this.onTouchMove, onTouchEnd: this.onTouchEnd,
+      pullShown: s.pull > 0 || s.refreshing, pullH: Math.round(s.pull), pullLabel, refreshing: s.refreshing,
+      nav: [
+        { k: 'f', label: 'Feed', active: view === 'feed', idle: view !== 'feed', onSelect: () => this.setView('feed') },
+        { k: 't', label: 'Testimonies', active: view === 'testimonies', idle: view !== 'testimonies', onSelect: () => this.setView('testimonies') },
+        { k: 'm', label: 'My Prayers', active: view === 'mine', idle: view !== 'mine', onSelect: () => this.setView('mine') },
+      ],
+      filterOpen: s.filterOpen, toggleFilter: () => this.toggleFilter(),
+      filterTint: s.filterOpen ? '#6BB5E8' : 'rgba(240,237,230,.42)',
+      feedMeta,
+      sorts: [
+        { k: 'new', label: 'Newest first', tint: tint(s.sort === 'new'), onPick: () => this.setSort('new') },
+        { k: 'most', label: 'Most interceding', tint: tint(s.sort === 'most'), onPick: () => this.setSort('most') },
+        { k: 'urg', label: 'Urgent first', tint: tint(s.sort === 'urgent'), onPick: () => this.setSort('urgent') },
+      ],
+      shows: [
+        { k: 'all', label: 'All requests', tint: tint(s.show === 'all'), onPick: () => this.setShow('all') },
+        { k: 'u', label: 'Urgent only', tint: tint(s.show === 'urgent'), onPick: () => this.setShow('urgent') },
+      ],
+      feed: feedAll.map((r, i) => {
+        const it = !!s.interceded[r.id];
+        const ex = s.expandedId === r.id;
+        return { k: r.id + '-' + s.animTick, loc: r.loc, leader: r.leader, text: r.text, preview: this.preview(r.text),
+          when: r.when, category: r.category, urgent: !!r.urgent, delay: (i * 0.055).toFixed(3) + 's',
+          normal: !r.urgent, gated,
+          expanded: ex, collapsed: !ex, idle: !it && !gated, done: it && !gated, countStr: this.fmt(r.n + (it ? 1 : 0)),
+          onToggle: () => this.toggleExpand(r.id), onIntercede: () => this.intercede(r) };
+      }),
+      testCount: empty ? '0' : this.fmt(312 + s.extraTest.length),
+      tests: tests.map((t, i) => {
+        const rj = !!s.rejoiced[t.id];
+        const ex = s.expandedT === t.id;
+        return { k: t.id + '-' + s.animTick, loc: t.loc, leader: t.leader, when: t.when, text: t.text, preview: this.preview(t.text),
+          delay: (i * 0.055).toFixed(3) + 's', fromReq: !!t.reqText, reqText: t.reqText, reqWhen: t.reqWhen, reqCount: t.reqCount,
+          gated, expanded: ex, collapsed: !ex, idleRej: !rj && !gated, rejoiced: rj && !gated, countStr: this.fmt(t.n + (rj ? 1 : 0)),
+          onToggle: () => this.toggleExpandT(t.id), onRejoice: () => this.rejoice(t.id) };
+      }),
+      mineCountLabel: gated ? 'Not yet verified' : (mineRows.length + ' open · ' + this.fmt(interSum) + ' interceding'),
+      mine: (gated ? [] : mineRows).map(m => ({ k: m.id, text: m.text, posted: m.posted, countStr: this.fmt(m.n),
+        menuOpen: s.menuId === m.id, testifyOpen: s.testifyId === m.id,
+        onMenu: () => this.toggleMenu(m.id), onStartTestimony: () => this.startTestimony(m.id),
+        onConfirmTestimony: () => this.confirmTestimony(m), onCancelTestimony: () => this.cancelTestimony(),
+        onRemove: () => this.remove(m.id) })),
+      journal: journalRows.map(j => ({ k: j.id, date: j.date, text: j.text })),
+      standing: s.standing.map(p => ({ k: p.id, loc: p.loc, preview: p.preview, onRelease: () => this.releaseStanding(p.id) })),
+      standingCount: s.standing.length + ' held',
+      standingEmpty: s.standing.length === 0,
+      churches: churchRows.map(c => ({ k: c.id, name: c.name, loc: c.loc, since: c.since, onRelease: () => this.releaseChurch(c.id) })),
+      churchCount: churchRows.length + ' of 10',
+      attribution: s.anonOn
+        ? 'This request will be posted anonymously on behalf of your church.'
+        : 'This request will be posted on behalf of Grace Chapel.',
+      counterLabel: s.composeLen + ' / 300',
+      counterTint: s.composeLen >= 280 ? '#E05555' : (s.composeLen >= 250 ? '#D4A855' : 'rgba(240,237,230,.35)'),
+      cats: this.CATS.map(c => ({ k: c, label: c, tint: s.category === c ? '#6BB5E8' : 'rgba(240,237,230,.5)',
+        border: s.category === c ? 'rgba(107,181,232,.5)' : 'rgba(240,237,230,.12)', onPick: () => this.setState({ category: c }) })),
+      toggleUrgent: () => this.setState(st => ({ urgentOn: !st.urgentOn })),
+      toggleAnon: () => this.setState(st => ({ anonOn: !st.anonOn })),
+      urgentTrack: s.urgentOn ? 'rgba(107,181,232,.35)' : 'rgba(240,237,230,.07)',
+      urgentTrackBorder: s.urgentOn ? 'rgba(107,181,232,.5)' : 'rgba(240,237,230,.14)',
+      urgentKnob: s.urgentOn ? 22 : 3,
+      anonTrack: s.anonOn ? 'rgba(107,181,232,.35)' : 'rgba(240,237,230,.07)',
+      anonTrackBorder: s.anonOn ? 'rgba(107,181,232,.5)' : 'rgba(240,237,230,.14)',
+      anonKnob: s.anonOn ? 22 : 3,
+    };
+  }
+}
+</script>
+</body>
+</html>
