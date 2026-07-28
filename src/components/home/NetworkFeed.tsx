@@ -22,6 +22,13 @@
 //   #6 mount + pull-to-refresh · #7 empty state · #8 cursor pagination 20/pg
 //   #9 no realtime · #14 read-failure retry · #15 scroll preserved
 //   #[age] FEED_MAX_AGE_DAYS (7) floor independent of the cursor.
+//
+// Motion (Day-1 polish, Founder 2026-07-28): rows enter with the Prayer
+// Wall StaggerRow grammar (fade + 7px rise, 500ms, 55ms/row capped). The
+// entrance re-plays on mount + pull-to-refresh via StaggerRow's
+// replayToken PROP — never by re-keying rows (warm remounts can lose the
+// read-on mirror's only onTextLayout event; see StaggerRow). Reduced
+// motion skips it entirely.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -52,6 +59,9 @@ import {
   resolveEyebrowTag,
   type AnnouncementRow,
 } from './NetworkFeedLogic';
+// Cross-feature import is deliberate — StaggerRow is the app's shared
+// entrance grammar (Persecuted imports it the same way).
+import { StaggerRow } from '../prayer/WallPrimitives';
 
 // Column projection. The redesign adds link_url / author_type /
 // comment_count. author_id is deliberately ABSENT: leader attribution is
@@ -65,7 +75,7 @@ import {
 // floor version moves past clients that still read tag_type.
 // resolveEyebrowTag prefers badge and falls back to tag_type.
 const SELECT_COLS =
-  'id, title, body, published_at, is_active, source_label, source_sublabel, tag_type, badge, link_url, author_type, comment_count, card_type';
+  'id, title, body, published_at, is_active, source_label, source_sublabel, source_initial, tag_type, badge, link_url, author_type, comment_count, card_type, verse_text, verse_reference';
 
 // KAN-17 amendment — feed shows only announcements published within the
 // last FEED_MAX_AGE_DAYS days.
@@ -82,6 +92,13 @@ export default function NetworkFeed() {
   const [loadState, setLoadState] = useState<LoadState>('initial');
   const [hasMore, setHasMore] = useState(true);
   const hasFetchedOnce = useRef(false);
+  // Bumped on initial load + pull-to-refresh; StaggerRow replays its
+  // entrance off this PROP. Deliberately NOT a key: re-keying rows
+  // remounts them warm, and a warm remount can lose the mirror's only
+  // onTextLayout event, killing the read-on cue (Day-1 regression,
+  // Founder report 2026-07-28). Stable keys also preserve expanded
+  // bodies + open comment threads across a refresh.
+  const [animTick, setAnimTick] = useState(0);
 
   const fetchPage = useCallback(
     async (cursor: string | null): Promise<{ rows: AnnouncementRow[]; error: string | null }> => {
@@ -120,6 +137,7 @@ export default function NetworkFeed() {
       return;
     }
     setRows(pageRows);
+    setAnimTick((t) => t + 1);
     setHasMore(pageRows.length === PAGE_SIZE);
     setLoadState('idle');
   }, [fetchPage]);
@@ -133,6 +151,7 @@ export default function NetworkFeed() {
       return;
     }
     setRows(pageRows);
+    setAnimTick((t) => t + 1);
     setHasMore(pageRows.length === PAGE_SIZE);
     setLoadState('idle');
   }, [fetchPage]);
@@ -201,8 +220,12 @@ export default function NetworkFeed() {
   return (
     <FlatList
       data={rows}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
+      keyExtractor={(row) => row.id}
+      renderItem={({ item, index }) => (
+        <StaggerRow index={index} replayToken={animTick}>
+          <FeedItem item={item} />
+        </StaggerRow>
+      )}
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={Separator}
       ListHeaderComponent={<HomeSectionLabel>Network updates</HomeSectionLabel>}
@@ -231,14 +254,6 @@ export default function NetworkFeed() {
   );
 }
 
-function keyExtractor(row: AnnouncementRow): string {
-  return row.id;
-}
-
-function renderItem({ item }: { item: AnnouncementRow }) {
-  return <FeedItem item={item} />;
-}
-
 // One feed row, routed by card_type (KAN-201 card system 2026-06-02).
 // card_type now drives routing and takes priority over the legacy
 // author_type === 'leader' check; author_type stays as defence-in-depth.
@@ -263,7 +278,11 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
         <ArticleCard
           announcementId={item.id}
           tag={tag}
-          kicker={item.card_type === 'long_read' ? 'Long read' : undefined}
+          // Founder 2026-07-28: "Long read" display retired — nothing
+          // principled separated it from an article. Both article-family
+          // types self-identify as "Article" in the eyebrow; the dot still
+          // carries the badge register (red urgent / breathing sky new).
+          kicker="Article"
           title={item.title}
           standfirst={standfirst}
           body={body}
@@ -272,6 +291,8 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
           url={item.link_url ?? undefined}
           time={time}
           commentCount={item.comment_count}
+          verseText={item.verse_text}
+          verseRef={item.verse_reference}
         />
       );
     }
@@ -286,6 +307,8 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
           title={item.title}
           body={item.body}
           time={time}
+          verseText={item.verse_text}
+          verseRef={item.verse_reference}
           // Multi-author columns are not built yet — pass undefined so the
           // card renders the Rp seal + "Replant Team" fallback (correct
           // behaviour until multi-author support lands).
@@ -308,6 +331,8 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
             url={item.link_url}
             time={time}
             commentCount={item.comment_count}
+            verseText={item.verse_text}
+            verseRef={item.verse_reference}
           />
         );
       }
@@ -347,6 +372,8 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
       body={item.body}
       time={time}
       commentCount={item.comment_count}
+      verseText={item.verse_text}
+      verseRef={item.verse_reference}
     />
   );
 }
@@ -355,17 +382,33 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
 // Leader-voice attribution is FROZEN at publish (SME panel interim, locked
 // 2026-07-22): the byline travels in source_label, composed server-side by
 // content_submission_publish (real name for show_name, else the role+region
-// mask), and the avatar is the Replant seal. The feed never resolves an
-// author — no users/churches lookup, so every viewer reads the identical
-// byline and no leader row ships to clients. CommentThread's resolver copy
-// remains in the NetworkFeed-masking SEC panel's scope.
+// mask). The feed never resolves an author — no users/churches lookup, so
+// every viewer reads the identical byline and no leader row ships to
+// clients. CommentThread's resolver copy remains in the NetworkFeed-masking
+// SEC panel's scope.
+//
+// Avatar (Founder 2026-07-28): NAMED leader posts show the leader's initial
+// in the circle; SEALED posts (masked / underground — SEC F1) keep the
+// Replant seal. The initial is SERVER-COMPOSED (announcements.source_initial
+// — first letter of the leader's NAME, the feed counterpart of
+// get_comments' avatar_initial). NEVER derive it client-side from the
+// byline: the byline leads with a role title, so charAt(0) yields the
+// ROLE's letter — the exact defect the comments avatar_initial work fixed
+// (Founder caught a recurrence 2026-07-28). No initial → seal, fail-safe.
+function leaderAvatar(item: AnnouncementRow): { seal?: boolean; initial?: string } {
+  const initial = item.source_initial?.trim().toUpperCase();
+  return initial ? { initial } : { seal: true };
+}
+
 function LeaderFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
   return (
     <LeaderWordCard
       announcementId={item.id}
       lead={item.title}
       body={item.body}
-      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: item.source_sublabel ?? '', time }}
+      verse={item.verse_reference ?? undefined}
+      verseText={item.verse_text ?? undefined}
+      author={{ ...leaderAvatar(item), name: item.source_label ?? MASKED_NAME, church: item.source_sublabel ?? '', time }}
       commentCount={item.comment_count}
     />
   );
@@ -380,7 +423,9 @@ function EncouragementFeedItem({ item, time }: { item: AnnouncementRow; time: st
       announcementId={item.id}
       lead={item.title}
       time={time}
-      author={{ seal: true, name: item.source_label ?? MASKED_NAME, church: item.source_sublabel ?? '' }}
+      verse={item.verse_reference ?? undefined}
+      verseText={item.verse_text ?? undefined}
+      author={{ ...leaderAvatar(item), name: item.source_label ?? MASKED_NAME, church: item.source_sublabel ?? '' }}
       commentCount={item.comment_count}
     />
   );

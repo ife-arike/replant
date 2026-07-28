@@ -21,9 +21,9 @@
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import {
   Animated,
+  Easing,
   LayoutAnimation,
   Linking,
   Platform,
@@ -34,9 +34,12 @@ import {
   View,
 } from 'react-native';
 import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { useReducedMotion } from '../../utils/useReducedMotion';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Arrow, Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+import ScripturePull from './ScripturePull';
+import PageTurnText from './PageTurnText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -54,6 +57,10 @@ const safeOpen = (url: string) => {
 // Home's collapsed rhythm stays consistent. Cue + tap-to-expand only
 // surface when the body's natural line count exceeds this.
 const COLLAPSED_LINES = 3;
+// Must match s.body lineHeight — feeds PageTurnText's pre-measure
+// window estimate; the clamp itself is PageTurnText's height window,
+// never a numberOfLines flip (tear class, 2026-07-28).
+const BODY_LINE_HEIGHT = 23;
 
 type Props = {
   tag?: TagType;
@@ -67,6 +74,9 @@ type Props = {
   announcementId: string;
   commentCount?: number;
   onCommentPosted?: () => void;
+  // Verse anchor (Day-1, 2026-07-28) — ScripturePull renders it.
+  verseText?: string | null;
+  verseRef?: string | null;
 };
 
 export default function ArticleCard({
@@ -81,7 +91,10 @@ export default function ArticleCard({
   announcementId,
   commentCount,
   onCommentPosted,
+  verseText,
+  verseRef,
 }: Props) {
+  const reduced = useReducedMotion();
   const [cOpen, setCOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
@@ -95,29 +108,9 @@ export default function ArticleCard({
   const capLetter = useDropCap ? body.charAt(0) : '';
   const bodyText = useDropCap ? body.slice(1) : body;
 
-  // Overflow detection — natural (uncapped) line count for the body column,
-  // measured via an offscreen mirror Text. null = not yet measured; the cue
-  // stays hidden until measured (no flash on short bodies). App-wide
-  // overflow-gating ruling: cue + tap + button semantics only when the body
-  // truly exceeds the clamp.
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [bodyText]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  // Overflow signal — reported by PageTurnText, which owns the entire
+  // clamp/measure mechanism (see its header for the tear saga).
+  const [overflows, setOverflows] = useState(false);
 
   const toggleExpand = () => {
     if (!overflows) return;
@@ -127,9 +120,10 @@ export default function ArticleCard({
 
   // Urgent dot halo — gentle breathing pulse. Implemented generically so
   // an 'urgent'-tagged article would blink; non-urgent tags hold static.
+  // Frozen at rest under reduced motion.
   const blinkAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (tag !== 'urgent') return;
+    if (tag !== 'urgent' || reduced) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(blinkAnim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
@@ -138,7 +132,7 @@ export default function ArticleCard({
     );
     loop.start();
     return () => loop.stop();
-  }, [tag, blinkAnim]);
+  }, [tag, reduced, blinkAnim]);
 
   const toggleComments = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
@@ -156,6 +150,7 @@ export default function ArticleCard({
               { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
             ]}
           />
+          {/* Dot motion is URGENT-ONLY (Founder 2026-07-28 device walk). */}
           <View style={[s.dot, { backgroundColor: tg.color }]} />
         </View>
         <Text style={s.eyebrowLabel}>{label}</Text>
@@ -176,22 +171,14 @@ export default function ArticleCard({
         <View style={s.teaser}>
           {useDropCap && <Text style={s.dropCap}>{capLetter}</Text>}
           <View style={s.bodyCol}>
-            <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
-              {bodyText}
-            </Text>
-            {/* Offscreen mirror — measures the natural (uncapped) line count
-                at the body column's width so the cue only renders on true
-                overflow. Inside bodyCol (left:0/right:0) so it tracks the
-                drop-cap-narrowed column automatically. */}
-            <Text
-              style={[s.body, s.mirror]}
-              onTextLayout={handleMirrorLayout}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              pointerEvents="none"
-            >
-              {bodyText}
-            </Text>
+            <PageTurnText
+              text={bodyText}
+              style={s.body}
+              lineHeight={BODY_LINE_HEIGHT}
+              lines={COLLAPSED_LINES}
+              expanded={expanded}
+              onOverflowsChange={setOverflows}
+            />
           </View>
         </View>
 
@@ -203,6 +190,8 @@ export default function ArticleCard({
         )}
       </Pressable>
 
+      <ScripturePull text={verseText} reference={verseRef} />
+
       {!!url && (
         <Pressable
           style={s.read}
@@ -211,7 +200,10 @@ export default function ArticleCard({
           accessibilityLabel="Read the full article"
         >
           <Text style={s.readText}>
-            {readTimeMin != null ? `Read · ${readTimeMin} min` : 'Read'}
+            {/* Founder 2026-07-28: article-family cards carry the full piece
+                elsewhere — the card is an excerpt, so the link row says what
+                it does. Read-time keeps its compact form when present. */}
+            {readTimeMin != null ? `Read the full article · ${readTimeMin} min` : 'Read the full article'}
           </Text>
           <Arrow />
         </Pressable>
@@ -293,12 +285,8 @@ const s = StyleSheet.create({
     marginRight: 10,
     marginTop: 1,
   },
-  bodyCol: { flex: 1, position: 'relative' },
+  bodyCol: { flex: 1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted },
-  // Offscreen mirror — pinned to the body column's width (left/right 0) so
-  // its wrapping matches the visible body, incl. the drop-cap narrowing.
-  // Offscreen-top, NOT height:0 (RN skips text layout for zero-height text).
-  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
 
   // Slim read row — quieter than LinkCard's framed resource block.
   read: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },

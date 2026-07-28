@@ -130,11 +130,14 @@ export const Typography = {
 } as const;
 
 // Feed card title register — ONE size across every Home feed card.
-// Founder 2026-07-27: standardize on the regular announcement card's
-// title (21/26). Cards previously ranged 21–26, which read as accidental
-// rather than hierarchical. Spread this into a card's title/lead style;
-// never re-hardcode a feed title size.
-export const FeedTitle = { fontSize: 21, lineHeight: 26 } as const;
+// Founder 2026-07-27: standardize on ONE title size; cards previously
+// ranged 21–26, which read as accidental rather than hierarchical.
+// Founder 2026-07-28 (Day 1 polish): stepped 21/26 → 19/24 (21 read big
+// and offputting on open), then +1 to 20/25 after the device walk. The
+// DailyScriptureStrip verse deliberately stays at 21 so scripture is the
+// largest voice on Home: verse 21 > titles 20 > body 15. Spread this into
+// a card's title/lead style; never re-hardcode a feed title size.
+export const FeedTitle = { fontSize: 20, lineHeight: 25 } as const;
 
 export const Spacing = {
   xs: 4,
@@ -170,7 +173,10 @@ export const Tags = {
   urgent: { label: 'Urgent', color: Colors.red },
   new: { label: 'New', color: Colors.accent }, // KAN-335 badge=new register (sky, static dot)
   // KAN-201 card-system extension 2026-06-02 — new card types.
-  together: { label: 'Together', color: Colors.green },
+  // Founder 2026-07-28 (Day 1 polish): connective dots go WHITE (off-white
+  // text token) — green retired from the Home eyebrow register. Red stays
+  // urgent, sky stays interactive/new.
+  together: { label: 'Together', color: Colors.text },
   call_to_action: { label: 'Call to action', color: Colors.accent },
 } as const;
 export type TagType = keyof typeof Tags;

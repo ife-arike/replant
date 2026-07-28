@@ -359,12 +359,33 @@ const urgStyles = StyleSheet.create({
 
 // ─── StaggerRow ───────────────────────────────────────────────────────
 
-export function StaggerRow({ index, children }: { index: number; children: React.ReactNode }) {
+export function StaggerRow({
+  index,
+  children,
+  replayToken,
+}: {
+  index: number;
+  children: React.ReactNode;
+  // Optional: bump this value to REPLAY the entrance without remounting
+  // the row. Hosts whose rows carry onTextLayout mirrors (Home's feed)
+  // MUST use this instead of re-keying rows: a warm remount (fonts
+  // resolved, identical content) can emit its only text-layout pass
+  // before the JS listener attaches, permanently killing the read-on
+  // cue (Day-1 regression, Founder report 2026-07-28). The wall's
+  // re-key-on-animTick pattern remains fine for rows without mirrors.
+  replayToken?: unknown;
+}) {
   const reduced = useReducedMotion();
-  const anim = useRef(new Animated.Value(reduced ? 1 : 0)).current;
+  // Mount at FULL opacity, then drop to 0 + start the entrance in
+  // useLayoutEffect (pre-paint). An ancestor sitting at opacity 0 during
+  // the mount commit suppresses onTextLayout for descendants on Fabric —
+  // the other half of the same Day-1 regression. Mounting visible lets
+  // every descendant measure; the pre-paint drop means nothing flashes.
+  const anim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
+  React.useLayoutEffect(() => {
     if (reduced) return; // skip entirely under reduced motion (README)
+    anim.setValue(0);
     Animated.timing(anim, {
       toValue: 1,
       duration: 500,
@@ -372,7 +393,7 @@ export function StaggerRow({ index, children }: { index: number; children: React
       easing: Easing.ease,
       useNativeDriver: true,
     }).start();
-  }, [reduced, anim, index]);
+  }, [reduced, anim, index, replayToken]);
 
   return (
     <Animated.View

@@ -29,9 +29,10 @@
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { TextLayoutEventData, NativeSyntheticEvent } from 'react-native';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
+import { useReducedMotion } from '../../utils/useReducedMotion';
+import PageTurnText from './PageTurnText';
 import { supabase } from '../../lib/supabase';
 import {
   getLocalDateString,
@@ -68,12 +69,34 @@ export function _resetCacheForTesting(): void {
 // rhythm consistent. Cue + tap affordance only surface when the verse
 // actually exceeds this cap.
 const COLLAPSED_LINES = 3;
+// Must match styles.verse lineHeight — collapsed crop is a container
+// maxHeight (clampHeight), never a numberOfLines flip (tear class,
+// 2026-07-28).
+const VERSE_LINE_HEIGHT = 26;
 
 // ─── Component ─────────────────────────────────────────────────────────
 
 export default function DailyScriptureStrip() {
   const now = new Date();
   const today = getLocalDateString(now);
+
+  // Mount entrance — 250ms fade + 4px rise (Prayer Wall FilterPanel
+  // grammar; Day-1 motion pass, Founder 2026-07-28). The strip is the
+  // first thing the eye lands on, so it arrives softly instead of
+  // popping. Skipped under reduced motion.
+  //
+  // Mount at FULL opacity, drop to 0 + start pre-paint (useLayoutEffect):
+  // an ancestor at opacity 0 during the mount commit suppresses
+  // onTextLayout for descendants on Fabric, which would kill this strip's
+  // own read-on mirror on long verses (same mechanism as the StaggerRow
+  // regression, Day-1 2026-07-28).
+  const reduced = useReducedMotion();
+  const mountAnim = useRef(new Animated.Value(1)).current;
+  React.useLayoutEffect(() => {
+    if (reduced) return;
+    mountAnim.setValue(0);
+    Animated.timing(mountAnim, { toValue: 1, duration: 250, easing: Easing.ease, useNativeDriver: true }).start();
+  }, [reduced, mountAnim]);
 
   // Initial render: synchronous fallback (or cached row if we have one).
   // Strip is NEVER blank, even on cold start before the fetch completes.
@@ -84,28 +107,9 @@ export default function DailyScriptureStrip() {
     return pickFallbackForDate(now);
   });
 
-  // Overflow detection — natural (uncapped) line count for the current
-  // verse, measured via an offscreen mirror Text. null = not yet measured;
-  // until measured, we don't show the cue (avoids a flash). Resets on
-  // every verse change (day-rollover or DB row arrival).
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [display.content]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  // Overflow signal — reported by PageTurnText, which owns the entire
+  // clamp/measure mechanism (see its header for the tear saga).
+  const [overflows, setOverflows] = useState(false);
 
   // Tap-to-expand. New verse starts collapsed.
   const [expanded, setExpanded] = useState(false);
@@ -167,6 +171,12 @@ export default function DailyScriptureStrip() {
   }, [today]);
 
   return (
+    <Animated.View
+      style={{
+        opacity: mountAnim,
+        transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }],
+      }}
+    >
     <Pressable
       onPress={toggleExpanded}
       disabled={!overflows}
@@ -178,21 +188,14 @@ export default function DailyScriptureStrip() {
       accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
     >
       <View style={styles.rule} />
-      <Text style={styles.verse} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
-        {display.content}
-      </Text>
-      {/* Offscreen mirror — measures the natural (uncapped) line count
-          so we can decide whether to show the read-on cue. Identical
-          text styles to the visible verse so wrapping matches. */}
-      <Text
-        style={[styles.verse, styles.mirror]}
-        onTextLayout={handleMirrorLayout}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        pointerEvents="none"
-      >
-        {display.content}
-      </Text>
+      <PageTurnText
+        text={display.content}
+        style={styles.verse}
+        lineHeight={VERSE_LINE_HEIGHT}
+        lines={COLLAPSED_LINES}
+        expanded={expanded}
+        onOverflowsChange={setOverflows}
+      />
       {/* Sky-rule "more" signal — when the verse overflows the 3-line
           clamp, the left sky rule visually continues past the verse
           with a tiny sky pip sitting just below the reference line.
@@ -208,6 +211,7 @@ export default function DailyScriptureStrip() {
       </Text>
       <View style={styles.hairline} />
     </Pressable>
+    </Animated.View>
   );
 }
 
@@ -241,19 +245,6 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: 0.1,
     color: Colors.text,
-  },
-  // Offscreen mirror — measured at the visible verse's column width so
-  // its line wrapping matches. Positioned way offscreen vertically so it
-  // never paints into the user-visible area, but allowed to lay out
-  // normally (NOT height:0) — RN skips text layout / onTextLayout when
-  // the element is collapsed to zero, which silently breaks the
-  // overflow-detection signal.
-  mirror: {
-    position: 'absolute',
-    left: 24,
-    right: 4,
-    top: 0,
-    opacity: 0,
   },
   // Reference line — mono; book in sky, " · translation" muted.
   ref: {

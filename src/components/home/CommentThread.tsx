@@ -24,7 +24,7 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
+  LayoutAnimation,
   Pressable,
   StyleSheet,
   Text,
@@ -164,6 +164,10 @@ export function CommentThread({
         setLoading(false);
         return;
       }
+      // Quiet arrival (Founder 2026-07-28: no spinner) — the thread shell
+      // opens instantly; when the rows land they ease in with the same
+      // 220ms grammar the card open uses, instead of a spinner swap.
+      LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
       setComments(((data ?? []) as RpcCommentRow[]).map((r) => ({ ...r })));
       setLoading(false);
     })();
@@ -218,13 +222,22 @@ export function CommentThread({
       </View>
 
       {loading && comments.length === 0 && !refreshing ? (
-        <View style={s.loading}>
-          <ActivityIndicator color={Colors.accent} />
-        </View>
+        // No spinner (Founder 2026-07-28) — the shell sits quiet for the
+        // beat it takes rows to arrive; they ease in via LayoutAnimation.
+        <View style={s.loadingQuiet} />
       ) : errored ? (
         <Pressable onPress={loadComments} hitSlop={8} style={s.retryWrap}>
           <Text style={s.retry}>Couldn't load comments — tap to retry</Text>
         </Pressable>
+      ) : comments.length === 0 ? (
+        // Empty state (Founder 2026-07-28): without it the thread read as
+        // two stacked hairlines with a dead gap — the "duplicate" feel.
+        // Unverified leaders can't post, so they get the plain form.
+        <View style={s.emptyWrap}>
+          <Text style={s.emptyText}>
+            {canPost ? 'No comments yet. Be the first.' : 'No comments yet.'}
+          </Text>
+        </View>
       ) : (
         <View style={s.list}>
           {foldable && (
@@ -320,9 +333,14 @@ const s = StyleSheet.create({
   headLabel: { fontFamily: Typography.mono, fontSize: 11, color: Colors.textMuted, letterSpacing: 0.4 },
   hide: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
-  loading: { paddingVertical: 22, alignItems: 'center' },
+  loadingQuiet: { height: 8 },
   retryWrap: { paddingVertical: 18, alignItems: 'center' },
   retry: { fontFamily: Typography.mono, fontSize: 11, color: Colors.textSubtle, letterSpacing: 0.4 },
+  // Empty thread — one quiet mono line in the retry register, centered in
+  // the gap the missing rows leave. Keeps the head/composer hairlines from
+  // reading as a doubled rule.
+  emptyWrap: { paddingVertical: 16, alignItems: 'center' },
+  emptyText: { fontFamily: Typography.mono, fontSize: 11, color: Colors.textSubtle, letterSpacing: 0.4 },
 
   list: { marginTop: 16, gap: 18 },
   // Page-turn affordance — mirrors the cards' read-on cue: hairline rule

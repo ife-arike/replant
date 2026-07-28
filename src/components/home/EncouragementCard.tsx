@@ -3,13 +3,16 @@
 // (KAN-201 card system 2026-06-02)
 //
 // For card_type = 'encouragement'. A leader voice, not an admin
-// announcement — a green-dot letterhead eyebrow (like "A word for today")
-// over the warm card surface (Colors.cardWarm) signals the type. The lead
-// reads as a roman-serif long-read line (Founder round-2 2026-07-22: no
-// longer italic scripture) and rests at a 3-line clamp with a "read on" ⇄
-// "fold" page-turn — the cue only surfaces when the lead overflows the
-// clamp (app-wide overflow-gating ruling). A verse anchor and an author
-// row sit below.
+// announcement — a BREATHING white-dot letterhead eyebrow over the warm
+// card surface signals the type (Day-1 polish, Founder 2026-07-28: green
+// retired from the Home eyebrow register; the slow breathe is the "this
+// is fresh" cue). The lead deliberately does NOT use the FeedTitle
+// register (Founder 2026-07-28: "not just title text") — it reads as a
+// warmer mid-size serif note (Cormorant 500 Medium 18/28; the earlier
+// states were scripture-italic, then title-roman per round-2 2026-07-22).
+// Rests at a 3-line clamp with a "read on" ⇄ "fold" page-turn — the cue
+// only surfaces when the lead overflows the clamp (app-wide
+// overflow-gating ruling). A verse anchor and an author row sit below.
 //
 // Pastoral decision: encouragement cards are READ, not replied to — no
 // comment thread renders. The commentCount / onCommentPosted props are
@@ -27,8 +30,7 @@
 // component (SEC Obs D).
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import React, { useState } from 'react';
 import {
   LayoutAnimation,
   Platform,
@@ -38,8 +40,10 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, FeedTitle, Radius, Typography } from '../../constants/theme';
+import { Colors, Radius, Typography } from '../../constants/theme';
 import { RpMark } from './HomeIcons';
+import ScripturePull from './ScripturePull';
+import PageTurnText from './PageTurnText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -48,10 +52,17 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // Lead resting clamp — matches AnnouncementCard so Home's collapsed rhythm
 // stays consistent. Cue + tap only surface when the lead overflows.
 const COLLAPSED_LINES = 3;
+// Must match s.lead lineHeight — feeds PageTurnText's pre-measure
+// window estimate; the clamp itself is PageTurnText's height window,
+// never a numberOfLines flip (tear class, 2026-07-28).
+const LEAD_LINE_HEIGHT = 28;
 
 type Props = {
   lead: string; // the full encouragement (short — 1-2 lines)
   verse?: string; // anchor reference e.g. "Matthew 11:28"
+  // Lifted verse text (Day-1, 2026-07-28). When present, ScripturePull
+  // renders the full pull-quote in place of the bare anchor line.
+  verseText?: string;
   time: string;
   // seal → Replant seal in the avatar circle (frozen attribution; the feed
   // passes source_label as name). initial drives the lettered circle otherwise.
@@ -63,30 +74,12 @@ type Props = {
   onCommentPosted?: () => void;
 };
 
-export default function EncouragementCard({ lead, verse, time, author }: Props) {
+export default function EncouragementCard({ lead, verse, verseText, time, author }: Props) {
   const [expanded, setExpanded] = useState(false);
 
-  // Overflow detection — natural (uncapped) line count for the lead,
-  // measured via an offscreen mirror Text. The cue + tap stay hidden until
-  // measured, and only render when the lead truly exceeds the clamp.
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [lead]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  // Overflow signal — reported by PageTurnText, which owns the entire
+  // clamp/measure mechanism (see its header for the tear saga).
+  const [overflows, setOverflows] = useState(false);
 
   const toggleExpand = () => {
     if (!overflows) return;
@@ -99,6 +92,7 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
       <View style={s.eyebrow}>
         <View style={s.dotWrap}>
           <View style={s.dotHalo} />
+          {/* Static — dot motion is URGENT-ONLY (Founder 2026-07-28). */}
           <View style={s.dot} />
         </View>
         <Text style={s.eyebrowLabel}>Encouragement</Text>
@@ -113,20 +107,14 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
         accessibilityState={overflows ? { expanded } : undefined}
         accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
       >
-        <Text style={s.lead} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
-          {lead}
-        </Text>
-        {/* Offscreen mirror — measures the lead's natural line count so the
-            cue only renders on true overflow (offscreen-top, not height:0). */}
-        <Text
-          style={[s.lead, s.mirror]}
-          onTextLayout={handleMirrorLayout}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-        >
-          {lead}
-        </Text>
+        <PageTurnText
+          text={lead}
+          style={s.lead}
+          lineHeight={LEAD_LINE_HEIGHT}
+          lines={COLLAPSED_LINES}
+          expanded={expanded}
+          onOverflowsChange={setOverflows}
+        />
         {overflows && (
           <View style={s.readon}>
             <View style={s.readonRule} />
@@ -135,10 +123,14 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
         )}
       </Pressable>
 
-      {!!verse && (
-        <View style={s.meta}>
-          <Text style={s.verse}>{verse}</Text>
-        </View>
+      {verseText ? (
+        <ScripturePull text={verseText} reference={verse} />
+      ) : (
+        !!verse && (
+          <View style={s.meta}>
+            <Text style={s.verse}>{verse}</Text>
+          </View>
+        )
       )}
 
       <View style={s.author}>
@@ -147,9 +139,12 @@ export default function EncouragementCard({ lead, verse, time, author }: Props) 
             ? <RpMark width={16} height={16} opacity={0.8} />
             : <Text style={s.avInitial}>{author.initial ?? '·'}</Text>}
         </View>
-        <View>
-          <Text style={s.name}>{author.name}</Text>
-          {!!author.church && <Text style={s.church}>{author.church}</Text>}
+        {/* flexShrink + single-line ellipsis — long names/ministries must
+            truncate with "…", never push the row past the card edge
+            (Founder 2026-07-28 device walk). */}
+        <View style={s.authorText}>
+          <Text style={s.name} numberOfLines={1}>{author.name}</Text>
+          {!!author.church && <Text style={s.church} numberOfLines={1}>{author.church}</Text>}
         </View>
       </View>
     </View>
@@ -167,21 +162,22 @@ const s = StyleSheet.create({
   },
 
   // Letterhead eyebrow — dot + label + rule + time, matching LeaderWordCard
-  // (Founder 2026-07-22: green dot like word-for-today, label muted, time top-right).
+  // (white dot since the Day-1 green retirement; this one breathes).
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
   dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.green + '30' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.green },
+  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.text + '30' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text },
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
-  // Roman serif, long-read-title register (Founder round-2 2026-07-22 —
-  // no longer scripture italic). Size tracks ArticleCard's title family.
-  lead: { fontFamily: Typography.displayRegular, ...FeedTitle, letterSpacing: 0.1, color: Colors.text },
+  // Encouragement voice (Day-1 rework, Founder 2026-07-28): NOT the title
+  // register — a warmer mid-size serif with generous leading, so an
+  // encouragement reads as a note passed to you rather than a headline.
+  // History: scripture-italic → title-roman (round-2 2026-07-22) → this.
+  lead: { fontFamily: Typography.displayMedium, fontSize: 18, lineHeight: 28, letterSpacing: 0.15, color: Colors.text },
 
-  // Offscreen mirror + page-turn cue — exact style values from
-  // AnnouncementCard so the read-on grammar reads identically app-wide.
-  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
+  // Page-turn cue — exact style values from AnnouncementCard so the
+  // read-on grammar reads identically app-wide.
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
   readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
@@ -210,6 +206,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   avInitial: { fontFamily: Typography.displayRegular, fontSize: 15, color: Colors.textMuted },
+  authorText: { flexShrink: 1 },
   name: { fontFamily: Typography.bodyMedium, fontSize: 13.5, color: Colors.text },
   church: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 });

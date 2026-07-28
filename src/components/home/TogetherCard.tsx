@@ -13,8 +13,7 @@
 // renders "Replant Team" — author_id never reaches this component.
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import React, { useState } from 'react';
 import {
   LayoutAnimation,
   Platform,
@@ -28,6 +27,8 @@ import { Colors, FeedTitle, Radius, Tags, Typography } from '../../constants/the
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+import ScripturePull from './ScripturePull';
+import PageTurnText from './PageTurnText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -36,6 +37,10 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // Body resting clamp — matches AnnouncementCard so Home's collapsed rhythm
 // stays consistent. Cue + tap only surface when the body overflows.
 const COLLAPSED_LINES = 3;
+// Must match s.body lineHeight — feeds PageTurnText's pre-measure
+// window estimate; the clamp itself is PageTurnText's height window,
+// never a numberOfLines flip (tear class, 2026-07-28).
+const BODY_LINE_HEIGHT = 23;
 
 type CoAuthor = { initial: string; name: string };
 
@@ -47,6 +52,9 @@ type Props = {
   announcementId: string;
   commentCount?: number;
   onCommentPosted?: () => void;
+  // Verse anchor (Day-1, 2026-07-28) — ScripturePull renders it.
+  verseText?: string | null;
+  verseRef?: string | null;
 };
 
 // Compose the co-author name list, e.g.
@@ -68,6 +76,8 @@ export default function TogetherCard({
   announcementId,
   commentCount,
   onCommentPosted,
+  verseText,
+  verseRef,
 }: Props) {
   const [cOpen, setCOpen] = useState(false);
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
@@ -77,24 +87,9 @@ export default function TogetherCard({
 
   // Page-turn body — 3-line clamp with a gated "read on" ⇄ "fold" cue.
   const [expanded, setExpanded] = useState(false);
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [body]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  // Overflow signal — reported by PageTurnText, which owns the entire
+  // clamp/measure mechanism (see its header for the tear saga).
+  const [overflows, setOverflows] = useState(false);
 
   const toggleExpand = () => {
     if (!overflows) return;
@@ -129,20 +124,16 @@ export default function TogetherCard({
         accessibilityState={overflows ? { expanded } : undefined}
         accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
       >
-        <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
-          {body}
-        </Text>
-        {/* Offscreen mirror — measures the body's natural line count so the
-            cue only renders on true overflow (offscreen-top, not height:0). */}
-        <Text
-          style={[s.body, s.mirror]}
-          onTextLayout={handleMirrorLayout}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-        >
-          {body}
-        </Text>
+        <View style={s.bodyWrap}>
+          <PageTurnText
+            text={body}
+            style={[s.body, s.bodyInWrap]}
+            lineHeight={BODY_LINE_HEIGHT}
+            lines={COLLAPSED_LINES}
+            expanded={expanded}
+            onOverflowsChange={setOverflows}
+          />
+        </View>
         {overflows && (
           <View style={s.readon}>
             <View style={s.readonRule} />
@@ -150,6 +141,8 @@ export default function TogetherCard({
           </View>
         )}
       </Pressable>
+
+      <ScripturePull text={verseText} reference={verseRef} />
 
       {/* footer — overlapping seals + name list, or Rp-team fallback */}
       <View style={s.foot}>
@@ -215,18 +208,22 @@ const s = StyleSheet.create({
 
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
   dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.green + '30' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.green },
+  // Dot colour rides Tags.together (white since the Day-1 green retirement,
+  // Founder 2026-07-28) so the register stays single-sourced in theme.ts.
+  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Tags.together.color + '30' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Tags.together.color },
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
   title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
+  // Wrapper owns the top spacing (PageTurnText strips text margins).
+  bodyWrap: { marginTop: 9 },
+  bodyInWrap: { marginTop: 0 },
 
-  // Offscreen mirror + page-turn cue — exact style values from
-  // AnnouncementCard so the read-on grammar reads identically app-wide.
-  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
+  // Page-turn cue — exact style values from AnnouncementCard so the
+  // read-on grammar reads identically app-wide.
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
   readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
