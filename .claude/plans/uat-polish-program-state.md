@@ -8,7 +8,7 @@
 
 | Day | Tab | Handoff | Status |
 |---|---|---|---|
-| 1 | Home | `.claude/plans/2026-07-28-uat-polish-day1-home-tab.md` | IN PROGRESS — main screen LANDED + sim-verified; awaiting Founder device walk; hamburger pass still owed |
+| 1 | Home | `.claude/plans/2026-07-28-uat-polish-day1-home-tab.md` → **CONTINUATION: `.claude/plans/2026-07-28-day1-home-continuation-handoff.md`** | IN PROGRESS — feed DONE incl. device-walk feedback; **PR #119 OPEN (Founder merges)**; hamburger + copy review + board hygiene remain |
 | 2 | The Church | not yet written — author at end of Day 1 with carryover | pending |
 | 3 | Persecuted | not yet written | pending |
 | 4 | Prayer Wall | not yet written | pending |
@@ -39,13 +39,15 @@
 
 ## Cross-day carryover
 - **Hamburger panel pass** — Founder wants it inside the Day-1 session, after the main-screen walk.
-- **Day-1 commit + push** — mobile working tree carries the whole batch uncommitted (she is mid-smoke); admin repo edits local, push = ASK + PR.
+- **Day-1 push state (2026-07-28 end-of-context):** mobile batch committed `b5a3e37`, pushed, **PR #119 open** (`feat/persecuted-new` → main; Founder smokes + merges). Admin lockstep committed LOCALLY on `~/replant-admin` branch `feat/uat-day1-home-lockstep` (`37d29d9`, main untouched) — **push = ASK (greenlight requested, pending) + push implies PR + preview-first**.
 - **Admin preview-mock full fidelity pass** (handoff open item 4) — title size + verse done today; letterhead grammar/time-top-right/gated fold cue still owed (mock renders "read on" unconditionally).
 - **Leader ATN submissions don't carry verse fields** — content_submission_* + composer lack verse_text/verse_reference; file as ticket (folds naturally into the Content/ATN workstream).
 - **BE update-announcement doesn't enforce article-link** on partial patches (FE editor always sends full state; insert path enforces). Line-item for the KAN-341-era hardening.
 - Wiped submission pointer: content_submissions 24708ec3 published_announcement_id → NULL (row kept).
 
 ## Rulings changed during this pass
-- **FeedTitle one-size ruling: value changed 21/26 → 19/24** (Founder 2026-07-28); scripture-leads hierarchy added. Recorded in `rulings_2026_07_28_day1_home_polish.md` same turn.
+- **FeedTitle one-size ruling: value changed 21/26 → 19/24, then +1 → 20/25 after her device walk** (Founder 2026-07-28); scripture-leads hierarchy added. Recorded in `rulings_2026_07_28_day1_home_polish.md` same turn.
+- **Dot motion = urgent-only** (breathing dots reverted same day). Same file, item 2.
+- **PageTurnText clamp + no-ellipsis compromise accepted** ("ready to compromise with that"). Same file, item 16.
 - **Together/leader-voice dot register: green → white** (Founder 2026-07-28). Same file.
 - **long_read display retired** (Founder: "change 'long read' to 'Article' permanently"). Same file.
