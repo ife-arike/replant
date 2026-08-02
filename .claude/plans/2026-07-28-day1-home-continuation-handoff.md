@@ -6,8 +6,8 @@
 
 ## Where things stand RIGHT NOW
 
-- **Mobile PR OPEN:** https://github.com/ife-arike/replant/pull/119 (`feat/persecuted-new` → main). All Day-1 app work is in it; body describes every change. Founder smokes on her device from Metro 8082; SHE merges (or grants).
-- **Admin lockstep: committed LOCALLY, NOT pushed.** Repo `~/replant-admin`, branch `feat/uat-day1-home-lockstep`, commit `37d29d9` (8 files: taxonomy/editor/validator/handlers/model/primitives/content.css). **Pushing needs Founder greenlight (ASK rule); push implies opening its PR; preview-first; never push main.** ASK STATUS: asked in the same message that delivered this handoff — check her reply before acting.
+- **Mobile PR #119 MERGED** (Founder greenlight 2026-08-02; merge commit `ac0cc76` on main). All Day-1 app work described in its body is live on main. https://github.com/ife-arike/replant/pull/119
+- **Admin lockstep PUSHED + PR OPEN (greenlit 2026-08-02):** https://github.com/ife-arike/replant-admin/pull/86 (`feat/uat-day1-home-lockstep` → main, commit `37d29d9`). **Preview-first: Netlify branch preview builds from the push; Founder smokes there and SHE merges.** Do not merge or push admin main for her.
 - **Prod DB (jiyetphxxvyiicrnwlnx) already carries:** `announcements.verse_text` + `verse_reference` (nullable text columns, migration applied); the reseeded wall (10 posts, ids `da1000xx…`); 27 seeded comments; the CTA post deliberately at 0 comments as the live empty-state fixture. Registers: `.qa/2026-07-28-day1-wall-wipe-snapshot.json` (pre-wipe archive) + `.qa/2026-07-28-day1-wall-reseed.sql`. KAN-338 identity pins were run GREEN after the Day-1 migrations (program registry records it); re-run only after any future migration.
 - **Sim bench:** iPhone 16e simulator was left booted, logged in as `ruthjames08+t1@gmail.com` (Test1234!, dummy fixture), content size "small" (matched the Founder's device wrap). 17 Pro sim got signed out (token rotation when 16e logged in) — one live session per test account; log in on ONE sim only.
 - **Founder was mid-walk on her device.** Last confirmed on-device: cue present, tear fixed, author-row ellipsis good, empty state + quiet comment load good ("ready to compromise" = accepted the no-ellipsis clamp trade).
@@ -37,13 +37,13 @@
 3. **Pending-state walkthrough** — the original Day-1 brief's step 3 (signed-out → verification-pending → verified first-impressions walk) never ran as its own pass. VerificationBanner is load-bearing; do not relocate.
 4. **Board hygiene (NOT touched this session — Jira is stale w.r.t. today).** JQL first, live Jira as source of truth, then:
    - Update whatever ticket covers Home card system if today's changes supersede its description.
-   - **Follow-up tickets the Founder WANTS (file-vs-fold is HER open call, asked, unanswered):**
+   - **Follow-up tickets — Founder RULED 2026-08-02: FOLD INTO THE UAT POLISH PASS, do not file standalone tickets now.** The items below live inside the pass's board umbrella (update the pass ticket(s) / their descriptions as each lands; if any survives the 5-day pass unfinished, THEN file it standalone at pass close):
      a. ATN leader composer: verse_text/verse_reference authoring + `content_submission_publish` passthrough (leaders currently cannot attach verse anchors; admin can post-annotate via update).
      b. Admin AnnouncementLeaderCard preview-mock fidelity vs shipped mobile card (letterhead grammar, PageTurnText clamp, verse block).
      c. Post-MVP feed-at-scale knobs (window tightening / curation / digest) — from her "thinking large" question.
      d. Standing: `tag_type` shadow-drop migration (floor-version gated, KAN-335 tail).
    - Comments workstream KAN-343 scope conversation still open (identity stays server-composed — hard line).
-5. **Admin push + PR** once she greenlights; then preview-deploy for her smoke. The preview mock must be re-verified against the FINAL mobile card renders (20/25, white dots, verse block, no-ellipsis clamp) — content.css mirror was updated but eyeball it in the preview.
+5. **Admin PR #86 — Founder smoke on the Netlify branch preview, then SHE merges.** When she smokes, the preview mock should be eyeballed against the FINAL mobile card renders (20/25, white dots, verse block, no-ellipsis clamp) — content.css mirror was updated but verify in the preview.
 6. **Program registry** — after hamburger + copy review land, close Day 1 in `uat-polish-program-state.md` and author the Day-2 (The Church) handoff per program rules.
 
 ## Method notes (hard-won today — do not relearn)
