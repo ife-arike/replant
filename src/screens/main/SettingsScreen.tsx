@@ -41,7 +41,6 @@ import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import Constants from 'expo-constants';
 import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
@@ -64,7 +63,9 @@ type SavedSection = 'account' | 'privacy' | 'church' | 'notifications' | null;
 // suffix picker carries the free-form branch). "Not set" is rendered as a
 // neutral cleared state (sans, not italic) at the top of the picker, and is
 // stored as null in users.honorific.
-const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch'] as const;
+// 'GO' (General Overseer) added 2026-08-02 (Founder) — common across
+// African Pentecostal networks; English/Western additions pending her pick.
+const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch', 'GO'] as const;
 const SUFFIXES = ['PhD', 'MDiv', 'DMin', 'ThD', 'DD'] as const;
 const SUFFIX_OTHER_MAX_LEN = 12;
 // Inlined colors per design_handoff_settings_name_fields (the handoff offers
@@ -839,11 +840,8 @@ export default function SettingsScreen({
   // Para-ministry directors see "your account, your organization." (BA-para #1).
   const EPIGRAPH = `your account, ${viewer.yourChurchOrOrg}.`;
   const TEAM_EMAIL = 'connect@projectreplant.org';
-  const version =
-    Constants.expoConfig?.version ??
-    (Constants as unknown as { manifest?: { version?: string } }).manifest?.version ??
-    '0.1.0';
-  const versionStamp = `VERSION ${version}`;
+  // Version stamp removed 2026-08-02 (Founder): reapply at official launch
+  // only if a compliance standard requires it.
 
   // RAG group goes opacity:0.4 + pointerEvents:'none' when no church
   // is assigned yet (the radio still renders so the section structure
@@ -1316,9 +1314,12 @@ export default function SettingsScreen({
 
         {/* ── DESTRUCTIVE FOOTER — ABOVE foundation (Founder ruling).
             No borderTop — Connect block's borderBottom is the single
-            divider between Connect and the destructive footer. */}
+            divider between Connect and the destructive footer.
+            Founder 2026-08-02: full-width bars matching the row layout,
+            text stays center-aligned. */}
         <View style={styles.destructive}>
           <TouchableOpacity
+            style={styles.destructiveRow}
             onPress={handleSignOut}
             activeOpacity={0.6}
             accessibilityRole="button"
@@ -1327,6 +1328,7 @@ export default function SettingsScreen({
             <Text style={styles.signOut}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            style={styles.destructiveRow}
             onPress={handleDeactivateTap}
             activeOpacity={0.6}
             accessibilityRole="button"
@@ -1343,7 +1345,6 @@ export default function SettingsScreen({
         >
           <Text style={styles.foundationScripture}>{SCRIPTURE}</Text>
           <Text style={styles.foundationRef}>{REFERENCE}</Text>
-          <Text style={styles.versionStamp}>{versionStamp}</Text>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -1922,11 +1923,19 @@ const styles = StyleSheet.create({
   //     borderBottom IS the divider). ───
   destructive: {
     marginTop: 22,
-    paddingTop: 22,
+    paddingTop: 10,
     paddingBottom: 4,
     flexDirection: 'column',
+    alignSelf: 'stretch',
+  },
+  // Full-width bars in the shared row grammar (13/11 + hairline);
+  // labels keep their register, centered per Founder allowance.
+  destructiveRow: {
+    paddingTop: 13,
+    paddingBottom: 11,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
     alignItems: 'center',
-    gap: 18,
   },
   signOut: {
     fontFamily: Typography.display,
@@ -1966,15 +1975,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     color: Colors.accent,
     marginTop: 10,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  versionStamp: {
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    color: Colors.textMuted,
-    marginTop: 18,
     textAlign: 'center',
     textTransform: 'uppercase',
   },
