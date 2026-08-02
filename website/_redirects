@@ -1,0 +1,5 @@
+# /join is the app's invite-link target (InviteScreen builds
+# projectreplant.org/join?ref=RPL-…). No join page exists yet, so send
+# leaders to the homepage rather than a 404; Netlify carries the query
+# string through. 302 on purpose — a real /join page may ship later.
+/join / 302

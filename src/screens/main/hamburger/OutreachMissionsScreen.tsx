@@ -132,7 +132,7 @@ export default function OutreachMissionsScreen() {
         {/* Scripture anchor — Zechariah 7:10 KJV */}
         <View style={styles.anchor}>
           <Text style={styles.anchorQuote}>
-            "And oppress not the widow, nor the fatherless, the stranger, nor the poor; and let none of you imagine evil against his brother in your heart."
+            And oppress not the widow, nor the fatherless, the stranger, nor the poor; and let none of you imagine evil against his brother in your heart.
           </Text>
           <Text style={styles.anchorRef}>Zechariah 7:10 · KJV</Text>
         </View>
@@ -149,7 +149,7 @@ export default function OutreachMissionsScreen() {
               : 'No outreach needs listed near you yet.'}
           </Text>
           <Text style={styles.emptyStateHint}>
-            As leaders post needs across the network, they'll appear here.
+            When a need is posted near you, it will appear here.
           </Text>
         </View>
 
@@ -195,7 +195,7 @@ export default function OutreachMissionsScreen() {
             </View>
             <View style={styles.actionText}>
               <Text style={styles.actionTitle}>Pray</Text>
-              <Text style={styles.actionSub}>Lift these needs on the network's prayer wall.</Text>
+              <Text style={styles.actionSub}>Lift these needs on the network's Prayer Wall.</Text>
             </View>
             <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
               <Path d="M9 6l6 6-6 6" stroke={Colors.text} strokeOpacity={0.45} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
@@ -246,7 +246,7 @@ export default function OutreachMissionsScreen() {
         <View style={styles.limitsNote}>
           <Text style={styles.limitsEyebrow}>A note on how the network bears</Text>
           <Text style={styles.limitsText}>
-            {'Replant does not facilitate financial transfers between churches. We match prayer, supplies, hours, and presence — leader to leader, church to church. '}
+            {'Replant does not facilitate financial transfers between churches. We match prayer, supplies, hours, and presence: leader to leader, church to church. '}
             <Text style={styles.limitsItalic}>{'Money flows through your own ministry\'s existing channels.'}</Text>
           </Text>
         </View>
@@ -255,7 +255,7 @@ export default function OutreachMissionsScreen() {
         visible={comingSoonOpen}
         onDismiss={() => setComingSoonOpen(false)}
         title="This step is on the way."
-        body="When this surface is live, you'll be able to act from here directly."
+        body="When this is ready, you'll be able to act from here."
       />
     </SafeAreaView>
   );

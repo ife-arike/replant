@@ -2,7 +2,7 @@
 // These mirror the get_comments v3 server contract (kan338_0006); if a
 // server change shifts a state, this table is the tripwire.
 
-import { MASKED_COMMENT_NAME, commentIdentity } from './CommentThreadLogic';
+import { MASKED_COMMENT_NAME, commentCountLabel, commentIdentity } from './CommentThreadLogic';
 
 describe('commentIdentity — the 7-state truth table (KAN-338)', () => {
   it('1. none: square · real initial · real church', () => {
@@ -103,5 +103,15 @@ describe('commentIdentity — avatar initial comes from the NAME, not the role p
   it('legacy row without avatar_initial still renders (imprecise fallback)', () => {
     const r = commentIdentity({ author_name: 'Ifeoluwa Arike', church_name: 'Grace Chapel' });
     expect(r.initial).toBe('I');
+  });
+});
+
+describe('commentCountLabel — feed affordance pluralisation', () => {
+  it('singular at exactly 1', () => {
+    expect(commentCountLabel(1)).toBe('1 comment');
+  });
+  it('plural at 0 and above 1', () => {
+    expect(commentCountLabel(0)).toBe('0 comments');
+    expect(commentCountLabel(7)).toBe('7 comments');
   });
 });

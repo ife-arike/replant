@@ -27,6 +27,7 @@ import { Colors, FeedTitle, Radius, Tags, Typography } from '../../constants/the
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+import { commentCountLabel } from './CommentThreadLogic';
 import ScripturePull from './ScripturePull';
 import PageTurnText from './PageTurnText';
 
@@ -170,10 +171,10 @@ export default function TogetherCard({
             hitSlop={8}
             style={s.cc}
             accessibilityRole="button"
-            accessibilityLabel={`${localCount} comments`}
+            accessibilityLabel={commentCountLabel(localCount)}
           >
             <CommentIcon />
-            <Text style={[s.ccText, cOpen && { color: Colors.accent }]}>{localCount} comments</Text>
+            <Text style={[s.ccText, cOpen && { color: Colors.accent }]}>{commentCountLabel(localCount)}</Text>
             <View style={{ transform: [{ rotate: cOpen ? '180deg' : '0deg' }] }}>
               <Chevron />
             </View>

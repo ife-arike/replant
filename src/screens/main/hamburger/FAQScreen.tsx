@@ -2,8 +2,11 @@
 // Pushed slide_from_right from the Home-tab hamburger panel.
 //
 // Single-open accordion (opening one closes the currently open one).
-// LayoutAnimation.easeInEaseOut runs before each toggle. Search bar is a
-// visual stub (post-MVP — no filtering logic). Contact card opens a mailto.
+// LayoutAnimation.easeInEaseOut runs before each toggle. Search filters
+// the list live (case-insensitive, question + answer; Day-1 hamburger
+// pass 2026-08-02 — was a dead stub before). Open state is keyed by
+// question text, and rows keep their original numbers, so both survive
+// filtering. Contact card opens a mailto.
 // Title italic via Typography.scriptureItalic; colours via Colors tokens.
 
 import React, { useState } from 'react';
@@ -41,7 +44,7 @@ const CONTACT_EMAIL = 'info@projectreplant.org';
 
 const FAQ_DATA = [
   { q: 'What is Replant?',
-    a: 'Replant is a secure global network that connects Christian leaders — clergy, elders, and ministry leaders — across churches, cities, and continents for prayer, support, and unity.' },
+    a: 'Replant is a secure global network that connects Christian leaders (clergy, elders, and ministry leaders) across churches, cities, and continents for prayer, support, and unity.' },
   { q: 'Who is this for?',
     a: 'Replant is for Christian leaders across all church expressions. The only requirement is a sincere confession of Jesus Christ as Lord and Saviour.' },
   { q: 'Can a ministry secretary or church administrator join on behalf of the leader?',
@@ -51,11 +54,11 @@ const FAQ_DATA = [
   { q: 'What is the foundation of Replant?',
     a: 'The Holy Bible is the only source of truth on this platform. No exceptions.' },
   { q: 'Can house churches and underground churches join?',
-    a: 'Absolutely. House churches, churches without walls, online congregations, and underground churches are not only eligible — they are actively encouraged to join.' },
+    a: 'Absolutely. House churches, churches without walls, online congregations, and underground churches are not only eligible; they are actively encouraged to join.' },
   { q: 'Can a pastor remain anonymous on the network?',
-    a: 'Yes — a pastor may remain anonymous within the network. Their personal name can be hidden from other leaders. Their church or ministry name, however, is always visible. Real identity information is always required at registration for security and legal purposes, and is kept strictly confidential.' },
+    a: 'Yes. A pastor may remain anonymous within the network. Their personal name can be hidden from other leaders. Their church or ministry name, however, is always visible. Real identity information is always required at registration for security and legal purposes, and is kept strictly confidential.' },
   { q: 'Is there a limit per church?',
-    a: 'A maximum of two (2) pastors or leaders may register per church or ministry on the Replant network.' },
+    a: 'A maximum of two pastors or leaders may register per church or ministry on the Replant network.' },
   { q: 'What if two churches share a name?',
     a: 'This is acceptable. Location information is used to distinguish churches that share the same name. Additionally, each verified church is assigned a unique Replant Network ID upon verification — making it straightforward to identify and search for specific churches across the network.' },
   { q: 'Are conversations private?',
@@ -70,12 +73,23 @@ const FAQ_DATA = [
 
 export default function FAQScreen() {
   const navigation = useNavigation<NavProp>();
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // Open state keyed by question text (not index) so it survives filtering.
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
-  const toggle = (index: number) => {
+  const toggle = (key: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpenIndex((cur) => (cur === index ? null : index));
+    setOpenKey((cur) => (cur === key ? null : key));
   };
+
+  const needle = query.trim().toLowerCase();
+  const visible = needle
+    ? FAQ_DATA.filter(
+        (item) =>
+          item.q.toLowerCase().includes(needle) ||
+          item.a.toLowerCase().includes(needle),
+      )
+    : FAQ_DATA;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -92,14 +106,18 @@ export default function FAQScreen() {
         <Text style={styles.title}>{'Frequently '}<Text style={styles.titleItalic}>{'Asked Questions'}</Text></Text>
       </View>
 
-      {/* Search bar — visual stub (post-MVP, no filtering) */}
+      {/* Search — live filter over question + answer text */}
       <View style={styles.searchBar}>
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
           style={styles.searchInput}
           placeholder="Search questions…"
           placeholderTextColor={Colors.textSubtle}
-          editable={false}
+          value={query}
+          onChangeText={setQuery}
+          autoCorrect={false}
+          returnKeyType="search"
+          accessibilityLabel="Search questions"
         />
       </View>
 
@@ -107,13 +125,14 @@ export default function FAQScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       >
-        {FAQ_DATA.map((item, index) => {
-          const open = openIndex === index;
-          const num = String(index + 1).padStart(2, '0');
+        {visible.map((item) => {
+          const open = openKey === item.q;
+          // Original position, so numbers hold steady while filtering.
+          const num = String(FAQ_DATA.indexOf(item) + 1).padStart(2, '0');
           return (
             <View key={item.q}>
               <Pressable
-                onPress={() => toggle(index)}
+                onPress={() => toggle(item.q)}
                 accessibilityRole="button"
                 accessibilityLabel={item.q}
                 style={styles.questionRow}
@@ -142,6 +161,10 @@ export default function FAQScreen() {
             </View>
           );
         })}
+
+        {visible.length === 0 ? (
+          <Text style={styles.noMatches}>No questions match your search.</Text>
+        ) : null}
 
         {/* Contact card */}
         <Pressable
@@ -273,6 +296,14 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 26, // 1.8 × 14.5
     color: Colors.textMuted,
+  },
+
+  noMatches: {
+    paddingVertical: 24,
+    fontFamily: Typography.sansLight,
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
 
   // Contact card
