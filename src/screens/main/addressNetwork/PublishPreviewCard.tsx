@@ -68,7 +68,10 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   dotPublish: {
-    backgroundColor: Colors.green,
+    // Follows the Home eyebrow register — leader-voice dots went white in
+    // the Day-1 green retirement (Founder 2026-07-28); this previews "the
+    // shape it will publish", so it must not keep the retired green.
+    backgroundColor: Colors.text,
   },
   dotOriginal: {
     backgroundColor: Colors.textSubtle,

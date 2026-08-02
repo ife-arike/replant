@@ -16,9 +16,9 @@
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import {
   Animated,
+  Easing,
   LayoutAnimation,
   Linking,
   Platform,
@@ -29,9 +29,12 @@ import {
   View,
 } from 'react-native';
 import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { useReducedMotion } from '../../utils/useReducedMotion';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Arrow, Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+import ScripturePull from './ScripturePull';
+import PageTurnText from './PageTurnText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -49,6 +52,10 @@ const safeOpen = (url: string) => {
 // stays consistent. Cue + tap only surface when the body overflows; the
 // fold row sits above the CTA button.
 const COLLAPSED_LINES = 3;
+// Must match s.body lineHeight — feeds PageTurnText's pre-measure
+// window estimate; the clamp itself is PageTurnText's height window,
+// never a numberOfLines flip (tear class, 2026-07-28).
+const BODY_LINE_HEIGHT = 23;
 
 type Props = {
   tag?: TagType;
@@ -60,6 +67,9 @@ type Props = {
   announcementId: string;
   commentCount?: number;
   onCommentPosted?: () => void;
+  // Verse anchor (Day-1, 2026-07-28) — ScripturePull renders it.
+  verseText?: string | null;
+  verseRef?: string | null;
 };
 
 export default function CallToActionCard({
@@ -72,31 +82,19 @@ export default function CallToActionCard({
   announcementId,
   commentCount,
   onCommentPosted,
+  verseText,
+  verseRef,
 }: Props) {
+  const reduced = useReducedMotion();
   const [cOpen, setCOpen] = useState(false);
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
   const tg = Tags[tag];
 
   // Page-turn body — 3-line clamp with a gated "read on" ⇄ "fold" cue.
   const [expanded, setExpanded] = useState(false);
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [body]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  // Overflow signal — reported by PageTurnText, which owns the entire
+  // clamp/measure mechanism (see its header for the tear saga).
+  const [overflows, setOverflows] = useState(false);
 
   const toggleExpand = () => {
     if (!overflows) return;
@@ -105,10 +103,10 @@ export default function CallToActionCard({
   };
 
   // Urgent dot halo — gentle breathing pulse, generic so an urgent CTA
-  // would blink; non-urgent tags hold static.
+  // would blink; non-urgent tags hold static. Frozen under reduced motion.
   const blinkAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (tag !== 'urgent') return;
+    if (tag !== 'urgent' || reduced) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(blinkAnim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
@@ -117,7 +115,7 @@ export default function CallToActionCard({
     );
     loop.start();
     return () => loop.stop();
-  }, [tag, blinkAnim]);
+  }, [tag, reduced, blinkAnim]);
 
   const toggleComments = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
@@ -135,6 +133,7 @@ export default function CallToActionCard({
               { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
             ]}
           />
+          {/* Dot motion is URGENT-ONLY (Founder 2026-07-28 device walk). */}
           <View style={[s.dot, { backgroundColor: tg.color }]} />
         </View>
         <Text style={s.eyebrowLabel}>{tg.label}</Text>
@@ -151,20 +150,16 @@ export default function CallToActionCard({
         accessibilityState={overflows ? { expanded } : undefined}
         accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
       >
-        <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
-          {body}
-        </Text>
-        {/* Offscreen mirror — measures the body's natural line count so the
-            cue only renders on true overflow (offscreen-top, not height:0). */}
-        <Text
-          style={[s.body, s.mirror]}
-          onTextLayout={handleMirrorLayout}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-        >
-          {body}
-        </Text>
+        <View style={s.bodyWrap}>
+          <PageTurnText
+            text={body}
+            style={[s.body, s.bodyInWrap]}
+            lineHeight={BODY_LINE_HEIGHT}
+            lines={COLLAPSED_LINES}
+            expanded={expanded}
+            onOverflowsChange={setOverflows}
+          />
+        </View>
         {overflows && (
           <View style={s.readon}>
             <View style={s.readonRule} />
@@ -172,6 +167,8 @@ export default function CallToActionCard({
           </View>
         )}
       </Pressable>
+
+      <ScripturePull text={verseText} reference={verseRef} />
 
       {/* CTA link — accent words + arrow, no fill (CD register) */}
       <Pressable
@@ -242,10 +239,12 @@ const s = StyleSheet.create({
 
   title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
+  // Wrapper owns the top spacing (PageTurnText strips text margins).
+  bodyWrap: { marginTop: 9 },
+  bodyInWrap: { marginTop: 0 },
 
-  // Offscreen mirror + page-turn cue — exact style values from
-  // AnnouncementCard so the read-on grammar reads identically app-wide.
-  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
+  // Page-turn cue — exact style values from AnnouncementCard so the
+  // read-on grammar reads identically app-wide.
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
   readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },

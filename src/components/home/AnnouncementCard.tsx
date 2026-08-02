@@ -2,8 +2,8 @@
 // AnnouncementCard — admin network announcement (KAN-201 home redesign)
 //
 // PREFERRED: variant="letterhead" (dot + label + hairline eyebrow),
-// title 21pt. ALTERNATE: variant="rule" (coloured left margin rule).
-// `warm` surface OFF by default.
+// title = shared FeedTitle token. ALTERNATE: variant="rule" (coloured
+// left margin rule). `warm` surface OFF by default.
 //
 // Interaction: page-turn truncation — the body rests at a 3-line clamp;
 // tap the card body to expand / collapse; the trailing cue reads
@@ -21,9 +21,9 @@
 // ─────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import {
   Animated,
+  Easing,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -32,10 +32,13 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { useReducedMotion } from '../../utils/useReducedMotion';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+import ScripturePull from './ScripturePull';
+import PageTurnText from './PageTurnText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -49,16 +52,20 @@ interface Props {
   time: string; // e.g. "2h ago"
   commentCount?: number;
   variant?: 'letterhead' | 'rule';
-  titleSize?: 20 | 21 | 22; // PREFERRED 21
   warm?: boolean;
+  // Verse anchor (Day-1, 2026-07-28) — ScripturePull renders it.
+  verseText?: string | null;
+  verseRef?: string | null;
 }
-
-const LINE: Record<number, number> = { 20: 25, 21: 26, 22: 27 };
 
 // Body resting clamp — matches DailyScriptureStrip's COLLAPSED_LINES so
 // Home's collapsed rhythm stays consistent. Cue + tap-to-expand only
 // surface when the body's natural line count exceeds this.
 const COLLAPSED_LINES = 3;
+// Must match s.body lineHeight — the collapsed crop is a container
+// maxHeight (clampHeight), never a numberOfLines flip (the flip re-measure
+// tears on some devices; Founder repro 2026-07-28).
+const BODY_LINE_HEIGHT = 23;
 
 export default function AnnouncementCard({
   announcementId,
@@ -68,9 +75,11 @@ export default function AnnouncementCard({
   time,
   commentCount,
   variant = 'letterhead',
-  titleSize = 21,
   warm = false,
+  verseText,
+  verseRef,
 }: Props) {
+  const reduced = useReducedMotion();
   const [expanded, setExpanded] = useState(false);
   const [cOpen, setCOpen] = useState(false);
   // Local count so the footer reflects a just-posted comment immediately
@@ -78,34 +87,16 @@ export default function AnnouncementCard({
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
   const tg = Tags[tag];
 
-  // Overflow detection — natural (uncapped) line count for the body,
-  // measured via an offscreen mirror Text. null = not yet measured; until
-  // measured the cue stays hidden (avoids a flash on short bodies).
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [body]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  // Overflow signal — reported by PageTurnText, which owns the entire
+  // clamp/measure mechanism (see its header for the tear saga).
+  const [overflows, setOverflows] = useState(false);
 
   // Urgent dot halo: a slow, gentle breathing pulse (~1.8s period). Only
   // the halo animates — the dot itself stays solid. Non-urgent tags hold
-  // a static glow (opacity 1).
+  // a static glow (opacity 1). Frozen at rest under reduced motion.
   const blinkAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (tag !== 'urgent') return;
+    if (tag !== 'urgent' || reduced) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(blinkAnim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
@@ -114,7 +105,7 @@ export default function AnnouncementCard({
     );
     loop.start();
     return () => loop.stop();
-  }, [tag, blinkAnim]);
+  }, [tag, reduced, blinkAnim]);
 
   const toggleBody = () => {
     if (!overflows) return;
@@ -147,6 +138,8 @@ export default function AnnouncementCard({
                 { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
               ]}
             />
+            {/* Founder 2026-07-28 (device walk): dot motion is URGENT-ONLY
+                — the halo pulse above. Every other register holds still. */}
             <View style={[s.dot, { backgroundColor: tg.color }]} />
           </View>
         )}
@@ -155,22 +148,17 @@ export default function AnnouncementCard({
         <Text style={s.eyebrowTime}>{time}</Text>
       </View>
 
-      <Text style={[s.title, { fontSize: titleSize, lineHeight: LINE[titleSize] }]}>{title}</Text>
-      <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>{body}</Text>
-      {/* Offscreen mirror — measures the natural (uncapped) line count so
-          the cue only renders when the body truly overflows the clamp.
-          Identical text styles to the visible body so wrapping matches;
-          kept offscreen rather than height:0 (RN skips onTextLayout for
-          zero-height text). */}
-      <Text
-        style={[s.body, s.mirror, variant === 'rule' && s.mirrorRule]}
-        onTextLayout={handleMirrorLayout}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        pointerEvents="none"
-      >
-        {body}
-      </Text>
+      <Text style={s.title}>{title}</Text>
+      <View style={s.bodyWrap}>
+        <PageTurnText
+          text={body}
+          style={[s.body, s.bodyInWrap]}
+          lineHeight={BODY_LINE_HEIGHT}
+          lines={COLLAPSED_LINES}
+          expanded={expanded}
+          onOverflowsChange={setOverflows}
+        />
+      </View>
 
       {overflows && (
         <View style={s.readon}>
@@ -178,6 +166,8 @@ export default function AnnouncementCard({
           <Text style={s.readonText}>{expanded ? 'fold' : 'read on'}</Text>
         </View>
       )}
+
+      <ScripturePull text={verseText} reference={verseRef} />
 
       {/* footer — seal · Replant Team · [comments right-aligned] */}
       <View style={s.foot}>
@@ -240,15 +230,12 @@ const s = StyleSheet.create({
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
-  title: { fontFamily: Typography.displayRegular, color: Colors.text, letterSpacing: 0.1 },
+  title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
-  // Offscreen mirror — pinned to the visible body's column width so its
-  // line wrapping matches (left/right mirror the card's padding; the rule
-  // variant's wider left padding gets its own override). Offscreen-top,
-  // NOT height:0 — RN skips text layout entirely for zero-height text,
-  // which would silently kill the overflow signal.
-  mirror: { position: 'absolute', left: 20, right: 20, top: 0, opacity: 0 },
-  mirrorRule: { left: 22 },
+  // The wrapper owns the top spacing (PageTurnText's window strips text
+  // margins); the visible body drops its own margin inside it.
+  bodyWrap: { marginTop: 9 },
+  bodyInWrap: { marginTop: 0 },
 
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },

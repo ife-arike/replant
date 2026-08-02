@@ -111,6 +111,11 @@ export interface AnnouncementRow {
   // Frozen secondary byline (church/ministry for named publications; '' or
   // null when sealed). Composed server-side at publish (kan338_0003).
   source_sublabel: string | null;
+  // Server-composed avatar initial for NAMED leader posts — first letter
+  // of the leader's NAME, never the role title (Day-1 2026-07-28; the
+  // feed counterpart of get_comments' avatar_initial). NULL = sealed →
+  // the card renders the Replant seal.
+  source_initial: string | null;
   tag_type: string | null;
   // KAN-335 badge cutover 2026-07-22 — `badge` is the post-cutover
   // authority for the letterhead eyebrow register; `tag_type` above is
@@ -140,6 +145,13 @@ export interface AnnouncementRow {
   // attribution is frozen into source_label at publish (SME interim,
   // 2026-07-22), so the FK never ships to feed clients at all
   // (D-56 / SEC Observation D).
+  //
+  // Verse anchor (Day-1 polish, Founder GO 2026-07-28) — ONE deliberate
+  // scripture anchor per post. verse_text renders as the in-card
+  // pull-quote; verse_reference cites it (may stand alone — anchor-only).
+  // DB CHECK: text without reference is forbidden.
+  verse_text: string | null;
+  verse_reference: string | null;
 }
 
 // ─── Home-card eyebrow mapping (KAN-201 → KAN-335 badge cutover) ──────

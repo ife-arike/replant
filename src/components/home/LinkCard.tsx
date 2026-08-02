@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
 import { Arrow, LinkIcon, RpMark } from './HomeIcons';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 
@@ -90,7 +90,9 @@ const s = StyleSheet.create({
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
-  title: { fontFamily: Typography.displayRegular, fontSize: 21, lineHeight: 26, color: Colors.text, letterSpacing: 0.1 },
+  // Title rides the shared FeedTitle token (one-size ruling) — this was a
+  // stray 21/26 hardcode the token was supposed to replace.
+  title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },
 
   link: {

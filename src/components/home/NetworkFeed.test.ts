@@ -145,6 +145,11 @@ describe('isPosted — D-54 predicate (RLS mirror)', () => {
     link_url: null,
     author_type: 'admin',
     comment_count: 0,
+    // Day-1 verse anchor columns (2026-07-28).
+    verse_text: null,
+    verse_reference: null,
+    // Day-1 server-composed avatar initial (2026-07-28).
+    source_initial: null,
     card_type: 'standard',
     ...overrides,
   });

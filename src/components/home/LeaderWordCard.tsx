@@ -15,8 +15,7 @@
 // server (SEC F1).
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
+import React, { useState } from 'react';
 import {
   LayoutAnimation,
   Platform,
@@ -29,6 +28,8 @@ import {
 import { Colors, FeedTitle, Radius, Typography } from '../../constants/theme';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
+import ScripturePull from './ScripturePull';
+import PageTurnText from './PageTurnText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -37,6 +38,12 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // Body resting clamp — matches AnnouncementCard so Home's collapsed rhythm
 // stays consistent. Cue + tap only surface when the clamped text overflows.
 const COLLAPSED_LINES = 3;
+// Must match s.body / s.lead lineHeights — feed PageTurnText's pre-measure
+// window estimates; the clamp itself is PageTurnText's height window,
+// never a numberOfLines flip (tear class, 2026-07-28; this card was
+// the Founder's repro).
+const BODY_LINE_HEIGHT = 23;
+const LEAD_LINE_HEIGHT = FeedTitle.lineHeight;
 
 interface Props {
   announcementId: string;
@@ -44,6 +51,10 @@ interface Props {
   lead: string; // the reflective opening line (serif roman — Ruling 2)
   body?: string; // optional continuation
   verse?: string; // anchor reference, e.g. "Zechariah 4:10"
+  // Lifted verse text (Day-1, 2026-07-28). When present, ScripturePull
+  // renders the full pull-quote (text + verse reference) in place of the
+  // bare anchor line.
+  verseText?: string;
   // seal → Replant seal in the avatar circle (frozen attribution; the feed
   // passes source_label as name). initial drives the lettered circle otherwise.
   author: { initial?: string; seal?: boolean; name: string; church: string; time: string };
@@ -56,6 +67,7 @@ export default function LeaderWordCard({
   lead,
   body,
   verse,
+  verseText,
   author,
   commentCount,
 }: Props) {
@@ -69,31 +81,12 @@ export default function LeaderWordCard({
   };
 
   // Page-turn: clamp the body when present; when only the lead exists,
-  // clamp the lead. The mirror measures whichever text is clamped so the
-  // "read on" cue only surfaces on true overflow (overflow-gating ruling).
+  // clamp the lead. PageTurnText owns the measurement (see its header).
   const bodyText = body?.trim() ? body : undefined;
   const hasBody = bodyText !== undefined;
-  const clampText = bodyText ?? lead;
 
   const [expanded, setExpanded] = useState(false);
-  const [naturalLines, setNaturalLines] = useState<number | null>(null);
-  useEffect(() => {
-    setNaturalLines(null);
-  }, [clampText]);
-
-  // Fabric (RN 0.81 new arch) fires an early text-layout pass before the
-  // custom fonts resolve and before the absolute mirror has its final
-  // width. The old code LATCHED that first result and discarded every
-  // correction, so one bogus early count killed the cue permanently.
-  // Take the newest valid measurement instead; a zero-line pass is never
-  // valid. (Founder device pass 2026-07-27.)
-  const handleMirrorLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    const n = e.nativeEvent.lines.length;
-    if (n <= 0) return;
-    setNaturalLines((prev) => (prev === n ? prev : n));
-  };
-
-  const overflows = naturalLines !== null && naturalLines > COLLAPSED_LINES;
+  const [overflows, setOverflows] = useState(false);
 
   const toggleExpand = () => {
     if (!overflows) return;
@@ -120,28 +113,33 @@ export default function LeaderWordCard({
         accessibilityState={overflows ? { expanded } : undefined}
         accessibilityHint={overflows ? (expanded ? 'Tap to fold' : 'Tap to read on') : undefined}
       >
-        <Text
-          style={s.lead}
-          numberOfLines={!hasBody && !expanded ? COLLAPSED_LINES : undefined}
-        >
-          {lead}
-        </Text>
-        {hasBody && (
-          <Text style={s.body} numberOfLines={expanded ? undefined : COLLAPSED_LINES}>
-            {bodyText}
-          </Text>
+        {/* This card was the Founder's tear repro — the clamp mechanics
+            live in PageTurnText now. The lead clamps only when it IS the
+            clamped text (no body); the body clamps when present. */}
+        {hasBody ? (
+          <>
+            <Text style={s.lead}>{lead}</Text>
+            <View style={s.bodyWrap}>
+              <PageTurnText
+                text={bodyText}
+                style={[s.body, s.bodyInWrap]}
+                lineHeight={BODY_LINE_HEIGHT}
+                lines={COLLAPSED_LINES}
+                expanded={expanded}
+                onOverflowsChange={setOverflows}
+              />
+            </View>
+          </>
+        ) : (
+          <PageTurnText
+            text={lead}
+            style={s.lead}
+            lineHeight={LEAD_LINE_HEIGHT}
+            lines={COLLAPSED_LINES}
+            expanded={expanded}
+            onOverflowsChange={setOverflows}
+          />
         )}
-        {/* Offscreen mirror — measures whichever text is clamped (body when
-            present, else the lead) so the cue only renders on true overflow. */}
-        <Text
-          style={[hasBody ? s.body : s.lead, s.mirror]}
-          onTextLayout={handleMirrorLayout}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-        >
-          {clampText}
-        </Text>
         {overflows && (
           <View style={s.readon}>
             <View style={s.readonRule} />
@@ -150,10 +148,14 @@ export default function LeaderWordCard({
         )}
       </Pressable>
 
-      {!!verse && (
-        <View style={s.meta}>
-          <Text style={s.verse}>{verse}</Text>
-        </View>
+      {verseText ? (
+        <ScripturePull text={verseText} reference={verse} />
+      ) : (
+        !!verse && (
+          <View style={s.meta}>
+            <Text style={s.verse}>{verse}</Text>
+          </View>
+        )
       )}
 
       {/* author row carries the right-aligned comments */}
@@ -163,11 +165,14 @@ export default function LeaderWordCard({
             ? <RpMark width={16} height={16} opacity={0.8} />
             : <Text style={s.avInitial}>{author.initial ?? '·'}</Text>}
         </View>
-        <View>
-          <Text style={s.name}>{author.name}</Text>
-          {!!author.church && <Text style={s.church}>{author.church}</Text>}
+        {/* flexShrink + single-line ellipsis — a long name/ministry must
+            truncate with "…", never crowd the comments affordance into
+            the card edge (Founder 2026-07-28 device walk). */}
+        <View style={s.authorText}>
+          <Text style={s.name} numberOfLines={1}>{author.name}</Text>
+          {!!author.church && <Text style={s.church} numberOfLines={1}>{author.church}</Text>}
         </View>
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, minWidth: 12 }} />
         {commentCount != null && (
           <Pressable
             onPress={toggle}
@@ -208,8 +213,9 @@ const s = StyleSheet.create({
   },
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
   dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.green + '30' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.green },
+  // White leader-voice dot (Day-1 green retirement, Founder 2026-07-28).
+  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.text + '30' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text },
   eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
   eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
@@ -218,10 +224,12 @@ const s = StyleSheet.create({
   // scripture + witness quotes; this is a leader's human voice.
   lead: { fontFamily: Typography.displayRegular, ...FeedTitle, letterSpacing: 0.1, color: Colors.text },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 12 },
+  // Wrapper owns the top spacing (PageTurnText strips text margins).
+  bodyWrap: { marginTop: 12 },
+  bodyInWrap: { marginTop: 0 },
 
-  // Offscreen mirror + page-turn cue — exact style values from
-  // AnnouncementCard so the read-on grammar reads identically app-wide.
-  mirror: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
+  // Page-turn cue — exact style values from AnnouncementCard so the
+  // read-on grammar reads identically app-wide.
   readon: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   readonRule: { width: 24, height: 1, backgroundColor: Colors.border },
   readonText: { fontFamily: Typography.mono, fontSize: 12, letterSpacing: 1.2, color: Colors.textSubtle },
@@ -250,6 +258,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   avInitial: { fontFamily: Typography.displayRegular, fontSize: 15, color: Colors.textMuted },
+  authorText: { flexShrink: 1 },
   name: { fontFamily: Typography.bodyMedium, fontSize: 13.5, color: Colors.text },
   church: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
   cc: { flexDirection: 'row', alignItems: 'center', gap: 7 },
