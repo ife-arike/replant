@@ -394,9 +394,9 @@ const RAG_COLORS: Record<RagStatus, string> = {
   red: Colors.red,
 };
 const RAG_DESCRIPTIONS: Record<RagStatus, string> = {
-  green: ' — yes, with no limitations',
-  amber: ' — with some limitations or needs',
-  red: ' — severely limited or facing active persecution',
+  green: ': yes, with no limitations',
+  amber: ': with some limitations or needs',
+  red: ': severely limited or facing active persecution',
 };
 const RAG_WORDS: Record<RagStatus, string> = {
   green: 'Green',
@@ -825,10 +825,10 @@ export default function SettingsScreen({
   // ─── Static copy (preserved from KAN-138 dispatch) ───
 
   const SCRIPTURE =
-    '"That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me."';
-  const REFERENCE = 'JOHN 17 · 21 · KJV';
+    'That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me.';
+  const REFERENCE = 'JOHN 17:21 · KJV';
   const ANONYMOUS_HELPER =
-    'When on, others see your role and church only — never your name.';
+    'When on, others see your role and church only, never your name.';
   // Flow-gaps gap-4 — Founder-RATIFIED helper (2026-07-13, verbatim; shown
   // beneath the email toggle ONLY when it is off). Any change needs a
   // fresh Founder ruling.
@@ -1123,7 +1123,7 @@ export default function SettingsScreen({
           accessibilityLabel="Church status (Green, Amber, Red)"
           pointerEvents={ragDisabled ? 'none' : 'auto'}
         >
-          <Text style={styles.rowLabel}>Status — can your church worship freely?</Text>
+          <Text style={styles.rowLabel}>Status · can your church worship freely?</Text>
           <View style={styles.radioGroup}>
             {(['green', 'amber', 'red'] as const).map((val) => {
               const selected = ragStatusState === val;
