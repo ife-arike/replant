@@ -63,9 +63,10 @@ type SavedSection = 'account' | 'privacy' | 'church' | 'notifications' | null;
 // suffix picker carries the free-form branch). "Not set" is rendered as a
 // neutral cleared state (sans, not italic) at the top of the picker, and is
 // stored as null in users.honorific.
-// 'GO' (General Overseer) added 2026-08-02 (Founder) — common across
-// African Pentecostal networks; English/Western additions pending her pick.
-const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch', 'GO'] as const;
+// Founder 2026-08-02: canonical 6 + GO (General Overseer), Father, Mother,
+// Dr., Canon. Reverend stays on the ROLE side (it would overtake the role
+// in composition), NOT an honorific.
+const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch', 'GO', 'Father', 'Mother', 'Dr.', 'Canon'] as const;
 const SUFFIXES = ['PhD', 'MDiv', 'DMin', 'ThD', 'DD'] as const;
 const SUFFIX_OTHER_MAX_LEN = 12;
 // Inlined colors per design_handoff_settings_name_fields (the handoff offers
@@ -1850,7 +1851,6 @@ const styles = StyleSheet.create({
   // ─── Connect block — mission treatment ───
   connectBlock: {
     marginTop: 16,
-    marginBottom: 4,
     paddingVertical: 22,
     paddingHorizontal: 8,
     alignItems: 'center',
@@ -1921,37 +1921,38 @@ const styles = StyleSheet.create({
 
   // ─── Destructive footer — ABOVE foundation. No borderTop (Connect's
   //     borderBottom IS the divider). ───
+  // Founder 2026-08-02 (device smoke): no dead air above Sign out — the
+  // group starts straight after the Connect divider and both bars run the
+  // exact About sub-row pitch. minHeight locks the two bars to the same
+  // height despite their different label registers (16 serif vs 12 mono).
   destructive: {
-    marginTop: 22,
-    paddingTop: 10,
-    paddingBottom: 4,
     flexDirection: 'column',
     alignSelf: 'stretch',
   },
-  // Full-width bars in the shared row grammar (13/11 + hairline);
-  // labels keep their register, centered per Founder allowance.
   destructiveRow: {
-    paddingTop: 13,
-    paddingBottom: 11,
+    height: 48,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
     alignItems: 'center',
+    justifyContent: 'center',
   },
+  // lineHeight pinned so both bars land on the identical 46pt minHeight
+  // (serif's intrinsic line box otherwise makes the Sign out bar taller).
   signOut: {
     fontFamily: Typography.display,
     fontSize: 16,
+    lineHeight: 22,
     color: Colors.textMuted,
     letterSpacing: 16 * 0.04,
-    paddingVertical: 4,
   },
   deactivate: {
     fontFamily: Typography.mono,
     fontSize: 12,
+    lineHeight: 17,
     letterSpacing: 2.2,
     color: Colors.red,
     opacity: 0.55,
     textTransform: 'uppercase',
-    paddingVertical: 4,
   },
 
   // ─── Foundation — scripture + ref + version stamp (NO rp-mark) ───
