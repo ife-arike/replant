@@ -593,6 +593,12 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   }, [draft, attachPopoverVisible]);
   const messagesRef = useRef<BranchMessage[]>(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+  // Ported from DMThreadView (device-pass-fixes-1 Fix 4): track whether
+  // the initial fetch has landed (success OR error) so the Realtime
+  // subscribe effect can wait for it. Canonical pattern: fetch first,
+  // then subscribe — Realtime supplements the initial data, never
+  // replaces it.
+  const [initialFetchComplete, setInitialFetchComplete] = useState(false);
 
   const memberByUserId = useMemo(() => {
     const m = new Map<string, BranchMember>();
@@ -779,6 +785,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       if (error || !data) {
         setMessages([]);
         setLoadingMessages(false);
+        setInitialFetchComplete(true);
         return;
       }
       const ordered: BranchMessage[] = (data as any[])
@@ -795,6 +802,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       setMessages(assignGroupLabels(ordered));
       setExhausted(ordered.length < PAGE_SIZE);
       setLoadingMessages(false);
+      setInitialFetchComplete(true);
       // Mark the branch read on initial open. Fire-and-forget — a
       // mark-read failure must NEVER block the thread render. The
       // RPC raises 'not_authorized' if the caller isn't a member
@@ -812,6 +820,10 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   // ── Realtime: messages (branch_id filter) + branch_members (consent) ─
   useEffect(() => {
     if (!branchId) return;
+    // Ported from DMThreadView: wire the subscribe only after the
+    // initial page load lands, so a Realtime INSERT can never be
+    // appended and then wiped by the initial setMessages replace.
+    if (!initialFetchComplete) return;
     const messagesCh = supabase
       .channel(`branch-msgs-${branchId}`)
       .on(
@@ -866,7 +878,7 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       void supabase.removeChannel(messagesCh);
       void supabase.removeChannel(membersCh);
     };
-  }, [branchId, callerUserId, loadMembersAndSummary]);
+  }, [branchId, callerUserId, loadMembersAndSummary, initialFetchComplete]);
 
   // ── Load older ────────────────────────────────────────────────────
   const loadOlder = useCallback(async () => {
@@ -928,13 +940,22 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       // DELIVER-ALWAYS: we do NOT read the response's `flagged` field.
       // The leader's UI is identical regardless of moderation outcome.
       const result = await res.json() as { success: true; message_id: string; branch_id: string };
-      setMessages((prev) =>
-        assignGroupLabels(prev.map((m) =>
+      // Sync messagesRef INSIDE the updater so the Realtime INSERT
+      // handler (which reads messagesRef for dedup) sees the real UUID
+      // immediately — before the async useEffect that normally syncs
+      // the ref can run. Without this, the handler checks the stale
+      // ref (still holding the opt- ID), misses the dedup, and inserts
+      // a second row with the same real UUID → duplicate key error.
+      // (Ported from DMThreadView sendNow.)
+      setMessages((prev) => {
+        const next = assignGroupLabels(prev.map((m) =>
           m.id === optId
-            ? { ...m, id: result.message_id, state: 'sent' }
+            ? { ...m, id: result.message_id, state: 'sent' as const }
             : m,
-        )),
-      );
+        ));
+        messagesRef.current = next;
+        return next;
+      });
     } catch {
       setMessages((prev) =>
         prev.map((m) => m.id === optId ? { ...m, state: 'failed' } : m),
@@ -965,11 +986,15 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
         });
         if (!res.ok) throw new Error('retry_failed');
         const result = await res.json() as { message_id: string };
-        setMessages((prev) =>
-          assignGroupLabels(prev.map((m) =>
-            m.id === optId ? { ...m, id: result.message_id, state: 'sent' } : m,
-          )),
-        );
+        setMessages((prev) => {
+          // Same ref-sync-inside-updater as sendNow — the Realtime echo
+          // races the ref-sync effect on retry success too.
+          const next = assignGroupLabels(prev.map((m) =>
+            m.id === optId ? { ...m, id: result.message_id, state: 'sent' as const } : m,
+          ));
+          messagesRef.current = next;
+          return next;
+        });
       } catch {
         setMessages((prev) =>
           prev.map((m) => m.id === optId ? { ...m, state: 'failed' } : m),

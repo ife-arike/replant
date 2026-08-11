@@ -295,6 +295,9 @@ export default function MinistriesList({ onOpenBranch, onStartBranch, onToast, r
   const silentRefresh = useCallback(async () => {
     try {
       setRows(await fetchRows());
+      // A successful silent refresh clears any prior error — otherwise
+      // fresh rows sit hidden behind a stale error card.
+      setError(null);
     } catch {
       // Silent — keep showing existing rows.
     }

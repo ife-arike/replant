@@ -10,6 +10,11 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { Submission } from "../screens/main/addressNetwork/types";
 
+// Connect sub-tab union — owned here (not in ConnectScreen) so the
+// Connect chrome components (Segmented, ConnectHeader) never import
+// from a screen module. ConnectScreen imports it back for its state.
+export type SubTab = 'ministries' | 'leaders';
+
 export type TabsParamList = {
   Home: undefined;
   "The Church": undefined;
@@ -17,7 +22,7 @@ export type TabsParamList = {
   // the leader in My Voice (design_handoff_persecuted_NEW, 2026-07-26).
   Persecuted: { initialView?: 'voice' } | undefined;
   "Prayer Wall": { initialView?: 'journal'; pendingChurch?: string } | undefined;
-  Connect: { initialSubTab?: 'ministries' | 'leaders'; conversationId?: string } | undefined;
+  Connect: { initialSubTab?: SubTab; conversationId?: string } | undefined;
 };
 
 // MainStackParamList = the active-branch native-stack: Tabs + pushed screens.

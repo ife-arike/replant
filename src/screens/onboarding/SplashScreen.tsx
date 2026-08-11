@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
+import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Splash'>;

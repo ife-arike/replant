@@ -9,7 +9,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Colors, Typography } from '../../constants/theme';
-import type { SubTab } from '../../screens/main/ConnectScreen';
+import type { SubTab } from '../../navigation/types';
 
 interface Props {
   value: SubTab;
