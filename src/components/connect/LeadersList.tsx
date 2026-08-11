@@ -834,8 +834,8 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
       {loading ? (
         <SkeletonRows />
       ) : error ? (
-        {/* Arg-less wrapper — passing loadInitial directly would feed the
-            press event into its `silent` param, making retry a no-op. */}
+        // Arg-less wrapper — passing loadInitial directly would feed the
+        // press event into its `silent` param, making retry a no-op.
         <ErrorView onRetry={() => loadInitial()} />
       ) : filtered.length === 0 && query.trim().length < 2 ? (
         <>
