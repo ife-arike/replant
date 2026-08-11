@@ -16,7 +16,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
-import type { SubTab } from '../../screens/main/ConnectScreen';
+import type { SubTab } from '../../navigation/types';
 
 interface Props {
   subTab: SubTab;

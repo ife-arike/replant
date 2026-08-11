@@ -37,7 +37,7 @@ import {
   FlatList,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
+import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { joinUndergroundChurch } from '../../api/underground';
 import { newIdempotencyKey } from '../../utils/idempotency';

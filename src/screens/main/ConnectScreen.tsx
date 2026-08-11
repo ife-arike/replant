@@ -67,7 +67,7 @@ import MinistriesList from '../../components/connect/MinistriesList';
 import BranchCreate from '../../components/connect/BranchCreate';
 import BranchThreadView from '../../components/connect/BranchThreadView';
 
-export type SubTab = 'ministries' | 'leaders';
+import type { SubTab } from '../../navigation/types';
 
 // Optional initial profile snapshot passed into the DM thread view so
 // its header renders immediately without waiting on the async profile
