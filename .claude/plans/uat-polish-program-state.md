@@ -8,8 +8,8 @@
 
 | Day | Tab | Handoff | Status |
 |---|---|---|---|
-| 1 | Home | `.claude/plans/2026-07-28-uat-polish-day1-home-tab.md` → **CONTINUATION: `.claude/plans/2026-07-28-day1-home-continuation-handoff.md`** | IN PROGRESS — feed DONE + **PR #119 MERGED (2026-08-02)**; **hamburger pass DONE (2026-08-02, PR from `feat/uat-day1-hamburger`)**; board ledger on KAN-5 c.16489; admin **PR #86 open awaiting Founder preview smoke**; REMAIN: Home chrome copy review · pending-state walkthrough · /join site deploy (permission-gated, Founder runs) |
-| 2 | The Church | not yet written — author at end of Day 1 with carryover | pending |
+| 1 | Home | `.claude/plans/2026-07-28-uat-polish-day1-home-tab.md` → `.claude/plans/2026-07-28-day1-home-continuation-handoff.md` | **AGENT-SIDE COMPLETE (2026-08-02)** — feed (PR #119 MERGED) + hamburger pass + Settings batch (walk finds · GO/Father/Mother/Dr./Canon honorifics · version stamp removed · destructive bars 48pt rhythm) + chrome copy review (3 fixes; banners/modals reviewed clean) ALL on **PR #120 (OPEN, awaiting her smoke+merge)**; board ledger KAN-5 c.16489. Residual: her smokes (#120, admin #86), /join deploy (hers), pending-state VISUAL walk (accounts wired: +t11/+t12/+t15 — sim now instruction-gated), FAQ content pass (hers) |
+| 2 | The Church | **`.claude/plans/2026-08-02-uat-polish-day2-church-tab.md`** (authored at Day-1 close) | pending — carries the build-queue interjections: referral Phase 1 (KAN-344, ungated) → password change → deactivation wiring (KAN-205) |
 | 3 | Persecuted | not yet written | pending |
 | 4 | Prayer Wall | not yet written | pending |
 | 5 | Connect | not yet written | pending |
