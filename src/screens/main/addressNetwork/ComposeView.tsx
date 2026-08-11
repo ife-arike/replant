@@ -47,7 +47,7 @@ import { HAIRLINE, SKY_08, SKY_25 } from './tokens';
 
 // Founder copy — VERBATIM, never restyled or repunctuated.
 const GUARDRAIL =
-  'Please do not use this space to solicit assistance or to condemn. Let this platform edify, inform, or convict the Body in love.';
+  'Please do not use this space to solicit assistance or to condemn. Let this platform edify, inform, or convict the body in love.';
 const SUBMIT_NOTE =
   'The Replant team must approve the word before it reaches the network.';
 
