@@ -497,7 +497,7 @@ export default function HamburgerPanel() {
                     " · " separator is omitted when there's no location. */}
               <Text style={styles.identityLocation} numberOfLines={1}>
                 {(() => {
-                  const churchOrFallback = card?.churchName ?? 'No Church Registered';
+                  const churchOrFallback = card?.churchName ?? 'No church registered';
                   if (card?.churchType === 'underground') return churchOrFallback;
                   const parts = [card?.city, card?.country].filter(Boolean);
                   const locationPart = parts.length > 0 ? parts.join(', ') : '';
@@ -511,7 +511,7 @@ export default function HamburgerPanel() {
             style={styles.logoutRow}
             onPress={handleLogout}
             accessibilityRole="button"
-            accessibilityLabel="Log out"
+            accessibilityLabel="Sign out"
           >
             <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
               <Path
@@ -530,7 +530,7 @@ export default function HamburgerPanel() {
               />
               <Line x1={21} y1={12} x2={9} y2={12} stroke={LOGOUT_COLOR} strokeWidth={1.5} strokeLinecap="round" />
             </Svg>
-            <Text style={styles.logoutLabel}>Log out</Text>
+            <Text style={styles.logoutLabel}>Sign out</Text>
           </Pressable>
         </View>
       </Animated.View>

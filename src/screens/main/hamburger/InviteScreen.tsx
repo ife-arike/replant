@@ -93,7 +93,7 @@ export default function InviteScreen() {
   const handleShare = () => {
     void Share.share({
       url: fullUrl,
-      message: `Join me on Replant — a secure network for Christian leaders. ${fullUrl}`,
+      message: `Join me on Replant, a secure network for Christian leaders. ${fullUrl}`,
     });
   };
 
@@ -150,7 +150,14 @@ export default function InviteScreen() {
         <View style={styles.linkBlock}>
           <View style={styles.linkText}>
             <Text style={styles.linkLabel}>Your link</Text>
-            <Text style={styles.linkUrl} numberOfLines={1}>{fullUrl}</Text>
+            {/* Whole URL (incl. the leader's own RPL code) must be visible —
+                shrink to fit rather than truncate to "RPL…". */}
+            <Text
+              style={styles.linkUrl}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.62}
+            >{fullUrl}</Text>
           </View>
           <Pressable
             onPress={handleCopy}

@@ -56,7 +56,7 @@ const FAMILY_TITLE = 'A word to the persecuted';
 const FAMILY_BODY =
   "Soon you'll be able to send encouragement to leaders enduring persecution, and they will read it on the Persecuted tab. For now, you can share a Word for Today or a Testimony.";
 
-const TITLE_PLACEHOLDER_WORD = 'Add a title, or leave it as "A word for today".';
+const TITLE_PLACEHOLDER_WORD = 'Give your word a title.';
 const TITLE_PLACEHOLDER_TESTIMONY = 'Give your testimony a title.';
 
 interface Props {

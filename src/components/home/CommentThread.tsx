@@ -227,7 +227,7 @@ export function CommentThread({
         <View style={s.loadingQuiet} />
       ) : errored ? (
         <Pressable onPress={loadComments} hitSlop={8} style={s.retryWrap}>
-          <Text style={s.retry}>Couldn't load comments — tap to retry</Text>
+          <Text style={s.retry}>Couldn't load comments. Tap to retry.</Text>
         </Pressable>
       ) : comments.length === 0 ? (
         // Empty state (Founder 2026-07-28): without it the thread read as

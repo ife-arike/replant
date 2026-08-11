@@ -18,6 +18,11 @@
 
 export const MASKED_COMMENT_NAME = 'A leader in the network';
 
+// Affordance label on every feed card ("1 comment" / "3 comments").
+export function commentCountLabel(count: number): string {
+  return count === 1 ? '1 comment' : `${count} comments`;
+}
+
 // The v3 composed fields. Optional so a defensively-typed caller can pass
 // a legacy-shaped row; absence falls back to the legacy columns without
 // ever re-deriving masking rules client-side.

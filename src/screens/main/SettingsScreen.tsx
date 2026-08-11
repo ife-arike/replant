@@ -41,7 +41,6 @@ import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import Constants from 'expo-constants';
 import { Colors, Radius, Spacing, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthProvider';
@@ -64,7 +63,10 @@ type SavedSection = 'account' | 'privacy' | 'church' | 'notifications' | null;
 // suffix picker carries the free-form branch). "Not set" is rendered as a
 // neutral cleared state (sans, not italic) at the top of the picker, and is
 // stored as null in users.honorific.
-const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch'] as const;
+// Founder 2026-08-02: canonical 6 + GO (General Overseer), Father, Mother,
+// Dr., Canon. Reverend stays on the ROLE side (it would overtake the role
+// in composition), NOT an honorific.
+const HONORIFICS = ['Anba', 'Mar', 'Abuna', 'Achen', 'Catholicos', 'Patriarch', 'GO', 'Father', 'Mother', 'Dr.', 'Canon'] as const;
 const SUFFIXES = ['PhD', 'MDiv', 'DMin', 'ThD', 'DD'] as const;
 const SUFFIX_OTHER_MAX_LEN = 12;
 // Inlined colors per design_handoff_settings_name_fields (the handoff offers
@@ -394,9 +396,9 @@ const RAG_COLORS: Record<RagStatus, string> = {
   red: Colors.red,
 };
 const RAG_DESCRIPTIONS: Record<RagStatus, string> = {
-  green: ' — yes, with no limitations',
-  amber: ' — with some limitations or needs',
-  red: ' — severely limited or facing active persecution',
+  green: ': yes, with no limitations',
+  amber: ': with some limitations or needs',
+  red: ': severely limited or facing active persecution',
 };
 const RAG_WORDS: Record<RagStatus, string> = {
   green: 'Green',
@@ -825,10 +827,10 @@ export default function SettingsScreen({
   // ─── Static copy (preserved from KAN-138 dispatch) ───
 
   const SCRIPTURE =
-    '"That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me."';
-  const REFERENCE = 'JOHN 17 · 21 · KJV';
+    'That they all may be one; as thou, Father, art in me, and I in thee, that they also may be one in us: that the world may believe that thou hast sent me.';
+  const REFERENCE = 'JOHN 17:21 · KJV';
   const ANONYMOUS_HELPER =
-    'When on, others see your role and church only — never your name.';
+    'When on, others see your role and church only, never your name.';
   // Flow-gaps gap-4 — Founder-RATIFIED helper (2026-07-13, verbatim; shown
   // beneath the email toggle ONLY when it is off). Any change needs a
   // fresh Founder ruling.
@@ -839,11 +841,8 @@ export default function SettingsScreen({
   // Para-ministry directors see "your account, your organization." (BA-para #1).
   const EPIGRAPH = `your account, ${viewer.yourChurchOrOrg}.`;
   const TEAM_EMAIL = 'connect@projectreplant.org';
-  const version =
-    Constants.expoConfig?.version ??
-    (Constants as unknown as { manifest?: { version?: string } }).manifest?.version ??
-    '0.1.0';
-  const versionStamp = `VERSION ${version}`;
+  // Version stamp removed 2026-08-02 (Founder): reapply at official launch
+  // only if a compliance standard requires it.
 
   // RAG group goes opacity:0.4 + pointerEvents:'none' when no church
   // is assigned yet (the radio still renders so the section structure
@@ -1123,7 +1122,7 @@ export default function SettingsScreen({
           accessibilityLabel="Church status (Green, Amber, Red)"
           pointerEvents={ragDisabled ? 'none' : 'auto'}
         >
-          <Text style={styles.rowLabel}>Status — can your church worship freely?</Text>
+          <Text style={styles.rowLabel}>Status · can your church worship freely?</Text>
           <View style={styles.radioGroup}>
             {(['green', 'amber', 'red'] as const).map((val) => {
               const selected = ragStatusState === val;
@@ -1316,9 +1315,12 @@ export default function SettingsScreen({
 
         {/* ── DESTRUCTIVE FOOTER — ABOVE foundation (Founder ruling).
             No borderTop — Connect block's borderBottom is the single
-            divider between Connect and the destructive footer. */}
+            divider between Connect and the destructive footer.
+            Founder 2026-08-02: full-width bars matching the row layout,
+            text stays center-aligned. */}
         <View style={styles.destructive}>
           <TouchableOpacity
+            style={styles.destructiveRow}
             onPress={handleSignOut}
             activeOpacity={0.6}
             accessibilityRole="button"
@@ -1327,6 +1329,7 @@ export default function SettingsScreen({
             <Text style={styles.signOut}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            style={styles.destructiveRow}
             onPress={handleDeactivateTap}
             activeOpacity={0.6}
             accessibilityRole="button"
@@ -1343,7 +1346,6 @@ export default function SettingsScreen({
         >
           <Text style={styles.foundationScripture}>{SCRIPTURE}</Text>
           <Text style={styles.foundationRef}>{REFERENCE}</Text>
-          <Text style={styles.versionStamp}>{versionStamp}</Text>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -1849,7 +1851,6 @@ const styles = StyleSheet.create({
   // ─── Connect block — mission treatment ───
   connectBlock: {
     marginTop: 16,
-    marginBottom: 4,
     paddingVertical: 22,
     paddingHorizontal: 8,
     alignItems: 'center',
@@ -1920,29 +1921,38 @@ const styles = StyleSheet.create({
 
   // ─── Destructive footer — ABOVE foundation. No borderTop (Connect's
   //     borderBottom IS the divider). ───
+  // Founder 2026-08-02 (device smoke): no dead air above Sign out — the
+  // group starts straight after the Connect divider and both bars run the
+  // exact About sub-row pitch. minHeight locks the two bars to the same
+  // height despite their different label registers (16 serif vs 12 mono).
   destructive: {
-    marginTop: 22,
-    paddingTop: 22,
-    paddingBottom: 4,
     flexDirection: 'column',
-    alignItems: 'center',
-    gap: 18,
+    alignSelf: 'stretch',
   },
+  destructiveRow: {
+    height: 48,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // lineHeight pinned so both bars land on the identical 46pt minHeight
+  // (serif's intrinsic line box otherwise makes the Sign out bar taller).
   signOut: {
     fontFamily: Typography.display,
     fontSize: 16,
+    lineHeight: 22,
     color: Colors.textMuted,
     letterSpacing: 16 * 0.04,
-    paddingVertical: 4,
   },
   deactivate: {
     fontFamily: Typography.mono,
     fontSize: 12,
+    lineHeight: 17,
     letterSpacing: 2.2,
     color: Colors.red,
     opacity: 0.55,
     textTransform: 'uppercase',
-    paddingVertical: 4,
   },
 
   // ─── Foundation — scripture + ref + version stamp (NO rp-mark) ───
@@ -1966,15 +1976,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     color: Colors.accent,
     marginTop: 10,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  versionStamp: {
-    fontFamily: Typography.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    color: Colors.textMuted,
-    marginTop: 18,
     textAlign: 'center',
     textTransform: 'uppercase',
   },

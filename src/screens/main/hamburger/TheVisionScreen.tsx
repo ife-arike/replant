@@ -37,7 +37,7 @@ export default function TheVisionScreen() {
 
         {/* Lede — scripture-italic asset */}
         <Text style={styles.lede}>
-          Connecting leaders across cities, continents, and callings — for prayer,
+          Connecting leaders across cities, continents, and callings. For prayer,
           for support, for one another.
         </Text>
 
@@ -59,7 +59,7 @@ export default function TheVisionScreen() {
           fragmented.
         </Text>
         <Text style={styles.para}>
-          Replant is a secure network — not a social media platform — where verified
+          Replant is a secure network, not a social media platform, where verified
           Christian leaders can find one another, pray together, and extend real
           support across geography. Anchored in Scripture. Driven by the Spirit.
         </Text>

@@ -184,7 +184,7 @@ export default function NetworkFeed() {
       <View style={styles.stateContainer}>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>The wall is still for now.</Text>
-          <Text style={styles.emptyBody}>Check back soon for an update from the Network.</Text>
+          <Text style={styles.emptyBody}>Check back soon for an update from the network.</Text>
         </View>
         <Pressable
           onPress={loadInitial}
@@ -211,7 +211,7 @@ export default function NetworkFeed() {
       <View style={styles.stateContainer}>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>The wall is still for now.</Text>
-          <Text style={styles.emptyBody}>Check back soon for an update from the Network.</Text>
+          <Text style={styles.emptyBody}>Check back soon for an update from the network.</Text>
         </View>
       </View>
     );

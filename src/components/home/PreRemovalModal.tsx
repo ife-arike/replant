@@ -50,7 +50,7 @@ export default function PreRemovalModal({ visible, onAcknowledge }: Props) {
           <Text style={styles.body}>
             Your registration hasn’t been completed yet, and it’s set to be removed from our records in a
             few days. Sometimes that’s because we’re still reviewing on our end. If you’d still like to
-            join — or if you’ve been waiting to hear from us — please reach out and we’ll pick it back up
+            join, or if you’ve been waiting to hear from us, please reach out and we’ll pick it back up
             with you.
           </Text>
 

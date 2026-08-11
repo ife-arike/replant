@@ -29,7 +29,7 @@ type ToastConfig = {
 function buildToasts(viewer: ReturnType<typeof viewerOrgCopy>): Record<ToastType, ToastConfig> {
   return {
     approved: { icon: <CheckIcon />, title: `${viewer.yourChurchOrOrgCap} has been verified.`, sub: 'Welcome to the network.' },
-    rejected: { icon: <InfoIcon color={Colors.textMuted} />, title: "Your verification wasn't approved", sub: 'See the reason and next steps in your profile.', chevron: true },
+    rejected: { icon: <InfoIcon color={Colors.textMuted} />, title: "Your verification wasn't approved", sub: 'Tap to read the reason and next steps.', chevron: true },
     heartcry: { icon: <HeartIcon />, title: 'Someone has responded to your heartcry.', sacred: true, chevron: true },
   };
 }
