@@ -889,13 +889,18 @@ export default function DMThreadView({
           setConversationId(result.conversation_id);
           onConversationCreated?.(result.conversation_id);
         }
-        setMessages((prev) =>
-          assignGroupLabels(prev.map((m) =>
+        setMessages((prev) => {
+          // Same ref-sync-inside-updater as sendNow (see comment there) —
+          // the Realtime echo races the ref-sync effect on retry success
+          // too. Sister edit with BranchThreadView's retry, 2026-08-10.
+          const next = assignGroupLabels(prev.map((m) =>
             m.id === optId
               ? { ...m, id: result.id, state: 'sent' as const, createdAt: new Date(result.created_at) }
               : m,
-          )),
-        );
+          ));
+          messagesRef.current = next;
+          return next;
+        });
       } catch {
         setMessages((prev) =>
           prev.map((m) => m.id === optId ? { ...m, state: 'failed' } : m),

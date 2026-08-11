@@ -677,6 +677,10 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
     try {
       const list = await fetchThreadList();
       setAllThreads(list);
+      // Clear any prior error even on silent refreshes — a successful
+      // fetch must never leave fresh rows hidden behind a stale error
+      // card.
+      setError(null);
     } catch (e) {
       if (!silent) setError(e as Error);
     } finally {
@@ -830,7 +834,9 @@ export default function LeadersList({ onOpenThread, onFindLeader, onOpenRequestT
       {loading ? (
         <SkeletonRows />
       ) : error ? (
-        <ErrorView onRetry={loadInitial} />
+        {/* Arg-less wrapper — passing loadInitial directly would feed the
+            press event into its `silent` param, making retry a no-op. */}
+        <ErrorView onRetry={() => loadInitial()} />
       ) : filtered.length === 0 && query.trim().length < 2 ? (
         <>
           <EmptyView onFind={onFindLeader} />
