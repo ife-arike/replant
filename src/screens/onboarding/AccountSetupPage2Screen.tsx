@@ -28,7 +28,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
-import { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
+import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator';
 import { Colors, Typography, Spacing, Radius } from '../../constants/theme';
 import { useOnboarding, type OnboardingLoopbackChurch } from '../../context/OnboardingContext';
 import { useAuth } from '../../contexts/AuthProvider';
@@ -417,19 +417,11 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
   // We pre-select it and mark isNewChurch so Step 7 fires.
   //
   // Defensive — both newChurch AND newChurchId must be present before
-  // we flip the loopback flag. The diagnostic log surfaces the case
-  // where this effect doesn't fire on a second CommonActions.reset
-  // (B6 — re-register after back-and-rereregister silently drops the
-  // Edit affordance).
+  // we flip the loopback flag (B6 — a second CommonActions.reset that
+  // doesn't re-fire this effect silently drops the Edit affordance).
   useEffect(() => {
     const incoming = route.params?.newChurch;
     const incomingId = route.params?.newChurchId;
-    console.log(
-      '[ASP2 loopback useEffect] newChurchId=',
-      incomingId,
-      'will set isNewChurchFromLoopback=',
-      !!(incoming && incomingId),
-    );
     if (incoming && incomingId) {
       setSelectedChurch(incoming);
       setIsNewChurchFromLoopback(true);
@@ -698,22 +690,13 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     const email = personalDetails.email ?? '';
     const password = personalDetails.password ?? '';
     if (!email || !password) {
-      console.warn('[tryAutoSignIn] missing email or password from personalDetails', {
-        email: !!email,
-        password: !!password,
-      });
       setSubmitError(
         'Account created — sign in failed. Please open the app to continue.',
       );
       setSignInFailed(true);
       return;
     }
-    console.log('[tryAutoSignIn] calling signInWithPassword');
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-    console.log('[tryAutoSignIn] signInWithPassword result', {
-      hasSession: !!data?.session,
-      error: error?.message,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setSubmitError(
         'Account created — sign in failed. Please open the app to continue.',
@@ -749,26 +732,8 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
     // batches state updates; we'd read stale skippedChurch inside the
     // same tick. The explicit parameter avoids that closure trap.
     const isSkip = opts?.skip === true;
-    // Diagnostic — proves handleSubmit fired at all. If this log doesn't
-    // appear in Metro when "Enter Replant" is tapped, the button itself
-    // isn't dispatching (disabled state, or stale submitError UI).
-    console.log('[ASP2 submit] entered', {
-      isSkip,
-      canSubmit,
-      submitting,
-      hasSelectedChurch: !!selectedChurch,
-      selectedChurchId: selectedChurch?.id,
-      isNewChurchFromLoopback,
-      submitError,
-    });
-    if ((!canSubmit && !isSkip) || submitting) {
-      console.log('[ASP2 submit] early-return: canSubmit/submitting guard');
-      return;
-    }
-    if (!selectedChurch && !isSkip) {
-      console.log('[ASP2 submit] early-return: no selectedChurch');
-      return;
-    }
+    if ((!canSubmit && !isSkip) || submitting) return;
+    if (!selectedChurch && !isSkip) return;
     if (
       !personalDetails.firstName ||
       !personalDetails.lastName ||
@@ -776,13 +741,6 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
       !personalDetails.password ||
       !personalDetails.role
     ) {
-      console.log('[ASP2 submit] missing personalDetails field', {
-        firstName: !!personalDetails.firstName,
-        lastName: !!personalDetails.lastName,
-        email: !!personalDetails.email,
-        password: !!personalDetails.password,
-        role: !!personalDetails.role,
-      });
       setSubmitError(COPY_GENERIC_FAIL);
       return;
     }
@@ -831,15 +789,6 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         if (!cd.contactName) missing.push('contact name');
         if (!cd.ragStatus) missing.push('current status (RAG)');
         if (missing.length > 0) {
-          console.log('[ASP2 submit] missing church fields from context', {
-            missing,
-            cd_keys: Object.keys(cd),
-            churchName: cd.churchName,
-            churchType: cd.churchType,
-            country: cd.country,
-            contactName: cd.contactName,
-            ragStatus: cd.ragStatus,
-          });
           setSubmitError(
             `We're missing some church details from the previous step (${missing.join(', ')}). Go back to "Register Church" and complete those fields, then try again.`,
           );
@@ -1102,8 +1051,6 @@ export default function AccountSetupPage2Screen({ navigation, route }: Props) {
         bounces={false}
         automaticallyAdjustKeyboardInsets={false}
         contentInsetAdjustmentBehavior="never"
-        onScroll={e => console.log('[ASP2] offsetY=', e.nativeEvent.contentOffset.y, 'inset.b=', e.nativeEvent.contentInset?.bottom)}
-        scrollEventThrottle={200}
       >
         {/* KAN-192 AC 5 — full bypass confirmation. When the leader has
             just registered a new church (loopback from RegCP2 today;
