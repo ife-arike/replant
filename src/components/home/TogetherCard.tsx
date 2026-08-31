@@ -3,7 +3,8 @@
 // (KAN-201 card system 2026-06-02)
 //
 // For card_type = 'together'. "Together" is connective, not alert — the
-// eyebrow dot is green. The footer carries overlapping author seals when
+// eyebrow dot rides the connective white register (green retired,
+// Founder 2026-07-28). The footer carries overlapping author seals when
 // co-authors are present; otherwise it falls back to the standard
 // Rp-seal + "Replant Team" footer (the multi-author columns are not built
 // on announcements yet, so NetworkFeed passes coAuthors=undefined for now
@@ -23,7 +24,8 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, FeedTitle, Radius, Tags, Typography } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import FeedEyebrow from './FeedEyebrow';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
@@ -49,6 +51,8 @@ type Props = {
   title: string;
   body: string;
   time: string;
+  // KAN-348 — urgency rides the orthogonal tag_type; urgent takes the dot.
+  tag?: TagType;
   coAuthors?: CoAuthor[]; // up to 3 overlapping seals; null → Rp team only
   announcementId: string;
   commentCount?: number;
@@ -73,6 +77,7 @@ export default function TogetherCard({
   title,
   body,
   time,
+  tag,
   coAuthors,
   announcementId,
   commentCount,
@@ -105,16 +110,14 @@ export default function TogetherCard({
 
   return (
     <View style={s.card}>
-      {/* eyebrow — green dot ("Together" is connective, not alert) */}
-      <View style={s.eyebrow}>
-        <View style={s.dotWrap}>
-          <View style={s.dotHalo} />
-          <View style={s.dot} />
-        </View>
-        <Text style={s.eyebrowLabel}>{Tags.together.label}</Text>
-        <View style={s.eyebrowRule} />
-        <Text style={s.eyebrowTime}>{time}</Text>
-      </View>
+      {/* eyebrow — connective white register; FeedEyebrow owns it, and an
+          urgent tag takes the dot over (KAN-348). */}
+      <FeedEyebrow
+        tag={tag}
+        baseColor={Tags.together.color}
+        label={Tags.together.label}
+        time={time}
+      />
 
       <Text style={s.title}>{title}</Text>
 
@@ -207,15 +210,6 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-  dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  // Dot colour rides Tags.together (white since the Day-1 green retirement,
-  // Founder 2026-07-28) so the register stays single-sourced in theme.ts.
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Tags.together.color + '30' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Tags.together.color },
-  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
-  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
-  eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
   title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },

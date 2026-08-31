@@ -20,9 +20,8 @@
 // (author_id is not even selected over the wire by NetworkFeed).
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Animated,
   Easing,
   LayoutAnimation,
   Platform,
@@ -33,7 +32,7 @@ import {
   View,
 } from 'react-native';
 import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
-import { useReducedMotion } from '../../utils/useReducedMotion';
+import FeedEyebrow from './FeedEyebrow';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
@@ -80,7 +79,6 @@ export default function AnnouncementCard({
   verseText,
   verseRef,
 }: Props) {
-  const reduced = useReducedMotion();
   const [expanded, setExpanded] = useState(false);
   const [cOpen, setCOpen] = useState(false);
   // Local count so the footer reflects a just-posted comment immediately
@@ -91,22 +89,6 @@ export default function AnnouncementCard({
   // Overflow signal — reported by PageTurnText, which owns the entire
   // clamp/measure mechanism (see its header for the tear saga).
   const [overflows, setOverflows] = useState(false);
-
-  // Urgent dot halo: a slow, gentle breathing pulse (~1.8s period). Only
-  // the halo animates — the dot itself stays solid. Non-urgent tags hold
-  // a static glow (opacity 1). Frozen at rest under reduced motion.
-  const blinkAnim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (tag !== 'urgent' || reduced) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blinkAnim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
-        Animated.timing(blinkAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [tag, reduced, blinkAnim]);
 
   const toggleBody = () => {
     if (!overflows) return;
@@ -129,25 +111,8 @@ export default function AnnouncementCard({
     >
       {variant === 'rule' && <View style={[s.rule, { backgroundColor: tg.color }]} />}
 
-      {/* eyebrow / letterhead */}
-      <View style={s.eyebrow}>
-        {variant === 'letterhead' && (
-          <View style={s.dotWrap}>
-            <Animated.View
-              style={[
-                s.dotHalo,
-                { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
-              ]}
-            />
-            {/* Founder 2026-07-28 (device walk): dot motion is URGENT-ONLY
-                — the halo pulse above. Every other register holds still. */}
-            <View style={[s.dot, { backgroundColor: tg.color }]} />
-          </View>
-        )}
-        <Text style={s.eyebrowLabel}>{tg.label}</Text>
-        <View style={s.eyebrowRule} />
-        <Text style={s.eyebrowTime}>{time}</Text>
-      </View>
+      {/* eyebrow / letterhead — FeedEyebrow owns the register (KAN-348) */}
+      <FeedEyebrow tag={tag} label={tg.label} time={time} showDot={variant === 'letterhead'} />
 
       <Text style={s.title}>{title}</Text>
       <View style={s.bodyWrap}>
@@ -223,13 +188,6 @@ const s = StyleSheet.create({
   ruleCard: { paddingLeft: 22 },
   rule: { position: 'absolute', left: 0, top: 16, bottom: 16, width: 2, borderRadius: 2 },
 
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-  dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
-  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
-  eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
   title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },
   body: { fontFamily: Typography.body, fontSize: 15, lineHeight: 23, color: Colors.textMuted, marginTop: 9 },

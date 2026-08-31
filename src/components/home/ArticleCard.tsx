@@ -20,9 +20,8 @@
 // never selected over the wire and never reaches this component.
 // ─────────────────────────────────────────────
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Animated,
   Easing,
   LayoutAnimation,
   Linking,
@@ -34,7 +33,7 @@ import {
   View,
 } from 'react-native';
 import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
-import { useReducedMotion } from '../../utils/useReducedMotion';
+import FeedEyebrow from './FeedEyebrow';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 import { Arrow, Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
@@ -95,7 +94,6 @@ export default function ArticleCard({
   verseText,
   verseRef,
 }: Props) {
-  const reduced = useReducedMotion();
   const [cOpen, setCOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [localCount, setLocalCount] = useState(commentCount ?? 0);
@@ -119,22 +117,6 @@ export default function ArticleCard({
     setExpanded((v) => !v);
   };
 
-  // Urgent dot halo — gentle breathing pulse. Implemented generically so
-  // an 'urgent'-tagged article would blink; non-urgent tags hold static.
-  // Frozen at rest under reduced motion.
-  const blinkAnim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (tag !== 'urgent' || reduced) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blinkAnim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
-        Animated.timing(blinkAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [tag, reduced, blinkAnim]);
-
   const toggleComments = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     setCOpen((v) => !v);
@@ -142,22 +124,8 @@ export default function ArticleCard({
 
   return (
     <View style={s.card}>
-      {/* eyebrow / letterhead */}
-      <View style={s.eyebrow}>
-        <View style={s.dotWrap}>
-          <Animated.View
-            style={[
-              s.dotHalo,
-              { backgroundColor: tg.color + '30', opacity: tag === 'urgent' ? blinkAnim : 1 },
-            ]}
-          />
-          {/* Dot motion is URGENT-ONLY (Founder 2026-07-28 device walk). */}
-          <View style={[s.dot, { backgroundColor: tg.color }]} />
-        </View>
-        <Text style={s.eyebrowLabel}>{label}</Text>
-        <View style={s.eyebrowRule} />
-        <Text style={s.eyebrowTime}>{time}</Text>
-      </View>
+      {/* eyebrow / letterhead — FeedEyebrow owns the register (KAN-348) */}
+      <FeedEyebrow tag={tag} label={label} time={time} />
 
       <Text style={s.title}>{title}</Text>
       {!!standfirst && <Text style={s.standfirst}>{standfirst}</Text>}
@@ -257,13 +225,6 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-  dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
-  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
-  eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
   // Editorial headline — larger + weightier than the standard card title,
   // toward the CD frame's 26–28 (600 SemiBold, 26pt).

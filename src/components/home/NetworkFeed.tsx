@@ -298,7 +298,7 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
     }
 
     case 'encouragement':
-      return <EncouragementFeedItem item={item} time={time} />;
+      return <EncouragementFeedItem item={item} time={time} tag={tag} />;
 
     case 'together':
       return (
@@ -307,6 +307,7 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
           title={item.title}
           body={item.body}
           time={time}
+          tag={tag}
           verseText={item.verse_text}
           verseRef={item.verse_reference}
           // Multi-author columns are not built yet — pass undefined so the
@@ -339,7 +340,7 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
       break;
 
     case 'leader_word':
-      return <LeaderFeedItem item={item} time={time} />;
+      return <LeaderFeedItem item={item} time={time} tag={tag} />;
 
     default:
       break;
@@ -347,7 +348,7 @@ function FeedItem({ item }: { item: AnnouncementRow }) {
 
   // Legacy fallback: author_type defence-in-depth, then link, then standard.
   if (item.author_type === 'leader') {
-    return <LeaderFeedItem item={item} time={time} />;
+    return <LeaderFeedItem item={item} time={time} tag={tag} />;
   }
 
   if (item.link_url) {
@@ -400,10 +401,11 @@ function leaderAvatar(item: AnnouncementRow): { seal?: boolean; initial?: string
   return initial ? { initial } : { seal: true };
 }
 
-function LeaderFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
+function LeaderFeedItem({ item, time, tag }: { item: AnnouncementRow; time: string; tag?: ReturnType<typeof resolveEyebrowTag> }) {
   return (
     <LeaderWordCard
       announcementId={item.id}
+      tag={tag}
       lead={item.title}
       body={item.body}
       verse={item.verse_reference ?? undefined}
@@ -417,10 +419,11 @@ function LeaderFeedItem({ item, time }: { item: AnnouncementRow; time: string })
 // Encouragement wrapper — same frozen attribution. source_label is the
 // BYLINE, not a verse anchor: the verse slot was a source_label overload
 // (unmapped 2026-07-22); it returns when a dedicated verse column exists.
-function EncouragementFeedItem({ item, time }: { item: AnnouncementRow; time: string }) {
+function EncouragementFeedItem({ item, time, tag }: { item: AnnouncementRow; time: string; tag?: ReturnType<typeof resolveEyebrowTag> }) {
   return (
     <EncouragementCard
       announcementId={item.id}
+      tag={tag}
       lead={item.title}
       time={time}
       verse={item.verse_reference ?? undefined}
