@@ -36,7 +36,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { useReducedMotion } from '../../utils/useReducedMotion';
-import { getChurchTypeLabel, PRAYER_WALL_ROLE_LABELS } from '../../utils/displayHelpers';
+import { anonLeaderLabel, getChurchTypeLabel, PRAYER_WALL_ROLE_LABELS } from '../../utils/displayHelpers';
 
 const STYLE_URL = 'mapbox://styles/mapbox/dark-v11';
 const INITIAL_ZOOM = 13;
@@ -154,7 +154,7 @@ function leaderLineText(leaders: Leader[]): string {
   if (!leaders.length) return '';
   return leaders.slice(0, 2).map((l) => {
     const roleLabel = PRAYER_WALL_ROLE_LABELS[l.role as keyof typeof PRAYER_WALL_ROLE_LABELS] ?? 'Minister';
-    if (l.anon) return `A fellow ${roleLabel}`;
+    if (l.anon) return anonLeaderLabel(roleLabel);
     const first = l.first_name?.trim();
     return first ? `${roleLabel} ${first}` : roleLabel;
   }).join(' · ');

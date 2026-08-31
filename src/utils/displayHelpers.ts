@@ -108,13 +108,29 @@ export function getRoleLabel(role: string | null | undefined): string {
 // The `role` parameter is retained for signature compatibility — every
 // caller threads it through and updating each one is unnecessary churn.
 // Anonymous still wins because it short-circuits before name.
+// KAN-349 — the ONE client-side home of the "A fellow …" template.
+// Two locked rulings meet here and the tension is unresolved:
+//   · Founder lock 2026-06-21 #7 prescribes CLIENT-side "A fellow {role}"
+//     on the church profile sheet (title-case role token).
+//   · The server-composed-identity invariant (KAN-338/KAN-343 era) ships
+//     identity strings composed in SQL (get_comments v3 sends lowercase
+//     "A fellow pastor").
+// Until the Founder rules which way the church surfaces go, every client
+// composition routes through THIS template — each surface keeps its own
+// role-label register, so no copy changes here — and an invariants test
+// bans the literal anywhere else in src/. If a server-passthrough ruling
+// lands, this helper's call sites are the complete migration inventory.
+export function anonLeaderLabel(roleLabel: string = 'leader'): string {
+  return `A fellow ${roleLabel}`;
+}
+
 export function formatLeaderLine(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   role: string | null | undefined,
   name: string | null | undefined,
   isAnonymous: boolean,
 ): string {
-  if (isAnonymous) return 'A fellow leader';
+  if (isAnonymous) return anonLeaderLabel();
   return (name ?? '').trim();
 }
 
