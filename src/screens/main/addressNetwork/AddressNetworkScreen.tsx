@@ -7,17 +7,17 @@
 // This container owns the shared state: the submissions list + open count
 // (which drives Compose's at-capacity branch and the amber edits badge on
 // the My Submissions segment), and the one-time intro. Everything reaches
-// the backend through SECURITY DEFINER RPCs (addressNetworkApi), which fail
-// soft to an in-memory store until the parallel-lane RPCs deploy.
+// the backend through SECURITY DEFINER RPCs (addressNetworkApi), which
+// THROW on RPC error (KAN-345); this container owns the error surface.
 // ─────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as SecureStore from 'expo-secure-store';
-import { Colors } from '../../../constants/theme';
+import { Colors, Typography } from '../../../constants/theme';
 import type { RootStackParamList } from '../../../navigation/types';
 import AtnNavBar from './AtnNavBar';
 import Segmented from './Segmented';
@@ -41,14 +41,24 @@ export default function AddressNetworkScreen() {
 
   const [segment, setSegment] = useState<Segment>('compose');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [introVisible, setIntroVisible] = useState(false);
 
   const openCount = openCountOf(submissions);
   const atCapacity = openCount >= 2;
 
   const load = useCallback(async () => {
-    const rows = await fetchSubmissions();
-    setSubmissions(rows);
+    try {
+      const rows = await fetchSubmissions();
+      setSubmissions(rows);
+      setLoadError(false);
+    } catch {
+      // KAN-345: a failed list read must never render as an empty list —
+      // "no submissions" and "couldn't load" are different truths. Rows
+      // already on screen are kept (stale beats a flash-to-error on a
+      // focus refetch); the error surface renders only over nothing.
+      setLoadError(true);
+    }
   }, []);
 
   // Refetch whenever the screen regains focus (e.g. returning from the
@@ -82,7 +92,12 @@ export default function AddressNetworkScreen() {
 
   const onWithdraw = useCallback(
     async (id: string) => {
-      await withdrawSubmission(id);
+      try {
+        await withdrawSubmission(id);
+      } catch {
+        Alert.alert('Error', "Couldn't withdraw. Try again.");
+        return;
+      }
       await load();
     },
     [load],
@@ -125,6 +140,18 @@ export default function AddressNetworkScreen() {
             onSubmitted={load}
             onGoToSubmissions={() => setSegment('submissions')}
           />
+        ) : loadError && submissions.length === 0 ? (
+          <View style={styles.loadErrorBox}>
+            <Text style={styles.loadErrorText}>Couldn't load your submissions</Text>
+            <Pressable
+              onPress={() => void load()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading submissions"
+            >
+              <Text style={styles.loadErrorRetry}>Tap to retry</Text>
+            </Pressable>
+          </View>
         ) : (
           <SubmissionsView
             submissions={submissions}
@@ -149,4 +176,18 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   body: { flex: 1 },
+  loadErrorBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadErrorText: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    letterSpacing: 0.3,
+  },
+  loadErrorRetry: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.accent,
+    letterSpacing: 0.4,
+    paddingVertical: 10,
+  },
 });
