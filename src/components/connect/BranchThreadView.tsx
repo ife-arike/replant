@@ -583,6 +583,10 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
   const [draft, setDraft] = useState('');
   const [showMembers, setShowMembers] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
+  // KAN-350: get_branch_list failure must be surfaced — a null summary
+  // with no error renders a composer that can never send (attemptSend
+  // requires summary.status === 'active').
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [resolvedDecline, setResolvedDecline] = useState(false);
   // Fix 8 (KAN-68 §15.3) — same anticipatory popover as DMThreadView.
   const [attachPopoverVisible, setAttachPopoverVisible] = useState(false);
@@ -664,6 +668,12 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
       setMembersError(memRes.error.message ?? 'Failed to load members');
     } else {
       setMembersError(null);
+    }
+    if (listRes.error) {
+      console.error('[BranchThreadView] get_branch_list failed:', listRes.error.message, listRes.error.details);
+      setSummaryError(listRes.error.message ?? 'Failed to load branch');
+    } else {
+      setSummaryError(null);
     }
     const mapped: BranchMember[] = (memRes.data ?? []).map((r: any) => {
       // KAN-229: get_branch_members now returns full_name as the fully
@@ -1146,7 +1156,22 @@ export default function BranchThreadView({ branchId, callerUserId, onBack, onSwi
 
         <CovenantStrip />
 
-        {forming ? (
+        {!summary && summaryError ? (
+          // KAN-350: never render the live composer over a null summary —
+          // it looks healthy but attemptSend silently refuses. Error card
+          // with retry, parity with MinistriesList's failure posture.
+          <View style={[styles.composer, styles.composerLocked, { paddingBottom: 8 }]}>
+            <Text style={styles.lockedNote}>Couldn't load this branch</Text>
+            <Pressable
+              onPress={() => void loadMembersAndSummary()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading this branch"
+            >
+              <Text style={styles.retryText}>Tap to retry</Text>
+            </Pressable>
+          </View>
+        ) : forming ? (
           <View style={[styles.composer, styles.composerLocked, { paddingBottom: 8 }]}>
             <Text style={styles.lockedNote}>Messaging opens once everyone has joined</Text>
             <View style={[styles.send, styles.sendDisabled]}>
