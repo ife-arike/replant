@@ -176,7 +176,12 @@ export default function GuidanceReaderScreen() {
           scripture_text: row.scripture_text,
         });
       } else {
-        // Fallback to placeholder
+        // KAN-347 DELIBERATE EXCEPTION (flagged on the ticket): guidance is
+        // safety-critical, in-app-authored content. A leader opening this
+        // mid-crisis must never hit a retry wall, so fetch FAILURE and
+        // unknown slug both serve the in-app library version. The other
+        // three readers render honest error states; this surface trades
+        // freshness for availability by design.
         setGuidance(PLACEHOLDER_GUIDANCE[slug] ?? PLACEHOLDER_GUIDANCE.raid);
       }
       setLoading(false);

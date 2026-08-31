@@ -2,9 +2,10 @@
 // In-app reader. NEVER opens external URL. Body uses Typography.displayRegular
 // (NOT italic) for long-form reading. Pull quote with 2px red border.
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, Typography } from '../../../../constants/theme';
 import { supabase } from '../../../../lib/supabase';
 import BackRow from '../components/BackRow';
+import { classifyFetch } from './readerLoadState';
 import type { RootStackParamList } from '../../../../navigation/types';
 
 const CREAM = '#E6E1D5';
@@ -62,25 +64,40 @@ export default function ArticleReaderScreen() {
   const { articleId } = route.params;
   const [article, setArticle] = useState<ArticleData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    // Pre-seed demo route: archive placeholder rows navigate here with a
+    // 'placeholder…' id. Served in-app, never sent to the RPC.
+    if (articleId.startsWith('placeholder')) {
+      setArticle(PLACEHOLDER_ARTICLE);
+      setLoading(false);
+      return;
+    }
+    const { data, error } = await supabase.rpc('get_article', {
+      p_article_id: articleId,
+    });
+    // KAN-347: a fetch FAILURE must never wear content's face. Error gets
+    // an honest retry state; a real id the server no longer has gets a
+    // not-available state. The placeholder renders ONLY on the demo route.
+    switch (classifyFetch(error, data)) {
+      case 'ready':
+        setArticle((data as ArticleData[])[0]);
+        break;
+      case 'error':
+        setLoadError(true);
+        break;
+      case 'empty':
+        break;
+    }
+    setLoading(false);
+  }, [articleId]);
 
   useEffect(() => {
-    (async () => {
-      if (articleId === 'placeholder') {
-        setArticle(PLACEHOLDER_ARTICLE);
-        setLoading(false);
-        return;
-      }
-      const { data, error } = await supabase.rpc('get_article', {
-        p_article_id: articleId,
-      });
-      if (!error && data && data.length > 0) {
-        setArticle(data[0] as ArticleData);
-      } else {
-        setArticle(PLACEHOLDER_ARTICLE);
-      }
-      setLoading(false);
-    })();
-  }, [articleId]);
+    void load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -94,7 +111,38 @@ export default function ArticleReaderScreen() {
     );
   }
 
-  if (!article) return null;
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.leftEdge} pointerEvents="none" />
+        <ReaderNavBar onBack={() => navigation.goBack()} />
+        <View style={styles.loadingWrap}>
+          <Text style={styles.errText}>Couldn't load this article</Text>
+          <Pressable
+            onPress={() => void load()}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading this article"
+          >
+            <Text style={styles.errRetry}>Tap to retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!article) {
+    // Successful call, no row: the article was unpublished or removed.
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <View style={styles.leftEdge} pointerEvents="none" />
+        <ReaderNavBar onBack={() => navigation.goBack()} />
+        <View style={styles.loadingWrap}>
+          <Text style={styles.errText}>This article isn't available anymore.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const paragraphs = article.body_md.split('\n\n').filter(Boolean);
 
@@ -165,6 +213,19 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  errText: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    letterSpacing: 0.3,
+  },
+  errRetry: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.accent,
+    letterSpacing: 0.4,
+    paddingVertical: 10,
+  },
   scrollContent: { paddingBottom: 40 },
 
   // NavBar

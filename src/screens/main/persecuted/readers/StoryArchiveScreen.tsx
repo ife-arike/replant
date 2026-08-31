@@ -18,6 +18,7 @@ import { supabase } from '../../../../lib/supabase';
 import BackRow from '../components/BackRow';
 import ArchiveIntro from '../components/ArchiveIntro';
 import FilterChips, { type ChipOption } from '../components/FilterChips';
+import { classifyFetch } from './readerLoadState';
 import type { RootStackParamList } from '../../../../navigation/types';
 
 const CREAM = '#E6E1D5';
@@ -39,13 +40,15 @@ const FILTER_OPTIONS: ChipOption[] = [
   { id: 'partner', label: 'Partner feeds' },
 ];
 
-// Placeholder stories until data is seeded
+// Placeholder stories until data is seeded. The 'placeholder-' id prefix
+// is load-bearing (KAN-347): ArticleReader serves these in-app and never
+// sends a placeholder id to the RPC.
 const PLACEHOLDER_STORIES: StoryRow[] = [
-  { id: '1', source: 'Replant Editorial', author: 'Replant Team', title: 'Three families, one basement.', published_at: new Date().toISOString() },
-  { id: '2', source: 'Voice of the Martyrs', author: 'Partner feed', title: 'A letter from inside.', published_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: '3', source: 'Replant Editorial', author: 'Replant Team', title: 'When the gathering is forbidden.', published_at: new Date(Date.now() - 86400000 * 3).toISOString() },
-  { id: '4', source: 'Open Doors', author: 'Partner feed', title: 'The watchlist, rethought.', published_at: new Date(Date.now() - 86400000 * 7).toISOString() },
-  { id: '5', source: 'Replant Editorial', author: 'Replant Team', title: 'How a pastor prepares his successor.', published_at: new Date(Date.now() - 86400000 * 14).toISOString() },
+  { id: 'placeholder-1', source: 'Replant Editorial', author: 'Replant Team', title: 'Three families, one basement.', published_at: new Date().toISOString() },
+  { id: 'placeholder-2', source: 'Voice of the Martyrs', author: 'Partner feed', title: 'A letter from inside.', published_at: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'placeholder-3', source: 'Replant Editorial', author: 'Replant Team', title: 'When the gathering is forbidden.', published_at: new Date(Date.now() - 86400000 * 3).toISOString() },
+  { id: 'placeholder-4', source: 'Open Doors', author: 'Partner feed', title: 'The watchlist, rethought.', published_at: new Date(Date.now() - 86400000 * 7).toISOString() },
+  { id: 'placeholder-5', source: 'Replant Editorial', author: 'Replant Team', title: 'How a pastor prepares his successor.', published_at: new Date(Date.now() - 86400000 * 14).toISOString() },
 ];
 
 export default function StoryArchiveScreen() {
@@ -53,20 +56,32 @@ export default function StoryArchiveScreen() {
   const [filter, setFilter] = useState('all');
   const [stories, setStories] = useState<StoryRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadStories = useCallback(async (f: string) => {
     setLoading(true);
     const { data, error } = await supabase.rpc('get_story_archive', { p_filter: f });
-    if (!error && data && data.length > 0) {
-      setStories(data as StoryRow[]);
-    } else {
-      // Fallback to placeholder
-      const filtered = PLACEHOLDER_STORIES.filter((s) => {
-        if (f === 'all') return true;
-        if (f === 'replant') return s.source === 'Replant Editorial';
-        return s.source !== 'Replant Editorial';
-      });
-      setStories(filtered);
+    // KAN-347: error gets an honest retry state — the placeholder list is
+    // the documented pre-seed design for EMPTY only, never for failure.
+    switch (classifyFetch(error, data)) {
+      case 'ready':
+        setLoadError(false);
+        setStories(data as StoryRow[]);
+        break;
+      case 'error':
+        setLoadError(true);
+        setStories([]);
+        break;
+      case 'empty': {
+        setLoadError(false);
+        const filtered = PLACEHOLDER_STORIES.filter((s) => {
+          if (f === 'all') return true;
+          if (f === 'replant') return s.source === 'Replant Editorial';
+          return s.source !== 'Replant Editorial';
+        });
+        setStories(filtered);
+        break;
+      }
     }
     setLoading(false);
   }, []);
@@ -128,6 +143,21 @@ export default function StoryArchiveScreen() {
             />
           </>
         }
+        ListEmptyComponent={
+          !loading && loadError ? (
+            <View style={styles.errWrap}>
+              <Text style={styles.errText}>Couldn't load stories</Text>
+              <Pressable
+                onPress={() => void loadStories(filter)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading stories"
+              >
+                <Text style={styles.errRetry}>Tap to retry</Text>
+              </Pressable>
+            </View>
+          ) : null
+        }
         ListFooterComponent={
           <View style={styles.scriptureFoot}>
             <Text style={styles.scriptureEyebrow}>THE BODY SPEAKS</Text>
@@ -165,6 +195,20 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   listContent: { paddingBottom: 28 },
+  errWrap: { paddingTop: 48, alignItems: 'center' },
+  errText: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    letterSpacing: 0.3,
+  },
+  errRetry: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.accent,
+    letterSpacing: 0.4,
+    paddingVertical: 10,
+  },
 
   // NavBar
   navbar: { paddingTop: 14, paddingBottom: 10 },
