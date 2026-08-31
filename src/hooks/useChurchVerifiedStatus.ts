@@ -1,14 +1,18 @@
-// useChurchVerifiedStatus — distinguishes two "pending" leader scenarios:
+// useChurchVerifiedStatus — distinguishes the "pending" leader scenarios:
 //
-//   churchVerified = true  → second leader joining an already-verified
-//                            church (verification_status='verified'). The
-//                            church is in the network; only the leader's
-//                            personal account needs confirmation.
-//   churchVerified = false → original leader whose church is still pending
-//                            verification by the Replant team (or any
-//                            non-verified status).
-//   churchVerified = null  → check in flight (caller should default to
-//                            the church-pending variant while loading).
+//   'verified'     → second leader joining an already-verified church
+//                    (verification_status='verified'). The church is in the
+//                    network; only the leader's personal account needs
+//                    confirmation.
+//   'not_verified' → original leader whose church is still pending
+//                    verification by the Replant team (or any non-verified
+//                    status), per a SUCCESSFUL read.
+//   'error'        → the read FAILED (KAN-346) — we do not know either way.
+//                    Consumers render the conservative church-pending
+//                    variant for this state by explicit choice; it must
+//                    never be conflated with a real 'not_verified' verdict.
+//   null           → check in flight (caller should default to the
+//                    church-pending variant while loading).
 //
 // Bug fix 2026-06-14 (Founder report): hook previously read rag_status
 // (safety/risk indicator: green/amber/red for persecuted-zone risk) and
@@ -23,11 +27,19 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthProvider';
 import { supabase } from '../lib/supabase';
+import {
+  resolveChurchVerifiedStatus,
+  type ChurchVerifiedStatus,
+} from './churchVerifiedStatus';
 
-async function checkChurchVerified(): Promise<boolean> {
+export type { ChurchVerifiedStatus } from './churchVerifiedStatus';
+
+async function checkChurchVerified(): Promise<Exclude<ChurchVerifiedStatus, null>> {
   const { data: sessionData } = await supabase.auth.getSession();
   const authId = sessionData?.session?.user?.id;
-  if (!authId) return false;
+  // No hydrated session on a pending-branch surface is an anomaly, not a
+  // verification verdict — classify as a failed read.
+  if (!authId) return 'error';
 
   // FK hint required: see useChurchesGlobal comment — same disambiguation needed.
   const { data, error } = await supabase
@@ -36,18 +48,20 @@ async function checkChurchVerified(): Promise<boolean> {
     .eq('auth_id', authId)
     .single();
 
-  if (error || !data) return false;
-
   const row = data as unknown as {
     churches: { verification_status: string | null } | { verification_status: string | null }[] | null;
-  };
-  const c = Array.isArray(row.churches) ? (row.churches[0] ?? null) : row.churches;
-  return c?.verification_status === 'verified';
+  } | null;
+  const c = row
+    ? Array.isArray(row.churches)
+      ? (row.churches[0] ?? null)
+      : row.churches
+    : null;
+  return resolveChurchVerifiedStatus(error ?? (!row ? { missing: true } : null), c?.verification_status);
 }
 
-export function useChurchVerifiedStatus(): boolean | null {
+export function useChurchVerifiedStatus(): ChurchVerifiedStatus {
   const { branch } = useAuth();
-  const [churchVerified, setChurchVerified] = useState<boolean | null>(null);
+  const [churchVerified, setChurchVerified] = useState<ChurchVerifiedStatus>(null);
 
   useEffect(() => {
     if (branch !== 'pending') {
@@ -59,7 +73,7 @@ export function useChurchVerifiedStatus(): boolean | null {
 
     checkChurchVerified()
       .then((v) => { if (!cancelled) setChurchVerified(v); })
-      .catch(() => { if (!cancelled) setChurchVerified(false); });
+      .catch(() => { if (!cancelled) setChurchVerified('error'); });
 
     return () => { cancelled = true; };
   }, [branch]);

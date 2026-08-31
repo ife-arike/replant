@@ -296,7 +296,7 @@ export default function HomeScreen() {
             Home with this banner instead of a separate placeholder
             screen (Founder ruling 2026-05-22). */}
         {branch === 'pending' && (
-          <VerificationBanner variant={churchVerified === true ? 'leader' : 'church'} />
+          <VerificationBanner variant={churchVerified === 'verified' ? 'leader' : 'church'} />
         )}
 
         {/* Queue §19 — persistent outcome banner for soft-deleted leaders.

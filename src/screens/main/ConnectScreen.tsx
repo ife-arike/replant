@@ -48,7 +48,7 @@ import * as SecureStore from 'expo-secure-store';
 import Svg, { Line } from 'react-native-svg';
 import { Colors, Typography } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthProvider';
-import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
+import { useChurchVerifiedStatus, type ChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 import { useConnectBadge } from '../../contexts/ConnectBadgeContext';
 import { supabase } from '../../lib/supabase';
 import { getRoleLabel, viewerOrgCopy } from '../../utils/displayHelpers';
@@ -155,13 +155,15 @@ function useToast() {
 // body text, mono wait-line, scripture box with Habakkuk 2:3.
 //
 // Two copy variants (same logic as TheChurchScreen):
-//   churchVerified = true  → second leader (church verified, leader pending)
-//   churchVerified = false/null → original leader (church + leader pending)
+//   churchVerified = 'verified' → second leader (church verified, leader pending)
+//   anything else ('not_verified' / 'error' / null) → original-leader
+//   variant; 'error' maps here by explicit choice (KAN-346), the
+//   conservative copy while the read is unknown.
 //
 // NOT dismissible — this is a protection layer, not an info sheet.
 // Copy is Connect-specific (not "The Church tab" language).
-function ConnectGateView({ churchVerified, viewerChurchType }: { churchVerified: boolean | null; viewerChurchType: string | null | undefined }) {
-  const isLeaderPending = churchVerified === true;
+function ConnectGateView({ churchVerified, viewerChurchType }: { churchVerified: ChurchVerifiedStatus; viewerChurchType: string | null | undefined }) {
+  const isLeaderPending = churchVerified === 'verified';
   const viewer = viewerOrgCopy(viewerChurchType);
   // Founder ruling #6 (locked 2026-06-21) is PRESERVED: the timeline
   // copy is the SAME phrase for surface and underground — no

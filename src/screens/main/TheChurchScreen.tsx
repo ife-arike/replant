@@ -51,7 +51,7 @@ import RegionalPanel, { type ChurchRegion } from '../../components/church/Region
 import CamlView from '../../components/church/CamlView';
 import { REGION_DEFS, groupByRegion, type RegionDef } from '../../utils/regionUtils';
 import ChurchTutorialOverlay, { TUTORIAL_SEEN_KEY } from '../../components/church/ChurchTutorialOverlay';
-import { useChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
+import { useChurchVerifiedStatus, type ChurchVerifiedStatus } from '../../hooks/useChurchVerifiedStatus';
 import { useViewerChurch } from '../../hooks/useViewerChurch';
 import { viewerOrgCopy } from '../../utils/displayHelpers';
 
@@ -72,21 +72,22 @@ const HORIZON_MS = 550;
 // confirmed by a Replant team member.
 //
 // Two copy variants:
-//   churchVerified = true  → second leader (church verified, leader pending)
-//   churchVerified = false/null → original leader (church verification pending)
+//   churchVerified = 'verified' → second leader (church verified, leader pending)
+//   anything else ('not_verified' / 'error' / null) → original-leader
+//   variant; 'error' maps here by explicit choice (KAN-346).
 function UnverifiedGateView({
   churchVerified,
   viewerChurchType,
   suppressTimeline,
 }: {
-  churchVerified: boolean | null;
+  churchVerified: ChurchVerifiedStatus;
   viewerChurchType: string | null | undefined;
   /** Underground Verification Queue · manifest §4 / Ruling #22 (2026-06-22):
    *  when branch === 'request_info', the team is waiting on the leader, not
    *  the other way around — suppress the 30-day / 24-72hr timeline copy. */
   suppressTimeline: boolean;
 }) {
-  const isLeaderPending = churchVerified === true;
+  const isLeaderPending = churchVerified === 'verified';
   const viewer = viewerOrgCopy(viewerChurchType);
   // Founder ruling #6 (locked 2026-06-21) is PRESERVED: the timeline
   // copy is the SAME phrase for surface and underground — no
