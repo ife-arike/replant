@@ -105,32 +105,32 @@ export function getRoleLabel(role: string | null | undefined): string {
 // knows about honorific overrides + display_name_preference +
 // last_name_first); FE should trust it and just pass it through.
 //
-// The `role` parameter is retained for signature compatibility — every
-// caller threads it through and updating each one is unnecessary churn.
-// Anonymous still wins because it short-circuits before name.
 // KAN-349 — the ONE client-side home of the "A fellow …" template.
-// Two locked rulings meet here and the tension is unresolved:
-//   · Founder lock 2026-06-21 #7 prescribes CLIENT-side "A fellow {role}"
-//     on the church profile sheet (title-case role token).
-//   · The server-composed-identity invariant (KAN-338/KAN-343 era) ships
-//     identity strings composed in SQL (get_comments v3 sends lowercase
-//     "A fellow pastor").
-// Until the Founder rules which way the church surfaces go, every client
-// composition routes through THIS template — each surface keeps its own
-// role-label register, so no copy changes here — and an invariants test
-// bans the literal anywhere else in src/. If a server-passthrough ruling
-// lands, this helper's call sites are the complete migration inventory.
-export function anonLeaderLabel(roleLabel: string = 'leader'): string {
-  return `A fellow ${roleLabel}`;
+// Register (Founder ruling 2026-08-31): the leader's ACTUAL role, Title
+// Case ("A fellow Pastor"); roles without a real title — 'other',
+// unknown, or absent — fall back to "A fellow leader". This refines the
+// 2026-06-02 'other → Minister' mapping for the ANON template only;
+// non-anonymous surfaces (role pills, "Role + first name" lines) keep
+// getRoleLabel's Minister fallback.
+// Composition LOCATION (client-side per lock 2026-06-21 #7 vs
+// server-composed per the KAN-338 invariant) is deliberately unresolved
+// here — it folds into the planned KAN-338 identity-masking SEC panel;
+// this helper's call sites are the complete migration inventory either
+// way, and an invariants test bans the literal anywhere else in src/.
+export function anonLeaderLabel(role?: string | null): string {
+  const label = role && role !== 'other' ? PRAYER_WALL_ROLE_LABELS[role] : undefined;
+  return `A fellow ${label ?? 'leader'}`;
 }
 
+// The `role` parameter drives the anon label (KAN-349 register ruling
+// above) — every caller threads the real role through. Anonymous still
+// wins because it short-circuits before name.
 export function formatLeaderLine(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   role: string | null | undefined,
   name: string | null | undefined,
   isAnonymous: boolean,
 ): string {
-  if (isAnonymous) return anonLeaderLabel();
+  if (isAnonymous) return anonLeaderLabel(role);
   return (name ?? '').trim();
 }
 

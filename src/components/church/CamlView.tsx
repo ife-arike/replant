@@ -154,7 +154,7 @@ function leaderLineText(leaders: Leader[]): string {
   if (!leaders.length) return '';
   return leaders.slice(0, 2).map((l) => {
     const roleLabel = PRAYER_WALL_ROLE_LABELS[l.role as keyof typeof PRAYER_WALL_ROLE_LABELS] ?? 'Minister';
-    if (l.anon) return anonLeaderLabel(roleLabel);
+    if (l.anon) return anonLeaderLabel(l.role);
     const first = l.first_name?.trim();
     return first ? `${roleLabel} ${first}` : roleLabel;
   }).join(' · ');

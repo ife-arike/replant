@@ -437,7 +437,7 @@ export default function ChurchProfileBottomSheet({
                             Renders the SAME role token shown in the pill
                             above; cold-reads as a person, not a redaction. */}
                         {l.anonymous || !l.name ? (
-                          <Text style={styles.nameWithheld}>{anonLeaderLabel(getRoleLabel(l.role))}</Text>
+                          <Text style={styles.nameWithheld}>{anonLeaderLabel(l.role)}</Text>
                         ) : (
                           <Text style={styles.leaderName}>{l.name}</Text>
                         )}
