@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -18,6 +19,7 @@ import BackRow from '../components/BackRow';
 import ArchiveIntro from '../components/ArchiveIntro';
 import FilterChips, { type ChipOption } from '../components/FilterChips';
 import MartyrBadge from '../components/MartyrBadge';
+import { classifyFetch } from './readerLoadState';
 import type { RootStackParamList } from '../../../../navigation/types';
 
 const CREAM = '#E6E1D5';
@@ -82,24 +84,36 @@ export default function WitnessArchiveScreen() {
   const [witnesses, setWitnesses] = useState<WitnessRow[]>([]);
   const [witnessOfDay, setWitnessOfDay] = useState<WitnessRow>(PLACEHOLDER_WITNESS_OF_DAY);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadWitnesses = useCallback(async (f: string) => {
     setLoading(true);
     const { data, error } = await supabase.rpc('get_witnesses', { p_filter: f });
-    if (!error && data && data.length > 0) {
-      setWitnesses(data as WitnessRow[]);
-    } else {
-      // Fallback to placeholder
-      const filtered = PLACEHOLDER_WITNESSES.filter((w) => {
-        if (f === 'all') return true;
-        if (f === 'martyr') return w.martyr;
-        if (f === 'father') return w.category === 'Father of the Faith';
-        if (f === 'mother') return w.category === 'Mother of the Faith';
-        if (f === 'general') return w.category === "God's General";
-        if (f === 'scripture') return w.category === 'From Scripture';
-        return true;
-      });
-      setWitnesses(filtered);
+    // KAN-347: error gets an honest retry state — the placeholder roster is
+    // the documented pre-seed design (KAN-336) for EMPTY only, never failure.
+    switch (classifyFetch(error, data)) {
+      case 'ready':
+        setLoadError(false);
+        setWitnesses(data as WitnessRow[]);
+        break;
+      case 'error':
+        setLoadError(true);
+        setWitnesses([]);
+        break;
+      case 'empty': {
+        setLoadError(false);
+        const filtered = PLACEHOLDER_WITNESSES.filter((w) => {
+          if (f === 'all') return true;
+          if (f === 'martyr') return w.martyr;
+          if (f === 'father') return w.category === 'Father of the Faith';
+          if (f === 'mother') return w.category === 'Mother of the Faith';
+          if (f === 'general') return w.category === "God's General";
+          if (f === 'scripture') return w.category === 'From Scripture';
+          return true;
+        });
+        setWitnesses(filtered);
+        break;
+      }
     }
     setLoading(false);
   }, []);
@@ -202,6 +216,21 @@ export default function WitnessArchiveScreen() {
         keyExtractor={keyExtractor}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderHeader}
+        ListEmptyComponent={
+          !loading && loadError ? (
+            <View style={styles.errWrap}>
+              <Text style={styles.errText}>Couldn't load the witnesses</Text>
+              <Pressable
+                onPress={() => void loadWitnesses(filter)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading witnesses"
+              >
+                <Text style={styles.errRetry}>Tap to retry</Text>
+              </Pressable>
+            </View>
+          ) : null
+        }
         ListFooterComponent={
           <View style={styles.scriptureFoot}>
             <Text style={styles.scriptureEyebrow}>RUN WITH ENDURANCE</Text>
@@ -239,6 +268,20 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   listContent: { paddingBottom: 28 },
+  errWrap: { paddingTop: 48, alignItems: 'center' },
+  errText: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    letterSpacing: 0.3,
+  },
+  errRetry: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.accent,
+    letterSpacing: 0.4,
+    paddingVertical: 10,
+  },
 
   // NavBar
   navbar: { paddingTop: 14, paddingBottom: 10 },

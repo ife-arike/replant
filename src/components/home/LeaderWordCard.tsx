@@ -25,7 +25,8 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, FeedTitle, Radius, Typography } from '../../constants/theme';
+import { Colors, FeedTitle, Radius, Typography, type TagType } from '../../constants/theme';
+import FeedEyebrow from './FeedEyebrow';
 import { Chevron, CommentIcon, RpMark } from './HomeIcons';
 import { CommentThread } from './CommentThread';
 import { commentCountLabel } from './CommentThreadLogic';
@@ -49,6 +50,8 @@ const LEAD_LINE_HEIGHT = FeedTitle.lineHeight;
 interface Props {
   announcementId: string;
   kicker?: string; // "A word for today" | "Encouragement"
+  // KAN-348 — urgency rides the orthogonal tag_type; urgent takes the dot.
+  tag?: TagType;
   lead: string; // the reflective opening line (serif roman — Ruling 2)
   body?: string; // optional continuation
   verse?: string; // anchor reference, e.g. "Zechariah 4:10"
@@ -65,6 +68,7 @@ interface Props {
 export default function LeaderWordCard({
   announcementId,
   kicker = 'A word for today',
+  tag,
   lead,
   body,
   verse,
@@ -97,15 +101,8 @@ export default function LeaderWordCard({
 
   return (
     <View style={s.card}>
-      <View style={s.eyebrow}>
-        <View style={s.dotWrap}>
-          <View style={s.dotHalo} />
-          <View style={s.dot} />
-        </View>
-        <Text style={s.eyebrowLabel}>{kicker}</Text>
-        <View style={s.eyebrowRule} />
-        <Text style={s.when}>{author.time}</Text>
-      </View>
+      {/* Leader-voice white register; urgent takes the dot over (KAN-348). */}
+      <FeedEyebrow tag={tag} baseColor={Colors.text} label={kicker} time={author.time} />
 
       <Pressable
         onPress={toggleExpand}
@@ -212,13 +209,6 @@ const s = StyleSheet.create({
     padding: 20,
     overflow: 'hidden',
   },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-  dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  // White leader-voice dot (Day-1 green retirement, Founder 2026-07-28).
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.text + '30' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text },
-  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
-  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
   // Ruling 2 (Address the Network, 2026-07-22): the leader-word lead is
   // Cormorant ROMAN, not italic. scriptureItalic stays reserved for
@@ -237,7 +227,6 @@ const s = StyleSheet.create({
 
   meta: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 14 },
   verse: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 0.5, color: Colors.accent },
-  when: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
   author: {
     flexDirection: 'row',

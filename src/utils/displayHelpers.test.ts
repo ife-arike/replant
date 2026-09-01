@@ -2,7 +2,7 @@
 // Guards the QA contract: church type renders as a human label, never a
 // raw enum; congregation size maps to the dispatch labels.
 
-import { getChurchTypeLabel, getCongregationSizeLabel } from './displayHelpers';
+import { anonLeaderLabel, getChurchTypeLabel, getCongregationSizeLabel } from './displayHelpers';
 
 describe('getChurchTypeLabel (KAN-20 QA)', () => {
   it("renders branch as 'Church branch' — Founder lock 2026-06-18 (drop parens; lead with 'Church')", () => {
@@ -35,5 +35,23 @@ describe('getCongregationSizeLabel (KAN-20)', () => {
     expect(getCongregationSizeLabel(null)).toBeNull();
     expect(getCongregationSizeLabel(undefined)).toBeNull();
     expect(getCongregationSizeLabel('weird')).toBeNull();
+  });
+});
+
+// KAN-349 — pins the anon-label register (Founder ruling 2026-08-31):
+// actual role, Title Case; 'other'/unique/absent roles read as leader.
+describe('anonLeaderLabel (KAN-349 register)', () => {
+  it('uses the actual role, Title Case', () => {
+    expect(anonLeaderLabel('pastor')).toBe('A fellow Pastor');
+    expect(anonLeaderLabel('youth_leader')).toBe('A fellow Youth Leader');
+    expect(anonLeaderLabel('ministry_leader')).toBe('A fellow Minister');
+  });
+
+  it("falls back to 'A fellow leader' for other, unknown, and absent roles", () => {
+    expect(anonLeaderLabel('other')).toBe('A fellow leader');
+    expect(anonLeaderLabel('some_future_role')).toBe('A fellow leader');
+    expect(anonLeaderLabel(null)).toBe('A fellow leader');
+    expect(anonLeaderLabel(undefined)).toBe('A fellow leader');
+    expect(anonLeaderLabel()).toBe('A fellow leader');
   });
 });

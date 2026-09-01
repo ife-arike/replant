@@ -14,6 +14,7 @@
 import React from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, FeedTitle, Radius, Tags, Typography, type TagType } from '../../constants/theme';
+import FeedEyebrow from './FeedEyebrow';
 import { Arrow, LinkIcon, RpMark } from './HomeIcons';
 import { AUTHOR_ATTRIBUTION } from './NetworkFeedLogic';
 
@@ -39,12 +40,9 @@ export default function LinkCard({ tag = 'update', title, body, time, resource, 
   const tg = Tags[tag];
   return (
     <View style={s.card}>
-      <View style={s.eyebrow}>
-        <View style={[s.dot, { backgroundColor: tg.color }]} />
-        <Text style={s.eyebrowLabel}>{tg.label}</Text>
-        <View style={s.eyebrowRule} />
-        <Text style={s.eyebrowTime}>{time}</Text>
-      </View>
+      {/* KAN-348: joins the standard eyebrow register (halo + urgent pulse —
+          this card previously dropped the pulse entirely). */}
+      <FeedEyebrow tag={tag} label={tg.label} time={time} />
 
       <Text style={s.title}>{title}</Text>
       <Text style={s.body}>{body}</Text>
@@ -85,11 +83,6 @@ const s = StyleSheet.create({
     padding: 20,
     overflow: 'hidden',
   },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
-  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
-  eyebrowTime: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
   // Title rides the shared FeedTitle token (one-size ruling) — this was a
   // stray 21/26 hardcode the token was supposed to replace.
   title: { fontFamily: Typography.displayRegular, ...FeedTitle, color: Colors.text, letterSpacing: 0.1 },

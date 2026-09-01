@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   LayoutAnimation,
   Modal,
@@ -130,12 +131,20 @@ export default function ComposeView({
     setTouched(true);
     if (!type || !titleOk || !bodyOk || sending) return;
     setSending(true);
-    await submitAddressNetwork({
-      type,
-      title: type === 'word' ? titleTrim || null : titleTrim,
-      body: bodyTrim,
-      attribution: effectiveAttribution,
-    });
+    try {
+      // KAN-345: submitAddressNetwork now THROWS on RPC error. The success
+      // screen must never render unless the server actually took the row.
+      await submitAddressNetwork({
+        type,
+        title: type === 'word' ? titleTrim || null : titleTrim,
+        body: bodyTrim,
+        attribution: effectiveAttribution,
+      });
+    } catch {
+      Alert.alert('Error', "Couldn't send this to the team. Your words are still here. Try again.");
+      setSending(false);
+      return;
+    }
     setRemainingAfterSend(Math.max(0, OPEN_CAP - (openCount + 1)));
     setSending(false);
     animate();

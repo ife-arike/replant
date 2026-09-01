@@ -23,11 +23,12 @@
 // 'underground'). So underground leaders see their own church row here.
 
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../contexts/AuthProvider";
-import { Colors } from "../../constants/theme";
+import { Colors, Typography } from "../../constants/theme";
 import { supabase } from "../../lib/supabase";
 import SettingsScreen from "./SettingsScreen";
+import { classifySettingsRead } from "./settingsLoad";
 
 type DisplayNamePreference = "first_name_only" | "full_name";
 type RagStatus = "green" | "amber" | "red";
@@ -64,10 +65,15 @@ export default function SettingsScreenContainer() {
   const email = session?.user?.email ?? null;
 
   // Loaded state — null while the read is in flight; once non-null, the
-  // screen renders. Read failures fall through to safe defaults.
+  // screen renders. KAN-346: read failures render an error state — the
+  // form must never mount on invented defaults (anonymous=false would
+  // render an anonymous leader as non-anonymous, and let them save it).
   const [initialPref, setInitialPref] = useState<DisplayNamePreference | null>(
     null,
   );
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by the retry affordance to re-run the read.
+  const [loadTick, setLoadTick] = useState(0);
   const [anonymousMode, setAnonymousMode] = useState<boolean>(false);
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState<boolean>(true);
   const [fullName, setFullName] = useState<string | null>(null);
@@ -120,13 +126,11 @@ export default function SettingsScreenContainer() {
         .maybeSingle();
       if (cancelled) return;
 
-      if (error || !data) {
-        // Read failed (network) — fall through to safe defaults; the
-        // first write either confirms the default (no-op) or overwrites.
-        setInitialPref("first_name_only");
-        setAnonymousMode(false);
+      if (classifySettingsRead(error, data) === "error") {
+        setLoadError(true);
         return;
       }
+      setLoadError(false);
 
       // PostgREST infers embedded one-to-one as an array in some Supabase
       // client builds — cast through unknown and accept either shape.
@@ -159,7 +163,26 @@ export default function SettingsScreenContainer() {
     return () => {
       cancelled = true;
     };
-  }, [authId]);
+  }, [authId, loadTick]);
+
+  if (loadError) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.errText}>Couldn't load your settings</Text>
+        <Pressable
+          onPress={() => {
+            setLoadError(false);
+            setLoadTick((t) => t + 1);
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading settings"
+        >
+          <Text style={styles.errRetry}>Tap to retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (!authId || initialPref === null) {
     return (
@@ -200,5 +223,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     alignItems: "center",
     justifyContent: "center",
+  },
+  errText: {
+    fontFamily: Typography.mono,
+    fontSize: 12,
+    color: Colors.textSubtle,
+    letterSpacing: 0.3,
+  },
+  errRetry: {
+    fontFamily: Typography.mono,
+    fontSize: 10.5,
+    color: Colors.accent,
+    letterSpacing: 0.4,
+    paddingVertical: 10,
   },
 });

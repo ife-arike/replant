@@ -3,10 +3,10 @@
 // (KAN-201 card system 2026-06-02)
 //
 // For card_type = 'encouragement'. A leader voice, not an admin
-// announcement — a BREATHING white-dot letterhead eyebrow over the warm
-// card surface signals the type (Day-1 polish, Founder 2026-07-28: green
-// retired from the Home eyebrow register; the slow breathe is the "this
-// is fresh" cue). The lead deliberately does NOT use the FeedTitle
+// announcement — a white-dot letterhead eyebrow over the warm card
+// surface signals the type (Day-1 polish, Founder 2026-07-28: green
+// retired from the Home eyebrow register; dot motion is urgent-only, so
+// this dot holds still — FeedEyebrow owns the register, KAN-348). The lead deliberately does NOT use the FeedTitle
 // register (Founder 2026-07-28: "not just title text") — it reads as a
 // warmer mid-size serif note (Cormorant 500 Medium 18/28; the earlier
 // states were scripture-italic, then title-roman per round-2 2026-07-22).
@@ -40,7 +40,8 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { Colors, Radius, Typography } from '../../constants/theme';
+import { Colors, Radius, Typography, type TagType } from '../../constants/theme';
+import FeedEyebrow from './FeedEyebrow';
 import { RpMark } from './HomeIcons';
 import ScripturePull from './ScripturePull';
 import PageTurnText from './PageTurnText';
@@ -72,9 +73,11 @@ type Props = {
   // comment thread (pastoral decision — read, not replied to).
   commentCount?: number;
   onCommentPosted?: () => void;
+  // KAN-348 — urgency rides the orthogonal tag_type; urgent takes the dot.
+  tag?: TagType;
 };
 
-export default function EncouragementCard({ lead, verse, verseText, time, author }: Props) {
+export default function EncouragementCard({ lead, verse, verseText, time, author, tag }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   // Overflow signal — reported by PageTurnText, which owns the entire
@@ -89,16 +92,8 @@ export default function EncouragementCard({ lead, verse, verseText, time, author
 
   return (
     <View style={s.card}>
-      <View style={s.eyebrow}>
-        <View style={s.dotWrap}>
-          <View style={s.dotHalo} />
-          {/* Static — dot motion is URGENT-ONLY (Founder 2026-07-28). */}
-          <View style={s.dot} />
-        </View>
-        <Text style={s.eyebrowLabel}>Encouragement</Text>
-        <View style={s.eyebrowRule} />
-        <Text style={s.when}>{time}</Text>
-      </View>
+      {/* Leader-voice white register; urgent takes the dot over (KAN-348). */}
+      <FeedEyebrow tag={tag} baseColor={Colors.text} label="Encouragement" time={time} />
 
       <Pressable
         onPress={toggleExpand}
@@ -161,14 +156,6 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Letterhead eyebrow — dot + label + rule + time, matching LeaderWordCard
-  // (white dot since the Day-1 green retirement; this one breathes).
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-  dotWrap: { width: 11, height: 11, alignItems: 'center', justifyContent: 'center' },
-  dotHalo: { position: 'absolute', width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.text + '30' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text },
-  eyebrowLabel: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 1.26, color: Colors.textMuted },
-  eyebrowRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
 
   // Encouragement voice (Day-1 rework, Founder 2026-07-28): NOT the title
   // register — a warmer mid-size serif with generous leading, so an
@@ -184,7 +171,6 @@ const s = StyleSheet.create({
 
   meta: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 14 },
   verse: { fontFamily: Typography.mono, fontSize: 10.5, letterSpacing: 0.5, color: Colors.accent },
-  when: { fontFamily: Typography.mono, fontSize: 10, color: Colors.textSubtle },
 
   author: {
     flexDirection: 'row',

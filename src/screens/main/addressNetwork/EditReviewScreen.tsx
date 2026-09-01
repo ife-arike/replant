@@ -64,18 +64,28 @@ export default function EditReviewScreen() {
   const onConfirm = async () => {
     if (busy) return;
     setBusy(true);
-    await publishSubmission(s.id);
-    setBusy(false);
-    navigation.goBack();
+    try {
+      await publishSubmission(s.id);
+      navigation.goBack();
+    } catch {
+      Alert.alert('Error', "Couldn't publish. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onSendNote = async () => {
     if (busy) return;
     setBusy(true);
-    await requestChanges(s.id, note.trim());
-    setBusy(false);
-    setNoteVisible(false);
-    navigation.goBack();
+    try {
+      await requestChanges(s.id, note.trim());
+      setNoteVisible(false);
+      navigation.goBack();
+    } catch {
+      Alert.alert('Error', "Couldn't send your note. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onWithdraw = () => {
@@ -89,9 +99,14 @@ export default function EditReviewScreen() {
           style: 'destructive',
           onPress: async () => {
             setBusy(true);
-            await withdrawSubmission(s.id);
-            setBusy(false);
-            navigation.goBack();
+            try {
+              await withdrawSubmission(s.id);
+              navigation.goBack();
+            } catch {
+              Alert.alert('Error', "Couldn't withdraw. Try again.");
+            } finally {
+              setBusy(false);
+            }
           },
         },
       ],

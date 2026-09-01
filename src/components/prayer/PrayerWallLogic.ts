@@ -27,6 +27,8 @@
 // ─────────────────────────────────────────────
 
 // AC #pagination — 20 per page; matches the LIMIT 20 inside the RPC.
+import { anonLeaderLabel } from '../../utils/displayHelpers';
+
 export const PAGE_SIZE = 20;
 
 // Testimony pagination — get_testimonies + get_landing_testimonies
@@ -65,7 +67,7 @@ export const DEFAULT_URGENCY: UrgencyFilter = 'All';
 
 // Founder ruling 2026-05-24 — anonymous posts (leader_display_name
 // NULL on the wire) render under this label. Never omit the line.
-export const ANONYMOUS_LEADER_LABEL = 'A fellow leader';
+export const ANONYMOUS_LEADER_LABEL = anonLeaderLabel();
 
 // Wire shape exactly matches get_prayer_wall RETURNS TABLE in v2 — kept
 // in lockstep with the RPC.

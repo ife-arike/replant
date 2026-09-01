@@ -55,6 +55,7 @@ import { Colors, Typography } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useReducedMotion } from '../../utils/useReducedMotion';
 import {
+  anonLeaderLabel,
   getChurchTypeLabel,
   getCongregationSizeLabel,
   getRoleLabel,
@@ -436,7 +437,7 @@ export default function ChurchProfileBottomSheet({
                             Renders the SAME role token shown in the pill
                             above; cold-reads as a person, not a redaction. */}
                         {l.anonymous || !l.name ? (
-                          <Text style={styles.nameWithheld}>{`A fellow ${getRoleLabel(l.role)}`}</Text>
+                          <Text style={styles.nameWithheld}>{anonLeaderLabel(l.role)}</Text>
                         ) : (
                           <Text style={styles.leaderName}>{l.name}</Text>
                         )}
